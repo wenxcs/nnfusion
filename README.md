@@ -28,10 +28,8 @@ mode that can be used to zero in on a DL model and create custom
 optimizations that can be used to further accelerate training or inference, in 
 whatever scenario you need.  
 
-nGraph provides both a C++ API for framework developers and a Python API which 
+NNFusion provides both a C++ API for framework developers and a Python API which 
 can run inference on models imported from ONNX, TensorFlow freezed model. 
-
-See the [Release Notes] for recent changes.
 
 
 |  Framework     | bridge available? | ONNX support?  |
