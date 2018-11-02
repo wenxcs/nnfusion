@@ -17,18 +17,19 @@ hands optimization effort.
 
 ![NNFusion architechture][nnfusion-arch]
 
-The **nGraph Compiler** is Intel's graph compiler for Artificial Neural Networks. 
+Currently, NNFusion's implementation is based on Intel nGraph, which is Intel's graph 
+compiler for Artificial Neural Networks. 
 Documentation in this repo describes how you can program any framework 
 to run training and inference computations on a variety of Backends including 
 Intel® Architecture Processors (CPUs), Intel® Nervana™ Neural Network Processors 
-(NNPs), cuDNN-compatible graphics cards (GPUs), custom VPUs like [Movidius], and
+(NNPs), cuDNN-compatible graphics cards (GPUs), and
 many others. The default CPU Backend also provides an interactive *Interpreter* 
-mode that can be used to zero in on a DL model and create custom nGraph 
+mode that can be used to zero in on a DL model and create custom 
 optimizations that can be used to further accelerate training or inference, in 
 whatever scenario you need.  
 
-nGraph provides both  a C++ API for framework developers and a Python API which 
-can run inference on models imported from ONNX. 
+nGraph provides both a C++ API for framework developers and a Python API which 
+can run inference on models imported from ONNX, TensorFlow freezed model. 
 
 See the [Release Notes] for recent changes.
 
@@ -48,7 +49,6 @@ See the [Release Notes] for recent changes.
 |-----------------------------------------------|-------------------|----------------|
 | Intel® Architecture CPU                       | yes               | yes            |
 | Intel® Nervana™ Neural Network Processor (NNP)| yes               | yes            |
-| Intel [Movidius™ Myriad™ 2] VPUs              | coming soon       | yes            |
 | Intel® Architecture GPUs                      | via PlaidML       | yes            |
 | AMD* GPUs                                     | via PlaidML       | yes            |
 | NVIDIA* GPUs                                  | via PlaidML       | some           | 
