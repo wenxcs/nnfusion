@@ -21,4 +21,4 @@ if (NGRAPH_ONNX_IMPORT_ENABLE)
     endif()
 endif()
 
-
+add_subdirectory(tensorflow_import)

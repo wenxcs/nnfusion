@@ -15,6 +15,7 @@
 # ******************************************************************************
 
 set(SRC
+    tensorflow_import.cpp
     algebraic_simplification.cpp
     all_close_f.cpp
     assertion.cpp
@@ -209,6 +210,11 @@ endif()
 if (NGRAPH_GPU_ENABLE)
     target_link_libraries(unit-test PRIVATE gpu_backend)
 endif()
+
+
+target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
+
+target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import)
 
 if (NGRAPH_ONNXIFI_ENABLE)
     target_include_directories(unit-test SYSTEM PUBLIC ${ONNX_INCLUDE_DIR})
