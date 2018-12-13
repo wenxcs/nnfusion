@@ -211,10 +211,12 @@ if (NGRAPH_GPU_ENABLE)
     target_link_libraries(unit-test PRIVATE gpu_backend)
 endif()
 
-
 target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 
-target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import)
+if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
+    target_include_directories(unit-test PRIVATE ${TFPROTO_INCLUDE})
+    target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_import_proto)
+endif()
 
 if (NGRAPH_ONNXIFI_ENABLE)
     target_include_directories(unit-test SYSTEM PUBLIC ${ONNX_INCLUDE_DIR})

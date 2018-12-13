@@ -7,7 +7,16 @@
 
 #include "ngraph/frontend/base.hpp"
 #include "ngraph/function.hpp"
+
+// This macro is use to determine if a compiler in use: 
+//    1. In editor: Use the protobuf files in proto/ for code completion
+//    2. In compiling: Use auto-generated probobuf file, Read CmakeLists.txt 
+//       for details.
+#ifdef __cplusplus
+#include "graph.pb.h"
+#else
 #include "proto/graph.pb.h"
+#endif
 
 namespace ngraph
 {
