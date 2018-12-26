@@ -23,7 +23,6 @@ namespace ngraph
                 return true;
             }
 
-
             bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
                                             ngraph::Shape* ng_shape)
             {

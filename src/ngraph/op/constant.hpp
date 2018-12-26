@@ -165,6 +165,7 @@ namespace ngraph
             }
 
             const void* get_data_ptr() const { return m_data; }
+            size_t get_data_size() const { return shape_size(m_shape) * m_element_type.size(); }
             template <typename T>
             const T* get_data_ptr() const
             {

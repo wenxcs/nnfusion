@@ -125,8 +125,7 @@ namespace ngraph
                 else
                 {
                     values->resize(tensor_content_size / sizeof(VecT));
-                    CopyToArray(tensor.tensor_content(),
-                                      reinterpret_cast<char*>(values->data()));
+                    CopyToArray(tensor.tensor_content(), reinterpret_cast<char*>(values->data()));
                 }
 
                 return true;
@@ -212,7 +211,7 @@ namespace ngraph
                 }
 
                 ng_node->set_name(node.name());
-                NamedNodeVector ret_nodes{ {node.name(), ng_node } };
+                NamedNodeVector ret_nodes{{node.name(), ng_node}};
                 return ret_nodes;
             }
         } // namespace tensorflow_import

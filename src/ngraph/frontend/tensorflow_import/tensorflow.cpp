@@ -14,7 +14,6 @@ namespace ngraph
     {
         std::vector<std::shared_ptr<Function>> load_tensorflow_model(std::istream& sin)
         {
-
             tensorflow::GraphDef tensorflow_graph;
             if (!tensorflow_graph.ParseFromIstream(&sin))
             {
@@ -22,13 +21,13 @@ namespace ngraph
             }
             else
             {
-                std::cerr << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong() << "]" << std::endl;
+                std::cerr << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
+                          << "]" << std::endl;
             }
-
 
             auto graph = tensorflow_import::TensorflowGraph{tensorflow_graph};
 
-            std::vector<std::shared_ptr<Function>> output_functions {graph.get_outputs()};
+            std::vector<std::shared_ptr<Function>> output_functions{graph.get_outputs()};
             return output_functions;
         }
 

@@ -8,10 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "ngraph/op/parameter_vector.hpp"
 #include "../tensorflow_base.hpp"
+#include "ngraph/op/parameter_vector.hpp"
 // #include "ops_converter.hpp"
-
 
 namespace ngraph
 {
@@ -36,7 +35,6 @@ namespace ngraph
                 NamedNodeVector convert_node(const tensorflow::NodeDef& node);
 
                 std::shared_ptr<ngraph::Function> get_outputs();
-
 
             private:
                 void generate_topology();

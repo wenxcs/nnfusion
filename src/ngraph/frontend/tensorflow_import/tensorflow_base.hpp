@@ -8,9 +8,9 @@
 #include "ngraph/frontend/base.hpp"
 #include "ngraph/function.hpp"
 
-// This macro is use to determine if a compiler in use: 
+// This macro is use to determine if a compiler in use:
 //    1. In editor: Use the protobuf files in proto/ for code completion
-//    2. In compiling: Use auto-generated probobuf file, Read CmakeLists.txt 
+//    2. In compiling: Use auto-generated probobuf file, Read CmakeLists.txt
 //       for details.
 #ifdef __cplusplus
 #include "graph.pb.h"
@@ -27,7 +27,8 @@ namespace ngraph
             using NamedNode = std::pair<std::string, std::shared_ptr<ngraph::Node>>;
             using NamedNodeVector = std::vector<NamedNode>;
             using NodeMap = std::map<std::string, std::shared_ptr<ngraph::Node>>;
-            using ConvertFunc = std::function<NamedNodeVector(const tensorflow::NodeDef&, const NodeMap&)>;
+            using ConvertFunc =
+                std::function<NamedNodeVector(const tensorflow::NodeDef&, const NodeMap&)>;
 
             inline void CopyToArray(const std::string& src, char* dst)
             {

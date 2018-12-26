@@ -41,7 +41,7 @@ namespace ngraph
                                          std::placeholders::_1,
                                          std::placeholders::_2);
 
-		m_map["Exp"] = std::bind(TranslateUnaryOp<ngraph::op::Exp>,
+                m_map["Exp"] = std::bind(TranslateUnaryOp<ngraph::op::Exp>,
                                          std::placeholders::_1,
                                          std::placeholders::_2);
 
@@ -105,7 +105,8 @@ namespace ngraph
 
             std::shared_ptr<ngraph::Function> TensorflowGraph::get_outputs()
             {
-                auto ng_function = std::make_shared<ngraph::Function>(m_outputs, ngraph::op::ParameterVector{});
+                auto ng_function =
+                    std::make_shared<ngraph::Function>(m_outputs, ngraph::op::ParameterVector{});
                 return ng_function;
             }
         } // namespace tensorflow_import

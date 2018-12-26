@@ -80,6 +80,13 @@ void ngraph::pass::Manager::run_passes(shared_ptr<Function> func, bool transitiv
     stopwatch pass_timer;
     stopwatch overall_timer;
     overall_timer.start();
+
+    if (std::getenv("NGRAPH_DUMP"))
+    {
+        pass::Serialization st(fs.at(0)->get_name() + std::string("Origin.json"));
+        st.run_on_module(fs);
+    }
+
     for (shared_ptr<PassBase> pass : m_pass_list)
     {
         pass_timer.start();

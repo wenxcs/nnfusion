@@ -14,6 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
+#include <assert.h>
 #include <cstdlib>
 #include <cublas_v2.h>
 #include <cuda.h>
@@ -309,8 +310,10 @@ void runtime::gpu::GPU_ExternalFunction::emit_constant_declarations()
                 // get an allocator for transient per kernel gpu memory
                 runtime::gpu::GPUAllocator allocator =
                     m_shared_context->m_primitive_emitter->get_memory_allocator();
-                size_t idx = allocator.reserve_argspace(c->get_data_ptr(),
-                                                        tv->size() * tv->get_element_type().size());
+
+                // Check sanity for constant memory allocation
+                assert(c->get_data_size() == tv->size());
+                size_t idx = allocator.reserve_argspace(c->get_data_ptr(), tv->size());
                 m_writer << "static size_t " << tv->get_name() << "_idx = " << idx << ";\n";
                 m_writer << "static " << tv->get_element_type().c_type_string() << "* "
                          << tv->get_name() << " = nullptr;\n";

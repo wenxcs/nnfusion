@@ -16,8 +16,8 @@
 
 #include <cstdint>
 #include <fstream>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -45,7 +45,7 @@ using Model = std::vector<std::shared_ptr<Function>>;
 TEST(tensorflow_import, abs_op)
 {
     auto model = frontend::load_tensorflow_model(
-	file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_abs_graph.pb"));
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_abs_graph.pb"));
 
     Inputs inputs{};
     Outputs expected_outputs{{1.0}};
@@ -1376,4 +1376,3 @@ TEST(tensorflow_import, exp_op)
 
 //     Inputs inputs{{1, 2, 3, 4}};
 //     Outputs expected_outputs{{3, 6, 9, 12}};
-
