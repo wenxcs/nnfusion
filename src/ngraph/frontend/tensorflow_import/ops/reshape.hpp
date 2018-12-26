@@ -26,9 +26,9 @@ namespace ngraph
     {
         namespace tensorflow_import
         {
-            NamedNodeVector TranslateConstOp(const tensorflow::NodeDef&,
-                                             const NodeMap&,
-                                             ngraph::op::ParameterVector&);
+            NamedNodeVector TranslateReshapeOp(const tensorflow::NodeDef&,
+                                               const NodeMap&,
+                                               ngraph::op::ParameterVector&);
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace ngraph

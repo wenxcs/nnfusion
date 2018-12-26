@@ -219,7 +219,7 @@ vector<runtime::PerformanceCounter> run_benchmark(shared_ptr<Function> f,
     t1.start();
     for (size_t i = 0; i < iterations; i++)
     {
-        if ((backend_name != "GPU" || backend_name == "gpu") && copy_data)
+        if ((backend_name != "GPU" && backend_name != "gpu") && copy_data)
         {
             for (size_t arg_index = 0; arg_index < args.size(); arg_index++)
             {

@@ -15,7 +15,6 @@
 # ******************************************************************************
 
 set(SRC
-    tensorflow_import.cpp
     algebraic_simplification.cpp
     all_close_f.cpp
     assertion.cpp
@@ -53,6 +52,10 @@ set(SRC
 
 set_source_files_properties(includes.cpp PROPERTIES COMPILE_DEFINITIONS
     NGRAPH_INCLUDES="${PROJECT_SOURCE_DIR}/src/ngraph")
+    
+if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
+    list(APPEND SRC tensorflow_import.cpp)
+endif()
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     list(APPEND SRC onnx_import.cpp)

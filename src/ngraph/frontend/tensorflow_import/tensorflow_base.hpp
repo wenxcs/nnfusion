@@ -5,18 +5,19 @@
 
 #pragma once
 
-#include "ngraph/frontend/base.hpp"
-#include "ngraph/function.hpp"
-
 // This macro is use to determine if a compiler in use:
-//    1. In editor: Use the protobuf files in proto/ for code completion
-//    2. In compiling: Use auto-generated probobuf file, Read CmakeLists.txt
+//    1. In editor or external use;
+//    2. In compiling: Use auto-generated probobuf file, Read proto/CmakeLists.txt
 //       for details.
-#ifdef __cplusplus
+#ifdef NNFUSION_SYSTEM_PROTOBUF_FLAG
 #include "graph.pb.h"
 #else
 #include "proto/graph.pb.h"
 #endif
+
+#include "ngraph/frontend/base.hpp"
+#include "ngraph/function.hpp"
+#include "ngraph/op/parameter_vector.hpp"
 
 namespace ngraph
 {
@@ -27,23 +28,23 @@ namespace ngraph
             using NamedNode = std::pair<std::string, std::shared_ptr<ngraph::Node>>;
             using NamedNodeVector = std::vector<NamedNode>;
             using NodeMap = std::map<std::string, std::shared_ptr<ngraph::Node>>;
-            using ConvertFunc =
-                std::function<NamedNodeVector(const tensorflow::NodeDef&, const NodeMap&)>;
+            using ConvertFunc = std::function<NamedNodeVector(
+                const tensorflow::NodeDef&, const NodeMap&, ngraph::op::ParameterVector&)>;
+
+            typedef signed char int8;
+            typedef short int16;
+            typedef int int32;
+            typedef long long int64;
+
+            typedef unsigned char uint8;
+            typedef unsigned short uint16;
+            typedef unsigned int uint32;
+            typedef unsigned long long uint64;
 
             inline void CopyToArray(const std::string& src, char* dst)
             {
                 memcpy(dst, src.data(), src.size());
             }
-
-            // Move to utils
-            bool GetNodeAttr(
-                const ::google::protobuf::Map<::std::string, ::tensorflow::AttrValue>& attrs,
-                std::string name,
-                tensorflow::DataType& data_type);
-
-            // Move to utils
-            bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
-                                            ngraph::Shape* ng_shape);
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace ngraph

@@ -24,8 +24,12 @@ add_library(tensorflow_import_interface STATIC
 add_library(tensorflow_import STATIC
         util/graph.cpp
         util/graph.hpp
+	util/util.cpp
+	util/util.hpp
         ops/const.cpp
         ops/const.hpp
+        ops/reshape.cpp
+        ops/reshape.hpp
         tensorflow_base.cpp
         tensorflow_base.hpp
 )

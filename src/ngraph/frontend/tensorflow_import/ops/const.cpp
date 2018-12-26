@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include "const.hpp"
+#include "stdint.h"
 // #include "../proto/tensor.pb.h"
 // #include "core/node.hpp"
 // #include "core/tensor.hpp"
@@ -34,13 +35,13 @@ namespace ngraph
             {
                 assert(node.op() == "Const");
 
-                // if (node.attr().at("dtype").type() != DataTypeToEnum<T>::value)
-                // {
-                //     std::stringstream ss;
-                //     ss << "Invalid data type defined for Const. Defined: "
-                //        << node.attr().at("dtype").type();
-                //     return errors::InvalidArgument(ss.str());
-                // }
+                if (node.attr().at("dtype").type() != DataTypeToEnum<T>::value)
+                {
+                    std::stringstream ss;
+                    ss << "Invalid data type defined for Const. Defined: "
+                       << node.attr().at("dtype").type();
+                    return false;
+                }
 
                 // TensorProto represents the content of the tensor in either <type>_val or
                 // tensor_content.
@@ -127,7 +128,6 @@ namespace ngraph
                     values->resize(tensor_content_size / sizeof(VecT));
                     CopyToArray(tensor.tensor_content(), reinterpret_cast<char*>(values->data()));
                 }
-
                 return true;
             }
 
@@ -162,34 +162,40 @@ namespace ngraph
                                                                    ngraph::element::Type,
                                                                    std::shared_ptr<ngraph::Node>*)>,
                                                 const ngraph::element::Type>>
-                    the_map = {{tensorflow::DataType::DT_FLOAT,
-                                std::make_pair(MakeConstOp<float>, ngraph::element::f32)},
-                               {tensorflow::DataType::DT_DOUBLE,
-                                std::make_pair(MakeConstOp<double>, ngraph::element::f64)},
-                               //    {tensorflow::DataType::DT_INT8,
-                               //     std::make_pair(MakeConstOp<int8>, ngraph::element::i8)},
-                               //    {tensorflow::DataType::DT_INT16,
-                               //     std::make_pair(MakeConstOp<int16>, ngraph::element::i16)},
-                               //    {tensorflow::DataType::DT_QINT8,
-                               //     std::make_pair(MakeConstOp<qint8>, ngraph::element::i8)},
-                               //    {tensorflow::DataType::DT_QUINT16,
-                               //     std::make_pair(MakeConstOp<quint8>, ngraph::element::u8)},
-                               //    {tensorflow::DataType::DT_INT32,
-                               //     std::make_pair(MakeConstOp<int32>, ngraph::element::i32)},
-                               //    {tensorflow::DataType::DT_INT64,
-                               //     std::make_pair(MakeConstOp<int64>, ngraph::element::i64)},
-                               //    {tensorflow::DataType::DT_UINT8,
-                               //     std::make_pair(MakeConstOp<uint8>, ngraph::element::u8)},
-                               //    {tensorflow::DataType::DT_UINT16,
-                               //     std::make_pair(MakeConstOp<uint16>, ngraph::element::u16)},
-                               {tensorflow::DataType::DT_BOOL,
-                                std::make_pair(MakeConstOp<bool, char>, ngraph::element::boolean)}};
+                    the_map = {
+                        {tensorflow::DataType::DT_FLOAT,
+                         std::make_pair(MakeConstOp<float>, ngraph::element::f32)},
+                        {tensorflow::DataType::DT_DOUBLE,
+                         std::make_pair(MakeConstOp<double>, ngraph::element::f64)},
+                        {tensorflow::DataType::DT_INT8,
+                         std::make_pair(MakeConstOp<int8>, ngraph::element::i8)},
+                        {tensorflow::DataType::DT_INT16,
+                         std::make_pair(MakeConstOp<int16>, ngraph::element::i16)},
+                        // {tensorflow::DataType::DT_QINT8,
+                        //   std::make_pair(MakeConstOp<google::protobuf::qint8>, ngraph::element::i8)},
+                        // {tensorflow::DataType::DT_QUINT16,
+                        //   std::make_pair(MakeConstOp<google::protobuf::quint8>, ngraph::element::u8)},
+                        {tensorflow::DataType::DT_INT32,
+                         std::make_pair(MakeConstOp<int32>, ngraph::element::i32)},
+                        {tensorflow::DataType::DT_INT64,
+                         std::make_pair(MakeConstOp<int64>, ngraph::element::i64)},
+                        {tensorflow::DataType::DT_UINT8,
+                         std::make_pair(MakeConstOp<uint8>, ngraph::element::u8)},
+                        {tensorflow::DataType::DT_UINT16,
+                         std::make_pair(MakeConstOp<uint16>, ngraph::element::u16)},
+                        {tensorflow::DataType::DT_UINT32,
+                         std::make_pair(MakeConstOp<uint32>, ngraph::element::u32)},
+                        {tensorflow::DataType::DT_UINT64,
+                         std::make_pair(MakeConstOp<uint64>, ngraph::element::u64)},
+                        {tensorflow::DataType::DT_BOOL,
+                         std::make_pair(MakeConstOp<bool, char>, ngraph::element::boolean)}};
                 return the_map;
             }
 
-            NamedNodeVector TranslateConstOp(const tensorflow::NodeDef& node, const NodeMap&)
+            NamedNodeVector TranslateConstOp(const tensorflow::NodeDef& node,
+                                             const NodeMap&,
+                                             ngraph::op::ParameterVector& parameters)
             {
-                // std::cerr << node.DebugString() << std::endl;
                 tensorflow::DataType dtype;
                 auto ret = GetNodeAttr(node.attr(), "dtype", dtype);
                 assert(ret == true);

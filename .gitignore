@@ -111,3 +111,5 @@ python/share/*
 
 python/pybind11/
 
+.idea/*
+

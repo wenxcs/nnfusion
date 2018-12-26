@@ -36,26 +36,26 @@ using Inputs = std::vector<std::vector<float>>;
 using Outputs = std::vector<std::vector<float>>;
 using Model = std::vector<std::shared_ptr<Function>>;
 
-// TEST(tensorflow_import, import_model)
-// {
+//TEST(tensorflow_import, import_model)
+//{
 //     auto function = frontend::load_tensorflow_model(
 //         file_util::path_join(SERIALIZED_ZOO, "tensorflow/inception_v3_2016_08_28_frozen.pb"));
-// }
+//}
 
 TEST(tensorflow_import, abs_op)
 {
     auto model = frontend::load_tensorflow_model(
         file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_abs_graph.pb"));
 
-    Inputs inputs{};
-    Outputs expected_outputs{{1.0}};
+    std::vector<std::vector<int64_t>> inputs{};
+    std::vector<std::vector<int64_t>> expected_outputs{{2147483649}};
 
-    // constant input is -1.0
+    // constant input is -2147483649
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
     {
-        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        std::vector<std::vector<int64_t>> outputs{execute(model[i], inputs, "INTERPRETER")};
         EXPECT_EQ(outputs.size(), 1);
-        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+        EXPECT_EQ(expected_outputs[i], outputs.front());
     }
 }
 
@@ -73,6 +73,197 @@ TEST(tensorflow_import, exp_op)
         Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
         EXPECT_EQ(outputs.size(), 1);
         EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+TEST(tensorflow_import, add_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_add_graph.pb"));
+
+    Inputs inputs{{2}};
+    Outputs expected_outputs{{3.0, 4, 5.0}};
+
+    // input add [1.0,2.0,3.0]
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+TEST(tensorflow_import, exp_placeholder_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_exp_placeholder_graph.pb"));
+
+    // the shape of placehoder is (3,2), flatting shape for input and output
+    Inputs inputs{test::NDArray<float, 2>{{2, 2}, {2, 3}, {3, 4}}.get_vector()};
+
+    Outputs expected_outputs{test::NDArray<float, 2>{
+        {7.389056, 7.389056},
+        {7.389056, 20.085537},
+        {20.085537, 54.59815}}.get_vector()};
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+TEST(tensorflow_import, cast_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_cast_float32_to_int32_graph.pb"));
+    // the shape of placehoder is (3,2), flatting shape for input and output$
+    Inputs inputs{test::NDArray<float, 2>{{1.8, 2.2}, {-1.3, -0.04}, {3.0, -12}}.get_vector()};
+    std::vector<std::vector<int>> expected_outputs{
+        test::NDArray<int, 2>{{1, 2}, {-1, 0}, {3, -12}}.get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute<float, int>(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, reshape_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reshape_int64_graph.pb"));
+    Inputs inputs{test::NDArray<float, 3>{
+        {{1, 1, 1}, {2, 2, 2}}, {{3, 3, 3}, {4, 4, 4}}, {{5, 5, 5}, {6, 6, 6}}}
+                      .get_vector()};
+    Outputs expected_outputs{test::NDArray<float, 3>{{{1, 1, 1}, {2, 2, 2}, {3, 3, 3}},
+                                                     {{4, 4, 4}, {5, 5, 5}, {6, 6, 6}}}
+                                 .get_vector()};
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+// TODO: the shape for reshape is placeholder
+/*
+TEST(tensorflow_import, reshape_placeholder_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reshape_placeholder_graph.pb"));
+    Inputs inputs{test::NDArray<float, 3>{{{1, 1, 1}, {2, 2, 2}}, {{3, 3,3},{4,4,4}},{{5,5,5},{6,6,6}}}.get_vector(), {2,-1,3}};
+    Outputs expected_outputs{test::NDArray<float, 3>{{{1, 1, 1}, {2, 2, 2}, {3, 3,3}},{{4,4,4},{5,5,5},{6,6,6}}}.get_vector()};
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+*/
+TEST(tensorflow_import, relu_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
+    // the shape of placehoder is (5,1), flatting shape for input and output
+    Inputs inputs{{-1, -0.00001, 0, 0.00001, 2}};
+    Outputs expected_outputs{{0, 0, 0, 0.00001, 2}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, max_pool_op)
+{
+    // Pooling with strides=2 and padding=1
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/max_pool_2d_pads.pb"));
+    EXPECT_EQ(1, 1);
+
+    // input data shape (1, 1, 4, 4)
+    Inputs inputs;
+    inputs.push_back(test::NDArray<float, 4>({{{{0.f, 1.f, 2.f, 3.f},
+                                                {4.f, 5.f, 6.f, 7.f},
+                                                {8.f, 9.f, 10.f, 11.f},
+                                                {12.f, 13.f, 14.f, 15.f}}}})
+                         .get_vector());
+    // (1, 1, 2, 2)
+    auto expected_output = test::NDArray<float, 4>({{{{5.f, 7.f}, {13.f, 15.f}}}}).get_vector();
+
+    Outputs outputs{execute(model[0], inputs, "INTERPRETER")};
+    EXPECT_EQ(expected_output, outputs.front());
+}
+
+TEST(tensorflow_import, matmul_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_matmul_graph.pb"));
+    Inputs inputs;
+    inputs.emplace_back(
+        test::NDArray<float, 2>({{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12}}).get_vector());
+    inputs.emplace_back(
+        test::NDArray<float, 2>({{13, 14, 15}, {16, 17, 18}, {19, 20, 21}, {22, 23, 24}})
+            .get_vector());
+    Outputs expected_outputs{
+        test::NDArray<float, 2>({{190, 200, 210}, {470, 496, 522}, {750, 792, 834}}).get_vector()};
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+TEST(tensorflow_import, conv2d_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_conv2d_nhwc_graph.pb"));
+    Inputs inputs;
+    inputs.emplace_back(
+        test::NDArray<float, 1>({2.,  -3., -1., -4., -4., 1.,  -5., 1., -4., -5., -5., 1.,
+                                 -1., 1.,  3.,  1.,  -1., 4.,  4.,  2., 1.,  -4., 0.,  4.,
+                                 1.,  1.,  -4., -4., -4., 0.,  -1., 3., 0.,  -4., -1., 1.,
+                                 -3., -1., -5., -1., 3.,  -3., -3., 0., 4.,  -5., 1.,  0.})
+            .get_vector());
+    Outputs expected_outputs{
+        test::NDArray<float, 1>({-35., -10., 11.,  9.,   58.,  33.,  -10., 12., -42., -8.,
+                                 36.,  14.,  1.,   -21., -25., -37., -20., 44., -31., -58.,
+                                 -36., -9.,  -1.,  7.,   24.,  -34., -23., 4.,  17.,  -32.,
+                                 -34., -27., -30., 5.,   -1.,  -15., 37.,  39., -30., 7.,
+                                 -31., -32., 4.,   4.,   -2.,  15.,  15.,  -14.})
+            .get_vector()};
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+TEST(tensorflow_import, bias_add_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_bias_add_graph.pb"));
+    // the shape of placehoder is (3,2), flatting shape for input and output$
+    Inputs inputs;
+    inputs.emplace_back(
+        test::NDArray<float, 2>{{1.8, 2.2}, {-1.3, -0.04}, {3.0, -12}}.get_vector());
+    inputs.emplace_back(test::NDArray<float, 1>{100, -100}.get_vector());
+    std::vector<std::vector<float>> expected_outputs{
+        test::NDArray<float, 2>{{101.8, -97.8}, {98.7, -100.04}, {103, -112}}.get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<float>> outputs{execute<float>(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
     }
 }
 

@@ -10,7 +10,6 @@
 
 #include "../tensorflow_base.hpp"
 #include "ngraph/op/parameter_vector.hpp"
-// #include "ops_converter.hpp"
 
 namespace ngraph
 {
@@ -26,7 +25,10 @@ namespace ngraph
                 // const std::vector<Node>& get_nodes() const { return m_nodes; }
                 // const std::vector<ValueInfo>& get_inputs() const { return m_inputs; }
                 // const std::vector<ValueInfo>& get_outputs() const { return m_outputs; }
-                // const op::ParameterVector& get_ng_parameters() const { return m_parameters; }
+                const ngraph::op::ParameterVector& get_ng_parameters() const
+                {
+                    return m_parameters;
+                }
                 // std::shared_ptr<ngraph::Node> get_ng_node(const std::string& name) const
                 // {
                 //     return m_ng_node.at(name);
@@ -39,7 +41,6 @@ namespace ngraph
             private:
                 void generate_topology();
 
-                std::map<std::string, ConvertFunc> m_map;
                 const tensorflow::GraphDef* m_graph_proto;
                 // std::vector<TensorflowNode> m_nodes;
                 // std::vector<ValueInfo> m_inputs;
@@ -58,6 +59,7 @@ namespace ngraph
             // {
             //     return (outs << "<Graph: " << graph.get_name() << ">");
             // }
+
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace ngraph
