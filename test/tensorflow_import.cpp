@@ -132,8 +132,8 @@ TEST(tensorflow_import, cast_op)
 
 TEST(tensorflow_import, reshape_op)
 {
-    auto model = frontend::load_tensorflow_model(file_util::path_join(
-        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reshape_int64_graph.pb"));
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
     Inputs inputs{test::NDArray<float, 3>{
         {{1, 1, 1}, {2, 2, 2}}, {{3, 3, 3}, {4, 4, 4}}, {{5, 5, 5}, {6, 6, 6}}}
                       .get_vector()};
@@ -142,9 +142,44 @@ TEST(tensorflow_import, reshape_op)
                                  .get_vector()};
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
     {
-        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
-        EXPECT_EQ(outputs.size(), 1);
-        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+        //Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        //EXPECT_EQ(outputs.size(), 1);
+        //EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+        for (auto function : model)
+        {
+            std::cout << "<<<<<";
+            auto backend = ngraph::runtime::Backend::create("NNFUSION");
+
+            auto parms = function->get_parameters();
+
+            /*
+            if (parms.size() != args.size())
+            {
+                throw ngraph::ngraph_error("number of parameters and arguments don't match");
+            }
+
+            std::vector<std::shared_ptr<ngraph::runtime::Tensor>> arg_tensors(args.size());
+            for (size_t i = 0; i < args.size(); i++)
+            {
+                auto t = backend->create_tensor(parms.at(i)->get_element_type(), parms.at(i)->get_shape());
+                copy_data(t, args.at(i));
+                arg_tensors.at(i) = t;
+            }
+            */
+
+            auto results = function->get_results();
+            /*
+            std::vector<std::shared_ptr<ngraph::runtime::Tensor>> result_tensors(results.size());
+
+            for (size_t i = 0; i < results.size(); i++)
+            {
+                result_tensors.at(i) =
+                    backend->create_tensor(results.at(i)->get_element_type(), results.at(i)->get_shape());
+            }
+            */
+
+            backend->compile(function); //, Inputs, Outputs);
+        }
     }
 }
 
