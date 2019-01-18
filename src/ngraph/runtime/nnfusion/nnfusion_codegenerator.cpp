@@ -4,18 +4,24 @@
 
 bool ngraph::runtime::nnfusion::CodeGenerator::codegen(std::shared_ptr<IntermediateOP>& inter_op)
 {
-    ICodeGeneratorPass::run_passes(this->pass_manager, inter_op);
-    return true;
+    return ICodeGeneratorPass::run_passes(this->pass_manager, inter_op);
 }
 
 bool ngraph::runtime::nnfusion::CodeGenerator::codegen(
     std::shared_ptr<std::vector<std::shared_ptr<IntermediateOP>>> inter_ops)
 {
+    bool rc = true;
     for (auto& op : *inter_ops)
     {
-        this->codegen(op);
+        rc = this->codegen(op);
+        if(!rc) break;
     }
-    return true;
+    return rc;
+}
+
+bool ngraph::runtime::nnfusion::CodeGenerator::codegen(std::shared_ptr<TranslationUnitMap> tum)
+{
+    
 }
 
 ngraph::runtime::nnfusion::CodeGenerator::CodeGenerator()

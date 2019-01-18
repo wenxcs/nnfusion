@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 
-#include "ngraph/runtime/nnfusion/codegen/cuda/Reshape.hpp"
+// #include "ngraph/runtime/nnfusion/codegen/cuda/Reshape.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/Result.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/elementwise.hpp"
 #include "ngraph/runtime/nnfusion/intermediate/op_tbl.hpp"
@@ -34,12 +34,10 @@ namespace ngraph
                     auto it = typeid_map.find(type_index(typeid(node)));
                     if (it == typeid_map.end())
                     {
-                        cout << "Unsupported op '"<<node.description()
-                             << "'" << endl;
+                        cout << "Unsupported op '" << node.description() << "'" << endl;
                         return false;
                     }
-                    cout << "Codegen op '" <<node.description()
-                         << "'" << endl;
+                    cout << "Codegen op '" << node.description() << "'" << endl;
                     it->second(inter_op);
                     return true;
                 }

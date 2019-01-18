@@ -91,9 +91,16 @@
 #include "ngraph/pass/memory_layout.hpp"
 #include "ngraph/runtime/backend.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_tensorwrapper.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_exceptions.hpp"
 #include "ngraph/shape.hpp"
 #include "ngraph/util.hpp"
+
+using namespace std;
+using namespace ngraph;
 
 #define TRANS_ARGS                                                                                 \
     const ngraph::Node *node, const std::vector<ngraph::runtime::nnfusion::TensorWrapper> &args,   \
         const std::vector<ngraph::runtime::nnfusion::TensorWrapper> &out
+
+#undef NGRAPH_DEBUG
+#define  NGRAPH_DEBUG std::cout

@@ -10,19 +10,26 @@ namespace ngraph
     {
         namespace nnfusion
         {
+            class FunctionTranslatorContext;
+            class TranslationUnit;
+
             class IFunctionTranslatorPass
             {
             public:
-                virtual bool run(std::shared_ptr<ngraph::Function>& funcion) = 0;
+                virtual bool run(std::shared_ptr<FunctionTranslatorContext> ctx,
+                                 std::shared_ptr<TranslationUnit> tu,
+                                 std::shared_ptr<ngraph::Function> function) = 0;
 
                 static bool
                     run_passes(const std::vector<std::shared_ptr<IFunctionTranslatorPass>>& passes,
-                               std::shared_ptr<ngraph::Function>& function)
+                               std::shared_ptr<FunctionTranslatorContext> ctx,
+                               std::shared_ptr<TranslationUnit> tu,
+                               std::shared_ptr<ngraph::Function> function)
                 {
                     bool rc = true;
                     for (auto& pass : passes)
                     {
-                        rc = pass->run(function);
+                        rc = pass->run(ctx, tu, function);
                         if (!rc)
                             break;
                     }
@@ -34,13 +41,21 @@ namespace ngraph
             {
             public:
                 std::shared_ptr<std::vector<std::shared_ptr<IntermediateOP>>> inter_ops;
-                std::vector<void*> m_inputs;
-                std::vector<void*> m_outputs;
+                std::shared_ptr<std::set<std::string>> input_names;
+                std::shared_ptr<std::set<std::string>> output_names;
+                std::shared_ptr<std::set<std::shared_ptr<ngraph::descriptor::Tensor>>> constants;
                 bool m_is_translated;
                 TranslationUnit()
                     : inter_ops(new std::vector<std::shared_ptr<IntermediateOP>>())
-                    , m_is_translated(false){};
+                    , m_is_translated(false)
+                    , input_names(new std::set<std::string>())
+                    , output_names(new std::set<std::string>())
+                    , constants(new std::set<std::shared_ptr<ngraph::descriptor::Tensor>>())
+                    {};
             };
+
+            using TranslationUnitMap = std::map<std::shared_ptr<ngraph::Function>,
+                                                          std::shared_ptr<TranslationUnit>>;
 
             class FunctionTranslatorContext
             {
@@ -67,26 +82,17 @@ namespace ngraph
                 friend class nnfusion_Backend;
 
             public:
-                FunctionTranslator()
-                    : m_trans_ctx(new FunctionTranslatorContext()){};
+                FunctionTranslator();
                 ~FunctionTranslator(){};
 
-                bool translate(const std::shared_ptr<ngraph::Function> function);
+                std::shared_ptr<TranslationUnitMap>
+                    translate(std::shared_ptr<ngraph::Function> function);
 
                 static const size_t s_memory_pool_alignment;
-
-                std::shared_ptr<TranslationUnit> get_TranslationUnit();
 
             private:
                 std::shared_ptr<FunctionTranslatorContext> m_trans_ctx;
                 std::vector<std::shared_ptr<IFunctionTranslatorPass>> m_passes;
-                // std::shared_ptr<GPU_Backend::BackendContext> m_shared_context;
-
-                void propagate_in_place_input(ngraph::descriptor::Output* output,
-                                              std::string input_name);
-
-                void propagate_in_place_output(ngraph::descriptor::Output* res_src_output,
-                                               std::string output_name);
 
                 bool translate_node(TRANS_ARGS);
             };

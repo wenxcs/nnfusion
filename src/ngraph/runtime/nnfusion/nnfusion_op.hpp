@@ -20,7 +20,7 @@ namespace ngraph
                 // Store the tensor wrappers
                 // <todo:wenxh>
             public:
-                const ngraph::Node *n;
+                const ngraph::Node* n;
                 std::vector<TensorWrapper> args;
                 std::vector<TensorWrapper> out;
 

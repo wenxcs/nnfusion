@@ -33,9 +33,8 @@ bool runtime::nnfusion::cuda_codegen::codegen(std::shared_ptr<Function> func)
     TranslationUnit& func_unit = m_function_map[func];
     if (func_unit.m_is_translated == false)
     {
-        m_functrans->translate(func);
-        auto tu = m_functrans->get_TranslationUnit();
-        m_codegen->codegen(tu->inter_ops);
+        auto tus = m_functrans->translate(func);
+        assert_bool(m_codegen->codegen(tus));
     }
     return true;
 }

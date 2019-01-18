@@ -3,6 +3,7 @@
 
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_functiontranslator.hpp"
 
 namespace ngraph
 {
@@ -23,6 +24,8 @@ namespace ngraph
                     for (const auto& pass : passes)
                     {
                         rc = pass->run(inter_op);
+                        if (!rc)
+                            break;
                     }
                     return rc;
                 }
@@ -43,6 +46,7 @@ namespace ngraph
             public:
                 CodeGenerator();
 
+                bool codegen(std::shared_ptr<TranslationUnitMap> inter_op);
                 bool codegen(std::shared_ptr<IntermediateOP>& inter_op);
                 bool codegen(
                     std::shared_ptr<std::vector<std::shared_ptr<IntermediateOP>>> inter_ops);

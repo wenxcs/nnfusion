@@ -20,7 +20,6 @@ namespace ngraph
                         static std::shared_ptr<CodeGenOP>
                             codegen(std::shared_ptr<IntermediateOP> inter_op)
                         {
-                            
                         }
                     };
                 }
