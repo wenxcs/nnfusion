@@ -54,7 +54,7 @@ set_source_files_properties(includes.cpp PROPERTIES COMPILE_DEFINITIONS
     NGRAPH_INCLUDES="${PROJECT_SOURCE_DIR}/src/ngraph")
     
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
-    list(APPEND SRC tensorflow_import.cpp)
+    list(APPEND SRC tensorflow_import.cpp nnfusion_backend.cpp)
 endif()
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)

@@ -57,7 +57,6 @@ namespace ngraph
                         return r;
                     }
                 }
-
             }
         }
     }

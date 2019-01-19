@@ -103,9 +103,5 @@ using namespace ngraph;
 using namespace ngraph::runtime::nnfusion;
 using namespace ngraph::codegen;
 
-#define TRANS_ARGS                                                                                 \
-    const ngraph::Node *node, const std::vector<ngraph::runtime::nnfusion::TensorWrapper> &args,   \
-        const std::vector<ngraph::runtime::nnfusion::TensorWrapper> &out
-
-#undef NGRAPH_DEBUG
-#define NGRAPH_DEBUG std::cout
+// #undef NGRAPH_DEBUG
+// #define NGRAPH_DEBUG std::cout

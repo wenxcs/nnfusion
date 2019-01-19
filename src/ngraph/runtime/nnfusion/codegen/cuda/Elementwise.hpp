@@ -94,7 +94,8 @@ namespace ngraph
                             shared_ptr<CodeWriter> cw(new CodeWriter);
                             CodeWriter& writer = *cw;
 
-                            uint32_t nthreads = static_cast<uint32_t>(ngraph::shape_size(inter_op->out[0].get_shape()));
+                            uint32_t nthreads = static_cast<uint32_t>(
+                                ngraph::shape_size(inter_op->out[0].get_shape()));
                             // TODO: currently we set it to 64, will add tuning method later
                             uint32_t block_size_x = 512;
                             int num_SMs;
@@ -103,22 +104,11 @@ namespace ngraph
                             uint32_t aligned_grid_size_x =
                                 fmin(num_SMs * 32, align_to_block_size(nthreads, block_size_x));
 
-                            writer << codegen_function_name() << "<<<("
-                                   << aligned_grid_size_x << ", "
-                                   << 1 << ", "
-                                   << 1 << "), ("
-                                   << block_size_x << ", "
-                                   << 1 << ", "
-                                   << 1 << "), "
-                                   << 0 << ", "
-                                   << 0 << ">>>"
-                                   << "("
-                                   << join(inter_op->arg_names, ", ")
-                                   << ", "
-                                   << join(inter_op->out_names, ", ")
-                                   << ", "
-                                   << nthreads
-                                   << ");\n";
+                            writer << codegen_function_name() << "<<<(" << aligned_grid_size_x
+                                   << ", " << 1 << ", " << 1 << "), (" << block_size_x << ", " << 1
+                                   << ", " << 1 << "), " << 0 << ", " << 0 << ">>>"
+                                   << "(" << join(inter_op->arg_names, ", ") << ", "
+                                   << join(inter_op->out_names, ", ") << ", " << nthreads << ");\n";
 
                             return cw;
                         }
@@ -131,16 +121,17 @@ namespace ngraph
                             writer << "// Relu Test\n";
                             vector<float> data;
                             // Malloc
-                            for(auto& arg: inter_op->args)
+                            for (auto& arg : inter_op->args)
                             {
                                 data = test_hostData(writer, arg);
                                 test_cudaMalloc(writer, arg);
                                 test_cudaMemcpyHtoD(writer, arg);
                             }
 
-                            for(int i=0; i<data.size();i++)
+                            for (int i = 0; i < data.size(); i++)
                             {
-                                if(data[i]<0) data[i] = 0;
+                                if (data[i] < 0)
+                                    data[i] = 0;
                             }
                             test_hostData(writer, inter_op->out[0], data);
                             test_cudaMalloc(writer, inter_op->out[0]);
