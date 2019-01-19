@@ -39,7 +39,8 @@ namespace ngraph
                         {
                             // kernel_name is used to check if the cuda kernel has been previously compiled
                             std::stringstream kernel_name;
-                            kernel_name << "ew"
+                            kernel_name << "cuda"
+                                        << "_ew"
                                         << "_" << CudaOpMap<T>::op << "_"
                                         << join(inter_op->dtypes, "_");
 
@@ -59,7 +60,7 @@ namespace ngraph
                             auto num_inputs = data_types.size() - 1;
                             assert_bool(num_inputs > 0)
                                 << "At least one input and one output tesnor for elementwise-op.";
-                            writer << "extern \"C\" __global__ void cuda_" << name << "(";
+                            writer << "extern \"C\" __global__ void " << name << "(";
                             for (size_t i = 0; i < num_inputs; i++)
                             {
                                 writer << data_types[i] << "* in" << i << ", ";
@@ -92,15 +93,61 @@ namespace ngraph
                         {
                             shared_ptr<CodeWriter> cw(new CodeWriter);
                             CodeWriter& writer = *cw;
-                            writer << "// Function Call\n";
+
+                            uint32_t nthreads = static_cast<uint32_t>(ngraph::shape_size(inter_op->out[0].get_shape()));
+                            // TODO: currently we set it to 64, will add tuning method later
+                            uint32_t block_size_x = 512;
+                            int num_SMs;
+                            CUDA_RT_SAFE_CALL(cudaDeviceGetAttribute(
+                                &num_SMs, cudaDevAttrMultiProcessorCount, 0));
+                            uint32_t aligned_grid_size_x =
+                                fmin(num_SMs * 32, align_to_block_size(nthreads, block_size_x));
+
+                            writer << codegen_function_name() << "<<<("
+                                   << aligned_grid_size_x << ", "
+                                   << 1 << ", "
+                                   << 1 << "), ("
+                                   << block_size_x << ", "
+                                   << 1 << ", "
+                                   << 1 << "), "
+                                   << 0 << ", "
+                                   << 0 << ">>>"
+                                   << "("
+                                   << join(inter_op->arg_names, ", ")
+                                   << ", "
+                                   << join(inter_op->out_names, ", ")
+                                   << ", "
+                                   << nthreads
+                                   << ");\n";
+
                             return cw;
                         }
 
+                        //This is for Relu
                         shared_ptr<CodeWriter> codegen_test() override
                         {
                             shared_ptr<CodeWriter> cw(new CodeWriter);
                             CodeWriter& writer = *cw;
-                            writer << "// Function Test\n";
+                            writer << "// Relu Test\n";
+                            vector<float> data;
+                            // Malloc
+                            for(auto& arg: inter_op->args)
+                            {
+                                data = test_hostData(writer, arg);
+                                test_cudaMalloc(writer, arg);
+                                test_cudaMemcpyHtoD(writer, arg);
+                            }
+
+                            for(int i=0; i<data.size();i++)
+                            {
+                                if(data[i]<0) data[i] = 0;
+                            }
+                            test_hostData(writer, inter_op->out[0], data);
+                            test_cudaMalloc(writer, inter_op->out[0]);
+                            writer << codegen_function_call()->get_code();
+                            test_cudaMemcpyDtoH(writer, inter_op->out[0]);
+                            test_compare(writer, inter_op->out[0]);
+                            writer << "printf(\"SUCCEED\\n\");";
                             return cw;
                         }
 
@@ -108,7 +155,8 @@ namespace ngraph
                         {
                             shared_ptr<CodeWriter> cw(new CodeWriter);
                             CodeWriter& writer = *cw;
-                            writer << "// Function Includes\n";
+                            writer << "#include <cuda.h>\n";
+                            writer << "#include <stdio.h>\n";
                             return cw;
                         }
 

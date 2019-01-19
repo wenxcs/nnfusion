@@ -20,7 +20,9 @@ namespace ngraph
             public:
                 shared_ptr<ngraph::Node> node;
                 std::vector<TensorWrapper> args;
+                std::vector<string> arg_names;
                 std::vector<TensorWrapper> out;
+                std::vector<string> out_names;
 
                 IntermediateOP();
                 IntermediateOP(shared_ptr<Node> node);

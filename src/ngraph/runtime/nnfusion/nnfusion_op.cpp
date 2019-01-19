@@ -48,7 +48,9 @@ IntermediateOP::IntermediateOP(shared_ptr<Node> node)
     }
     this->node = node;
     this->args = in;
+    this->arg_names = node_input_names;
     this->out = out;
+    this->out_names = node_output_names;
 }
 
 CodeGenOP::CodeGenOP()
