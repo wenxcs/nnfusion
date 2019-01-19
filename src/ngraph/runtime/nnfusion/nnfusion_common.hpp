@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #pragma once
 
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -90,17 +91,21 @@
 #include "ngraph/pass/manager.hpp"
 #include "ngraph/pass/memory_layout.hpp"
 #include "ngraph/runtime/backend.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_tensorwrapper.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_exceptions.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_tensorwrapper.hpp"
 #include "ngraph/shape.hpp"
 #include "ngraph/util.hpp"
 
+#include "ngraph/codegen/code_writer.hpp"
+
 using namespace std;
 using namespace ngraph;
+using namespace ngraph::runtime::nnfusion;
+using namespace ngraph::codegen;
 
 #define TRANS_ARGS                                                                                 \
     const ngraph::Node *node, const std::vector<ngraph::runtime::nnfusion::TensorWrapper> &args,   \
         const std::vector<ngraph::runtime::nnfusion::TensorWrapper> &out
 
 #undef NGRAPH_DEBUG
-#define  NGRAPH_DEBUG std::cout
+#define NGRAPH_DEBUG std::cout

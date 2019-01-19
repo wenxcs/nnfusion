@@ -1,8 +1,8 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "ngraph/runtime/nnfusion/nnfusion_functiontranslator.hpp"
 #include "ngraph/runtime/nnfusion/intermediate/op_tbl.hpp"
-#include "ngraph/runtime/nnfusion/pass/translator/ngraph_function_pass.hpp"
 #include "ngraph/runtime/nnfusion/pass/translator/extract_function_signature.hpp"
+#include "ngraph/runtime/nnfusion/pass/translator/ngraph_function_pass.hpp"
 
 using namespace ngraph::runtime::nnfusion;
 
@@ -28,85 +28,50 @@ std::shared_ptr<TranslationUnitMap> ngraph::runtime::nnfusion::FunctionTranslato
         _tus->emplace(p.first, _tu);
         NGRAPH_DEBUG << "Translating function:\t" << current_function->get_name() << std::endl;
 
-        if (!IFunctionTranslatorPass::run_passes(this->m_passes, m_trans_ctx, _tu, current_function))
+        if (!IFunctionTranslatorPass::run_passes(
+                this->m_passes, m_trans_ctx, _tu, current_function))
             return false;
 
         // Translate the Node
         for (shared_ptr<Node> node : m_trans_ctx->m_function_ordered_ops.at(current_function))
         {
-            vector<TensorWrapper> in;
-            vector<string> node_input_names;
-            vector<string> node_output_names;
-            for (const descriptor::Input& input : node->get_inputs())
-            {
-                const descriptor::Output& output = input.get_output();
-                shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                in.push_back(TensorWrapper(tv, m_trans_ctx->m_variable_name_map[tv->get_name()]));
-                node_input_names.emplace_back(tv->get_name());
-            }
-            vector<TensorWrapper> out;
-            for (const descriptor::Output& output : node->get_outputs())
-            {
-                shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                out.push_back(TensorWrapper(tv, m_trans_ctx->m_variable_name_map[tv->get_name()]));
-                node_output_names.emplace_back(tv->get_name());
-            }
-
-            // Output debug info of node
-            if (!node->is_parameter() && !node->is_constant())
-            {
-                NGRAPH_DEBUG << "Node:\t" << node->get_name() << "\t(";
-                vector<string> parameter_nodes = node_input_names;
-                parameter_nodes.insert(
-                    parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
-                NGRAPH_DEBUG << join(parameter_nodes);
-                NGRAPH_DEBUG << ")\n";
-            }
-
             // Generate Translated OP
             // <todo> not sure translated
-            auto it = m_trans_ctx->m_node_inter_map.find(node.get());
+            auto it = m_trans_ctx->m_node_inter_map.find(node);
+            shared_ptr<IntermediateOP> iop = nullptr;
             if (it == m_trans_ctx->m_node_inter_map.end())
             {
-                this->translate_node(node.get(), in, out);
+                iop = this->translate_node(node);
+                m_trans_ctx->m_node_inter_map.emplace(node, iop);
             }
-            _tu->inter_ops->push_back(m_trans_ctx->m_node_inter_map[node.get()]);
+            else
+            {
+                iop = m_trans_ctx->m_node_inter_map[node];
+            }
+            assert_nullptr(iop);
+            _tu->inter_ops->push_back(iop);
         }
     }
     return _tus;
 }
 
-bool ngraph::runtime::nnfusion::FunctionTranslator::translate_node(TRANS_ARGS)
+shared_ptr<IntermediateOP>
+    ngraph::runtime::nnfusion::FunctionTranslator::translate_node(shared_ptr<Node> node)
 {
-    /*
-    #define NGRAPH_OP(a, b) {type_index(typeid(b::a)), runtime::nnfusion::inter_op_##a##::translate}
-        static const map<type_index, function<IntermediateOP(EMIT_ARGS)>> typeid_map{
-    #include "ngraph/runtime/gpu/op/op_tbl.hpp"
+    static const map<type_index, function<std::shared_ptr<IntermediateOP>(shared_ptr<Node>)>>
+        typeid_map{
+            {type_index(typeid(ngraph::op::Parameter)), intermediate::Noop::translate},
+            {type_index(typeid(ngraph::op::Result)), intermediate::Result::translate},
+            {type_index(typeid(ngraph::op::Relu)),
+             intermediate::Elementwise<ngraph::op::Relu>::translate},
         };
-    #undef NGRAPH_OP
-    */
-    static const map<type_index, function<std::shared_ptr<IntermediateOP>(TRANS_ARGS)>> typeid_map{
-        {type_index(typeid(ngraph::op::Reshape)),
-         ngraph::runtime::nnfusion::intermediate::Reshape::translate},
-        {type_index(typeid(ngraph::op::Parameter)),
-         ngraph::runtime::nnfusion::intermediate::NoTrans::translate},
-        {type_index(typeid(ngraph::op::Result)),
-         ngraph::runtime::nnfusion::intermediate::Result::translate},
-        {type_index(typeid(ngraph::op::Constant)),
-         ngraph::runtime::nnfusion::intermediate::NoTrans::translate},
-        {type_index(typeid(ngraph::op::Relu)),
-         ngraph::runtime::nnfusion::intermediate::elementwise<ngraph::op::Relu>::translate},
-        // {type_index(typeid(ngraph::op::Conv2D)), runtime::nnfusion::inter_op_conv2d::translate},
-    };
 
     auto it = typeid_map.find(type_index(typeid(*node)));
     if (it == typeid_map.end())
     {
-        // throw unsupported_op("Unsupported op '" + node->description() + "'");
-        cout << "Unsupported op '" + node->description() + "'" << endl;
-        return false;
+        NGRAPH_DEBUG << "Unsupported op '" + node->description() + "'" << endl;
+        return nullptr;
     }
-    cout << "Translate op '" + node->description() + "'" << endl;
-    m_trans_ctx->m_node_inter_map.emplace(node, it->second(node, args, out));
-    return true;
+    NGRAPH_DEBUG << "Translate op '" + node->description() + "'" << endl;
+    return it->second(node);
 }

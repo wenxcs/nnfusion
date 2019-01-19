@@ -50,12 +50,11 @@ namespace ngraph
                     , m_is_translated(false)
                     , input_names(new std::set<std::string>())
                     , output_names(new std::set<std::string>())
-                    , constants(new std::set<std::shared_ptr<ngraph::descriptor::Tensor>>())
-                    {};
+                    , constants(new std::set<std::shared_ptr<ngraph::descriptor::Tensor>>()){};
             };
 
-            using TranslationUnitMap = std::map<std::shared_ptr<ngraph::Function>,
-                                                          std::shared_ptr<TranslationUnit>>;
+            using TranslationUnitMap =
+                std::map<std::shared_ptr<ngraph::Function>, std::shared_ptr<TranslationUnit>>;
 
             class FunctionTranslatorContext
             {
@@ -69,7 +68,7 @@ namespace ngraph
                 std::map<std::string, size_t> m_name_index_map;
                 // Store Translated OP's
                 std::unordered_map<Node*, Node*> m_node_function_map;
-                std::unordered_map<const Node*, std::shared_ptr<IntermediateOP>> m_node_inter_map;
+                std::unordered_map<shared_ptr<Node>, shared_ptr<IntermediateOP>> m_node_inter_map;
                 size_t m_offset;
                 std::string m_function_name;
                 std::unordered_map<std::string, size_t> m_tensor_memory_buffers;
@@ -94,7 +93,7 @@ namespace ngraph
                 std::shared_ptr<FunctionTranslatorContext> m_trans_ctx;
                 std::vector<std::shared_ptr<IFunctionTranslatorPass>> m_passes;
 
-                bool translate_node(TRANS_ARGS);
+                shared_ptr<IntermediateOP> translate_node(shared_ptr<Node> node);
             };
         }
     }

@@ -25,7 +25,7 @@ namespace ngraph
                             assert_nullptr(tv);
                             tu->output_names->insert(tv->get_name());
 
-                            NGRAPH_DEBUG << "Result Tensor: " << tv->get_name();
+                            NGRAPH_DEBUG << "Result Tensor: " << tv->get_name() << endl;
                         }
                         return true;
                     }
@@ -43,13 +43,14 @@ namespace ngraph
                                 assert_nullptr(tv);
                                 tu->constants->insert(tv);
 
-                                NGRAPH_DEBUG << "Constant Tensor: " << tv->get_name();
+                                NGRAPH_DEBUG << "Constant Tensor: " << tv->get_name() << endl;
                             }
                         }
                         return true;
                     }
 
-                    void propagate_in_place_input(std::shared_ptr<FunctionTranslatorContext> ctx, ngraph::descriptor::Output* output,
+                    void propagate_in_place_input(std::shared_ptr<FunctionTranslatorContext> ctx,
+                                                  ngraph::descriptor::Output* output,
                                                   std::string input_name)
                     {
                         std::deque<ngraph::descriptor::Output*> stack;
@@ -79,12 +80,12 @@ namespace ngraph
                                             auto& output_tensor =
                                                 c_op->get_outputs().at(output_index).get_tensor();
 
-                                            ctx
-                                                ->m_variable_name_map[output_tensor.get_name()] =
+                                            ctx->m_variable_name_map[output_tensor.get_name()] =
                                                 input_name;
 
                                             NGRAPH_DEBUG << "GPU codegen: Forwarding " << input_name
-                                                         << " through " << output_tensor.get_name();
+                                                         << " through " << output_tensor.get_name()
+                                                         << endl;
                                             stack.push_back(&c_op->get_outputs().at(output_index));
                                         }
                                     }
@@ -93,7 +94,8 @@ namespace ngraph
                         }
                     }
 
-                    void propagate_in_place_output(std::shared_ptr<FunctionTranslatorContext> ctx, ngraph::descriptor::Output* res_src_output,
+                    void propagate_in_place_output(std::shared_ptr<FunctionTranslatorContext> ctx,
+                                                   ngraph::descriptor::Output* res_src_output,
                                                    std::string output_name)
                     {
                         // we start with a particular output
@@ -127,10 +129,9 @@ namespace ngraph
                                             !tmp_node->is_parameter() && !tmp_node->is_constant())
                                         {
                                             NGRAPH_DEBUG << "Reusing " << output_name << " for "
-                                                         << input_tensor.get_name();
+                                                         << input_tensor.get_name() << endl;
 
-                                            ctx
-                                                ->m_variable_name_map[input_tensor.get_name()] =
+                                            ctx->m_variable_name_map[input_tensor.get_name()] =
                                                 output_name;
 
                                             it = &arg->get_inputs().at(input_index).get_output();
@@ -159,12 +160,13 @@ namespace ngraph
                                 stringstream ss;
                                 ss << "((" << type << "*)(inputs[" << arg_index << "]))";
                                 ctx->m_variable_name_map[tv->get_name()] = ss.str();
-                                propagate_in_place_input(ctx, &param->get_outputs().at(i), ss.str());
+                                propagate_in_place_input(
+                                    ctx, &param->get_outputs().at(i), ss.str());
 
                                 arg_index++;
 
                                 NGRAPH_DEBUG << "Param Tensor:\t" << tv->get_name()
-                                             << "\twith id: " << ss.str();
+                                             << "\twith id: " << ss.str() << endl;
                             }
                         }
                         return true;
@@ -198,10 +200,10 @@ namespace ngraph
                                     res->get_inputs().at(0).get_output().get_tensor_ptr();
                                 auto output_name = ss.str();
                                 ctx->m_variable_name_map[itv->get_name()] = output_name;
-                                propagate_in_place_output(ctx, &(res->get_inputs().at(0).get_output()),
-                                                          output_name);
+                                propagate_in_place_output(
+                                    ctx, &(res->get_inputs().at(0).get_output()), output_name);
                                 NGRAPH_DEBUG << "Output Tensor:\t" << itv->get_name()
-                                             << "\t with id:" << output_name;
+                                             << "\t with id:" << output_name << endl;
                             }
                         }
                         return true;

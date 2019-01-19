@@ -8,41 +8,42 @@ namespace ngraph
 {
     namespace runtime
     {
-        namespace nnfusion{
-        namespace error
+        namespace nnfusion
         {
-            struct NotSupported : AssertionFailure
+            namespace error
             {
-                explicit NotSupported(const std::string& what_arg)
-                    : AssertionFailure(what_arg)
+                struct NotSupported : AssertionFailure
                 {
-                }
-            };
+                    explicit NotSupported(const std::string& what_arg)
+                        : AssertionFailure(what_arg)
+                    {
+                    }
+                };
 
-            struct InvalidArgument : AssertionFailure
-            {
-                explicit InvalidArgument(const std::string& what_arg)
-                    : AssertionFailure(what_arg)
+                struct InvalidArgument : AssertionFailure
                 {
-                }
-            };
+                    explicit InvalidArgument(const std::string& what_arg)
+                        : AssertionFailure(what_arg)
+                    {
+                    }
+                };
 
-            struct NullPointer : AssertionFailure
-            {
-                explicit NullPointer(const std::string& what_arg)
-                    : AssertionFailure(what_arg)
+                struct NullPointer : AssertionFailure
                 {
-                }
-            };
+                    explicit NullPointer(const std::string& what_arg)
+                        : AssertionFailure(what_arg)
+                    {
+                    }
+                };
 
-            struct RuntimeError : AssertionFailure
-            {
-                explicit RuntimeError(const std::string& what_arg)
-                    : AssertionFailure(what_arg)
+                struct RuntimeError : AssertionFailure
                 {
-                }
-            };
-        }
+                    explicit RuntimeError(const std::string& what_arg)
+                        : AssertionFailure(what_arg)
+                    {
+                    }
+                };
+            }
 
         } // namespace  error
 
@@ -50,8 +51,8 @@ namespace ngraph
 
 } // namespace  ngraph
 
-#define assert_nullptr(ptr_) \
-    NGRAPH_ASSERT_STREAM(ngraph::runtime::nnfusion::error::NullPointer, (ptr_ != nullptr)) << " "
+#define assert_nullptr(ptr_)                                                                       \
+    NGRAPH_ASSERT_STREAM(ngraph::runtime::nnfusion::error::NullPointer, ((ptr_) != nullptr)) << " "
 
-#define assert_bool(bval) \
-    NGRAPH_ASSERT_STREAM(ngraph::runtime::nnfusion::error::RuntimeError, (bval == true)) << " "
+#define assert_bool(bval)                                                                          \
+    NGRAPH_ASSERT_STREAM(ngraph::runtime::nnfusion::error::RuntimeError, ((bval) == true)) << " "

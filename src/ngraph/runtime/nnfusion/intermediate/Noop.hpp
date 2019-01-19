@@ -1,4 +1,6 @@
 // Microsoft (c) 2019, Wenxiang
+#pragma once
+
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
 
@@ -12,16 +14,17 @@ namespace ngraph
         {
             namespace intermediate
             {
-                class NoTrans : public IntermediateOP
+                class Noop : public IntermediateOP
                 {
                 public:
-                    static std::shared_ptr<IntermediateOP> translate(TRANS_ARGS)
+                    Noop(shared_ptr<Node> node)
+                        : IntermediateOP(node)
                     {
-                        std::shared_ptr<NoTrans> inter_op(new NoTrans());
-                        inter_op->n = node;
-                        inter_op->args = args;
-                        inter_op->out = out;
+                    }
 
+                    static std::shared_ptr<IntermediateOP> translate(shared_ptr<Node> node)
+                    {
+                        std::shared_ptr<Noop> inter_op(new Noop(node));
                         return inter_op;
                     }
                 };

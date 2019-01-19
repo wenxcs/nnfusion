@@ -7,6 +7,7 @@ if (NGRAPH_INTERPRETER_ENABLE)
         nnfusion_functiontranslator.cpp
         nnfusion_tensorwrapper.cpp
         nnfusion_codegenerator.cpp
+        nnfusion_op.cpp
         )
     set_target_properties(nnfusion_backend PROPERTIES VERSION ${NGRAPH_VERSION})
     target_link_libraries(nnfusion_backend PUBLIC ngraph)

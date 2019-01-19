@@ -14,14 +14,21 @@ bool ngraph::runtime::nnfusion::CodeGenerator::codegen(
     for (auto& op : *inter_ops)
     {
         rc = this->codegen(op);
-        if(!rc) break;
+        if (!rc)
+            break;
     }
     return rc;
 }
 
 bool ngraph::runtime::nnfusion::CodeGenerator::codegen(std::shared_ptr<TranslationUnitMap> tum)
 {
-    
+    assert_nullptr(tum);
+    auto& tu_map = *tum;
+    for (auto& it : tu_map)
+    {
+        codegen(it.second->inter_ops);
+    }
+    return true;
 }
 
 ngraph::runtime::nnfusion::CodeGenerator::CodeGenerator()

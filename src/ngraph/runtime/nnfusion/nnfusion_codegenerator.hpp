@@ -2,8 +2,8 @@
 #pragma once
 
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_functiontranslator.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
 
 namespace ngraph
 {
