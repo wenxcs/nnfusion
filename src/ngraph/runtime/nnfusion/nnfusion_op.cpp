@@ -1,8 +1,5 @@
 // Microsoft (c) 2019, Wenxiang
-#pragma once
-
 #include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 
 unordered_map<string, shared_ptr<CodeWriter>> CodeGenOP::definition_pool;
 

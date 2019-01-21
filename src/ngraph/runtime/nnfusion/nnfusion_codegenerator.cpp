@@ -1,10 +1,9 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "ngraph/runtime/nnfusion/nnfusion_codegenerator.hpp"
-#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegen.hpp"
 
 bool ngraph::runtime::nnfusion::CodeGenerator::codegen(std::shared_ptr<IntermediateOP>& inter_op)
 {
-    return ICodeGeneratorPass::run_passes(this->pass_manager, inter_op);
+    return ICodeGeneratorPass::run_passes(*(this->pass_manager), inter_op);
 }
 
 bool ngraph::runtime::nnfusion::CodeGenerator::codegen(
@@ -33,6 +32,14 @@ bool ngraph::runtime::nnfusion::CodeGenerator::codegen(std::shared_ptr<Translati
 
 ngraph::runtime::nnfusion::CodeGenerator::CodeGenerator()
     : default_ctx(new CodeGeneratorContext)
+    , pass_manager(new vector<shared_ptr<ICodeGeneratorPass>>())
 {
-    pass_manager.push_back(std::shared_ptr<ICodeGeneratorPass>(new CudaCodeGen()));
+}
+
+ngraph::runtime::nnfusion::CodeGenerator::CodeGenerator(
+    shared_ptr<vector<shared_ptr<ICodeGeneratorPass>>> pass_mgr_ref,
+    shared_ptr<CodeGeneratorContext> ctx)
+{
+    this->pass_manager = pass_mgr_ref;
+    this->default_ctx = ctx;
 }

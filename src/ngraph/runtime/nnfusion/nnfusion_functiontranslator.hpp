@@ -82,6 +82,8 @@ namespace ngraph
 
             public:
                 FunctionTranslator();
+                FunctionTranslator(shared_ptr<vector<shared_ptr<IFunctionTranslatorPass>>> m_passes,
+                                   shared_ptr<FunctionTranslatorContext> ctx);
                 ~FunctionTranslator(){};
 
                 std::shared_ptr<TranslationUnitMap>
@@ -91,7 +93,7 @@ namespace ngraph
 
             private:
                 std::shared_ptr<FunctionTranslatorContext> m_trans_ctx;
-                std::vector<std::shared_ptr<IFunctionTranslatorPass>> m_passes;
+                shared_ptr<std::vector<std::shared_ptr<IFunctionTranslatorPass>>> m_passes;
 
                 shared_ptr<IntermediateOP> translate_node(shared_ptr<Node> node);
             };

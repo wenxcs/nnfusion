@@ -8,17 +8,25 @@ using namespace ngraph::runtime::nnfusion;
 
 ngraph::runtime::nnfusion::FunctionTranslator::FunctionTranslator()
     : m_trans_ctx(new FunctionTranslatorContext())
+    , m_passes(new vector<std::shared_ptr<IFunctionTranslatorPass>>())
 {
-    m_passes.push_back(
-        std::shared_ptr<IFunctionTranslatorPass>(new translator::ExtractFunctionSignature()));
+}
+
+ngraph::runtime::nnfusion::FunctionTranslator::FunctionTranslator(
+    shared_ptr<vector<shared_ptr<IFunctionTranslatorPass>>> passes,
+    shared_ptr<FunctionTranslatorContext> ctx)
+{
+    this->m_passes = passes;
+    this->m_trans_ctx = ctx;
 }
 
 std::shared_ptr<TranslationUnitMap> ngraph::runtime::nnfusion::FunctionTranslator::translate(
     std::shared_ptr<ngraph::Function> function)
 {
-    static translator::NgraphFunctionPass np;
+    static translator::NgraphFunctionPass ngraph_passes;
+    static translator::ExtractFunctionSignature extract_global;
     std::shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
-    np.run(m_trans_ctx, nullptr, function);
+    assert_bool(ngraph_passes.run(m_trans_ctx, nullptr, function));
 
     // Iterator through all functions
     for (const auto& p : m_trans_ctx->m_function_ordered_ops)
@@ -28,9 +36,11 @@ std::shared_ptr<TranslationUnitMap> ngraph::runtime::nnfusion::FunctionTranslato
         _tus->emplace(p.first, _tu);
         NGRAPH_DEBUG << "Translating function:\t" << current_function->get_name() << std::endl;
 
-        if (!IFunctionTranslatorPass::run_passes(
-                this->m_passes, m_trans_ctx, _tu, current_function))
-            return false;
+        assert_bool(extract_global.run(m_trans_ctx, _tu, current_function))
+            << "Error when extract global graph info.";
+        assert_bool(IFunctionTranslatorPass::run_passes(
+            *(this->m_passes), m_trans_ctx, _tu, current_function))
+            << "Error when apply passes on functions.";
 
         // Translate the Node
         for (shared_ptr<Node> node : m_trans_ctx->m_function_ordered_ops.at(current_function))

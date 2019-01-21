@@ -43,7 +43,7 @@ TEST(nnfusion_backend, relu_op)
 
     for (auto function : model)
     {
-        auto backend = ngraph::runtime::Backend::create("NNFUSION");
+        auto backend = ngraph::runtime::Backend::create("CUDA_CODEGEN");
         backend->compile(function);
     }
 }

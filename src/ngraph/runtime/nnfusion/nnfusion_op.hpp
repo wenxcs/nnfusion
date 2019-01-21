@@ -49,15 +49,15 @@ namespace ngraph
                 // Common Data
                 bool isCodeGened;
                 shared_ptr<IntermediateOP> inter_op;
-                shared_ptr<codegen::CodeWriter> definition_writer;
-                shared_ptr<codegen::CodeWriter> call_writer;
-                shared_ptr<codegen::CodeWriter> source_writer;
-                shared_ptr<codegen::CodeWriter> dep_writer;
-                shared_ptr<codegen::CodeWriter> test_writer;
+                shared_ptr<CodeWriter> definition_writer;
+                shared_ptr<CodeWriter> call_writer;
+                shared_ptr<CodeWriter> source_writer;
+                shared_ptr<CodeWriter> dep_writer;
+                shared_ptr<CodeWriter> test_writer;
                 unique_ptr<CodeGenOPDep> _dep;
 
                 // mapping: kernel name -> kernel definition
-                static unordered_map<string, shared_ptr<codegen::CodeWriter>> definition_pool;
+                static unordered_map<string, shared_ptr<CodeWriter>> definition_pool;
 
             public:
                 // Get the property of some CodeGenOP
@@ -65,12 +65,12 @@ namespace ngraph
                 virtual string codegen_source_name() = 0;
 
                 // Interface for Generate code pieces
-                virtual shared_ptr<codegen::CodeWriter> codegen_dependency() = 0;
-                virtual shared_ptr<codegen::CodeWriter> codegen_function_definition() = 0;
-                virtual shared_ptr<codegen::CodeWriter> codegen_function_call() = 0;
-                virtual shared_ptr<codegen::CodeWriter> codegen_test() = 0;
+                virtual shared_ptr<CodeWriter> codegen_dependency() = 0;
+                virtual shared_ptr<CodeWriter> codegen_function_definition() = 0;
+                virtual shared_ptr<CodeWriter> codegen_function_call() = 0;
+                virtual shared_ptr<CodeWriter> codegen_test() = 0;
 
-                virtual shared_ptr<codegen::CodeWriter> codegen_source();
+                virtual shared_ptr<CodeWriter> codegen_source();
 
                 CodeGenOP();
                 CodeGenOP(shared_ptr<IntermediateOP> inter_op);

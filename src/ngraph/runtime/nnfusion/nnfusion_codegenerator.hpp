@@ -45,6 +45,8 @@ namespace ngraph
             {
             public:
                 CodeGenerator();
+                CodeGenerator(shared_ptr<vector<shared_ptr<ICodeGeneratorPass>>> pass_mgr_ref,
+                              shared_ptr<CodeGeneratorContext> ctx);
 
                 bool codegen(std::shared_ptr<TranslationUnitMap> inter_op);
                 bool codegen(std::shared_ptr<IntermediateOP>& inter_op);
@@ -53,7 +55,7 @@ namespace ngraph
 
             private:
                 std::shared_ptr<CodeGeneratorContext> default_ctx;
-                std::vector<std::shared_ptr<ICodeGeneratorPass>> pass_manager;
+                shared_ptr<std::vector<std::shared_ptr<ICodeGeneratorPass>>> pass_manager;
             };
         }
     }
