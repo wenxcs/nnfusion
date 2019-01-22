@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "ngraph/runtime/nnfusion/nnfusion_cudacodegen.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegen.hpp"
+#include "ngraph/runtime/nnfusion/pass/codegen/naive_unit_test_dump.hpp"
 
 using namespace ngraph;
 using namespace ngraph::runtime::nnfusion;
@@ -12,7 +13,39 @@ extern "C" const char* get_ngraph_version_string()
 
 extern "C" runtime::Backend* new_backend(const char* configuration_string)
 {
-    return new runtime::nnfusion::cuda_codegen();
+    runtime::Backend* backend = nullptr;
+    string type(configuration_string);
+
+    auto colon = type.find(":");
+    if (colon != type.npos)
+    {
+        string config = type.substr(colon + 1, type.length() - colon);
+        if (config == "naive_unittest")
+        {
+            class cuda_codegen_naive_unittest : public cuda_codegen
+            {
+            public:
+                cuda_codegen_naive_unittest()
+                    : cuda_codegen()
+                {
+                    assert_nullptr(this->m_codegen);
+                    this->m_codegen->append_pass(shared_ptr<ICodeGeneratorPass>(
+                        new ngraph::runtime::nnfusion::codegen::NaiveUnitTestDump()));
+                }
+            };
+            backend = new cuda_codegen_naive_unittest();
+        }
+        else
+        {
+            assert_bool(false) << "Unknown config for cuda_codegen backend.";
+        }
+    }
+    else
+    {
+        backend = new runtime::nnfusion::cuda_codegen();
+    }
+
+    return backend;
 }
 
 extern "C" void delete_backend(runtime::Backend* backend)

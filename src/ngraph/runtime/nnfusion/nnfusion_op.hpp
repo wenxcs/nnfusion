@@ -39,7 +39,7 @@ namespace ngraph
             // Generate Solution files
             class CodeGenOP : public IntermediateOP
             {
-            protected:
+            public:
                 // Common Data
                 bool isCodeGened;
                 shared_ptr<IntermediateOP> inter_op;
@@ -53,7 +53,6 @@ namespace ngraph
                 // mapping: kernel name -> kernel definition
                 static unordered_map<string, shared_ptr<LanguageUnit>> definition_pool;
 
-            public:
                 // Get the property of some CodeGenOP
                 virtual string codegen_function_name() = 0;
                 virtual string codegen_test_name() = 0;

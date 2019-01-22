@@ -27,6 +27,8 @@ namespace ngraph
 
             private:
                 std::map<std::shared_ptr<Function>, TranslationUnit> m_function_map;
+
+            protected:
                 std::shared_ptr<CodeGenerator> m_codegen;
                 std::shared_ptr<FunctionTranslator> m_functrans;
             };

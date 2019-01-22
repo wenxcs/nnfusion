@@ -16,6 +16,7 @@ namespace ngraph
                     function<std::shared_ptr<CodeGenOP>(std::shared_ptr<IntermediateOP>)>>
                     typeid_map{
                         {type_index(typeid(ngraph::op::Result)), codegen::cuda::Result::codegen},
+                        {type_index(typeid(ngraph::op::Parameter)), codegen::cuda::Noop::codegen},
                         {type_index(typeid(ngraph::op::Relu)),
                          codegen::cuda::Elementwise<ngraph::op::Relu>::codegen},
                     };
@@ -24,13 +25,15 @@ namespace ngraph
                 if (it == typeid_map.end())
                 {
                     NGRAPH_DEBUG << "Unsupported op '" << node.description() << "'" << endl;
-                    return true;
+                    return false;
                 }
                 NGRAPH_DEBUG << "Codegen op '" << node.description() << "'" << endl;
                 auto cop = it->second(inter_op);
                 assert_nullptr(cop);
                 auto cw = cop->codegen_source();
                 assert_nullptr(cw);
+                //Replacing the inter_op with CodegenOP
+                inter_op = cop;
                 return true;
             }
         }

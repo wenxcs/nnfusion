@@ -56,6 +56,7 @@ if (NGRAPH_INTERPRETER_ENABLE)
         nnfusion_cuda_codegen
         nnfusion_intermediate
         nnfusion_trans_pass
+        nnfusion_codegen_pass
         ngraph
         ${CUDA_cuda_LIBRARY}
         ${CUDA_cudart_LIBRARY}

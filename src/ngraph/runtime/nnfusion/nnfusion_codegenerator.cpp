@@ -43,3 +43,10 @@ ngraph::runtime::nnfusion::CodeGenerator::CodeGenerator(
     this->pass_manager = pass_mgr_ref;
     this->default_ctx = ctx;
 }
+
+bool ngraph::runtime::nnfusion::CodeGenerator::append_pass(shared_ptr<ICodeGeneratorPass> pass)
+{
+    assert_nullptr(this->pass_manager);
+    assert_nullptr(pass);
+    this->pass_manager->push_back(pass);
+}

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "ngraph/runtime/nnfusion/codegen/cuda/Elementwise.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/Noop.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/Result.hpp"
 #include "ngraph/runtime/nnfusion/intermediate/op_tbl.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_codegenerator.hpp"

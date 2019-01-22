@@ -103,5 +103,5 @@ using namespace ngraph;
 using namespace ngraph::runtime::nnfusion;
 using namespace ngraph::codegen;
 
-// #undef NGRAPH_DEBUG
-// #define NGRAPH_DEBUG std::cout
+//#undef NGRAPH_DEBUG
+//#define NGRAPH_DEBUG std::cout

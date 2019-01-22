@@ -89,28 +89,6 @@ shared_ptr<LanguageUnit> CodeGenOP::codegen_source()
     assert_nullptr(this->test_call_unit = codegen_test_call());
     assert_bool(this->test_call_unit->require(this->test_unit));
 
-    //Temporary Write Down the code
-    shared_ptr<LanguageUnit> codewriter(new LanguageUnit());
-    auto& cw = *codewriter;
-    assert_nullptr(this->source_unit = codewriter);
-
-    // cw << this->dep_unit->collect_code() << "\n";
-    // cw << this->definition_unit->get_code() << "\n";
-    cw << this->test_unit->collect_code() << "\n";
-    //codewriter<<this->codegen_function_call.get_code()<<"\n";
-
-    cw << "int main()";
-    cw.block_begin();
-    cw << this->test_call_unit->get_code();
-    cw << "return 0;\n";
-    cw.block_end();
-
-    // Save the function
-    string filename = codegen_function_name() + "_test.cu";
-    ofstream out(filename);
-    out << cw.get_code();
-    out.close();
-
     isCodeGened = true;
-    return codewriter;
+    return this->call_unit;
 }

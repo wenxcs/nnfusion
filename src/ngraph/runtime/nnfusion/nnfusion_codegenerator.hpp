@@ -52,6 +52,7 @@ namespace ngraph
                 bool codegen(std::shared_ptr<IntermediateOP>& inter_op);
                 bool codegen(
                     std::shared_ptr<std::vector<std::shared_ptr<IntermediateOP>>> inter_ops);
+                bool append_pass(shared_ptr<ICodeGeneratorPass> pass);
 
             private:
                 std::shared_ptr<CodeGeneratorContext> default_ctx;
