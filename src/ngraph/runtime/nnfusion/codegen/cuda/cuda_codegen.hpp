@@ -1,7 +1,6 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 
-// #include "ngraph/runtime/nnfusion/codegen/cuda/Reshape.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/Elementwise.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/Result.hpp"
 #include "ngraph/runtime/nnfusion/intermediate/op_tbl.hpp"

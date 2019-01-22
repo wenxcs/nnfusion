@@ -37,6 +37,7 @@ if (NGRAPH_INTERPRETER_ENABLE)
         nnfusion_functiontranslator.cpp
         nnfusion_tensorwrapper.cpp
         nnfusion_codegenerator.cpp
+        nnfusion_languageunit.cpp
         nnfusion_op.cpp
     )
 

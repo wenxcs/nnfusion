@@ -14,46 +14,49 @@ string cuda::Result::codegen_function_name()
     return "cuda_result";
 }
 
-string cuda::Result::codegen_source_name()
+string cuda::Result::codegen_test_name()
 {
-    return "cuda_result.cu";
+    return "cuda_result_test";
 }
 
-shared_ptr<CodeWriter> cuda::Result::codegen_function_definition()
+shared_ptr<LanguageUnit> cuda::Result::codegen_function_definition()
 {
-    shared_ptr<CodeWriter> cw(new CodeWriter);
-    CodeWriter& writer = *cw;
+    shared_ptr<LanguageUnit> cw(new LanguageUnit);
+    LanguageUnit& writer = *cw;
     writer << "// No codegen for Result since it's memcpy().\n";
     return cw;
 }
 
-shared_ptr<CodeWriter> cuda::Result::codegen_function_call()
+shared_ptr<LanguageUnit> cuda::Result::codegen_function_call()
 {
-    shared_ptr<CodeWriter> cw(new CodeWriter);
-    CodeWriter& writer = *cw;
+    shared_ptr<LanguageUnit> cw(new LanguageUnit);
+    LanguageUnit& writer = *cw;
     assert_bool(inter_op->args.size() == 1) << "Input size mismatches.";
     assert_bool(inter_op->out.size() == 1) << "Output size mismatches.";
     emit_memcpyDtD(writer, inter_op->args[0], inter_op->out[0]);
     return cw;
 }
 
-shared_ptr<CodeWriter> cuda::Result::codegen_test()
+shared_ptr<LanguageUnit> cuda::Result::codegen_test()
 {
-    shared_ptr<CodeWriter> cw(new CodeWriter);
-    CodeWriter& writer = *cw;
+    shared_ptr<LanguageUnit> cw(new LanguageUnit);
+    LanguageUnit& writer = *cw;
     writer << "// No test codegen for result OP\n";
-    writer << "/*\n";
-    writer << codegen_function_definition()->get_code();
-    writer << codegen_function_call()->get_code();
-    writer << "*/\n";
     return cw;
 }
 
-shared_ptr<CodeWriter> cuda::Result::codegen_dependency()
+shared_ptr<LanguageUnit> cuda::Result::codegen_test_call()
 {
-    shared_ptr<CodeWriter> cw(new CodeWriter);
-    CodeWriter& writer = *cw;
-    writer << "#include <cuda.h>\n";
+    shared_ptr<LanguageUnit> cw(new LanguageUnit);
+    LanguageUnit& writer = *cw;
+    writer << "// No test for result OP\n";
+    return cw;
+}
+
+shared_ptr<LanguageUnit> cuda::Result::codegen_dependency()
+{
+    shared_ptr<LanguageUnit> cw(new LanguageUnit);
+    cw->require(shared_ptr<LanguageUnit>(new LanguageUnit("header_cuda_h", "#include <cuda.h>\n")));
     return cw;
 }
 

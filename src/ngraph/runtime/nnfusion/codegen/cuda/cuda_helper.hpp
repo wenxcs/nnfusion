@@ -9,6 +9,7 @@
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_kernelops.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_testutil.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_languageunit.hpp"
 
 namespace ngraph
 {
@@ -20,10 +21,10 @@ namespace ngraph
             {
                 namespace cuda
                 {
-                    void get_math_kernel(CodeWriter& writer,
-                                         const std::string& name,
-                                         const std::string& math_kernel,
-                                         const std::vector<std::string>& data_types);
+                    shared_ptr<LanguageUnit>
+                        get_math_kernel(const std::string& name,
+                                        const std::string& math_kernel,
+                                        const std::vector<std::string>& data_types);
 
                     uint32_t align_to_block_size(uint32_t threads, uint32_t block_size);
 

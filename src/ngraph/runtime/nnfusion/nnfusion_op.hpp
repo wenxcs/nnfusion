@@ -2,6 +2,7 @@
 #pragma once
 
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_languageunit.hpp"
 
 namespace ngraph
 {
@@ -38,39 +39,35 @@ namespace ngraph
             // Generate Solution files
             class CodeGenOP : public IntermediateOP
             {
-            public:
-                class CodeGenOPDep
-                {
-                    set<string> headers;
-                    set<shared_ptr<CodeGenOP>> codegen_op;
-                };
-
             protected:
                 // Common Data
                 bool isCodeGened;
                 shared_ptr<IntermediateOP> inter_op;
-                shared_ptr<CodeWriter> definition_writer;
-                shared_ptr<CodeWriter> call_writer;
-                shared_ptr<CodeWriter> source_writer;
-                shared_ptr<CodeWriter> dep_writer;
-                shared_ptr<CodeWriter> test_writer;
-                unique_ptr<CodeGenOPDep> _dep;
+                shared_ptr<LanguageUnit> definition_unit;
+                shared_ptr<LanguageUnit> call_unit;
+                shared_ptr<LanguageUnit> source_unit;
+                shared_ptr<LanguageUnit> dep_unit;
+                shared_ptr<LanguageUnit> test_unit;
+                shared_ptr<LanguageUnit> test_call_unit;
 
                 // mapping: kernel name -> kernel definition
-                static unordered_map<string, shared_ptr<CodeWriter>> definition_pool;
+                static unordered_map<string, shared_ptr<LanguageUnit>> definition_pool;
 
             public:
                 // Get the property of some CodeGenOP
                 virtual string codegen_function_name() = 0;
-                virtual string codegen_source_name() = 0;
+                virtual string codegen_test_name() = 0;
 
+            private:
                 // Interface for Generate code pieces
-                virtual shared_ptr<CodeWriter> codegen_dependency() = 0;
-                virtual shared_ptr<CodeWriter> codegen_function_definition() = 0;
-                virtual shared_ptr<CodeWriter> codegen_function_call() = 0;
-                virtual shared_ptr<CodeWriter> codegen_test() = 0;
+                virtual shared_ptr<LanguageUnit> codegen_dependency() = 0;
+                virtual shared_ptr<LanguageUnit> codegen_function_definition() = 0;
+                virtual shared_ptr<LanguageUnit> codegen_function_call() = 0;
+                virtual shared_ptr<LanguageUnit> codegen_test() = 0;
+                virtual shared_ptr<LanguageUnit> codegen_test_call() = 0;
 
-                virtual shared_ptr<CodeWriter> codegen_source();
+            public:
+                virtual shared_ptr<LanguageUnit> codegen_source();
 
                 CodeGenOP();
                 CodeGenOP(shared_ptr<IntermediateOP> inter_op);

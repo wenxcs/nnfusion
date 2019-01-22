@@ -3,11 +3,12 @@
 
 using namespace ngraph::runtime::nnfusion::codegen;
 
-void cuda::get_math_kernel(CodeWriter& writer,
-                           const std::string& name,
-                           const std::string& math_kernel,
-                           const std::vector<std::string>& data_types)
+shared_ptr<LanguageUnit> cuda::get_math_kernel(const std::string& name,
+                                               const std::string& math_kernel,
+                                               const std::vector<std::string>& data_types)
 {
+    shared_ptr<LanguageUnit> cw(new LanguageUnit("function_def_inline_" + name));
+    auto& writer = *cw;
     if (math_kernel.size())
     {
         auto num_inputs = data_types.size() - 1;
@@ -24,9 +25,9 @@ void cuda::get_math_kernel(CodeWriter& writer,
             writer << "return " + math_kernel << ";\n";
         }
         writer.indent--;
-        writer << "}\n\n";
+        writer << "}\n";
     }
-    return;
+    return cw;
 }
 
 uint32_t cuda::align_to_block_size(uint32_t threads, uint32_t block_size)

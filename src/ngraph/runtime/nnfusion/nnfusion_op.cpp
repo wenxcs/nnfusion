@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, Wenxiang
 #include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
 
-unordered_map<string, shared_ptr<CodeWriter>> CodeGenOP::definition_pool;
+unordered_map<string, shared_ptr<LanguageUnit>> CodeGenOP::definition_pool;
 
 IntermediateOP::IntermediateOP()
     : m_name("Null")
@@ -51,10 +51,13 @@ IntermediateOP::IntermediateOP(shared_ptr<Node> node)
 }
 
 CodeGenOP::CodeGenOP()
-    : definition_writer(nullptr)
+    : definition_unit(nullptr)
     , inter_op(nullptr)
-    , call_writer(nullptr)
-    , _dep(new CodeGenOP::CodeGenOPDep())
+    , call_unit(nullptr)
+    , test_unit(nullptr)
+    , test_call_unit(nullptr)
+    , dep_unit(nullptr)
+    , source_unit(nullptr)
     , isCodeGened(false)
 {
 }
@@ -65,31 +68,40 @@ CodeGenOP::CodeGenOP(shared_ptr<IntermediateOP> inter_op)
     assert_nullptr(this->inter_op = inter_op);
 }
 
-shared_ptr<CodeWriter> CodeGenOP::codegen_source()
+shared_ptr<LanguageUnit> CodeGenOP::codegen_source()
 {
+    assert_bool(isCodeGened == false) << "Code only generated once.";
+    assert_nullptr(this->dep_unit = codegen_dependency());
     if (definition_pool.find(codegen_function_name()) != definition_pool.end())
     {
-        assert_nullptr(this->definition_writer = definition_pool[codegen_function_name()]);
+        assert_nullptr(this->definition_unit = definition_pool[codegen_function_name()]);
     }
     else
     {
-        assert_nullptr(this->definition_writer = codegen_function_definition());
+        assert_nullptr(this->definition_unit = codegen_function_definition());
+        this->definition_unit->require(this->dep_unit);
     }
-    assert_nullptr(this->call_writer = codegen_function_call());
-    assert_nullptr(this->test_writer = codegen_test());
+    assert_nullptr(this->call_unit = codegen_function_call());
+    assert_bool(this->call_unit->require(this->definition_unit));
 
-    shared_ptr<CodeWriter> codewriter(new CodeWriter());
+    assert_nullptr(this->test_unit = codegen_test());
+    assert_bool(this->test_unit->require(this->definition_unit));
+    assert_nullptr(this->test_call_unit = codegen_test_call());
+    assert_bool(this->test_call_unit->require(this->test_unit));
+
+    //Temporary Write Down the code
+    shared_ptr<LanguageUnit> codewriter(new LanguageUnit());
     auto& cw = *codewriter;
-    assert_nullptr(this->source_writer = codewriter);
-    assert_nullptr(this->dep_writer = codegen_dependency());
+    assert_nullptr(this->source_unit = codewriter);
 
-    cw << this->dep_writer->get_code() << "\n";
-    cw << this->definition_writer->get_code() << "\n";
+    // cw << this->dep_unit->collect_code() << "\n";
+    // cw << this->definition_unit->get_code() << "\n";
+    cw << this->test_unit->collect_code() << "\n";
     //codewriter<<this->codegen_function_call.get_code()<<"\n";
 
     cw << "int main()";
     cw.block_begin();
-    cw << this->test_writer->get_code() << "\n";
+    cw << this->test_call_unit->get_code();
     cw << "return 0;\n";
     cw.block_end();
 
@@ -99,5 +111,6 @@ shared_ptr<CodeWriter> CodeGenOP::codegen_source()
     out << cw.get_code();
     out.close();
 
+    isCodeGened = true;
     return codewriter;
 }

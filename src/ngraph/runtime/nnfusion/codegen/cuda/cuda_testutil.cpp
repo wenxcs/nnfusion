@@ -65,7 +65,7 @@ void cuda::test_compare(CodeWriter& writer, const TensorWrapper tensor)
            << "_host[i]) > 0.00005)\n"
            << "    {\n"
            << "        printf(\"Error on tensor:" << tensor.get_name() << "\");\n"
-           << "        exit(1);\n"
+           << "        return false;\n"
            << "    }\n"
            << "};\n";
 }

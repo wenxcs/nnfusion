@@ -21,11 +21,16 @@ namespace ngraph
                     public:
                         Result(shared_ptr<IntermediateOP> inter_op);
                         string codegen_function_name() override;
-                        string codegen_source_name() override;
-                        shared_ptr<CodeWriter> codegen_function_definition() override;
-                        shared_ptr<CodeWriter> codegen_function_call() override;
-                        shared_ptr<CodeWriter> codegen_test() override;
-                        shared_ptr<CodeWriter> codegen_dependency() override;
+                        string codegen_test_name() override;
+
+                    private:
+                        shared_ptr<LanguageUnit> codegen_function_definition() override;
+                        shared_ptr<LanguageUnit> codegen_function_call() override;
+                        shared_ptr<LanguageUnit> codegen_test() override;
+                        shared_ptr<LanguageUnit> codegen_test_call() override;
+                        shared_ptr<LanguageUnit> codegen_dependency() override;
+
+                    public:
                         static std::shared_ptr<CodeGenOP>
                             codegen(std::shared_ptr<IntermediateOP> inter_op);
                     };

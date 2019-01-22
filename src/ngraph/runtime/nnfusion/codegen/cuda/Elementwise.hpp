@@ -30,11 +30,6 @@ namespace ngraph
                                     static_pointer_cast<intermediate::Elementwise<T>>(inter_op));
                         }
 
-                        string codegen_source_name() override
-                        {
-                            return codegen_function_name() + ".cu";
-                        }
-
                         string codegen_function_name() override
                         {
                             // kernel_name is used to check if the cuda kernel has been previously compiled
@@ -47,15 +42,24 @@ namespace ngraph
                             return kernel_name.str();
                         }
 
-                        shared_ptr<CodeWriter> codegen_function_definition() override
+                        string codegen_test_name() override
                         {
-                            shared_ptr<CodeWriter> cw(new CodeWriter);
-                            CodeWriter& writer = *cw;
+                            return codegen_function_name() + "_test";
+                        }
+
+                    private:
+                        shared_ptr<LanguageUnit> codegen_function_definition() override
+                        {
                             std::string name = codegen_function_name();
+                            shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
+                            LanguageUnit& writer = *cw;
                             std::string op = CudaOpMap<T>::op;
                             std::vector<std::string>& data_types = inter_op->dtypes;
 
-                            get_math_kernel(writer, op, CudaOpMap<T>::math_kernel, data_types);
+                            auto math_kernel =
+                                get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
+                            assert_nullptr(math_kernel);
+                            cw->require(math_kernel);
 
                             auto num_inputs = data_types.size() - 1;
                             assert_bool(num_inputs > 0)
@@ -89,10 +93,11 @@ namespace ngraph
                             return cw;
                         }
 
-                        shared_ptr<CodeWriter> codegen_function_call() override
+                        shared_ptr<LanguageUnit> codegen_function_call() override
                         {
-                            shared_ptr<CodeWriter> cw(new CodeWriter);
-                            CodeWriter& writer = *cw;
+                            std::string name = codegen_function_name() + "_call";
+                            shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
+                            LanguageUnit& writer = *cw;
 
                             uint32_t nthreads = static_cast<uint32_t>(
                                 ngraph::shape_size(inter_op->out[0].get_shape()));
@@ -113,41 +118,62 @@ namespace ngraph
                             return cw;
                         }
 
-                        //This is for Relu
-                        shared_ptr<CodeWriter> codegen_test() override
+                        shared_ptr<LanguageUnit> codegen_test() override;
+                        /*
+                        shared_ptr<LanguageUnit> codegen_test() override
                         {
-                            shared_ptr<CodeWriter> cw(new CodeWriter);
-                            CodeWriter& writer = *cw;
+                            std::string name = codegen_test_name();
+                            shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
+                            LanguageUnit& writer = *cw;
                             writer << "// Relu Test\n";
-                            vector<float> data;
-                            // Malloc
-                            for (auto& arg : inter_op->args)
-                            {
-                                data = test_hostData(writer, arg);
-                                test_cudaMalloc(writer, arg);
-                                test_cudaMemcpyHtoD(writer, arg);
-                            }
 
-                            for (int i = 0; i < data.size(); i++)
+                            writer << "extern \"C\" bool " << name << "()";
+                            writer.block_begin();
                             {
-                                if (data[i] < 0)
-                                    data[i] = 0;
+                                vector<float> data;
+                                // Malloc
+                                for (auto& arg : inter_op->args)
+                                {
+                                    data = test_hostData(writer, arg);
+                                    test_cudaMalloc(writer, arg);
+                                    test_cudaMemcpyHtoD(writer, arg);
+                                }
+
+                                for (int i = 0; i < data.size(); i++)
+                                {
+                                    if (data[i] < 0)
+                                        data[i] = 0;
+                                }
+                                test_hostData(writer, inter_op->out[0], data);
+                                test_cudaMalloc(writer, inter_op->out[0]);
+                                writer << codegen_function_call()->get_code();
+                                test_cudaMemcpyDtoH(writer, inter_op->out[0]);
+                                test_compare(writer, inter_op->out[0]);
+                                writer << "printf(\"SUCCEED\\n\");\n";
+                                writer << "return true;\n";
                             }
-                            test_hostData(writer, inter_op->out[0], data);
-                            test_cudaMalloc(writer, inter_op->out[0]);
-                            writer << codegen_function_call()->get_code();
-                            test_cudaMemcpyDtoH(writer, inter_op->out[0]);
-                            test_compare(writer, inter_op->out[0]);
-                            writer << "printf(\"SUCCEED\\n\");";
+                            writer.block_end();
+                            return cw;
+                        }*/
+
+                        shared_ptr<LanguageUnit> codegen_test_call() override
+                        {
+                            std::string name = codegen_test_name() + "_call";
+                            shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
+                            (*cw) << "assert(" << codegen_test_name() << "());\n";
+                            cw->require(shared_ptr<LanguageUnit>(
+                                new LanguageUnit("header_assert_h", "#include <assert.h>\n")));
                             return cw;
                         }
 
-                        shared_ptr<CodeWriter> codegen_dependency() override
+                        shared_ptr<LanguageUnit> codegen_dependency() override
                         {
-                            shared_ptr<CodeWriter> cw(new CodeWriter);
-                            CodeWriter& writer = *cw;
-                            writer << "#include <cuda.h>\n";
-                            writer << "#include <stdio.h>\n";
+                            std::string name = codegen_function_name() + "_dep";
+                            shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
+                            cw->require(shared_ptr<LanguageUnit>(
+                                new LanguageUnit("header_cuda_h", "#include <cuda.h>\n")));
+                            cw->require(shared_ptr<LanguageUnit>(
+                                new LanguageUnit("header_stdio_h", "#include <stdio.h>\n")));
                             return cw;
                         }
 
