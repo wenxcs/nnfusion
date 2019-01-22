@@ -94,7 +94,7 @@ shared_ptr<CodeWriter> CodeGenOP::codegen_source()
     cw.block_end();
 
     // Save the function
-    string filename = codegen_source_name() + "_test.cu";
+    string filename = codegen_function_name() + "_test.cu";
     ofstream out(filename);
     out << cw.get_code();
     out.close();

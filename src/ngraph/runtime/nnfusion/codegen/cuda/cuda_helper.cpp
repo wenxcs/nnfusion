@@ -38,3 +38,20 @@ uint32_t cuda::align_to_block_size(uint32_t threads, uint32_t block_size)
     uint32_t r = (threads + block_size - 1) / block_size;
     return r;
 }
+
+void cuda::emit_memcpyDtD(CodeWriter& writer,
+                          const TensorWrapper& dst,
+                          const TensorWrapper& src,
+                          size_t buffer_size)
+{
+    if (buffer_size == 0)
+    {
+        writer << "cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
+               << dst.get_size() << " * " << dst.get_element_type().size()
+               << ", cudaMemcpyHostToHost);\n";
+        return;
+    }
+    writer << "cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", " << buffer_size
+           << ", cudaMemcpyHostToHost);\n";
+    return;
+}

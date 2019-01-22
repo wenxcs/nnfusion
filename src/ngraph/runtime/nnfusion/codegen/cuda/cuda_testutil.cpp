@@ -5,22 +5,22 @@ using namespace ngraph::runtime::nnfusion::codegen;
 void cuda::test_cudaMemcpyDtoH(CodeWriter& writer, const TensorWrapper tensor)
 {
     writer << "cudaMemcpy(" << tensor.get_name() << "_host, " << tensor.get_name() << ", "
-           << tensor.get_size() * tensor.get_type().size() << ", "
+           << tensor.get_size() << " * " << tensor.get_element_type().size() << ", "
            << "cudaMemcpyDeviceToHost);\n";
 }
 
 void cuda::test_cudaMemcpyHtoD(CodeWriter& writer, const TensorWrapper tensor)
 {
     writer << "cudaMemcpy(" << tensor.get_name() << ", " << tensor.get_name() << "_host, "
-           << tensor.get_size() * tensor.get_type().size() << ", "
+           << tensor.get_size() << " * " << tensor.get_element_type().size() << ", "
            << "cudaMemcpyHostToDevice);\n";
 }
 
 void cuda::test_cudaMalloc(CodeWriter& writer, const TensorWrapper tensor)
 {
     writer << tensor.get_type() << "* " << tensor.get_name() << ";\n"
-           << "cudaMalloc((void**)&" << tensor.get_name() << ","
-           << tensor.get_size() * tensor.get_type().size() << ");\n";
+           << "cudaMalloc((void**)&" << tensor.get_name() << "," << tensor.get_size() << " * "
+           << tensor.get_element_type().size() << ");\n";
 }
 
 vector<float> cuda::test_hostData(CodeWriter& writer, const TensorWrapper tensor)

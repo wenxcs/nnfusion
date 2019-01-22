@@ -26,6 +26,11 @@ namespace ngraph
                                          const std::vector<std::string>& data_types);
 
                     uint32_t align_to_block_size(uint32_t threads, uint32_t block_size);
+
+                    void emit_memcpyDtD(CodeWriter& writer,
+                                        const TensorWrapper& dst,
+                                        const TensorWrapper& src,
+                                        size_t buffer_size = 0);
                 }
             }
         }
