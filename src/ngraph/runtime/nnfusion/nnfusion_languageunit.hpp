@@ -44,6 +44,7 @@ namespace ngraph
                 bool require(shared_ptr<LanguageUnit> lu);
                 string get_symbol() { return symbol; }
                 string collect_code();
+                string collect_required_code();
             };
         }
     }

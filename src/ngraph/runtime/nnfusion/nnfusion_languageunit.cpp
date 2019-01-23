@@ -50,3 +50,17 @@ string LanguageUnit::collect_code()
         lu << str;
     return lu.get_code();
 }
+
+string LanguageUnit::collect_required_code()
+{
+    LanguageUnit lu;
+    for (auto& it : this->required)
+    {
+        assert_bool(this->local_symbol.find(it) != this->local_symbol.end())
+            << "Cannot collect code from non-existed Language Unint.";
+        assert_nullptr(this->local_symbol[it])
+            << "Cannot collect code from non-existed null pointer.";
+        lu << this->local_symbol[it]->collect_code() << "\n";
+    }
+    return lu.get_code();
+}

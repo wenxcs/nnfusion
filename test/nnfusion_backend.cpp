@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -36,14 +37,42 @@ using Inputs = std::vector<std::vector<float>>;
 using Outputs = std::vector<std::vector<float>>;
 using Model = std::vector<std::shared_ptr<Function>>;
 
+namespace nnfusion_test
+{
+    bool file_exsits(const std::string& filename)
+    {
+        std::ifstream ifile(filename.c_str());
+        return (bool)ifile;
+    }
+
+    bool nvcc_test(const std::string& filename)
+    {
+        if (!file_exsits(filename))
+            return false;
+        std::string obj = filename + ".bin";
+        int ret = system(("nvcc\t" + filename + "\t-o\t" + obj).c_str());
+        if (ret != 0 || !file_exsits(obj))
+            return false;
+        return (system(("./" + obj).c_str()) == 0);
+    }
+}
+
 TEST(nnfusion_backend, relu_op)
 {
     auto model = frontend::load_tensorflow_model(
         file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
 
+    std::vector<std::string> unittests{
+        "cuda_ew_relu_float_float_test.cu", "cuda_noop_test.cu", "cuda_result_test.cu"};
+
     for (auto function : model)
     {
         auto backend = ngraph::runtime::Backend::create("CUDA_CODEGEN:naive_unittest");
         backend->compile(function);
+
+        for (auto& fname : unittests)
+        {
+            EXPECT_TRUE(nnfusion_test::nvcc_test(fname));
+        }
     }
 }

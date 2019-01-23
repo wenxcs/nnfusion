@@ -11,7 +11,7 @@ bool NaiveUnitTestDump::run(shared_ptr<IntermediateOP>& inter_op)
         string filename = cop->codegen_function_name() + "_test.cu";
         shared_ptr<LanguageUnit> codewriter(new LanguageUnit(filename));
         auto& cw = *codewriter;
-        cw << cop->test_unit->collect_code() << "\n";
+        cw << cop->test_call_unit->collect_required_code() << "\n";
         cw << "int main()";
         cw.block_begin();
         cw << cop->test_call_unit->get_code();
