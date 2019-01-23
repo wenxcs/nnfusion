@@ -118,18 +118,6 @@ namespace ngraph
                             return cw;
                         }
 
-                        shared_ptr<LanguageUnit> codegen_test() override;
-
-                        shared_ptr<LanguageUnit> codegen_test_call() override
-                        {
-                            std::string name = codegen_test_name() + "_call";
-                            shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
-                            (*cw) << "assert(" << codegen_test_name() << "());\n";
-                            cw->require(shared_ptr<LanguageUnit>(
-                                new LanguageUnit("header_assert_h", "#include <assert.h>\n")));
-                            return cw;
-                        }
-
                         shared_ptr<LanguageUnit> codegen_dependency() override
                         {
                             std::string name = codegen_function_name() + "_dep";

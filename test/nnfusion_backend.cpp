@@ -21,7 +21,22 @@
 #include <sstream>
 #include <vector>
 
+#ifdef WIN32
+#include <windows.h>
+#define CLOSE_LIBRARY(a) FreeLibrary(a)
+#define DLSYM(a, b) GetProcAddress(a, b)
+#define DLIB_SUFFIX ".dll"
+#define DL_HANDLE HMODULE
+#else
+#include <dlfcn.h>
+#define CLOSE_LIBRARY(a) dlclose(a)
+#define DLSYM(a, b) dlsym(a, b)
+#define DLIB_SUFFIX ".so"
+#define DL_HANDLE void*
+#endif
+
 #include "gtest/gtest.h"
+#include "ngraph/file_util.hpp"
 #include "ngraph/frontend/tensorflow_import/tensorflow.hpp"
 #include "ngraph/ngraph.hpp"
 #include "util/all_close.hpp"
@@ -39,21 +54,118 @@ using Model = std::vector<std::shared_ptr<Function>>;
 
 namespace nnfusion_test
 {
-    bool file_exsits(const std::string& filename)
+    // This doodad finds the full path of the containing shared library
+    static std::string find_my_file()
+    {
+#ifdef WIN32
+        return ".";
+#else
+        Dl_info dl_info;
+        dladdr(reinterpret_cast<void*>(find_my_file), &dl_info);
+        return dl_info.dli_fname;
+#endif
+    }
+
+    bool file_exsits(std::string filename)
     {
         std::ifstream ifile(filename.c_str());
         return (bool)ifile;
     }
 
-    bool nvcc_test(const std::string& filename)
+    DL_HANDLE get_library(std::string func_name)
     {
-        if (!file_exsits(filename))
-            return false;
-        std::string obj = filename + ".bin";
-        int ret = system(("nvcc\t" + filename + "\t-o\t" + obj).c_str());
-        if (ret != 0 || !file_exsits(obj))
-            return false;
-        return (system(("./" + obj).c_str()) == 0);
+        std::string filename = func_name + ".cu";
+        assert(file_exsits(filename));
+
+        std::string objname = func_name + DLIB_SUFFIX;
+        std::string my_directory = file_util::get_directory(find_my_file());
+        std::string library_path = file_util::path_join(my_directory, objname);
+
+        int ret = system(
+            ("nvcc\t--compiler-options '-fPIC'\t--shared\t" + filename + "\t-o\t" + library_path)
+                .c_str());
+        assert(file_exsits(library_path));
+
+        DL_HANDLE handle;
+#ifdef WIN32
+        handle = LoadLibrary(library_path.c_str());
+#else
+        handle = dlopen(library_path.c_str(), RTLD_NOW);
+#endif
+
+        return handle;
+    }
+
+    void* get_funcion_pointer(std::string func_name, DL_HANDLE handle)
+    {
+        void* fhdl = DLSYM(handle, (func_name + "_simple").c_str());
+        assert(fhdl != nullptr);
+        return fhdl;
+    }
+
+    void close_dhhandel(DL_HANDLE& handle) { CLOSE_LIBRARY(handle); }
+    template <class T>
+    T* create_tensor(std::vector<T> data)
+    {
+        T* t = new T[data.size()];
+        for (int i = 0; i < data.size(); i++)
+            t[i] = data[i];
+        return t;
+    }
+
+    template <class T>
+    T* create_empty_tensor(std::vector<T> data)
+    {
+        T* t = new T[data.size()];
+        return t;
+    }
+
+    template <class T>
+    std::vector<T> create_vector(T* t, size_t size)
+    {
+        std::vector<T> vec;
+        for (int i = 0; i < size; i++)
+            vec.push_back(t[i]);
+        return vec;
+    }
+
+    template <class T, class T1>
+    std::vector<std::vector<T1>> execute_op(const std::shared_ptr<ngraph::Function>& function,
+                                            std::string test_name,
+                                            std::vector<std::vector<T>> args,
+                                            std::vector<std::vector<T1>> out,
+                                            std::string config)
+    {
+        std::vector<std::vector<T1>> vec_rc;
+        auto backend = ngraph::runtime::Backend::create(config);
+        backend->compile(function);
+        DL_HANDLE handle = nnfusion_test::get_library(test_name);
+        assert(handle != nullptr);
+        auto relu_fuc = reinterpret_cast<bool (*)(void**)>(
+            nnfusion_test::get_funcion_pointer(test_name, handle));
+
+        size_t args_cnt = args.size() + out.size();
+        void** arg = new void*[args_cnt];
+        for (int i = 0; i < args.size(); i++)
+            arg[i] = create_tensor(args[i]);
+        for (int i = args.size(); i < out.size() + args.size(); i++)
+            arg[i] = create_empty_tensor(out[i - args.size()]);
+
+        relu_fuc(arg);
+
+        for (int i = args.size(); i < out.size() + args.size(); i++)
+            vec_rc.push_back(create_vector((T1*)(arg[i]), out[i - args.size()].size()));
+
+        nnfusion_test::close_dhhandel(handle);
+
+        for (int i = 0; i < args.size(); i++)
+            delete (T*)arg[i];
+        for (int i = args.size(); i < out.size() + args.size(); i++)
+            delete (T1*)arg[i];
+
+        delete arg;
+
+        return vec_rc;
     }
 }
 
@@ -62,17 +174,14 @@ TEST(nnfusion_backend, relu_op)
     auto model = frontend::load_tensorflow_model(
         file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
 
-    std::vector<std::string> unittests{
-        "cuda_ew_relu_float_float_test.cu", "cuda_noop_test.cu", "cuda_result_test.cu"};
+    Inputs inputs{{-1, -0.00001, 0, 0.00001, 2}};
+    Outputs expected_outputs{{0, 0, 0, 0.00001, 2}};
 
-    for (auto function : model)
-    {
-        auto backend = ngraph::runtime::Backend::create("CUDA_CODEGEN:naive_unittest");
-        backend->compile(function);
-
-        for (auto& fname : unittests)
-        {
-            EXPECT_TRUE(nnfusion_test::nvcc_test(fname));
-        }
-    }
+    Outputs outputs{nnfusion_test::execute_op(model[0],
+                                              "cuda_ew_relu_float_float_test",
+                                              inputs,
+                                              expected_outputs,
+                                              "CUDA_CODEGEN:naive_unittest")};
+    EXPECT_EQ(outputs.size(), 1);
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }

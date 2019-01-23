@@ -62,8 +62,7 @@ namespace ngraph
                 virtual shared_ptr<LanguageUnit> codegen_dependency() = 0;
                 virtual shared_ptr<LanguageUnit> codegen_function_definition() = 0;
                 virtual shared_ptr<LanguageUnit> codegen_function_call() = 0;
-                virtual shared_ptr<LanguageUnit> codegen_test() = 0;
-                virtual shared_ptr<LanguageUnit> codegen_test_call() = 0;
+                virtual shared_ptr<LanguageUnit> codegen_test();
 
             public:
                 virtual shared_ptr<LanguageUnit> codegen_source();

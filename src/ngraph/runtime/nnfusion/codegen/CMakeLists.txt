@@ -6,7 +6,6 @@ set(NNF_CUDA_CODEGEN_SRC
     cuda/cuda_helper.cpp 
     cuda/cuda_testutil.cpp 
     cuda/Result.cpp
-    cuda/Relu.cpp
 )
 
 add_library(nnfusion_cuda_codegen STATIC ${NNF_CUDA_CODEGEN_SRC})

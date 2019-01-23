@@ -19,7 +19,7 @@ namespace ngraph
                     class Noop : public CodeGenOP
                     {
                     public:
-                        Noop(shared_ptr<IntermediateOP> inter_op) {}
+                        Noop(shared_ptr<IntermediateOP> inter_op) { this->inter_op = inter_op; }
                         string codegen_function_name() override { return "cuda_noop"; }
                         string codegen_test_name() override { return "cuda_noop_test"; }
                     private:
@@ -31,14 +31,6 @@ namespace ngraph
                         {
                             return shared_ptr<LanguageUnit>(new LanguageUnit);
                         }
-                        shared_ptr<LanguageUnit> codegen_test() override
-                        {
-                            return shared_ptr<LanguageUnit>(new LanguageUnit);
-                        }
-                        shared_ptr<LanguageUnit> codegen_test_call() override
-                        {
-                            return shared_ptr<LanguageUnit>(new LanguageUnit);
-                        };
                         shared_ptr<LanguageUnit> codegen_dependency() override
                         {
                             return shared_ptr<LanguageUnit>(new LanguageUnit);

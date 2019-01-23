@@ -37,22 +37,6 @@ shared_ptr<LanguageUnit> cuda::Result::codegen_function_call()
     return cw;
 }
 
-shared_ptr<LanguageUnit> cuda::Result::codegen_test()
-{
-    shared_ptr<LanguageUnit> cw(new LanguageUnit);
-    LanguageUnit& writer = *cw;
-    writer << "// No test codegen for result OP\n";
-    return cw;
-}
-
-shared_ptr<LanguageUnit> cuda::Result::codegen_test_call()
-{
-    shared_ptr<LanguageUnit> cw(new LanguageUnit);
-    LanguageUnit& writer = *cw;
-    writer << "// No test for result OP\n";
-    return cw;
-}
-
 shared_ptr<LanguageUnit> cuda::Result::codegen_dependency()
 {
     shared_ptr<LanguageUnit> cw(new LanguageUnit);

@@ -26,8 +26,6 @@ namespace ngraph
                     private:
                         shared_ptr<LanguageUnit> codegen_function_definition() override;
                         shared_ptr<LanguageUnit> codegen_function_call() override;
-                        shared_ptr<LanguageUnit> codegen_test() override;
-                        shared_ptr<LanguageUnit> codegen_test_call() override;
                         shared_ptr<LanguageUnit> codegen_dependency() override;
 
                     public:
