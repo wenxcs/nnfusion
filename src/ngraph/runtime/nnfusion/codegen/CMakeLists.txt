@@ -3,6 +3,7 @@
 #Added Codegen Pass for Cuda
 set(NNF_CUDA_CODEGEN_SRC
     cuda/cuda_codegen.cpp 
+    cuda/cuda_codegenop.cpp 
     cuda/cuda_helper.cpp 
     cuda/cuda_testutil.cpp 
     cuda/Result.cpp

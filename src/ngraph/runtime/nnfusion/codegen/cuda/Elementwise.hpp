@@ -3,7 +3,7 @@
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
 #include "ngraph/runtime/nnfusion/intermediate/op_tbl.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegenop.hpp"
 
 namespace ngraph
 {
@@ -16,14 +16,14 @@ namespace ngraph
                 namespace cuda
                 {
                     template <class T>
-                    class Elementwise : public CodeGenOP
+                    class Elementwise : public CudaCodeGenOP
                     {
                     private:
                         shared_ptr<intermediate::Elementwise<T>> inter_op;
 
                     public:
                         Elementwise(shared_ptr<IntermediateOP> inter_op)
-                            : CodeGenOP(inter_op)
+                            : CudaCodeGenOP(inter_op)
                         {
                             assert_nullptr(
                                 this->inter_op =
@@ -47,7 +47,6 @@ namespace ngraph
                             return codegen_function_name() + "_test";
                         }
 
-                    private:
                         shared_ptr<LanguageUnit> codegen_function_definition() override
                         {
                             std::string name = codegen_function_name();
@@ -129,7 +128,6 @@ namespace ngraph
                             return cw;
                         }
 
-                    public:
                         static std::shared_ptr<CodeGenOP>
                             codegen(std::shared_ptr<IntermediateOP> inter_op)
                         {

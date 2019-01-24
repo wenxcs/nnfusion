@@ -2,7 +2,7 @@
 #pragma once
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegenop.hpp"
 
 using namespace ngraph;
 
@@ -16,13 +16,13 @@ namespace ngraph
             {
                 namespace cuda
                 {
-                    class Noop : public CodeGenOP
+                    class Noop : public CudaCodeGenOP
                     {
                     public:
                         Noop(shared_ptr<IntermediateOP> inter_op) { this->inter_op = inter_op; }
                         string codegen_function_name() override { return "cuda_noop"; }
                         string codegen_test_name() override { return "cuda_noop_test"; }
-                    private:
+
                         shared_ptr<LanguageUnit> codegen_function_definition() override
                         {
                             return shared_ptr<LanguageUnit>(new LanguageUnit);

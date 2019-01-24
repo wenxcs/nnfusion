@@ -141,7 +141,7 @@ namespace nnfusion_test
         backend->compile(function);
         DL_HANDLE handle = nnfusion_test::get_library(test_name);
         assert(handle != nullptr);
-        auto relu_fuc = reinterpret_cast<bool (*)(void**)>(
+        auto func_simple = reinterpret_cast<bool (*)(void**)>(
             nnfusion_test::get_funcion_pointer(test_name, handle));
 
         size_t args_cnt = args.size() + out.size();
@@ -151,20 +151,18 @@ namespace nnfusion_test
         for (int i = args.size(); i < out.size() + args.size(); i++)
             arg[i] = create_empty_tensor(out[i - args.size()]);
 
-        relu_fuc(arg);
+        func_simple(arg);
 
         for (int i = args.size(); i < out.size() + args.size(); i++)
             vec_rc.push_back(create_vector((T1*)(arg[i]), out[i - args.size()].size()));
 
+        //Release Resources
         nnfusion_test::close_dhhandel(handle);
-
         for (int i = 0; i < args.size(); i++)
             delete (T*)arg[i];
         for (int i = args.size(); i < out.size() + args.size(); i++)
             delete (T1*)arg[i];
-
         delete arg;
-
         return vec_rc;
     }
 }

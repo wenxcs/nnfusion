@@ -1,11 +1,10 @@
 // Microsoft (c) 2019, Wenxiang
 #include "ngraph/runtime/nnfusion/codegen/cuda/Result.hpp"
 
-using namespace ngraph;
 using namespace ngraph::runtime::nnfusion::codegen;
 
 cuda::Result::Result(shared_ptr<IntermediateOP> inter_op)
-    : CodeGenOP(inter_op)
+    : CudaCodeGenOP(inter_op)
 {
 }
 

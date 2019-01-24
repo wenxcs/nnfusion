@@ -57,14 +57,11 @@ namespace ngraph
                 virtual string codegen_function_name() = 0;
                 virtual string codegen_test_name() = 0;
 
-            private:
                 // Interface for Generate code pieces
                 virtual shared_ptr<LanguageUnit> codegen_dependency() = 0;
                 virtual shared_ptr<LanguageUnit> codegen_function_definition() = 0;
                 virtual shared_ptr<LanguageUnit> codegen_function_call() = 0;
-                virtual shared_ptr<LanguageUnit> codegen_test();
-
-            public:
+                virtual shared_ptr<LanguageUnit> codegen_test() = 0;
                 virtual shared_ptr<LanguageUnit> codegen_source();
 
                 CodeGenOP();
