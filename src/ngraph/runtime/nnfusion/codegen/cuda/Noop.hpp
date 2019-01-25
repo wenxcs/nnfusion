@@ -1,8 +1,9 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
-#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegenop.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_langunit.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 
 using namespace ngraph;
 
@@ -22,7 +23,6 @@ namespace ngraph
                         Noop(shared_ptr<IntermediateOP> inter_op) { this->inter_op = inter_op; }
                         string codegen_function_name() override { return "cuda_noop"; }
                         string codegen_test_name() override { return "cuda_noop_test"; }
-
                         shared_ptr<LanguageUnit> codegen_function_definition() override
                         {
                             return shared_ptr<LanguageUnit>(new LanguageUnit);

@@ -39,7 +39,7 @@ shared_ptr<LanguageUnit> cuda::Result::codegen_function_call()
 shared_ptr<LanguageUnit> cuda::Result::codegen_dependency()
 {
     shared_ptr<LanguageUnit> cw(new LanguageUnit);
-    cw->require(shared_ptr<LanguageUnit>(new LanguageUnit("header_cuda_h", "#include <cuda.h>\n")));
+    cw->require(header::cuda);
     return cw;
 }
 

@@ -1,8 +1,9 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
-#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegenop.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_langunit.hpp"
+#include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
 
 using namespace ngraph;
 

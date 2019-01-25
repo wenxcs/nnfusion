@@ -18,10 +18,7 @@ namespace ngraph
                     class CudaCodeGenOP : public CodeGenOP
                     {
                     public:
-                        CudaCodeGenOP()
-                        {
-                        }
-
+                        CudaCodeGenOP() {}
                         CudaCodeGenOP(shared_ptr<IntermediateOP> inter_op)
                             : CodeGenOP(inter_op)
                         {

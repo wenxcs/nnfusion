@@ -1,9 +1,10 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegenop.hpp"
 #include "ngraph/runtime/nnfusion/codegen/cuda/cuda_helper.hpp"
+#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_langunit.hpp"
 #include "ngraph/runtime/nnfusion/intermediate/op_tbl.hpp"
 #include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
-#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_codegenop.hpp"
 
 namespace ngraph
 {
@@ -121,10 +122,10 @@ namespace ngraph
                         {
                             std::string name = codegen_function_name() + "_dep";
                             shared_ptr<LanguageUnit> cw(new LanguageUnit(name));
-                            cw->require(shared_ptr<LanguageUnit>(
-                                new LanguageUnit("header_cuda_h", "#include <cuda.h>\n")));
-                            cw->require(shared_ptr<LanguageUnit>(
-                                new LanguageUnit("header_stdio_h", "#include <stdio.h>\n")));
+
+                            cw->require(header::cuda);
+                            cw->require(header::stdio);
+
                             return cw;
                         }
 
