@@ -1,6 +1,6 @@
 # Microsoft (c) 2019, Wenxiang Hu
 
-if (NGRAPH_INTERPRETER_ENABLE)
+if (NGRAPH_GPU_ENABLE)
     find_package(CUDA 9 QUIET)
     if (CUDA_FOUND)
         set(CUDA9_FOUND TRUE)
@@ -29,43 +29,46 @@ if (NGRAPH_INTERPRETER_ENABLE)
     find_library(CUDA_cuda_LIBRARY cuda /usr/local/cuda/lib64/stubs)
     find_library(CUDA_cudart_LIBRARY libcudart_static.a /usr/local/cuda/lib64)
 
-    add_subdirectory(codegen)
-    add_subdirectory(intermediate)
+    # Make pass and op object
     add_subdirectory(pass)
+    add_subdirectory(op)
 
-    set(COMMON_SRC
-        nnfusion_functiontranslator.cpp
-        nnfusion_tensorwrapper.cpp
-        nnfusion_codegenerator.cpp
-        nnfusion_languageunit.cpp
-        nnfusion_op.cpp
+    # This is the source file shared by devices
+    set(CORE
+        core/codegenerator.cpp
+        core/interpreter.cpp
+        core/languageunit.cpp
+        core/op.cpp 
+        core/tensorwrapper.cpp
     )
 
-    set(CUDA_CODEGEN_SRC
-        nnfusion_cudacodegen.cpp
-        ${COMMON_SRC}
-    )
+    # Add cuda backend
+    if (CUDA_FOUND)
+        add_subdirectory(cuda)
+        set(CUDA_CODEGEN_SRC
+            nnfusion_cudacodegen.cpp
+            ${CORE}
+        )
 
-    add_library(cuda_codegen_backend SHARED
-        ${CUDA_CODEGEN_SRC}
-    )
+        add_library(cuda_codegen_backend SHARED
+            ${CUDA_CODEGEN_SRC}
+        )
 
-    target_include_directories(cuda_codegen_backend SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS} ${CUDNN_INCLUDE_DIR})
-    set_target_properties(cuda_codegen_backend PROPERTIES VERSION ${NGRAPH_VERSION})
-    target_link_libraries(cuda_codegen_backend PUBLIC
-        nnfusion_cuda_codegen
-        nnfusion_intermediate
-        nnfusion_trans_pass
-        nnfusion_codegen_pass
-        ngraph
-        ${CUDA_cuda_LIBRARY}
-        ${CUDA_cudart_LIBRARY}
-        ${CUDA_LIBRARIES}
-    )
-    set_target_properties(cuda_codegen_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})
+        target_include_directories(cuda_codegen_backend SYSTEM PUBLIC ${CUDA_INCLUDE_DIRS} ${CUDNN_INCLUDE_DIR})
+        set_target_properties(cuda_codegen_backend PROPERTIES VERSION ${NGRAPH_VERSION})
+        target_link_libraries(cuda_codegen_backend PRIVATE
+            nnfusion_cuda
+            nnfusion_op
+            nnfusion_pass
+            ${CUDA_cuda_LIBRARY}
+            ${CUDA_cudart_LIBRARY}
+            ${CUDA_LIBRARIES}
+        )
+        set_target_properties(cuda_codegen_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})
 
-    install(TARGETS cuda_codegen_backend
-        LIBRARY DESTINATION "${NGRAPH_INSTALL_LIB}"
-        ARCHIVE DESTINATION "${NGRAPH_INSTALL_LIB}"
-    )
+        install(TARGETS cuda_codegen_backend
+            LIBRARY DESTINATION "${NGRAPH_INSTALL_LIB}"
+            ARCHIVE DESTINATION "${NGRAPH_INSTALL_LIB}"
+        )
+    endif()
 endif()

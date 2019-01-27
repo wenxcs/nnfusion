@@ -180,6 +180,22 @@ TEST(nnfusion_backend, relu_op)
                                               inputs,
                                               expected_outputs,
                                               "CUDA_CODEGEN:naive_unittest")};
+
+    EXPECT_EQ(outputs.size(), 1);
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
+
+TEST(nnfusion_backend, relu_graph)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
+
+    Inputs inputs{{-1, -0.00001, 0, 0.00001, 2}};
+    Outputs expected_outputs{{0, 0, 0, 0.00001, 2}};
+
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
     EXPECT_EQ(outputs.size(), 1);
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }

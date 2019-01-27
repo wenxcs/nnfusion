@@ -1,24 +1,18 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 
-#include "ngraph/runtime/nnfusion/nnfusion_codegenerator.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_common.hpp"
-#include "ngraph/runtime/nnfusion/nnfusion_op.hpp"
+#include "../../core/codegenerator.hpp"
+#include "../../core/common.hpp"
+#include "../../core/op.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace runtime
+    namespace codegen
     {
-        namespace nnfusion
+        class NaiveUnitTestDump : public ICodeGeneratorPass
         {
-            namespace codegen
-            {
-                class NaiveUnitTestDump : public ICodeGeneratorPass
-                {
-                public:
-                    bool run(std::shared_ptr<ngraph::runtime::nnfusion::IntermediateOP>& inter_op);
-                };
-            }
-        }
+        public:
+            bool run(ir::Operator_p& inter_op);
+        };
     }
 }

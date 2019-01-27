@@ -1,17 +1,17 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "ngraph/runtime/nnfusion/pass/codegen/naive_unit_test_dump.hpp"
-#include "ngraph/runtime/nnfusion/codegen/cuda/cuda_langunit.hpp"
+#include "naive_unit_test_dump.hpp"
+#include "../../cuda/cuda_langunit.hpp"
 
-using namespace ngraph::runtime::nnfusion::codegen;
+using namespace nnfusion::codegen;
 
-bool NaiveUnitTestDump::run(shared_ptr<IntermediateOP>& inter_op)
+bool NaiveUnitTestDump::run(ir::Operator_p& inter_op)
 {
-    shared_ptr<CodeGenOP> cop = static_pointer_cast<CodeGenOP>(inter_op);
-    if (cop != nullptr && cop->isCodeGened)
+    auto cop = static_pointer_cast<ir::Function>(inter_op);
+    if (cop != nullptr && cop->is_codegened())
     {
-        cop->dep_unit->require(declaration::typedef_int);
+        cop->dep_unit->require(cuda::declaration::typedef_int);
         string filename = cop->codegen_function_name() + "_test.cu";
-        shared_ptr<LanguageUnit> codewriter(new LanguageUnit(filename));
+        LanguageUnit_p codewriter(new LanguageUnit(filename));
         auto& cw = *codewriter;
         cw << cop->test_unit->collect_code();
         // Save the function
