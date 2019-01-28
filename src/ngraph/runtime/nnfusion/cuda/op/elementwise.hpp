@@ -42,9 +42,12 @@ namespace nnfusion
                 std::string op = CudaOpMap<T>::op;
                 std::vector<std::string>& data_types = inter_op->dtypes;
 
-                auto math_kernel = get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
-                assert_nullptr(math_kernel);
-                cw->require(math_kernel);
+                if (CudaOpMap<T>::math_kernel != nullptr)
+                {
+                    auto math_kernel = get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
+                    assert_nullptr(math_kernel);
+                    cw->require(math_kernel);
+                }
 
                 auto num_inputs = data_types.size() - 1;
                 assert_bool(num_inputs > 0)

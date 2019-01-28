@@ -68,12 +68,14 @@ ir::Operator_p FunctionTranslator::translate_node(shared_ptr<Node> node)
         {type_index(typeid(ngraph::op::Result)), ir::Result::translate},
         {type_index(typeid(ngraph::op::Constant)), ir::Constant::translate},
         {type_index(typeid(ngraph::op::Relu)), ir::Elementwise<ngraph::op::Relu>::translate},
+        {type_index(typeid(ngraph::op::Abs)), ir::Elementwise<ngraph::op::Abs>::translate},
     };
     auto it = typeid_map.find(type_index(typeid(*node)));
     if (it == typeid_map.end())
     {
-        NGRAPH_DEBUG << "Unsupported op '" + node->description() + "'" << endl;
-        return nullptr;
+        NGRAPH_DEBUG << "Unsupported op '" + node->description() + "', using Anyop instead."
+                     << endl;
+        return ir::Anyop::translate(node);
     }
     NGRAPH_DEBUG << "Translate op '" + node->description() + "'" << endl;
     return it->second(node);

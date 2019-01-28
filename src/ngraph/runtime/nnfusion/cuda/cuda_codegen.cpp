@@ -5,21 +5,26 @@ using namespace nnfusion::cuda;
 
 bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
 {
-    const std::map<type_index, function<ir::Function_p(ir::Operator_p)>> typeid_map{
+    const std::map<type_index, function<CudaFunction_p(ir::Operator_p)>> typeid_map{
         {type_index(typeid(ngraph::op::Result)), Result::codegen},
         {type_index(typeid(ngraph::op::Parameter)), Noop::codegen},
         {type_index(typeid(ngraph::op::Constant)), ConstantNaive::codegen},
         {type_index(typeid(ngraph::op::Relu)), Elementwise<ngraph::op::Relu>::codegen},
+        {type_index(typeid(ngraph::op::Abs)), Elementwise<ngraph::op::Abs>::codegen},
     };
     auto& node = *(inter_op->node);
     auto it = typeid_map.find(type_index(typeid(node)));
+    CudaFunction_p cop(nullptr);
     if (it == typeid_map.end())
     {
-        NGRAPH_DEBUG << "Unsupported op '" << node.description() << "'" << endl;
-        return false;
+        NGRAPH_DEBUG << "Unsupported op '" << node.description() << "', using Anyop." << endl;
+        cop = Anyop::codegen(inter_op);
     }
-    NGRAPH_DEBUG << "Codegen op '" << node.description() << "'" << endl;
-    auto cop = it->second(inter_op);
+    else
+    {
+        NGRAPH_DEBUG << "Codegen op '" << node.description() << "'" << endl;
+        cop = it->second(inter_op);
+    }
     assert_nullptr(cop);
     auto cw = cop->codegen_source();
     assert_nullptr(cw);
@@ -113,7 +118,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 params.push_back(ss.str());
             }
 
-            for (int i = 0; i < tu->arg.size(); i++)
+            for (int i = 0; i < tu->out.size(); i++)
             {
                 auto tv = tu->out[i];
                 string type = tv->get_element_type().c_type_string();
@@ -188,7 +193,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 params.push_back(ss.str());
             }
 
-            for (int i = 0; i < tu->arg.size(); i++)
+            for (int i = 0; i < tu->out.size(); i++)
             {
                 auto tv = tu->out[i];
                 string type = tv->get_element_type().c_type_string();
@@ -234,7 +239,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 params.push_back(tv->get_name());
             }
 
-            for (int i = 0; i < tu->arg.size(); i++)
+            for (int i = 0; i < tu->out.size(); i++)
             {
                 auto& tv = tu->out[i];
                 params.push_back(tv->get_name());
@@ -275,7 +280,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 params.push_back(ss.str());
             }
 
-            for (int i = 0; i < tu->arg.size(); i++, acc++)
+            for (int i = 0; i < tu->out.size(); i++, acc++)
             {
                 auto tv = tu->out[i];
                 string type = tv->get_element_type().c_type_string();

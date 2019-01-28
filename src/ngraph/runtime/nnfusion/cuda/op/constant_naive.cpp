@@ -37,7 +37,7 @@ LanguageUnit_p ConstantNaive::codegen_function_definition()
         // Where should we put the planning code
         // *lu << "cudaMalloc((void**)out, " << inter_op->data_size << ")\n";
         *lu << "std::ifstream bin_file(\"" << const_name
-            << "\".bin , std::ios::in | std::ios::binary);\n"
+            << ".bin\" , std::ios::in | std::ios::binary);\n"
             << "char* tmp_mem = new char[" << inter_op->data_size << "];\n"
             << "bin_file.read(tmp_mem, " << inter_op->data_size << ");\n"
             << "cudaMemcpy(*out, tmp_mem, " << inter_op->data_size << ", cudaMemcpyHostToDevice);\n"

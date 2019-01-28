@@ -167,7 +167,8 @@ namespace nnfusion_test
     }
 }
 
-TEST(nnfusion_backend, relu_op)
+/* example for test one function
+TEST(nnfusion_backend, relu_fun)
 {
     auto model = frontend::load_tensorflow_model(
         file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
@@ -184,8 +185,9 @@ TEST(nnfusion_backend, relu_op)
     EXPECT_EQ(outputs.size(), 1);
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }
+*/
 
-TEST(nnfusion_backend, relu_graph)
+TEST(nnfusion_backend, relu_op)
 {
     auto model = frontend::load_tensorflow_model(
         file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_relu_graph.pb"));
@@ -198,4 +200,21 @@ TEST(nnfusion_backend, relu_graph)
 
     EXPECT_EQ(outputs.size(), 1);
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
+
+TEST(nnfusion_backend, abs_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_abs_graph.pb"));
+
+    std::vector<std::vector<int64_t>> inputs{};
+    std::vector<std::vector<int64_t>> expected_outputs{{2147483649}};
+
+    // constant input is -2147483649
+    std::vector<std::vector<int64_t>> outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_EQ(outputs.size(), 1);
+    // This abs is through fabs, so it's maybe inaccurate;
+    EXPECT_TRUE(abs(outputs[0][0] - expected_outputs[0][0]) < 10);
 }
