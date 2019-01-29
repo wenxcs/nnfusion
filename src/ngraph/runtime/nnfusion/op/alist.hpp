@@ -2,6 +2,7 @@
 #pragma once
 
 #include "anyop.hpp"
+#include "broadcast.hpp"
 #include "constant.hpp"
 #include "elementwise.hpp"
 #include "noop.hpp"

@@ -23,6 +23,8 @@ namespace nnfusion
         namespace declaration
         {
             LU_DEFINE(typedef_int);
+            LU_DEFINE(division_by_invariant_multiplication);
+            LU_DEFINE(load);
         }
     }
 }

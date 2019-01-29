@@ -16,6 +16,8 @@ namespace nnfusion
             }
 
             LanguageUnit_p codegen_test() override;
+
+            string gen_comments();
         };
 
         using CudaFunction_p = shared_ptr<CudaFunction>;

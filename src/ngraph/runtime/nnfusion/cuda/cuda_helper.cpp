@@ -56,3 +56,72 @@ void cuda::emit_memcpyDtD(CodeWriter& writer,
            << ", cudaMemcpyHostToHost);\n";
     return;
 }
+
+void cuda::coordinate_transform_to_multi_d(CodeWriter& writer,
+                                           std::string i_strides,
+                                           std::string i_stride_magic,
+                                           std::string i_stride_shift,
+                                           std::string i_coord_product,
+                                           std::string o_coordinates,
+                                           size_t rank,
+                                           bool register_arguments)
+{
+    std::string brace_open = (register_arguments) ? "" : "[";
+    std::string brace_close = (register_arguments) ? "" : "]";
+
+    // Translation from flat index to dense tensor coordinates:
+    // Given tensor shape [d0 d1 ... dN] with strides [d1*...*dN, d2*...*dN, ... 1],
+    // calculate coordinates as:
+    //
+    //  product = tid
+    //  d0 = product/stride[0]
+    //  product = product % stride[0]
+    //  d1 = product/stride[1]
+    //  ...
+    writer << "int coordinate_product = " << i_coord_product << ";\n";
+    for (size_t i = 0; i < rank; i++)
+    {
+        if (i != 0)
+        {
+            writer << "coordinate_product -= (" << o_coordinates << i - 1 << " * " << i_strides
+                   << brace_open << i - 1 << brace_close << ");\n";
+        }
+        writer << "int " << o_coordinates << i << " = division_by_invariant_multiplication("
+               << "coordinate_product, " << i_stride_magic << brace_open << i << brace_close << ", "
+               << i_stride_shift << brace_open << i << brace_close << ");\n";
+    }
+}
+
+std::string cuda::collective_coordinate_transform_helper(CodeWriter& writer,
+                                                         std::string i_thread_index,
+                                                         std::string i_strides,
+                                                         std::string i_stride_magic,
+                                                         std::string i_stride_shift,
+                                                         std::string i_reduced_strides,
+                                                         std::string o_coordinates,
+                                                         size_t rank,
+                                                         bool register_arguments)
+{
+    coordinate_transform_to_multi_d(writer,
+                                    i_strides,
+                                    i_stride_magic,
+                                    i_stride_shift,
+                                    i_thread_index,
+                                    o_coordinates,
+                                    rank,
+                                    register_arguments);
+
+    std::string brace_open = (register_arguments) ? "" : "[";
+    std::string brace_close = (register_arguments) ? "" : "]";
+
+    // index into reduced tensor from coordinates of non-reduced tensor
+    std::string reduced_idx = "reduced_idx";
+    writer << "int " << reduced_idx << " = 0;\n";
+    for (size_t i = 0; i < rank; i++)
+    {
+        writer << "reduced_idx += " << o_coordinates << i << " * " << i_reduced_strides
+               << brace_open << i << brace_close << ";\n";
+    }
+
+    return reduced_idx;
+}

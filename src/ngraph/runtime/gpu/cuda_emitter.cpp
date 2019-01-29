@@ -2377,6 +2377,12 @@ size_t runtime::gpu::CUDAEmitter::build_broadcast(const std::array<std::string, 
         runtime::gpu::CudaKernelBuilder::get_broadcast_op(
             writer, kernel_name, args, result_shape.size());
         compiled_kernel = m_ctx->compiled_kernel_pool->set(kernel_name, writer.get_code());
+        std::cout << writer.get_code() << std::endl;
+        std::cout << hash << std::endl;
+        std::cout << "strides " << strides[0] << std::endl;
+        std::cout << "stride_magic " << stride_magic[0] << std::endl;
+        std::cout << "stride_shift " << stride_shift[0] << std::endl;
+        std::cout << "reduced_strides " << reduced_strides[0] << std::endl;
     }
 
     std::unique_ptr<gpu::primitive> broadcast(

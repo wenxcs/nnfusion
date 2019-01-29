@@ -38,10 +38,11 @@ LanguageUnit_p ConstantNaive::codegen_function_definition()
         // *lu << "cudaMalloc((void**)out, " << inter_op->data_size << ")\n";
         *lu << "std::ifstream bin_file(\"" << const_name
             << ".bin\" , std::ios::in | std::ios::binary);\n"
+            << "cudaMalloc((void**)out, " << inter_op->data_size << ");\n"
             << "char* tmp_mem = new char[" << inter_op->data_size << "];\n"
             << "bin_file.read(tmp_mem, " << inter_op->data_size << ");\n"
             << "cudaMemcpy(*out, tmp_mem, " << inter_op->data_size << ", cudaMemcpyHostToDevice);\n"
-            << "bin_file.close();";
+            << "bin_file.close();\n";
     }
     (*lu).block_end();
     return lu;

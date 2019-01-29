@@ -22,6 +22,7 @@ namespace nnfusion
             vector<string> arg_names;
             vector<TensorWrapper> out;
             vector<string> out_names;
+            vector<string> dtypes;
 
             Operator();
             Operator(shared_ptr<Node> node);

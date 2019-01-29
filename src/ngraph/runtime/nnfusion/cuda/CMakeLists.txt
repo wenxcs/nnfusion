@@ -13,6 +13,7 @@ set(OP
     op/constant_naive.cpp
     op/result.cpp
     op/anyop.cpp
+    op/broadcast.cpp
 )
 
 add_library(nnfusion_cuda STATIC ${SRC} ${OP})

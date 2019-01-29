@@ -3,6 +3,8 @@
 #Added Intermediate OPs for nnfusion
 set(NNF_INTERMEDIATE
     result.cpp
+    broadcast.cpp
+    util/gpu_util.cpp
 )
 
 add_library(nnfusion_op STATIC ${NNF_INTERMEDIATE})

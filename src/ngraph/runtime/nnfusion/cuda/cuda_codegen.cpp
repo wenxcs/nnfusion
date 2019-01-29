@@ -9,8 +9,11 @@ bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
         {type_index(typeid(ngraph::op::Result)), Result::codegen},
         {type_index(typeid(ngraph::op::Parameter)), Noop::codegen},
         {type_index(typeid(ngraph::op::Constant)), ConstantNaive::codegen},
+        {type_index(typeid(ngraph::op::Broadcast)), Broadcast::codegen},
         {type_index(typeid(ngraph::op::Relu)), Elementwise<ngraph::op::Relu>::codegen},
+        {type_index(typeid(ngraph::op::Add)), Elementwise<ngraph::op::Add>::codegen},
         {type_index(typeid(ngraph::op::Abs)), Elementwise<ngraph::op::Abs>::codegen},
+        {type_index(typeid(ngraph::op::Subtract)), Elementwise<ngraph::op::Subtract>::codegen},
     };
     auto& node = *(inter_op->node);
     auto it = typeid_map.find(type_index(typeid(node)));
@@ -83,8 +86,11 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
         lu << re.collect_required_code();
     }
 
+    lu << "#include <assert.h>\n";
+
     // Collect Function Definition
     {
+        unordered_set<string> declared;
         LanguageUnit def("FUNCTIONS");
         for (auto& op : inter_ops)
         {
@@ -96,7 +102,16 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 if (it.second != base->dep_unit)
                     def.require(it.second);
             }
-            def << base->definition_unit->get_code() << "\n";
+            def << base->gen_comments();
+            if (declared.count(base->definition_unit->symbol) == 0)
+            {
+                def << base->definition_unit->get_code() << "\n";
+                declared.insert(base->definition_unit->symbol);
+            }
+            else
+            {
+                def << "// Function declared:" << base->definition_unit->symbol << "\n\n";
+            }
         }
         lu << def.collect_code() << "\n";
     }
@@ -170,6 +185,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             {
                 auto base = static_pointer_cast<CudaFunction>(op);
                 lu << base->call_unit->get_code();
+                lu << "assert(cudaSuccess == cudaGetLastError());\n";
             }
         }
         lu << "return 0;\n";

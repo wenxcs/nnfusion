@@ -96,8 +96,8 @@ namespace nnfusion
                 uint32_t aligned_grid_size_x =
                     fmin(num_SMs * 32, align_to_block_size(nthreads, block_size_x));
 
-                writer << codegen_function_name() << "<<<(" << aligned_grid_size_x << ", " << 1
-                       << ", " << 1 << "), (" << block_size_x << ", " << 1 << ", " << 1 << "), "
+                writer << codegen_function_name() << "<<<dim3(" << aligned_grid_size_x << ", " << 1
+                       << ", " << 1 << "), dim3(" << block_size_x << ", " << 1 << ", " << 1 << "), "
                        << 0 << ", " << 0 << ">>>"
                        << "(" << join(inter_op->arg_names, ", ") << ", "
                        << join(inter_op->out_names, ", ") << ", " << nthreads << ");\n";

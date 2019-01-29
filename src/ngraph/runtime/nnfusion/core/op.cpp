@@ -45,6 +45,17 @@ Operator::Operator(shared_ptr<Node> node)
         NGRAPH_DEBUG << join(parameter_nodes);
         NGRAPH_DEBUG << ")\n";
     }
+
+    for (auto& arg : in)
+    {
+        this->dtypes.push_back(arg.get_type());
+    }
+
+    for (auto& ou : out)
+    {
+        this->dtypes.push_back(ou.get_type());
+    }
+
     this->node = node;
     this->args = in;
     this->arg_names = node_input_names;

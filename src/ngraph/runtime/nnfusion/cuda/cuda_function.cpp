@@ -3,6 +3,31 @@
 
 using namespace nnfusion::cuda;
 
+string CudaFunction::gen_comments()
+{
+    LanguageUnit lu;
+    lu << "// Node name:\t" << op->node->get_name() << "\n";
+    lu << "// Description:\t" << op->node->description() << "\n";
+    lu << "// Input:\n";
+    for (auto& in : op->args)
+    {
+        lu << "//\t- name: " << in.get_name();
+        lu << "\ttype: " << in.get_type();
+        lu << "\tshape: " << in.get_shape();
+        lu << "\n";
+    }
+
+    lu << "// Output:\n";
+    for (auto& out : op->out)
+    {
+        lu << "//\t- name: " << out.get_name();
+        lu << "\ttype: " << out.get_type();
+        lu << "\tshape: " << out.get_shape();
+        lu << "\n";
+    }
+    return lu.get_code();
+}
+
 LanguageUnit_p CudaFunction::codegen_test()
 {
     create_ptr(LanguageUnit, _lu, codegen_test_name());

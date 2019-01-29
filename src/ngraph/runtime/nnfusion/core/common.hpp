@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>

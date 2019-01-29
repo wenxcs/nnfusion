@@ -82,7 +82,8 @@ namespace nnfusion_test
         std::string library_path = file_util::path_join(my_directory, objname);
 
         int ret = system(
-            ("nvcc\t--compiler-options '-fPIC'\t--shared\t" + filename + "\t-o\t" + library_path)
+            ("nvcc\t--compiler-options '-fPIC'\t--shared\t-gencode arch=compute_60,code=sm_60\t" +
+             filename + "\t-o\t" + library_path)
                 .c_str());
         assert(file_exsits(library_path));
 
@@ -217,4 +218,20 @@ TEST(nnfusion_backend, abs_op)
     EXPECT_EQ(outputs.size(), 1);
     // This abs is through fabs, so it's maybe inaccurate;
     EXPECT_TRUE(abs(outputs[0][0] - expected_outputs[0][0]) < 10);
+}
+
+TEST(nnfusion_backend, add_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_add_graph.pb"));
+
+    Inputs inputs{{2}};
+    Outputs expected_outputs{{3.0, 4.0, 5.0}};
+
+    // constant input is -2147483649
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_EQ(outputs.size(), 1);
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }

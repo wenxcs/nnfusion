@@ -67,8 +67,12 @@ ir::Operator_p FunctionTranslator::translate_node(shared_ptr<Node> node)
         {type_index(typeid(ngraph::op::Parameter)), ir::Noop::translate},
         {type_index(typeid(ngraph::op::Result)), ir::Result::translate},
         {type_index(typeid(ngraph::op::Constant)), ir::Constant::translate},
+        {type_index(typeid(ngraph::op::Broadcast)), ir::Broadcast::translate},
         {type_index(typeid(ngraph::op::Relu)), ir::Elementwise<ngraph::op::Relu>::translate},
         {type_index(typeid(ngraph::op::Abs)), ir::Elementwise<ngraph::op::Abs>::translate},
+        {type_index(typeid(ngraph::op::Add)), ir::Elementwise<ngraph::op::Add>::translate},
+        {type_index(typeid(ngraph::op::Subtract)),
+         ir::Elementwise<ngraph::op::Subtract>::translate},
     };
     auto it = typeid_map.find(type_index(typeid(*node)));
     if (it == typeid_map.end())
