@@ -235,3 +235,45 @@ TEST(nnfusion_backend, add_op)
     EXPECT_EQ(outputs.size(), 1);
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }
+
+TEST(nnfusion_backend, bias_add_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_bias_add_graph.pb"));
+
+    Inputs inputs;
+    inputs.emplace_back(
+        test::NDArray<float, 2>{{1.8, 2.2}, {-1.3, -0.04}, {3.0, -12}}.get_vector());
+    inputs.emplace_back(test::NDArray<float, 1>{100, -100}.get_vector());
+    std::vector<std::vector<float>> expected_outputs{
+        test::NDArray<float, 2>{{101.8, -97.8}, {98.7, -100.04}, {103, -112}}.get_vector()};
+
+    // constant input is -2147483649
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_EQ(outputs.size(), 1);
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
+
+TEST(nnfusion_backend, matmul_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_matmul_graph.pb"));
+
+    Inputs inputs;
+    inputs.emplace_back(
+        test::NDArray<float, 2>({{1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12}}).get_vector());
+    inputs.emplace_back(
+        test::NDArray<float, 2>({{13, 14, 15}, {16, 17, 18}, {19, 20, 21}, {22, 23, 24}})
+            .get_vector());
+    Outputs expected_outputs{
+        test::NDArray<float, 2>({{190, 200, 210}, {470, 496, 522}, {750, 792, 834}}).get_vector()};
+
+    // constant input is -2147483649
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_EQ(outputs.size(), 1);
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}

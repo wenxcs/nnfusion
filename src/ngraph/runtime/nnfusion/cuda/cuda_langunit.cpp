@@ -1,5 +1,7 @@
 // Microsoft (c) 2019, Wenxiang
 #include "cuda_langunit.hpp"
+#include "cuda_cublas.hpp"
+#include "cuda_cudnn.hpp"
 
 using namespace nnfusion::cuda;
 
@@ -9,14 +11,19 @@ using namespace nnfusion::cuda;
     LanguageUnit_p NAME = LanguageUnit_p(new LanguageUnit(STR(NAME), code));
 
 // Header
-LU_DEFINE(header::cuda, "#include <cuda.h>\n");
+LU_DEFINE(header::cuda, "#include <cuda.h>\n #include<cuda_runtime.h>\n");
+LU_DEFINE(header::cublas, "#include <cublas_v2.h>\n");
 LU_DEFINE(header::stdio, "#include <stdio.h>\n");
 LU_DEFINE(header::fstream, "#include <fstream>\n");
+LU_DEFINE(header::stdexcept, "#include <stdexcept>\n");
+LU_DEFINE(header::sstream, "#include <sstream>\n");
 
 // Macro
 LU_DEFINE(macro::NNFUSION_DEBUG, "#define NNFUSION_DEBUG\n");
 
-// Declaration
+// Declaration`
+//<TODO>Need special code for this global_cublas_handle
+LU_DEFINE(declaration::global_cublas_handle, "cublasHandle_t global_cublas_handle;\n");
 LU_DEFINE(declaration::typedef_int,
           "typedef signed char int8_t;\ntypedef signed short int16_t;\ntypedef signed int "
           "int32_t;\ntypedef signed long int int64_t;\ntypedef unsigned char uint8_t;\ntypedef "
@@ -71,5 +78,108 @@ __device__ __forceinline__ int64_t  load(const int64_t*  __restrict__ in, int i=
     return v;
 }
 )");
+
+LU_DEFINE(
+    macro::CUDA_SAFE_CALL_NO_THROW,
+    R"(#define CUDA_SAFE_CALL_NO_THROW(x)                                                                 \
+    do                                                                                             \
+    {                                                                                              \
+        CUresult result = x;                                                                       \
+        if (result != CUDA_SUCCESS)                                                                \
+        {                                                                                          \
+            const char* msg;                                                                       \
+            cuGetErrorName(result, &msg);                                                          \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #x " failed with error"                                    \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << msg;  \
+            std::cout << safe_call_ss.str() << std::endl;                                          \
+        }                                                                                          \
+    } while (0)
+)");
+
+LU_DEFINE(
+    macro::CUDA_SAFE_CALL,
+    R"(#define CUDA_SAFE_CALL(x)                                                                          \
+    do                                                                                             \
+    {                                                                                              \
+        CUresult result = x;                                                                       \
+        if (result != CUDA_SUCCESS)                                                                \
+        {                                                                                          \
+            const char* msg;                                                                       \
+            cuGetErrorName(result, &msg);                                                          \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #x " failed with error"                                    \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << msg;  \
+            throw std::runtime_error(safe_call_ss.str());                                          \
+        }                                                                                          \
+    } while (0)
+)
+)");
+
+LU_DEFINE(
+    macro::CUDNN_SAFE_CALL_NO_THROW,
+    R"(#define CUDNN_SAFE_CALL_NO_THROW(func)                                                             \
+    do                                                                                             \
+    {                                                                                              \
+        cudnnStatus_t e = (func);                                                                  \
+        if (e != CUDNN_STATUS_SUCCESS)                                                             \
+        {                                                                                          \
+            auto msg = cudnnGetErrorString(e);                                                     \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #func " failed with error"                                 \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << msg;  \
+            std::cout << safe_call_ss.str() << std::endl;                                          \
+        }                                                                                          \
+    } while (0)
+)");
+
+LU_DEFINE(
+    macro::CUDNN_SAFE_CALL,
+    R"(#define CUDNN_SAFE_CALL(func)                                                                      \
+    do                                                                                             \
+    {                                                                                              \
+        cudnnStatus_t e = (func);                                                                  \
+        if (e != CUDNN_STATUS_SUCCESS)                                                             \
+        {                                                                                          \
+            auto msg = cudnnGetErrorString(e);                                                     \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #func " failed with error"                                 \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << msg;  \
+            throw std::runtime_error(safe_call_ss.str());                                          \
+        }                                                                                          \
+    } while (0)
+)");
+
+LU_DEFINE(
+    macro::CUBLAS_SAFE_CALL_NO_THROW,
+    R"(#define CUBLAS_SAFE_CALL_NO_THROW(func)                                                            \
+    do                                                                                             \
+    {                                                                                              \
+        cublasStatus_t e = (func);                                                                 \
+        if (e != CUBLAS_STATUS_SUCCESS)                                                            \
+        {                                                                                          \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #func " failed with error"                                 \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << e;    \
+            std::cout << safe_call_ss.str() << std::endl;                                          \
+        }                                                                                          \
+    } while (0)
+    )");
+
+LU_DEFINE(
+    macro::CUBLAS_SAFE_CALL,
+    R"(#define CUBLAS_SAFE_CALL(func)                                                                     \
+    do                                                                                             \
+    {                                                                                              \
+        cublasStatus_t e = (func);                                                                 \
+        if (e != CUBLAS_STATUS_SUCCESS)                                                            \
+        {                                                                                          \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #func " failed with error"                                 \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << e;    \
+            throw std::runtime_error(safe_call_ss.str());                                          \
+        }                                                                                          \
+    } while (0)
+   )");
 
 #undef LU_DEFINE

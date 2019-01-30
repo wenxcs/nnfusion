@@ -10,10 +10,12 @@ bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
         {type_index(typeid(ngraph::op::Parameter)), Noop::codegen},
         {type_index(typeid(ngraph::op::Constant)), ConstantNaive::codegen},
         {type_index(typeid(ngraph::op::Broadcast)), Broadcast::codegen},
+        {type_index(typeid(ngraph::op::Dot)), Dot::codegen},
         {type_index(typeid(ngraph::op::Relu)), Elementwise<ngraph::op::Relu>::codegen},
         {type_index(typeid(ngraph::op::Add)), Elementwise<ngraph::op::Add>::codegen},
         {type_index(typeid(ngraph::op::Abs)), Elementwise<ngraph::op::Abs>::codegen},
         {type_index(typeid(ngraph::op::Subtract)), Elementwise<ngraph::op::Subtract>::codegen},
+        {type_index(typeid(ngraph::op::Multiply)), Elementwise<ngraph::op::Multiply>::codegen},
     };
     auto& node = *(inter_op->node);
     auto it = typeid_map.find(type_index(typeid(node)));
@@ -69,6 +71,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
     lu << "// Microsoft (c) 2019, Wenxiang\n";
 
     // Collect Requirement
+    unordered_set<string> global_required;
     {
         LanguageUnit re("REQUIREMENT");
         re.require(declaration::typedef_int);
@@ -80,6 +83,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             for (auto& it : base->dep_unit->local_symbol)
             {
                 re.require(it.second);
+                global_required.insert(it.second->symbol);
             }
         }
 
@@ -181,11 +185,19 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
 
         //Function Call
         {
+            if (global_required.count("declaration::global_cublas_handle") > 0)
+            {
+                lu << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
+            }
             for (auto& op : inter_ops)
             {
                 auto base = static_pointer_cast<CudaFunction>(op);
                 lu << base->call_unit->get_code();
                 lu << "assert(cudaSuccess == cudaGetLastError());\n";
+            }
+            if (global_required.count("declaration::global_cublas_handle") > 0)
+            {
+                lu << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
             }
         }
         lu << "return 0;\n";

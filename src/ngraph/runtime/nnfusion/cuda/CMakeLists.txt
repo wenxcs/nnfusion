@@ -13,6 +13,7 @@ set(OP
     op/constant_naive.cpp
     op/result.cpp
     op/anyop.cpp
+    op/dot.cpp
     op/broadcast.cpp
 )
 
