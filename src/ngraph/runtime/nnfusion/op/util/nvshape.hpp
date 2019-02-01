@@ -80,7 +80,8 @@ namespace ngraph
                 if (size >> 32 != 0)
                 {
                     throw std::runtime_error(
-                        "Request exceeds the bitwidth available for NVShapes (32)");
+                        "Request for std::vector<size_t> which exceeds the bitwidth available for "
+                        "NVShapes (32)");
                 }
                 this->push_back(static_cast<uint32_t>(size));
             }

@@ -39,6 +39,7 @@ if (NGRAPH_GPU_ENABLE)
         core/interpreter.cpp
         core/languageunit.cpp
         core/op.cpp 
+        core/type_info.cpp
         core/tensorwrapper.cpp
     )
 

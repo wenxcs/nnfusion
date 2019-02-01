@@ -47,13 +47,13 @@ void cuda::emit_memcpyDtD(CodeWriter& writer,
 {
     if (buffer_size == 0)
     {
-        writer << "cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
+        writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
                << dst.get_size() << " * " << dst.get_element_type().size()
-               << ", cudaMemcpyHostToHost);\n";
+               << ", cudaMemcpyDeviceToDevice));\n";
         return;
     }
-    writer << "cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", " << buffer_size
-           << ", cudaMemcpyHostToHost);\n";
+    writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
+           << buffer_size << ", cudaMemcpyDeviceToDevice));\n";
     return;
 }
 

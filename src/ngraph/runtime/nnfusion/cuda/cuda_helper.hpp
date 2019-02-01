@@ -8,8 +8,6 @@
 #include "../core/languageunit.hpp"
 #include "../core/op.hpp"
 #include "../op/alist.hpp"
-#include "cuda_cublas.hpp"
-#include "cuda_cudnn.hpp"
 #include "cuda_errorcheck.hpp"
 #include "cuda_kernelops.hpp"
 #include "cuda_testutil.hpp"

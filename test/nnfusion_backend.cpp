@@ -81,10 +81,10 @@ namespace nnfusion_test
         std::string my_directory = file_util::get_directory(find_my_file());
         std::string library_path = file_util::path_join(my_directory, objname);
 
-        int ret = system(
-            ("nvcc\t--compiler-options '-fPIC'\t--shared\t-gencode arch=compute_60,code=sm_60\t" +
-             filename + "\t-o\t" + library_path)
-                .c_str());
+        int ret = system(("nvcc\t--compiler-options\t'-fPIC\t-lcudnn'\t--shared\t-gencode\tarch="
+                          "compute_60,code=sm_60\t-O3\t" +
+                          filename + "\t-o\t" + library_path)
+                             .c_str());
         assert(file_exsits(library_path));
 
         DL_HANDLE handle;
@@ -248,7 +248,6 @@ TEST(nnfusion_backend, bias_add_op)
     std::vector<std::vector<float>> expected_outputs{
         test::NDArray<float, 2>{{101.8, -97.8}, {98.7, -100.04}, {103, -112}}.get_vector()};
 
-    // constant input is -2147483649
     Outputs outputs{nnfusion_test::execute_op(
         model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
 
@@ -270,10 +269,73 @@ TEST(nnfusion_backend, matmul_op)
     Outputs expected_outputs{
         test::NDArray<float, 2>({{190, 200, 210}, {470, 496, 522}, {750, 792, 834}}).get_vector()};
 
-    // constant input is -2147483649
     Outputs outputs{nnfusion_test::execute_op(
         model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
 
     EXPECT_EQ(outputs.size(), 1);
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
+
+TEST(nnfusion_backend, max_pool_2d_op)
+{
+    // Pooling with strides=2 and padding=1
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/max_pool_2d_pads.pb"));
+
+    // input data shape (1, 1, 4, 4)
+    Inputs inputs;
+    inputs.push_back(test::NDArray<float, 4>({{{{0.f, 1.f, 2.f, 3.f},
+                                                {4.f, 5.f, 6.f, 7.f},
+                                                {8.f, 9.f, 10.f, 11.f},
+                                                {12.f, 13.f, 14.f, 15.f}}}})
+                         .get_vector());
+    // (1, 1, 2, 2)
+    Outputs expected_outputs{test::NDArray<float, 4>({{{{5.f, 7.f}, {13.f, 15.f}}}}).get_vector()};
+
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
+
+/* <TODO> Add maxpool3d in tensorflow_importer
+TEST(nnfusion_backend, max_pool_3d_op)
+{
+    // Pooling with strides=2 and padding=1
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_max_pool_3d_pads.pb"));
+
+    Inputs inputs;
+    inputs.push_back(
+        test::NDArray<float, 1>({0.,  -1., 0.,  1.,  -3., -4., -5., 4.,  4.,  -1., -4., -3., -1.,
+                                 2.,  -2., -4., -3., -3., 0.,  -4., -5., -4., -3., -2., 4.,  -1.,
+                                 3.,  -2., -5., -4., 0.,  4.,  -3., 2.,  -4., 3.,  -3., -3., -5.,
+                                 0.,  -3., -4., 2.,  -3., 3.,  -3., 0.,  -4., 1.,  -3., 1.,  -4.,
+                                 -5., 4.,  -5., -2., -5., -4., -4., 2.,  -5., -2., -4., 2.})
+            .get_vector());
+
+    Outputs expected_outputs{test::NDArray<float, 1>({0., 4., 4., 4., 4., 3., 3., 2.}).get_vector()};
+
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
+*/
+
+TEST(nnfusion_backend, reshape_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reshape_int64_graph.pb"));
+    Inputs inputs{test::NDArray<float, 3>{
+        {{1, 1, 1}, {2, 2, 2}}, {{3, 3, 3}, {4, 4, 4}}, {{5, 5, 5}, {6, 6, 6}}}
+                      .get_vector()};
+    Outputs expected_outputs{test::NDArray<float, 3>{{{1, 1, 1}, {2, 2, 2}, {3, 3, 3}},
+                                                     {{4, 4, 4}, {5, 5, 5}, {6, 6, 6}}}
+                                 .get_vector()};
+
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }

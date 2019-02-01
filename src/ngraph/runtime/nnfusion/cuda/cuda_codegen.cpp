@@ -10,7 +10,9 @@ bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
         {type_index(typeid(ngraph::op::Parameter)), Noop::codegen},
         {type_index(typeid(ngraph::op::Constant)), ConstantNaive::codegen},
         {type_index(typeid(ngraph::op::Broadcast)), Broadcast::codegen},
+        {type_index(typeid(ngraph::op::MaxPool)), MaxPool::codegen},
         {type_index(typeid(ngraph::op::Dot)), Dot::codegen},
+        {type_index(typeid(ngraph::op::Reshape)), Reshape::codegen},
         {type_index(typeid(ngraph::op::Relu)), Elementwise<ngraph::op::Relu>::codegen},
         {type_index(typeid(ngraph::op::Add)), Elementwise<ngraph::op::Add>::codegen},
         {type_index(typeid(ngraph::op::Abs)), Elementwise<ngraph::op::Abs>::codegen},
@@ -75,6 +77,9 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
     {
         LanguageUnit re("REQUIREMENT");
         re.require(declaration::typedef_int);
+        re.require(header::stdexcept);
+        re.require(header::sstream);
+        re.require(macro::CUDA_SAFE_CALL);
         for (auto& op : inter_ops)
         {
             auto base = static_pointer_cast<CudaFunction>(op);
@@ -156,7 +161,8 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
         {
             // assert_bool(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu << "char* _memory_pool;\n"
-               << "cudaMalloc((void**)&_memory_pool, " << tu->memory_pool_size << ");\n";
+               << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, " << tu->memory_pool_size
+               << "));\n";
 
             for (auto& op : inter_ops)
             {
@@ -189,15 +195,23 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             {
                 lu << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
             }
+            if (global_required.count("declaration::global_cudnn_handle") > 0)
+            {
+                lu << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
+            }
             for (auto& op : inter_ops)
             {
                 auto base = static_pointer_cast<CudaFunction>(op);
                 lu << base->call_unit->get_code();
-                lu << "assert(cudaSuccess == cudaGetLastError());\n";
+                // lu << "assert(cudaSuccess == cudaGetLastError());\n";
             }
             if (global_required.count("declaration::global_cublas_handle") > 0)
             {
                 lu << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
+            }
+            if (global_required.count("declaration::global_cudnn_handle") > 0)
+            {
+                lu << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
             }
         }
         lu << "return 0;\n";
@@ -240,14 +254,14 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 auto& tensor = *tu->arg[i];
                 lu << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                    << ";\n"
-                   << "cudaMalloc((void**)&" << tensor.get_name() << ","
+                   << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
                    << tensor.get_tensor_layout()->get_size() << " * "
-                   << tensor.get_element_type().size() << ");\n";
+                   << tensor.get_element_type().size() << "));\n";
 
-                lu << "cudaMemcpy(" << tensor.get_name() << ", " << tensor.get_name() << "_host, "
-                   << tensor.get_tensor_layout()->get_size() << " * "
+                lu << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", " << tensor.get_name()
+                   << "_host, " << tensor.get_tensor_layout()->get_size() << " * "
                    << tensor.get_element_type().size() << ", "
-                   << "cudaMemcpyHostToDevice);\n";
+                   << "cudaMemcpyHostToDevice));\n";
             }
 
             for (size_t i = 0; i < tu->out.size(); i++)
@@ -255,9 +269,9 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 auto& tensor = *tu->out[i];
                 lu << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                    << ";\n"
-                   << "cudaMalloc((void**)&" << tensor.get_name() << ","
+                   << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
                    << tensor.get_tensor_layout()->get_size() << " * "
-                   << tensor.get_element_type().size() << ");\n";
+                   << tensor.get_element_type().size() << "));\n";
             }
 
             vector<string> params;
@@ -278,10 +292,10 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             for (size_t i = 0; i < tu->out.size(); i++)
             {
                 auto& tensor = *tu->out[i];
-                lu << "cudaMemcpy(" << tensor.get_name() << "_host, " << tensor.get_name() << ", "
-                   << tensor.get_tensor_layout()->get_size() << " * "
+                lu << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
+                   << tensor.get_name() << ", " << tensor.get_tensor_layout()->get_size() << " * "
                    << tensor.get_element_type().size() << ", "
-                   << "cudaMemcpyDeviceToHost);\n";
+                   << "cudaMemcpyDeviceToHost));\n";
             }
         }
         lu << "return 0;\n";

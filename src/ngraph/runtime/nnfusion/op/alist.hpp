@@ -6,5 +6,8 @@
 #include "constant.hpp"
 #include "dot.hpp"
 #include "elementwise.hpp"
+#include "max_pool.hpp"
 #include "noop.hpp"
+#include "pad.hpp"
+#include "reshape.hpp"
 #include "result.hpp"

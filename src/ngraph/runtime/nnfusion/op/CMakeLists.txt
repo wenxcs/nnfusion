@@ -4,6 +4,8 @@
 set(NNF_INTERMEDIATE
     result.cpp
     broadcast.cpp
+    pad.cpp
+    reshape.cpp
     util/gpu_util.cpp
 )
 

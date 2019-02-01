@@ -4,5 +4,7 @@
 #include "op/constant_naive.hpp"
 #include "op/dot.hpp"
 #include "op/elementwise.hpp"
+#include "op/max_pool.hpp"
 #include "op/noop.hpp"
+#include "op/reshape.hpp"
 #include "op/result.hpp"

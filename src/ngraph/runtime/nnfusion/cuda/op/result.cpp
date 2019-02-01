@@ -38,6 +38,7 @@ LanguageUnit_p cuda::Result::codegen_dependency()
 {
     LanguageUnit_p cw(new LanguageUnit);
     cw->require(header::cuda);
+    cw->require(macro::CUDA_SAFE_CALL);
     return cw;
 }
 

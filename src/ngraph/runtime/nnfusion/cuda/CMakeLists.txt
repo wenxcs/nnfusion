@@ -7,6 +7,7 @@ set(SRC
     cuda_helper.cpp 
     cuda_testutil.cpp 
     cuda_langunit.cpp
+    cuda_cudnn.cpp
 )
 
 set(OP
@@ -14,7 +15,10 @@ set(OP
     op/result.cpp
     op/anyop.cpp
     op/dot.cpp
+    op/pad.cpp
+    op/reshape.cpp
     op/broadcast.cpp
+    op/max_pool.cpp
 )
 
 add_library(nnfusion_cuda STATIC ${SRC} ${OP})

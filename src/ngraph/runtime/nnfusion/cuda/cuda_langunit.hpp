@@ -16,6 +16,7 @@ namespace nnfusion
             LU_DEFINE(sstream);
             LU_DEFINE(cuda);
             LU_DEFINE(cublas);
+            LU_DEFINE(cudnn);
         }
 
         namespace macro
@@ -35,6 +36,7 @@ namespace nnfusion
             LU_DEFINE(division_by_invariant_multiplication);
             LU_DEFINE(load);
             LU_DEFINE(global_cublas_handle);
+            LU_DEFINE(global_cudnn_handle);
         }
     }
 }
