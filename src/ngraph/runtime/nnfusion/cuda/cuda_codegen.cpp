@@ -13,6 +13,7 @@ bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
         {type_index(typeid(ngraph::op::MaxPool)), MaxPool::codegen},
         {type_index(typeid(ngraph::op::Dot)), Dot::codegen},
         {type_index(typeid(ngraph::op::Reshape)), Reshape::codegen},
+        {type_index(typeid(ngraph::op::Convolution)), Convolution::codegen},
         {type_index(typeid(ngraph::op::Relu)), Elementwise<ngraph::op::Relu>::codegen},
         {type_index(typeid(ngraph::op::Add)), Elementwise<ngraph::op::Add>::codegen},
         {type_index(typeid(ngraph::op::Abs)), Elementwise<ngraph::op::Abs>::codegen},
@@ -74,12 +75,13 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
 
     // Collect Requirement
     unordered_set<string> global_required;
+    LanguageUnit re("REQUIREMENT");
     {
-        LanguageUnit re("REQUIREMENT");
-        re.require(declaration::typedef_int);
+        re.require(header::assert);
         re.require(header::stdexcept);
         re.require(header::sstream);
         re.require(macro::CUDA_SAFE_CALL);
+        re.require(declaration::typedef_int);
         for (auto& op : inter_ops)
         {
             auto base = static_pointer_cast<CudaFunction>(op);
@@ -92,10 +94,8 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             }
         }
 
-        lu << re.collect_required_code();
+        // lu << re.collect_required_code();
     }
-
-    lu << "#include <assert.h>\n";
 
     // Collect Function Definition
     {
@@ -109,7 +109,10 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             for (auto& it : base->definition_unit->local_symbol)
             {
                 if (it.second != base->dep_unit)
-                    def.require(it.second);
+                {
+                    re.require(it.second);
+                    global_required.insert(it.second->symbol);
+                }
             }
             def << base->gen_comments();
             if (declared.count(base->definition_unit->symbol) == 0)
@@ -122,6 +125,21 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 def << "// Function declared:" << base->definition_unit->symbol << "\n\n";
             }
         }
+
+        //Write Dependency
+        for (auto& it : re.local_symbol)
+            if (it.second->symbol.find("header::") != string::npos)
+                lu << it.second->get_code();
+        lu << "\n";
+        for (auto& it : re.local_symbol)
+            if (it.second->symbol.find("macro::") != string::npos)
+                lu << it.second->get_code();
+        lu << "\n";
+        for (auto& it : re.local_symbol)
+            if (it.second->symbol.find("declaration::") != string::npos)
+                lu << it.second->get_code();
+        lu << "\n";
+        //Write Code
         lu << def.collect_code() << "\n";
     }
 
@@ -214,6 +232,8 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                 lu << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
             }
         }
+
+        lu << "CUDA_SAFE_CALL(cudaFree(_memory_pool));\n";
         lu << "return 0;\n";
         lu.block_end();
     }
@@ -296,6 +316,18 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
                    << tensor.get_name() << ", " << tensor.get_tensor_layout()->get_size() << " * "
                    << tensor.get_element_type().size() << ", "
                    << "cudaMemcpyDeviceToHost));\n";
+            }
+
+            for (size_t i = 0; i < tu->arg.size(); i++)
+            {
+                auto& tensor = *tu->arg[i];
+                lu << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+            }
+
+            for (size_t i = 0; i < tu->out.size(); i++)
+            {
+                auto& tensor = *tu->out[i];
+                lu << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
             }
         }
         lu << "return 0;\n";

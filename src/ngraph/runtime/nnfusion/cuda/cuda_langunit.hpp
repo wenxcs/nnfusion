@@ -17,6 +17,7 @@ namespace nnfusion
             LU_DEFINE(cuda);
             LU_DEFINE(cublas);
             LU_DEFINE(cudnn);
+            LU_DEFINE(assert);
         }
 
         namespace macro

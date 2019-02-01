@@ -4,6 +4,7 @@
 #include "anyop.hpp"
 #include "broadcast.hpp"
 #include "constant.hpp"
+#include "convolution.hpp"
 #include "dot.hpp"
 #include "elementwise.hpp"
 #include "max_pool.hpp"

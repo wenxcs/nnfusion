@@ -11,13 +11,14 @@ using namespace nnfusion::cuda;
     LanguageUnit_p NAME = LanguageUnit_p(new LanguageUnit(STR(NAME), code));
 
 // Header
-LU_DEFINE(header::cuda, "#include <cuda.h>\n#include<cuda_runtime.h>\n");
+LU_DEFINE(header::cuda, "#include <cuda.h>\n#include <cuda_runtime.h>\n");
 LU_DEFINE(header::cublas, "#include <cublas_v2.h>\n");
 LU_DEFINE(header::cudnn, "#include <cudnn.h>\n");
 LU_DEFINE(header::stdio, "#include <stdio.h>\n");
 LU_DEFINE(header::fstream, "#include <fstream>\n");
 LU_DEFINE(header::stdexcept, "#include <stdexcept>\n");
 LU_DEFINE(header::sstream, "#include <sstream>\n");
+LU_DEFINE(header::assert, "#include <assert.h>\n");
 
 // Macro
 LU_DEFINE(macro::NNFUSION_DEBUG, "#define NNFUSION_DEBUG\n");

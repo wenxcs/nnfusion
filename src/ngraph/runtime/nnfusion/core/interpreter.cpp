@@ -72,6 +72,7 @@ ir::Operator_p FunctionTranslator::translate_node(shared_ptr<Node> node)
         {type_index(typeid(ngraph::op::Dot)), ir::Dot::translate},
         {type_index(typeid(ngraph::op::Pad)), ir::Pad::translate},
         {type_index(typeid(ngraph::op::Reshape)), ir::Reshape::translate},
+        {type_index(typeid(ngraph::op::Convolution)), ir::Convolution::translate},
         {type_index(typeid(ngraph::op::Relu)), ir::Elementwise<ngraph::op::Relu>::translate},
         {type_index(typeid(ngraph::op::Abs)), ir::Elementwise<ngraph::op::Abs>::translate},
         {type_index(typeid(ngraph::op::Add)), ir::Elementwise<ngraph::op::Add>::translate},

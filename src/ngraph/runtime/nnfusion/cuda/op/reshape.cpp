@@ -14,7 +14,7 @@ cuda::CudaFunction_p cuda::Reshape::codegen(ir::Operator_p inter_op)
 {
     auto irop = static_pointer_cast<ir::Reshape>(inter_op);
     assert_nullptr(irop) << "Input operator is invalid.";
-    NGRAPH_DEBUG << "Codegen for Reshape function:" << irop->arg_rank;
+    NGRAPH_DEBUG << "Codegen for Reshape function:" << irop->arg_rank << endl;
 
     // <TODO> make noop & memcpy in other place
     if (irop->isNoop())
@@ -57,6 +57,9 @@ string cuda::Reshape::codegen_test_name()
 
 LanguageUnit_p cuda::Reshape::codegen_dependency()
 {
+    LanguageUnit_p _lu(new LanguageUnit(codegen_function_name() + "_dep"));
+    _lu->require(header::cuda);
+    return _lu;
 }
 
 /*Reshape Subclasses*/
@@ -150,6 +153,7 @@ LanguageUnit_p cuda::Reshape2D::codegen_function_definition()
         lu.block_end();
     }
     lu.block_end();
+    return plu;
 }
 
 LanguageUnit_p cuda::Reshape2D::codegen_function_call()

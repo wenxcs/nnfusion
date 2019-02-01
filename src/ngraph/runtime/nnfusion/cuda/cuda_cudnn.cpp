@@ -87,3 +87,108 @@ LanguageUnit_p cuda::cudnn_tensor_descriptor_from_shape(const ngraph::Shape& sha
 
     return _lu;
 }
+
+LanguageUnit_p cuda::get_cudnn_filter_descriptor(const Shape& shape, string desc)
+{
+    LanguageUnit_p _lu(new LanguageUnit);
+    auto& lu = *_lu;
+
+    string data_type = "CUDNN_DATA_FLOAT"; //cuda::get_cudnn_datatype(type);
+    string tensor_format = "CUDNN_TENSOR_NCHW";
+    lu << "cudnnFilterDescriptor_t " << desc << ";\n";
+    lu << "CUDNN_SAFE_CALL(cudnnCreateFilterDescriptor(&" << desc << "));\n";
+
+    std::vector<int> dimensions(fmax(4, shape.size()), 1);
+    int idx = 0;
+    for (size_t i = dimensions.size() - shape.size(); i < dimensions.size(); i++)
+    {
+        dimensions[i] = static_cast<int>(shape[idx++]);
+    }
+
+    if (dimensions.size() <= 4)
+    {
+        lu << "CUDNN_SAFE_CALL(cudnnSetFilter4dDescriptor(" << desc << ", "
+           /*dataType=*/
+           << data_type << ", "
+           /*format=*/
+           << tensor_format << ", "
+           /*dimension_size*/
+           << dimensions[0] << ", "
+           /*dimension_size*/
+           << dimensions[1] << ", "
+           /*dimension_size*/
+           << dimensions[2] << ", "
+           /*dimension_size*/
+           << dimensions[3] << "));\n";
+    }
+    else
+    {
+        lu << "CUDNN_SAFE_CALL("
+           << "cudnnSetFilterNdDescriptor(" << desc << ", "
+           /*dataType=*/
+           << data_type << ", "
+           /*format=*/
+           << tensor_format << ", "
+           /*num_dimensions=*/
+           << static_cast<int>(dimensions.size()) << ", "
+           /*dimensions*/
+           << dimensions.data() << "));\n";
+    }
+    return _lu;
+}
+
+LanguageUnit_p cuda::get_cudnn_convolution_descriptor(const Shape& padding,
+                                                      const Strides& window_movement_strides,
+                                                      const Strides& window_dilation_strides,
+                                                      string desc)
+{
+    LanguageUnit_p _lu(new LanguageUnit);
+    auto& lu = *_lu;
+
+    string data_type = "CUDNN_DATA_FLOAT"; //cuda::get_cudnn_datatype(type);
+    string tensor_format = "CUDNN_TENSOR_NCHW";
+    lu << "cudnnConvolutionDescriptor_t " << desc << ";\n";
+    lu << "CUDNN_SAFE_CALL(cudnnCreateConvolutionDescriptor(&" << desc << "));\n";
+
+    std::vector<int> window_movement_strides_int(window_movement_strides.size());
+    std::vector<int> window_dilation_strides_int(window_dilation_strides.size());
+    std::vector<int> padding_int(padding.size());
+    for (int i = 0; i < padding.size(); i++)
+    {
+        window_movement_strides_int[i] = static_cast<int>(window_movement_strides[i]);
+        window_dilation_strides_int[i] = static_cast<int>(window_dilation_strides[i]);
+        padding_int[i] = static_cast<int>(padding[i]);
+    }
+
+    if (padding.size() == 2)
+    {
+        lu << "CUDNN_SAFE_CALL(cudnnSetConvolution2dDescriptor(" << desc << ", " << padding_int[0]
+           << ", " << padding_int[1] << ", " << window_movement_strides_int[0] << ", "
+           << window_movement_strides_int[1] << ", " << window_dilation_strides_int[0] << ", "
+           << window_dilation_strides_int[1] << ", CUDNN_CROSS_CORRELATION, " << data_type
+           << "));\n";
+    }
+    else
+    {
+        auto expand_vector_int = [](string name, vector<int>& d) {
+            stringstream ss;
+            assert_bool(d.size() > 0);
+            ss << "int " << name << "[] = {";
+            for (int i = 0; i + 1 < d.size(); i++)
+                ss << to_string(d[i]) << ", ";
+            ss << to_string(d.back()) << "}\n";
+            return ss.str();
+        };
+
+        expand_vector_int("padding_int", padding_int);
+        expand_vector_int("window_movement_strides_int", window_movement_strides_int);
+        expand_vector_int("window_dilation_strides_int", window_dilation_strides_int);
+
+        lu << "CUDNN_SAFE_CALL(cudnnSetConvolutionNdDescriptor(" << desc << ", "
+           << static_cast<int>(padding_int.size()) << ", "
+           << "padding_int, "
+           << "window_movement_strides_int, "
+           << "window_dilation_strides_int, CUDNN_CROSS_CORRELATION, " << data_type << "));\n";
+    }
+    return _lu;
+}

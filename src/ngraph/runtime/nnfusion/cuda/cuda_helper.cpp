@@ -7,7 +7,7 @@ LanguageUnit_p cuda::get_math_kernel(const std::string& name,
                                      const std::string& math_kernel,
                                      const std::vector<std::string>& data_types)
 {
-    shared_ptr<LanguageUnit> cw(new LanguageUnit("function_def_inline_" + name));
+    shared_ptr<LanguageUnit> cw(new LanguageUnit("declaration::function_def_inline_" + name));
     auto& writer = *cw;
     if (math_kernel.size())
     {

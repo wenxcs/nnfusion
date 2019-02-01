@@ -115,5 +115,5 @@ using namespace nnfusion;
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 
 // Uncomment this for quick debug
-#undef NGRAPH_DEBUG
-#define NGRAPH_DEBUG std::cout
+// #undef NGRAPH_DEBUG
+// #define NGRAPH_DEBUG std::cout

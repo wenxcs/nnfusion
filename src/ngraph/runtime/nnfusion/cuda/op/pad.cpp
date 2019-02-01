@@ -99,6 +99,7 @@ LanguageUnit_p cuda::Pad::codegen_function_call()
 LanguageUnit_p cuda::Pad::codegen_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(codegen_function_name() + "_dep"));
+    _lu->require(header::cuda);
     return _lu;
 }
 

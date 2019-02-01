@@ -12,6 +12,7 @@ set(SRC
 
 set(OP
     op/constant_naive.cpp
+    op/convolution.cpp
     op/result.cpp
     op/anyop.cpp
     op/dot.cpp

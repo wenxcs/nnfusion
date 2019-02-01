@@ -339,3 +339,20 @@ TEST(nnfusion_backend, reshape_op)
 
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }
+
+TEST(nnfusion_backend, conv2d_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_conv2d_nhwc_graph_2.pb"));
+    Inputs inputs;
+    inputs.emplace_back(test::NDArray<float, 1>(
+                            {3., 4., 4., 0., 0., -5., -3., 1., -2., -3., 4., 4., -1., 3., 0., 4.})
+                            .get_vector());
+    Outputs expected_outputs{
+        test::NDArray<float, 1>({1., -11., -17., 4., 4., 5., -1., 12., -20.}).get_vector()};
+
+    Outputs outputs{nnfusion_test::execute_op(
+        model[0], "naive_test", inputs, expected_outputs, "CUDA_CODEGEN:naive_graphtest")};
+
+    EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
+}
