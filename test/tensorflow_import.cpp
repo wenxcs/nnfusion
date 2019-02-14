@@ -147,7 +147,6 @@ TEST(tensorflow_import, reshape_op)
         EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
     }
 }
-
 // TODO: the shape for reshape is placeholder
 /*
 TEST(tensorflow_import, reshape_placeholder_op)
@@ -256,18 +255,139 @@ TEST(tensorflow_import, bias_add_op)
     inputs.emplace_back(
         test::NDArray<float, 2>{{1.8, 2.2}, {-1.3, -0.04}, {3.0, -12}}.get_vector());
     inputs.emplace_back(test::NDArray<float, 1>{100, -100}.get_vector());
-    std::vector<std::vector<float>> expected_outputs{
+    Outputs expected_outputs{
         test::NDArray<float, 2>{{101.8, -97.8}, {98.7, -100.04}, {103, -112}}.get_vector()};
 
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
     {
-        std::vector<std::vector<float>> outputs{execute<float>(model[i], inputs, "INTERPRETER")};
+        Outputs outputs{execute<float>(model[i], inputs, "INTERPRETER")};
         EXPECT_EQ(outputs.size(), 1);
         EXPECT_EQ(expected_outputs[i], outputs.front());
     }
 }
 
-// TEST(onnx, model_add_abc_initializers)
+TEST(tensorflow_import, avg_pool_op)
+{
+    // Avg pool with strides=[1,2,2,1], ksize=[1,2,2,1], padding="SAME"
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_avg_pool_graph.pb"));
+
+    // input data shape (1, 4, 4, 1)
+    Inputs inputs;
+    inputs.push_back(test::NDArray<float, 4>({{{{1}, {2}, {3}, {4}},
+                                               {{5}, {6}, {7}, {8}},
+                                               {{9}, {10}, {11}, {12}},
+                                               {{13}, {14}, {15}, {16}}}})
+                         .get_vector());
+    // (1, 2, 2, 1)
+    auto expected_outputs =
+        test::NDArray<float, 4>({{{{3.5f}, {5.5f}}, {{11.5f}, {13.5f}}}}).get_vector();
+
+    Outputs outputs{execute(model[0], inputs, "INTERPRETER")};
+    EXPECT_EQ(expected_outputs, outputs.front());
+}
+
+TEST(tensorflow_import, fill_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_fill_graph.pb"));
+
+    Inputs inputs{};
+    Outputs expected_outputs{
+        test::NDArray<float, 2>({{3.5f, 3.5f, 3.5f}, {3.5f, 3.5f, 3.5f}}).get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, pad_op)
+{
+    // op name "Pad", the padding value is always zero.
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_pad_graph.pb"));
+
+    // paddings is [[1, 1], [2, 2]]
+    Inputs inputs{test::NDArray<float, 2>({{1.f, 2.f, 3.f}, {4.f, 5.f, 6.f}}).get_vector()};
+    Outputs expected_outputs{test::NDArray<float, 2>({{0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+                                                      {0.f, 0.f, 1.f, 2.f, 3.f, 0.f, 0.f},
+                                                      {0.f, 0.f, 4.f, 5.f, 6.f, 0.f, 0.f},
+                                                      {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}})
+                                 .get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, padv2_op)
+{
+    // if constant values specified in mode "CONSTANT", the op name is "PadV2"
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_padv2_graph.pb"));
+
+    // constant values is 3.0f, paddings is [[1, 1], [2, 2]]
+    Inputs inputs{test::NDArray<float, 2>({{1.f, 2.f, 3.f}, {4.f, 5.f, 6.f}}).get_vector()};
+    Outputs expected_outputs{test::NDArray<float, 2>({{3.f, 3.f, 3.f, 3.f, 3.f, 3.f, 3.f},
+                                                      {3.f, 3.f, 1.f, 2.f, 3.f, 3.f, 3.f},
+                                                      {3.f, 3.f, 4.f, 5.f, 6.f, 3.f, 3.f},
+                                                      {3.f, 3.f, 3.f, 3.f, 3.f, 3.f, 3.f}})
+                                 .get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, fused_bn_inference_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_fusedbn_inference_graph.pb"));
+
+    Inputs inputs;
+    Outputs expected_outputs{
+        test::NDArray<float, 4>(
+            {{{{0.35069546}, {0.42758602}, {0.24500477}, {0.32162043}, {0.28218}, {0.26838464}}}})
+            .get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, concatv2_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_concatv2_graph.pb"));
+
+    // the shape of placehoder is (2,3)
+    std::vector<std::vector<int>> inputs{
+        test::NDArray<int, 2>{{1, 2, 3}, {4, 5, 6}}.get_vector(),
+        test::NDArray<int, 2>{{7, 8, 9}, {10, 11, 12}}.get_vector()};
+    std::vector<std::vector<int>> expected_outputs{
+        test::NDArray<int, 2>{{1, 2, 3, 7, 8, 9}, {4, 5, 6, 10, 11, 12}}.get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+//TEST(onnx, model_add_abc_initializers)
 // {
 //     auto function = onnx_import::import_onnx_function(
 //         file_util::path_join(SERIALIZED_ZOO, "onnx/add_abc_initializers.onnx"));

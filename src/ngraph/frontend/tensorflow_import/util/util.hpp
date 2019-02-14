@@ -17,6 +17,7 @@
 
 #include "../tensorflow_base.hpp"
 #include "ngraph/function.hpp"
+#include "ngraph/op/constant.hpp"
 #include "ngraph/op/reshape.hpp"
 namespace ngraph
 {
@@ -99,6 +100,78 @@ namespace ngraph
             // the dimension lengths in tf_shape are negative.
             bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
                                             ngraph::Shape* ng_shape);
+
+            template <typename T, typename VecT = T>
+            std::vector<VecT>
+                GetValueFromConstOp(std::shared_ptr<ngraph::op::Constant> ng_constant_op)
+            {
+                // the data type of ngraph::shape is size_t
+                std::vector<VecT> dst_values;
+                std::vector<T> values = ng_constant_op->get_vector<T>();
+                dst_values.resize(values.size());
+                for (size_t i = 0; i < values.size(); i++)
+                {
+                    dst_values[i] = static_cast<VecT>(values[i]);
+                }
+                return dst_values;
+            }
+
+            template <typename T>
+            bool GetValueFromNGraphOp(std::shared_ptr<ngraph::Node> ng_op, std::vector<T>* values)
+            {
+                assert(ng_op->description() == "Constant");
+                auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);
+                auto ng_element_type = ng_constant_op->get_element_type();
+                if (ng_element_type == ngraph::element::f32)
+                {
+                    *values = GetValueFromConstOp<float, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::f64)
+                {
+                    *values = GetValueFromConstOp<double, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::i8)
+                {
+                    *values = GetValueFromConstOp<int8, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::i16)
+                {
+                    *values = GetValueFromConstOp<int16, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::i32)
+                {
+                    *values = GetValueFromConstOp<int32, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::i64)
+                {
+                    *values = GetValueFromConstOp<int64, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::u8)
+                {
+                    *values = GetValueFromConstOp<uint8, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::u16)
+                {
+                    *values = GetValueFromConstOp<uint16, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::u32)
+                {
+                    *values = GetValueFromConstOp<uint32, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::u64)
+                {
+                    *values = GetValueFromConstOp<uint64, T>(ng_constant_op);
+                }
+                else if (ng_element_type == ngraph::element::boolean)
+                {
+                    *values = GetValueFromConstOp<bool, T>(ng_constant_op);
+                }
+                else
+                {
+                    return false;
+                }
+                return true;
+            }
 
 // The ... is to allow the caller to inject some value validation code.  Use
 // just ; if no additional validation code is needed.
