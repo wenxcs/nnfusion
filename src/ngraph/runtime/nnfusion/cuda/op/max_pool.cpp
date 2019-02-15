@@ -211,6 +211,10 @@ LanguageUnit_p cuda::MaxPoolmD::codegen_function_definition()
            << " &beta,"
            << " output_desc,"
            << " out));\n";
+
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(input_desc));\n";
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(output_desc));\n";
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyPoolingDescriptor(desc));\n";
     }
     lu.block_end();
     return plu;

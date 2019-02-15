@@ -126,6 +126,10 @@ LanguageUnit_p cuda::ConvolutionCudnn::codegen_function_definition()
            << "tensor_desc_1, "
            << "out));\n";
         lu << "CUDA_SAFE_CALL(cudaFree(workspace_ptr));\n";
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_0));\n";
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_1));\n";
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyFilterDescriptor(filter_desc));\n";
+        lu << "CUDNN_SAFE_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));\n";
     }
     lu.block_end();
     return plu;
