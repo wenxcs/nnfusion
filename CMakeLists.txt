@@ -96,6 +96,7 @@ option(NGRAPH_DEX_ONLY "Build CPU DEX without codegen" FALSE)
 option(NGRAPH_CODE_COVERAGE_ENABLE "Enable code coverage data collection" FALSE)
 option(NNFUSION_TENSORFLOW_IMPORT_ENABLE "Enable Tensorflow importer for NNFusion" TRUE)
 option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object" TRUE)
+option(NNFUSION_ENABLE "Control the building of the nnfusion backend" TRUE)
 set(NNFUSION_THIRDPARTY_FOLDER "" CACHE STRING "NNFusion Thirdpary libraries folder location")
 set(NGRAPH_USE_PREBUILT_LLVM TRUE)
 

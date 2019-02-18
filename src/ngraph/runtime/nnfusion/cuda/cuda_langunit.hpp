@@ -11,11 +11,13 @@ namespace nnfusion
         namespace header
         {
             LU_DEFINE(stdio);
+            LU_DEFINE(algorithm);
             LU_DEFINE(fstream);
             LU_DEFINE(stdexcept);
             LU_DEFINE(sstream);
             LU_DEFINE(cuda);
             LU_DEFINE(cublas);
+            LU_DEFINE(cmath);
             LU_DEFINE(cudnn);
             LU_DEFINE(assert);
         }
@@ -38,6 +40,7 @@ namespace nnfusion
             LU_DEFINE(load);
             LU_DEFINE(global_cublas_handle);
             LU_DEFINE(global_cudnn_handle);
+            LU_DEFINE(num_SMs);
         }
     }
 }

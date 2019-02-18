@@ -91,14 +91,17 @@ namespace nnfusion
                 // TODO: currently we set it to 64, will add tuning method later
                 uint32_t block_size_x = 512;
                 int num_SMs;
+                /*
                 CUDA_RT_SAFE_CALL(
-                    cudaDeviceGetAttribute(&num_SMs, cudaDevAttrMultiProcessorCount, 0));
+                   cudaDeviceGetAttribute(&num_SMs, cudaDevAttrMultiProcessorCount, 0));
                 uint32_t aligned_grid_size_x =
                     fmin(num_SMs * 32, align_to_block_size(nthreads, block_size_x));
+                */
 
-                writer << codegen_function_name() << "<<<dim3(" << aligned_grid_size_x << ", " << 1
-                       << ", " << 1 << "), dim3(" << block_size_x << ", " << 1 << ", " << 1 << "), "
-                       << 0 << ", " << 0 << ">>>"
+                writer << codegen_function_name() << "<<<dim3(std::min(num_SMs * 32, "
+                       << align_to_block_size(nthreads, block_size_x) << "), " << 1 << ", " << 1
+                       << "), dim3(" << block_size_x << ", " << 1 << ", " << 1 << "), " << 0 << ", "
+                       << 0 << ">>>"
                        << "(" << join(inter_op->arg_names, ", ") << ", "
                        << join(inter_op->out_names, ", ") << ", " << nthreads << ");\n";
 
@@ -112,6 +115,8 @@ namespace nnfusion
 
                 cw->require(header::cuda);
                 cw->require(header::stdio);
+                cw->require(header::algorithm);
+                cw->require(declaration::num_SMs);
 
                 return cw;
             }

@@ -15,6 +15,8 @@ LU_DEFINE(header::cuda, "#include <cuda.h>\n#include <cuda_runtime.h>\n");
 LU_DEFINE(header::cublas, "#include <cublas_v2.h>\n");
 LU_DEFINE(header::cudnn, "#include <cudnn.h>\n");
 LU_DEFINE(header::stdio, "#include <stdio.h>\n");
+LU_DEFINE(header::cmath, "#include <cmath>\n");
+LU_DEFINE(header::algorithm, "#include <algorithm>\n");
 LU_DEFINE(header::fstream, "#include <fstream>\n");
 LU_DEFINE(header::stdexcept, "#include <stdexcept>\n");
 LU_DEFINE(header::sstream, "#include <sstream>\n");
@@ -23,8 +25,9 @@ LU_DEFINE(header::assert, "#include <assert.h>\n");
 // Macro
 LU_DEFINE(macro::NNFUSION_DEBUG, "#define NNFUSION_DEBUG\n");
 
-// Declaration`
+// Declaration
 //<TODO>Need special code for this global_cublas_handle
+LU_DEFINE(declaration::num_SMs, "int num_SMs = 0;\n");
 LU_DEFINE(declaration::global_cublas_handle, "cublasHandle_t global_cublas_handle;\n");
 LU_DEFINE(declaration::global_cudnn_handle, "cudnnHandle_t global_cudnn_handle;\n");
 LU_DEFINE(declaration::typedef_int,

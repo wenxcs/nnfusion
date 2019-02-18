@@ -25,8 +25,6 @@ set(OP
 add_library(nnfusion_cuda STATIC ${SRC} ${OP})
 target_include_directories(nnfusion_cuda SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}
-    ${CUDA_INCLUDE_DIRS}
-    ${CUDNN_INCLUDE_DIR}
 )
 
 target_compile_options(nnfusion_cuda PRIVATE "-fPIC")

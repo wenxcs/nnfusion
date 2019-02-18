@@ -217,6 +217,11 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
             {
                 lu << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
             }
+            if (global_required.count("declaration::num_SMs") > 0)
+            {
+                lu << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
+                      "cudaDevAttrMultiProcessorCount, 0));\n";
+            }
             for (auto& op : inter_ops)
             {
                 auto base = static_pointer_cast<CudaFunction>(op);

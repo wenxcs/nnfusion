@@ -1,8 +1,5 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
-#include <cuda.h>
-#include <cuda_runtime.h>
-
 #include "../core/codegenerator.hpp"
 #include "../core/common.hpp"
 #include "../core/languageunit.hpp"
