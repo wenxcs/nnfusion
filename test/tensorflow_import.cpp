@@ -175,7 +175,7 @@ TEST(tensorflow_import, relu_op)
     {
         Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
         EXPECT_EQ(outputs.size(), 1);
-        EXPECT_EQ(expected_outputs[i], outputs.front());
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
     }
 }
 
@@ -197,7 +197,7 @@ TEST(tensorflow_import, max_pool_op)
     auto expected_output = test::NDArray<float, 4>({{{{5.f, 7.f}, {13.f, 15.f}}}}).get_vector();
 
     Outputs outputs{execute(model[0], inputs, "INTERPRETER")};
-    EXPECT_EQ(expected_output, outputs.front());
+    EXPECT_TRUE(test::all_close_f(expected_output, outputs.front()));
 }
 
 TEST(tensorflow_import, matmul_op)
@@ -262,7 +262,7 @@ TEST(tensorflow_import, bias_add_op)
     {
         Outputs outputs{execute<float>(model[i], inputs, "INTERPRETER")};
         EXPECT_EQ(outputs.size(), 1);
-        EXPECT_EQ(expected_outputs[i], outputs.front());
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
     }
 }
 
@@ -284,7 +284,7 @@ TEST(tensorflow_import, avg_pool_op)
         test::NDArray<float, 4>({{{{3.5f}, {5.5f}}, {{11.5f}, {13.5f}}}}).get_vector();
 
     Outputs outputs{execute(model[0], inputs, "INTERPRETER")};
-    EXPECT_EQ(expected_outputs, outputs.front());
+    EXPECT_TRUE(test::all_close_f(expected_outputs, outputs.front()));
 }
 
 TEST(tensorflow_import, fill_op)
@@ -363,7 +363,7 @@ TEST(tensorflow_import, fused_bn_inference_op)
     {
         Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
         EXPECT_EQ(outputs.size(), 1);
-        EXPECT_EQ(expected_outputs[i], outputs.front());
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
     }
 }
 
