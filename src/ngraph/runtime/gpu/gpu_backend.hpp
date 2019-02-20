@@ -53,6 +53,8 @@ namespace ngraph
 
                 bool compile(std::shared_ptr<Function> func) override;
 
+                bool codegen(std::shared_ptr<Function> func) override;
+
                 bool call(std::shared_ptr<Function> func,
                           const std::vector<std::shared_ptr<runtime::Tensor>>& outputs,
                           const std::vector<std::shared_ptr<runtime::Tensor>>& inputs) override;

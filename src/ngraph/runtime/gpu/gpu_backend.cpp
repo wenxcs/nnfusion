@@ -115,10 +115,26 @@ bool runtime::gpu::GPU_Backend::compile(shared_ptr<Function> func)
     FunctionInstance& instance = m_function_map[func];
     if (instance.m_external_function == nullptr)
     {
+        if (!codegen(func))
+        {
+            return false;
+        }
+    }
+    if (!instance.m_compiled_function)
+    {
+        instance.m_external_function->compile();
+    }
+    return true;
+}
+
+bool runtime::gpu::GPU_Backend::codegen(shared_ptr<Function> func)
+{
+    FunctionInstance& instance = m_function_map[func];
+    if (instance.m_external_function == nullptr)
+    {
         instance.m_external_function = make_shared<GPU_ExternalFunction>(func, m_context);
         instance.m_external_function->m_emit_timing = instance.m_performance_counters_enabled;
-        instance.m_external_function->compile();
-        instance.m_compiled_function = instance.m_external_function->m_compiled_function;
+        instance.m_external_function->codegen();
         instance.m_inputs.resize(func->get_parameters().size());
         instance.m_outputs.resize(func->get_output_size());
     }

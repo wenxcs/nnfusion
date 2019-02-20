@@ -188,6 +188,7 @@ runtime::gpu::GPU_ExternalFunction::GPU_ExternalFunction(
     : m_compiled_function(nullptr)
     , m_function(function)
     , m_emit_timing(false)
+    , m_is_code_emitted(false)
     , m_is_compiled(false)
     , m_shared_context(shared_context)
 {
@@ -556,6 +557,43 @@ void runtime::gpu::GPU_ExternalFunction::compile()
     {
         return;
     }
+
+    if (!m_is_code_emitted)
+    {
+        codegen();
+    }
+    std::unique_lock<std::mutex> lock(s_compilation);
+
+    m_function_name = m_function->get_name();
+
+    m_compiler.reset(new codegen::Compiler());
+    m_execution_engine.reset(new codegen::ExecutionEngine());
+    m_compiler->set_precompiled_header_source(get_pch_header_source());
+
+    auto codegen_module = m_compiler->compile(m_code);
+    if (codegen_module == nullptr)
+    {
+        throw runtime_error("Function failed to compile to bitcode");
+    }
+
+    m_execution_engine->add_module(codegen_module);
+    m_execution_engine->finalize();
+
+    m_compiled_function = m_execution_engine->find_function<EntryPoint_t>(m_function_name);
+    if (!m_compiled_function)
+    {
+        throw runtime_error("Function failed to compile");
+    }
+
+    m_is_compiled = true;
+}
+
+void runtime::gpu::GPU_ExternalFunction::codegen()
+{
+    if (m_is_code_emitted)
+    {
+        return;
+    }
     std::unique_lock<std::mutex> lock(s_compilation);
 
     m_function_name = m_function->get_name();
@@ -609,29 +647,10 @@ void runtime::gpu::GPU_ExternalFunction::compile()
     allocator->close();
     m_shared_context->m_primitive_emitter->allocate_primitive_memory();
 
-    string code = m_writer.get_code();
-    store_emitted_functions(code);
+    m_code = m_writer.get_code();
+    store_emitted_functions(m_code);
 
-    m_compiler.reset(new codegen::Compiler());
-    m_execution_engine.reset(new codegen::ExecutionEngine());
-    m_compiler->set_precompiled_header_source(get_pch_header_source());
-
-    auto codegen_module = m_compiler->compile(code);
-    if (codegen_module == nullptr)
-    {
-        throw runtime_error("Function failed to compile to bitcode");
-    }
-
-    m_execution_engine->add_module(codegen_module);
-    m_execution_engine->finalize();
-
-    m_compiled_function = m_execution_engine->find_function<EntryPoint_t>(m_function_name);
-    if (!m_compiled_function)
-    {
-        throw runtime_error("Function failed to compile");
-    }
-
-    m_is_compiled = true;
+    m_is_code_emitted = true;
 }
 
 void runtime::gpu::GPU_ExternalFunction::emit_debug_function_entry(Node* node)

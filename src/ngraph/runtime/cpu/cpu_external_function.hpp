@@ -175,6 +175,8 @@ namespace ngraph
             protected:
                 void build();
 
+                void codegen();
+
 #if !defined(NGRAPH_DEX_ONLY)
 
                 void compile();
@@ -250,6 +252,7 @@ namespace ngraph
 #if !defined(NGRAPH_DEX_ONLY)
                 bool m_is_compiled;
 #endif
+                bool m_is_code_emitted;
                 bool m_direct_execution;
                 EntryPoint m_compiled_function;
                 std::unordered_map<std::string, std::string> m_variable_name_map;
@@ -264,6 +267,8 @@ namespace ngraph
                 std::unique_ptr<MKLDNNEmitter> m_mkldnn_emitter;
 
                 std::string m_function_name;
+                std::string m_code;
+                std::string m_pch_header_source;
 
                 std::vector<std::function<void(CPURuntimeContext*)>> functors;
                 std::vector<std::string> op_names;

@@ -79,9 +79,24 @@ bool runtime::cpu::CPU_Backend::compile(shared_ptr<Function> func)
     {
         instance.m_external_function = make_shared<CPU_ExternalFunction>(func);
         instance.m_external_function->m_emit_timing = instance.m_performance_counters_enabled;
+    }
+    if (!instance.m_call_frame)
+    {
         auto cf = instance.m_external_function->make_call_frame();
         instance.m_call_frame = dynamic_pointer_cast<CPU_CallFrame>(cf);
     }
+    return true;
+}
+
+bool runtime::cpu::CPU_Backend::codegen(std::shared_ptr<Function> func)
+{
+    FunctionInstance& instance = m_function_map[func];
+    if (instance.m_external_function == nullptr)
+    {
+        instance.m_external_function = make_shared<CPU_ExternalFunction>(func);
+        instance.m_external_function->m_emit_timing = instance.m_performance_counters_enabled;
+    }
+    instance.m_external_function->codegen();
     return true;
 }
 

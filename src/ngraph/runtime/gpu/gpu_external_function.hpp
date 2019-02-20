@@ -69,6 +69,8 @@ namespace ngraph
             protected:
                 void compile();
 
+                void codegen();
+
                 EntryPoint m_compiled_function;
 
             private:
@@ -110,9 +112,11 @@ namespace ngraph
 
                 bool m_emit_timing;
                 bool m_is_compiled;
+                bool m_is_code_emitted;
                 size_t m_offset;
 
                 std::string m_function_name;
+                std::string m_code;
 
                 std::unordered_map<std::string, size_t> m_tensor_memory_buffers;
                 std::shared_ptr<GPU_Backend::BackendContext> m_shared_context;

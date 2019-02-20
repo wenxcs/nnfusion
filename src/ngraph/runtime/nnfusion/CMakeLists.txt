@@ -32,6 +32,7 @@ if (NNFUSION_ENABLE)
         nnfusion_cuda
         nnfusion_op
         nnfusion_pass
+        codegen
     )
     set_target_properties(cuda_codegen_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})
 

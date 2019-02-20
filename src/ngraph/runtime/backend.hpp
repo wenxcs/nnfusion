@@ -82,6 +82,15 @@ public:
     /// \returns true if compile is successful, false otherwise
     virtual bool compile(std::shared_ptr<Function> func) = 0;
 
+    /// \brief Generate code for a Function.
+    /// \param func The function for codegen
+    /// \returns true if codegen is successful, false otherwise
+    virtual bool codegen(std::shared_ptr<Function> func)
+    {
+        // fall back to compile interface for unsupported backend
+        return compile(func);
+    }
+
     /// \brief Executes a single iteration of a Function. If func is not compiled the call will
     ///     compile it.
     /// \param func The function to execute

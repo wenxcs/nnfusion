@@ -182,6 +182,7 @@ runtime::cpu::CPU_ExternalFunction::CPU_ExternalFunction(
     , m_use_tbb(std::getenv("NGRAPH_CPU_USE_TBB") != nullptr)
 #if !defined(NGRAPH_DEX_ONLY)
     , m_is_compiled(false)
+    , m_is_code_emitted(false)
     , m_direct_execution(!std::getenv("NGRAPH_CODEGEN"))
 #else
     , m_direct_execution(true)
@@ -386,9 +387,9 @@ static void
     writer << "}\n";
 }
 
-void runtime::cpu::CPU_ExternalFunction::compile()
+void runtime::cpu::CPU_ExternalFunction::codegen()
 {
-    if (m_is_compiled)
+    if (m_is_code_emitted)
     {
         return;
     }
@@ -485,7 +486,7 @@ using namespace ngraph::runtime;
     writer << "#include <mpi.h>\n\n";
 #endif
 
-    string pch_header_source = writer.get_code();
+    m_pch_header_source = writer.get_code();
 
     // The "dso_handle" symbol is required by __cxa_atexit()
     // which is enabled because the JIT uses it as the default mechanism
@@ -953,15 +954,29 @@ using namespace ngraph::runtime;
 
     // TODO: Cleanup and make this a utility function
     string filename = file_util::path_join(s_output_dir, m_function_name + "_codegen.cpp");
-    string code = writer.get_code();
-    runtime::cpu::CPU_ExternalFunction::write_to_file(writer.get_code(), s_output_dir, filename);
+    m_code = writer.get_code();
+    runtime::cpu::CPU_ExternalFunction::write_to_file(m_code, s_output_dir, filename);
+    m_is_code_emitted = true;
+}
+
+void runtime::cpu::CPU_ExternalFunction::compile()
+{
+    if (m_is_compiled)
+    {
+        return;
+    }
+
+    if (!m_is_code_emitted)
+    {
+        codegen();
+    }
 
     m_compiler.reset(new codegen::Compiler());
     m_execution_engine.reset(new codegen::ExecutionEngine());
 
-    m_compiler->set_precompiled_header_source(pch_header_source);
+    m_compiler->set_precompiled_header_source(m_pch_header_source);
 
-    auto codegen_module = m_compiler->compile(code);
+    auto codegen_module = m_compiler->compile(m_code);
 
     if (codegen_module == nullptr)
     {
