@@ -18,14 +18,20 @@
 #include "ngraph/op/constant.hpp"
 #include "ngraph/op/convert.hpp"
 #include "ngraph/op/convolution.hpp"
+#include "ngraph/op/divide.hpp"
 #include "ngraph/op/dot.hpp"
 #include "ngraph/op/exp.hpp"
 #include "ngraph/op/get_output_element.hpp"
 #include "ngraph/op/max_pool.hpp"
 #include "ngraph/op/multiply.hpp"
+#include "ngraph/op/negative.hpp"
 #include "ngraph/op/pad.hpp"
+#include "ngraph/op/power.hpp"
 #include "ngraph/op/relu.hpp"
+#include "ngraph/op/slice.hpp"
 #include "ngraph/op/subtract.hpp"
+#include "ngraph/op/sum.hpp"
+#include "ngraph/op/tanh.hpp"
 
 namespace ngraph
 {
@@ -624,6 +630,234 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateSigmoidOp(const tensorflow::NodeDef& node,
+                                               const NodeMap& all_ng_nodes,
+                                               ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto exp_op = std::make_shared<ngraph::op::Exp>(
+                    std::make_shared<ngraph::op::Negative>(ng_input));
+                auto constant_1 = std::make_shared<ngraph::op::Constant>(
+                    ng_input->get_element_type(),
+                    ng_input->get_shape(),
+                    std::vector<std::string>(ngraph::shape_size(ng_input->get_shape()), "1"));
+                auto denominator_op = std::make_shared<ngraph::op::Add>(constant_1, exp_op);
+
+                auto ng_sigmoid_op =
+                    std::make_shared<ngraph::op::Divide>(constant_1, denominator_op);
+                ng_sigmoid_op->set_name(node.name());
+
+                NamedNodeVector ret{{node.name(), ng_sigmoid_op}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateSumOp(const tensorflow::NodeDef& node,
+                                           const NodeMap& all_ng_nodes,
+                                           ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_axes_op = all_ng_nodes.at(node.input(1));
+
+                bool tf_keep_dims;
+                if (GetNodeAttr(node.attr(), "keep_dims", tf_keep_dims) == false)
+                {
+                    if (GetNodeAttr(node.attr(), "keepdims", tf_keep_dims) == false)
+                    {
+                        tf_keep_dims = false;
+                    }
+                }
+
+                std::vector<int64> sum_axes;
+                assert(GetValueFromNGraphOp<int64>(ng_axes_op, &sum_axes) == true);
+
+                ngraph::Shape input_shape = ng_input->get_shape();
+                size_t input_rank = input_shape.size();
+
+                assert(CheckAxisDimInRange(sum_axes, input_rank));
+
+                std::vector<size_t> ng_reduction_axes_vect(sum_axes.size());
+                std::transform(
+                    sum_axes.begin(),
+                    sum_axes.end(),
+                    ng_reduction_axes_vect.begin(),
+                    [input_rank](int idx) { return idx + (idx < 0 ? (int)input_rank : 0); });
+                ngraph::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
+
+                std::shared_ptr<ngraph::Node> ng_sum_op =
+                    std::make_shared<ngraph::op::Sum>(ng_input, ng_reduction_axes);
+                // If keep_dims is specified we need to reshape to put back the reduced
+                // axes, with length 1.
+                if (tf_keep_dims)
+                {
+                    ngraph::Shape ng_result_shape_with_keep(input_rank);
+
+                    for (size_t i = 0; i < input_rank; i++)
+                    {
+                        ng_result_shape_with_keep[i] =
+                            ng_reduction_axes.count(i) == 0 ? input_shape[i] : 1;
+                    }
+                    ngraph::AxisVector ng_axis_order(ng_sum_op->get_shape().size());
+                    std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
+                    ng_sum_op = std::make_shared<ngraph::op::Reshape>(
+                        ng_sum_op, ng_axis_order, ng_result_shape_with_keep);
+                }
+                ng_sum_op->set_name(node.name());
+
+                NamedNodeVector ret{{node.name(), ng_sum_op}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateSplitOp(const tensorflow::NodeDef& node,
+                                             const NodeMap& all_ng_nodes,
+                                             ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_split_dim = all_ng_nodes.at(node.input(0));
+                auto ng_input = all_ng_nodes.at(node.input(1));
+
+                // num_split : The number of ways to split. Must evenly divide
+                // value.shape[split_dim]
+                int32 num_split;
+                assert(GetNodeAttr(node.attr(), "num_split", num_split) == true);
+                ngraph::Shape shape = ng_input->get_shape();
+                int rank = shape.size();
+                std::vector<size_t> lower;
+                std::vector<size_t> upper;
+                for (int i = 0; i < rank; ++i)
+                {
+                    lower.push_back(0);
+                    upper.push_back(shape[i]);
+                }
+                std::vector<int> split_dim_vec;
+                assert(GetValueFromNGraphOp<int>(ng_split_dim, &split_dim_vec) == true);
+                int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
+                int size = shape[split_dim] / num_split;
+                int cursor = 0;
+
+                std::vector<std::shared_ptr<ngraph::Node>> ng_split_op_list;
+
+                for (size_t i = 0; i < num_split; ++i)
+                {
+                    lower[split_dim] = cursor;
+                    cursor += size;
+                    upper[split_dim] = cursor;
+                    auto ng_split_op = std::make_shared<ngraph::op::Slice>(ng_input, lower, upper);
+                    //ng_split_op->set_name(node.name());
+                    ng_split_op_list.push_back(ng_split_op);
+                }
+                NamedNodeVector ret;
+                for (int i = 0; i < ng_split_op_list.size(); i++)
+                {
+                    std::string node_name = node.name();
+                    if (i > 0)
+                    {
+                        node_name.append(":").append(std::to_string(i));
+                    }
+                    ret.push_back({node_name, ng_split_op_list[i]});
+                }
+                return ret;
+            }
+
+            NamedNodeVector TranslateSplitVOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_length_op = all_ng_nodes.at(node.input(1));
+                auto ng_split_dim = all_ng_nodes.at(node.input(2));
+
+                std::vector<int> lengths;
+                assert(GetValueFromNGraphOp<int>(ng_length_op, &lengths) == true);
+                ngraph::Shape shape = ng_input->get_shape();
+                int rank = shape.size();
+                std::vector<size_t> lower(rank, 0);
+                std::vector<size_t> upper(shape);
+
+                std::vector<int64> split_dim_vec;
+                assert(GetValueFromNGraphOp<int64>(ng_split_dim, &split_dim_vec) == true);
+                // there should be at least one element specified as axis and not more than
+                // one as axis is 0-D
+                if (split_dim_vec.size() != 1)
+                {
+                    std::cerr << "split_dim_tensor must have exactly one element.";
+                    assert(false);
+                }
+                assert(CheckAxisDimInRange(split_dim_vec, rank));
+
+                int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
+
+                // length: Length of size_splits
+                int length = 0;
+                int idx = -1;
+                // Find out the total length of the splits and locate -1 's index, if any
+                bool has_one_neg = false;
+                for (int i = 0; i < lengths.size(); ++i)
+                {
+                    if (lengths[i] != -1)
+                    {
+                        length += lengths[i];
+                    }
+                    else
+                    {
+                        if (has_one_neg)
+                        {
+                            std::cerr << "size_splits can only have one -1";
+                            assert(false);
+                        }
+                        else
+                        {
+                            idx = i;
+                            has_one_neg = true;
+                        }
+                    }
+                }
+
+                // Size splits must sum to the dimension of value along split_dim
+                if (idx > 0)
+                {
+                    lengths[idx] = shape[split_dim] - length;
+                }
+
+                if ((!has_one_neg && length != shape[split_dim]) ||
+                    (has_one_neg && lengths[idx] < 0))
+                {
+                    std::cerr << "The length of size_splits must sum to the value of the dimension "
+                                 "along split_dim";
+                    assert(false);
+                }
+                int cursor = 0;
+                std::vector<std::shared_ptr<ngraph::Node>> ng_split_op_list;
+                if (lengths.size() != 1)
+                {
+                    for (int i = 0; i < lengths.size(); ++i)
+                    {
+                        lower[split_dim] = cursor;
+                        cursor += lengths[i];
+                        upper[split_dim] = cursor;
+                        auto ng_split_op =
+                            std::make_shared<ngraph::op::Slice>(ng_input, lower, upper);
+                        //ng_split_op->set_name(node.name());
+                        ng_split_op_list.push_back(ng_split_op);
+                    }
+                }
+                else
+                {
+                    ng_split_op_list.push_back(ng_input);
+                }
+
+                NamedNodeVector ret;
+                for (int i = 0; i < ng_split_op_list.size(); i++)
+                {
+                    std::string node_name = node.name();
+                    if (i > 0)
+                    {
+                        node_name.append(":").append(std::to_string(i));
+                    }
+
+                    ret.push_back({node_name, ng_split_op_list[i]});
+                }
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -644,9 +878,15 @@ namespace ngraph
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
+                {"Pow", TranslateBinaryOp<ngraph::op::Power>},
                 {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
                 {"Reshape", TranslateReshapeOp},
-                {"Sub", TranslateBinaryOp<ngraph::op::Subtract>}};
+                {"Sigmoid", TranslateSigmoidOp},
+                {"Split", TranslateSplitOp},
+                {"SplitV", TranslateSplitVOp},
+                {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
+                {"Sum", TranslateSumOp},
+                {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>}};
 
             TensorflowGraph::TensorflowGraph(const tensorflow::GraphDef& proto)
                 : m_graph_proto{&proto}
@@ -663,11 +903,17 @@ namespace ngraph
                     }
                     if (is_input.find(node_proto.name()) != is_input.end())
                     {
-                        m_inputs.emplace_back(ng_nodes.front().second);
+                        for (auto& node : ng_nodes)
+                        {
+                            m_inputs.emplace_back(node.second);
+                        }
                     }
                     if (is_output.find(node_proto.name()) != is_output.end())
                     {
-                        m_outputs.emplace_back(ng_nodes.back().second);
+                        for (auto& node : ng_nodes)
+                        {
+                            m_outputs.emplace_back(node.second);
+                        }
                     }
                 }
             }
@@ -707,10 +953,15 @@ namespace ngraph
                 }
             }
 
-            std::shared_ptr<ngraph::Function> TensorflowGraph::get_outputs()
+            std::vector<std::shared_ptr<ngraph::Function>> TensorflowGraph::get_outputs()
             {
-                auto ng_function = std::make_shared<ngraph::Function>(m_outputs, m_parameters);
-                return ng_function;
+                std::vector<std::shared_ptr<Function>> output_functions;
+                for (const auto& output : m_outputs)
+                {
+                    output_functions.emplace_back(
+                        std::make_shared<ngraph::Function>(output, m_parameters));
+                }
+                return output_functions;
             }
         } // namespace tensorflow_import
     }     // namespace frontend

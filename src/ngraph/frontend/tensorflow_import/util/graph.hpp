@@ -36,7 +36,7 @@ namespace ngraph
 
                 NamedNodeVector convert_node(const tensorflow::NodeDef& node);
 
-                std::shared_ptr<ngraph::Function> get_outputs();
+                std::vector<std::shared_ptr<ngraph::Function>> get_outputs();
 
             private:
                 void generate_topology();

@@ -387,6 +387,125 @@ TEST(tensorflow_import, concatv2_op)
     }
 }
 
+TEST(tensorflow_import, pow_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_pow_graph.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+    std::vector<std::vector<int>> expected_outputs{
+        test::NDArray<int, 2>{{256, 65536}, {9, 27}}.get_vector()};
+
+    // constant input is [[2,2],[3,3]] and [[8,16],[9,27]]
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, tanh_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_tanh_graph.pb"));
+
+    Inputs inputs{{1.0}};
+    Outputs expected_outputs{{0.7615945}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs.front()));
+    }
+}
+
+TEST(tensorflow_import, sigmoid_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_sigmoid_graph.pb"));
+
+    Inputs inputs{{0.5, 1.0}};
+    Outputs expected_outputs{{0.62245935, 0.7310586}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, reduce_sum_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_sum_graph.pb"));
+
+    std::vector<std::vector<int>> inputs{test::NDArray<int, 2>{{1, 1, 1}, {2, 2, 2}}.get_vector()};
+    std::vector<std::vector<int>> expected_outputs{test::NDArray<int, 2>{{3}, {6}}.get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, split_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_split_graph.pb"));
+
+    // input size : {5, 30}, splits : {3, 9, 18}, axis : 1,
+    std::vector<std::vector<int>> inputs{};
+    std::vector<std::vector<int>> expected_outputs{
+        {15}, {15}, {15}, {15}, {15}, {15}, {15}, {15}, {15}, {15}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i][0], outputs[0].size());
+    }
+}
+
+TEST(tensorflow_import, splitV_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_splitv_graph.pb"));
+
+    // input size : {5, 30}, splits : {3, 9, 18}, axis : 1,
+    std::vector<std::vector<int>> inputs{};
+    std::vector<std::vector<int>> expected_outputs{{15}, {45}, {90}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i][0], outputs[0].size());
+    }
+}
+
+TEST(tensorflow_import, split_add_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_split_add_graph.pb"));
+
+    // input size : {5, 30}, splits : {3, 9, 18}, axis : 1,
+    std::vector<std::vector<int>> inputs{};
+    std::vector<std::vector<int>> expected_outputs{};
+    expected_outputs.emplace_back(std::vector<int>(50, 3));
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs[0]);
+    }
+}
+
 //TEST(onnx, model_add_abc_initializers)
 // {
 //     auto function = onnx_import::import_onnx_function(

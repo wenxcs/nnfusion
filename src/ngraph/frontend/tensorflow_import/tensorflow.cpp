@@ -27,7 +27,7 @@ namespace ngraph
 
             auto graph = tensorflow_import::TensorflowGraph{tensorflow_graph};
 
-            std::vector<std::shared_ptr<Function>> output_functions{graph.get_outputs()};
+            std::vector<std::shared_ptr<Function>> output_functions = graph.get_outputs();
             return output_functions;
         }
 

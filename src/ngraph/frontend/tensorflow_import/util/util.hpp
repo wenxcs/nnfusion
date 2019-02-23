@@ -376,6 +376,19 @@ namespace ngraph
                             ng_padding_above);
             }
 
+            static inline bool CheckAxisDimInRange(std::vector<int64> axes, size_t rank)
+            {
+                for (auto i : axes)
+                {
+                    if (i < (int)-rank || i >= (int)rank)
+                    {
+                        std::cerr << "Axis Dimension is out of range. Got " << i
+                                  << ", should be in range [-" << rank << ", " << rank << ")";
+                        return false;
+                    }
+                }
+                return true;
+            }
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace ngraph
