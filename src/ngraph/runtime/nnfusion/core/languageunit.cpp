@@ -18,6 +18,12 @@ bool LanguageUnit::change_symbol(const string symbol)
     return true;
 }
 
+void LanguageUnit::clean_require()
+{
+    required.clear();
+    local_symbol.clear();
+}
+
 bool LanguageUnit::require(const string required)
 {
     this->required.insert(required);

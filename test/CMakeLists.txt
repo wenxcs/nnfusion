@@ -56,7 +56,8 @@ set_source_files_properties(includes.cpp PROPERTIES COMPILE_DEFINITIONS
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     list(APPEND SRC tensorflow_import.cpp)
     if (NNFUSION_ENABLE)
-        list(APPEND SRC nnfusion_backend.cpp)
+        add_subdirectory(nnfusion)
+        list(APPEND SRC nnfusion_backend.cpp ${NNFUSION_TESTS})
     endif()
 endif()
 
@@ -223,6 +224,7 @@ target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_include_directories(unit-test PRIVATE ${TFPROTO_INCLUDE})
     target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_import_proto)
+    target_link_libraries(unit-test PRIVATE cuda_codegen_backend)
 endif()
 
 if (NGRAPH_ONNXIFI_ENABLE)

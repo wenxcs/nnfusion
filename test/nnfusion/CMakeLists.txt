@@ -1,0 +1,21 @@
+# Microsoft (c) 2019, Wenxiang Hu
+set(NNFUSION_TESTS
+    #test
+    nnfusion/test_util/library.cpp
+    #op
+    nnfusion/op/avg_pool.cpp
+    nnfusion/op/noop.cpp
+    nnfusion/op/anyop.cpp
+    nnfusion/op/broadcast.cpp
+    nnfusion/op/batchnorm.cpp
+    nnfusion/op/convolution.cpp
+    nnfusion/op/constant.cpp
+    nnfusion/op/pad.cpp
+    #core
+    nnfusion/core/interpreter.cpp
+    #cuda_op
+    nnfusion/cuda_op/avg_pool.cpp
+    nnfusion/cuda_op/pad.cpp
+    nnfusion/cuda_op/convolution.cpp
+    nnfusion/cuda_op/batchnorm.cpp
+    PARENT_SCOPE)

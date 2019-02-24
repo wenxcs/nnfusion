@@ -31,6 +31,7 @@ namespace nnfusion
             LU_DEFINE(CUDNN_SAFE_CALL);
             LU_DEFINE(CUBLAS_SAFE_CALL_NO_THROW);
             LU_DEFINE(CUBLAS_SAFE_CALL);
+            LU_DEFINE(CUDA_SAFE_LAUNCH);
         }
 
         namespace declaration
@@ -38,6 +39,8 @@ namespace nnfusion
             LU_DEFINE(typedef_int);
             LU_DEFINE(division_by_invariant_multiplication);
             LU_DEFINE(load);
+            LU_DEFINE(mad16);
+            LU_DEFINE(mod16);
             LU_DEFINE(global_cublas_handle);
             LU_DEFINE(global_cudnn_handle);
             LU_DEFINE(num_SMs);

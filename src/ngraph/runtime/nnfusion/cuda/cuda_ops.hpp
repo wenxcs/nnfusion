@@ -1,5 +1,7 @@
 #pragma once
 #include "op/anyop.hpp"
+#include "op/avg_pool.hpp"
+#include "op/batchnorm.hpp"
 #include "op/broadcast.hpp"
 #include "op/constant_naive.hpp"
 #include "op/convolution.hpp"
@@ -7,5 +9,6 @@
 #include "op/elementwise.hpp"
 #include "op/max_pool.hpp"
 #include "op/noop.hpp"
+#include "op/pad.hpp"
 #include "op/reshape.hpp"
 #include "op/result.hpp"

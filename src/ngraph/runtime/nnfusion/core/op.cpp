@@ -91,12 +91,23 @@ LanguageUnit_p ir::Function::codegen_source()
     else
     {
         assert_nullptr(this->definition_unit = codegen_function_definition());
-        this->definition_unit->require(this->dep_unit);
     }
     assert_nullptr(this->call_unit = codegen_function_call());
-    assert_bool(this->call_unit->require(this->definition_unit));
-
     assert_nullptr(this->test_unit = codegen_test());
+    // Pass other to dep_unit
+    for (auto& it : call_unit->local_symbol)
+        dep_unit->require(it.second);
+    for (auto& it : definition_unit->local_symbol)
+        dep_unit->require(it.second);
+    for (auto& it : test_unit->local_symbol)
+        dep_unit->require(it.second);
+    call_unit->clean_require();
+    definition_unit->clean_require();
+    test_unit->clean_require();
+
+    // orgaize dep
+    this->definition_unit->require(this->dep_unit);
+    assert_bool(this->call_unit->require(this->definition_unit));
     assert_bool(this->test_unit->require(this->definition_unit));
 
     isCodeGened = true;

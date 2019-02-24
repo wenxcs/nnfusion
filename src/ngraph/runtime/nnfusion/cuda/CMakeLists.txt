@@ -20,6 +20,8 @@ set(OP
     op/reshape.cpp
     op/broadcast.cpp
     op/max_pool.cpp
+    op/avg_pool.cpp
+    op/batchnorm.cpp
 )
 
 add_library(nnfusion_cuda STATIC ${SRC} ${OP})

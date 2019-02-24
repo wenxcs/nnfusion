@@ -11,7 +11,7 @@ namespace nnfusion
         // Store the caculated intermediated data
         class Operator
         {
-        protected:
+        public:
             // Common Data
             string m_name;
             bool isTranslated;

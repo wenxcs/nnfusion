@@ -15,7 +15,16 @@ TensorWrapper::TensorWrapper(const shared_ptr<descriptor::Tensor>& tv, const str
 
 size_t TensorWrapper::get_size() const
 {
-    return m_tensor->get_tensor_layout()->get_size();
+    //\todo
+    // need to variry the size;
+    if (m_tensor->get_tensor_layout() != nullptr)
+    {
+        return m_tensor->get_tensor_layout()->get_size();
+    }
+    else
+    {
+        return shape_size(m_tensor->get_shape());
+    }
 }
 
 size_t TensorWrapper::get_offset() const
@@ -25,7 +34,21 @@ size_t TensorWrapper::get_offset() const
 
 const Shape& TensorWrapper::get_shape() const
 {
-    return m_tensor->get_tensor_layout()->get_shape();
+    //\todo
+    // return m_tensor->get_tensor_layout()->get_shape();
+    if (m_tensor->get_tensor_layout() != nullptr)
+    {
+        return m_tensor->get_tensor_layout()->get_shape();
+    }
+    else
+    {
+        return m_tensor->get_shape();
+    }
+}
+
+const descriptor::Tensor& TensorWrapper::get_tensor() const
+{
+    return *m_tensor;
 }
 
 Strides TensorWrapper::get_strides() const
@@ -35,7 +58,16 @@ Strides TensorWrapper::get_strides() const
 
 const element::Type& TensorWrapper::get_element_type() const
 {
-    return m_tensor->get_tensor_layout()->get_element_type();
+    // \todo was return m_tensor->get_tensor_layout()->get_element_type(),
+    // What is the side effect.
+    if (m_tensor->get_tensor_layout() != nullptr)
+    {
+        return m_tensor->get_tensor_layout()->get_element_type();
+    }
+    else
+    {
+        return m_tensor->get_element_type();
+    }
 }
 
 const std::string& TensorWrapper::get_name() const

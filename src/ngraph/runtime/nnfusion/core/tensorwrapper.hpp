@@ -16,6 +16,7 @@ public:
     size_t get_size() const;
     size_t get_offset() const;
     const Shape& get_shape() const;
+    const descriptor::Tensor& get_tensor() const;
     Strides get_strides() const;
     const element::Type& get_element_type() const;
     const string& get_name() const;

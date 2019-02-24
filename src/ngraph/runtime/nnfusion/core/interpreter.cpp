@@ -65,6 +65,8 @@ ir::Operator_p FunctionTranslator::translate_node(shared_ptr<Node> node)
 {
     const map<type_index, function<ir::Operator_p(shared_ptr<Node>)>> typeid_map{
         {type_index(typeid(ngraph::op::Parameter)), ir::Noop::translate},
+        {type_index(typeid(ngraph::op::AvgPool)), ir::AvgPool::translate},
+        {type_index(typeid(ngraph::op::BatchNormInference)), ir::BatchNorm::translate},
         {type_index(typeid(ngraph::op::Result)), ir::Result::translate},
         {type_index(typeid(ngraph::op::Constant)), ir::Constant::translate},
         {type_index(typeid(ngraph::op::Broadcast)), ir::Broadcast::translate},

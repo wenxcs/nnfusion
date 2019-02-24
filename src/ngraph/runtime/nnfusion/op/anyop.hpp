@@ -20,13 +20,13 @@ namespace nnfusion
                 for (auto& arg : args)
                 {
                     this->dtypes.push_back(arg.get_type());
-                    this->dsizes.push_back(to_string(arg.get_size()));
+                    this->dsizes.push_back(to_string(shape_size(arg.get_tensor().get_shape())));
                 }
 
                 for (auto& ou : out)
                 {
                     this->dtypes.push_back(ou.get_type());
-                    this->dsizes.push_back(to_string(ou.get_size()));
+                    this->dsizes.push_back(to_string(shape_size(ou.get_tensor().get_shape())));
                 }
             }
 

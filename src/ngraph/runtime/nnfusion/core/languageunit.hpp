@@ -37,6 +37,7 @@ namespace nnfusion
 
         bool change_symbol(const string symbol);
         bool require(const string required);
+        void clean_require();
         bool require(shared_ptr<LanguageUnit> lu);
         string get_symbol() { return symbol; }
         string collect_code();

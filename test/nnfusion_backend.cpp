@@ -130,6 +130,47 @@ namespace nnfusion_test
         return vec;
     }
 
+    void* vgg16_get_execute_op(const std::shared_ptr<ngraph::Function>& function,
+                               std::string config,
+                               std::string test_name,
+                               DL_HANDLE& handle)
+    {
+        auto backend = ngraph::runtime::Backend::create(config);
+        backend->compile(function);
+        handle = nnfusion_test::get_library(test_name);
+        assert(handle != nullptr);
+        return nnfusion_test::get_funcion_pointer(test_name, handle);
+    }
+
+    template <class T, class T1>
+    std::vector<std::vector<T1>> vgg16_execute_op(std::vector<std::vector<T>> args,
+                                                  std::vector<std::vector<T1>> out,
+                                                  void* fun)
+    {
+        std::vector<std::vector<T1>> vec_rc;
+        auto func_simple = reinterpret_cast<bool (*)(void**)>(fun);
+
+        size_t args_cnt = args.size() + out.size();
+        void** arg = new void*[args_cnt];
+        for (int i = 0; i < args.size(); i++)
+            arg[i] = create_tensor(args[i]);
+        for (int i = args.size(); i < out.size() + args.size(); i++)
+            arg[i] = create_empty_tensor(out[i - args.size()]);
+
+        func_simple(arg);
+
+        for (int i = args.size(); i < out.size() + args.size(); i++)
+            vec_rc.push_back(create_vector((T1*)(arg[i]), out[i - args.size()].size()));
+
+        //Release Resources
+        for (int i = 0; i < args.size(); i++)
+            delete (T*)arg[i];
+        for (int i = args.size(); i < out.size() + args.size(); i++)
+            delete (T1*)arg[i];
+        delete arg;
+        return vec_rc;
+    }
+
     template <class T, class T1>
     std::vector<std::vector<T1>> execute_op(const std::shared_ptr<ngraph::Function>& function,
                                             std::string test_name,
@@ -356,3 +397,52 @@ TEST(nnfusion_backend, conv2d_op)
 
     EXPECT_TRUE(test::all_close_f(expected_outputs.front(), outputs.front()));
 }
+
+/*
+TEST(nnfusion_backend, vgg16)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "/home/wenxh/repo/nnfusion/fileshare/frozen_models/resnet/resnet50_simple.pb"));
+    srand((unsigned)time(NULL));
+    // the shape of placehoder is (3,2), flatting shape for input and output$
+    DL_HANDLE handle;
+    void* fun = nnfusion_test::vgg16_get_execute_op(
+        model[0], "CUDA_CODEGEN:naive_graphtest", "naive_test", handle);
+    Outputs expected_outputs{std::vector<float>(1001)};
+    for (int cnt = 0; cnt < 10; cnt++)
+    {
+        std::cout << "Round: " << cnt << std::endl;
+        std::vector<float> image;
+        for (int i = 0; i < 1 * 224 * 224 * 3; i++)
+        {
+            image.push_back((float)(rand() % (256)));
+        }
+        Inputs inputs;
+        inputs.emplace_back(image);
+
+        Outputs outputs{nnfusion_test::vgg16_execute_op(inputs, expected_outputs, fun)};
+
+        EXPECT_EQ(outputs.size(), 1);
+        auto& output = outputs.front();
+        EXPECT_EQ(output.size(), 1001);
+        std::ofstream fin, fout;
+        fin.open("resnet50.nnfusion.in." + std::to_string(cnt) + ".bin",
+                 std::ios::binary | std::ios::out);
+        fout.open("resnet50.nnfusion.out." + std::to_string(cnt) + ".bin",
+                  std::ios::binary | std::ios::out);
+        for (int i = 0; i < 1 * 224 * 224 * 3; i++)
+        {
+            float t = image[i];
+            fin.write((const char*)&t, sizeof(t));
+        }
+        for (int i = 0; i < 1001; i++)
+        {
+            float t = output[i];
+            fout.write((const char*)&t, sizeof(t));
+        }
+        fin.close();
+        fout.close();
+    }
+    nnfusion_test::close_dhhandel(handle);
+}
+*/

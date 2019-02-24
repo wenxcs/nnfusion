@@ -67,6 +67,22 @@ LanguageUnit_p CudaFunction::codegen_test()
 
     writer.block_begin();
     {
+        if (dep_unit->local_symbol.count("declaration::global_cublas_handle") > 0)
+        {
+            writer << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
+        }
+
+        if (dep_unit->local_symbol.count("declaration::global_cudnn_handle") > 0)
+        {
+            writer << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
+        }
+
+        if (dep_unit->local_symbol.count("declaration::num_SMs") > 0)
+        {
+            writer << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
+                      "cudaDevAttrMultiProcessorCount, 0));\n";
+        }
+
         for (size_t i = 0; i < arg.size(); i++)
         {
             auto& tensor = arg[i];
@@ -97,6 +113,27 @@ LanguageUnit_p CudaFunction::codegen_test()
                    << "cudaMemcpyDeviceToHost);\n";
         }
 
+        for (size_t i = 0; i < arg.size(); i++)
+        {
+            auto& tensor = arg[i];
+            writer << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+        }
+
+        for (size_t i = 0; i < out.size(); i++)
+        {
+            auto& tensor = out[i];
+            writer << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+        }
+
+        if (dep_unit->local_symbol.count("declaration::global_cublas_handle") > 0)
+        {
+            writer << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
+        }
+
+        if (dep_unit->local_symbol.count("declaration::global_cudnn_handle") > 0)
+        {
+            writer << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+        }
         writer << "return 0;\n";
     }
     writer.block_end();

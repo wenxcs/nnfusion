@@ -88,10 +88,11 @@ namespace nnfusion
 
         static const size_t s_memory_pool_alignment;
 
-    private:
         shared_ptr<FunctionTranslatorContext> m_trans_ctx;
         shared_ptr<vector<shared_ptr<IFunctionTranslatorPass>>> m_passes;
 
         ir::Operator_p translate_node(shared_ptr<Node> node);
     };
+
+    using FunctionTranslator_p = shared_ptr<FunctionTranslator>;
 }

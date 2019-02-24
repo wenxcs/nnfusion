@@ -2,6 +2,8 @@
 #pragma once
 
 #include "anyop.hpp"
+#include "avg_pool.hpp"
+#include "batchnorm.hpp"
 #include "broadcast.hpp"
 #include "constant.hpp"
 #include "convolution.hpp"

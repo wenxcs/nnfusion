@@ -54,6 +54,24 @@ LU_DEFINE(
 }
 )");
 
+LU_DEFINE(declaration::mod16,
+          R"(__device__ __forceinline__ int mod16(int numerator, int div, int maxdiv)
+{
+    int res;
+    asm("vmad.s32.u32.u32 %0, -%1.h0, %2.h0, %3;" : "=r"(res) : "r"(div), "r"(maxdiv), "r"(numerator));
+    return res;
+}
+)");
+
+LU_DEFINE(declaration::mad16,
+          R"(__device__ __forceinline__ int mad16(int a, int b, int c)
+{
+    int res;
+    asm("vmad.s32.u32.u32 %0, %1.h0, %2.h0, %3;" : "=r"(res) : "r"(a), "r"(b), "r"(c));
+    return res;
+}
+)");
+
 LU_DEFINE(
     declaration::load,
     R"(__device__ __forceinline__ float  load(const float*  __restrict__ in, int i=0, bool b=true)
@@ -184,5 +202,23 @@ LU_DEFINE(
         }                                                                                          \
     } while (0)
    )");
+
+LU_DEFINE(
+    macro::CUDA_SAFE_LAUNCH,
+    R"(#define CUDA_SAFE_LAUNCH(x)                                                                       \
+    do                                                                                             \
+    {                                                                                              \
+        (x);                                                                                       \
+        cudaError_t result = cudaGetLastError();                                                   \
+        if (result != cudaSuccess)                                                                 \
+        {                                                                                          \
+            const char* msg = cudaGetErrorString(result);                                          \
+            std::stringstream safe_call_ss;                                                        \
+            safe_call_ss << "\nerror: " #x " failed with error"                                    \
+                         << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << msg;  \
+            throw std::runtime_error(safe_call_ss.str());                                          \
+        }                                                                                          \
+    } while (0)
+)");
 
 #undef LU_DEFINE

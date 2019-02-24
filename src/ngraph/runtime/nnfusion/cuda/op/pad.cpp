@@ -10,8 +10,8 @@ cuda::Pad::Pad(ir::Operator_p inter_op)
 string cuda::Pad::codegen_function_name()
 {
     std::stringstream kernel_name;
-    kernel_name << "pad_" << join(op->dtypes, "_") << op->rank << "pad_i"
-                << join(op->input_shape, "_") << "pad_o" << join(op->output_shape) << "_pb"
+    kernel_name << "cuda_pad_" << join(op->dtypes, "_") << op->rank << "pad_i"
+                << join(op->input_shape, "_") << "pad_o" << join(op->output_shape, "_") << "_pb"
                 << join(op->padding_below, "_") << "_pi" << join(op->padding_interior, "_");
     return kernel_name.str();
 }
@@ -25,7 +25,7 @@ LanguageUnit_p cuda::Pad::codegen_function_definition()
 {
     LanguageUnit_p _lu(new LanguageUnit(codegen_function_name()));
     auto& lu = *_lu;
-    lu << "extern \"C\" __global__ void cuda_" << lu.symbol << "(" << op->dtypes[0] << "* in, "
+    lu << "extern \"C\" __global__ void " << lu.symbol << "(" << op->dtypes[0] << "* in, "
        << op->dtypes[1] << "* pad, " << op->dtypes[2] << "* out, "
        << "size_t n)\n";
     lu.block_begin();
@@ -51,8 +51,8 @@ LanguageUnit_p cuda::Pad::codegen_function_definition()
             lu << expand_vector_size("input_shape", op->input_shape);
             lu << expand_vector_uint32("input_strides", op->input_strides);
             lu << expand_vector_uint32("output_strides", op->output_strides);
-            lu << expand_vector_uint32("pad_below", op->pad_below);
-            lu << expand_vector_uint32("pad_interior", op->pad_interior);
+            lu << expand_vector_uint32("padding_below", op->pad_below);
+            lu << expand_vector_uint32("padding_interior", op->pad_interior);
 
             lu << "bool in_bounds = true;\n";
             lu << "uint32_t output_pixel = tid;\n";
