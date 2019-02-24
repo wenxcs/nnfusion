@@ -94,5 +94,16 @@ namespace nnfusion
             source_file << lu.get_code();
             source_file.close();
         }
+
+        string trim(string str)
+        {
+            str.erase(std::remove_if(str.begin(),
+                                     str.end(),
+                                     [](char c) -> bool {
+                                         return std::isspace<char>(c, std::locale::classic());
+                                     }),
+                      str.end());
+            return str;
+        }
     }
 }

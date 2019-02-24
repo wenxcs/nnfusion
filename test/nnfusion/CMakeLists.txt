@@ -11,11 +11,17 @@ set(NNFUSION_TESTS
     nnfusion/op/convolution.cpp
     nnfusion/op/constant.cpp
     nnfusion/op/pad.cpp
+    nnfusion/op/concat.cpp
+    nnfusion/op/slice.cpp
+    nnfusion/op/sum.cpp
     #core
     nnfusion/core/interpreter.cpp
     #cuda_op
     nnfusion/cuda_op/avg_pool.cpp
+    nnfusion/cuda_op/concat.cpp
     nnfusion/cuda_op/pad.cpp
     nnfusion/cuda_op/convolution.cpp
     nnfusion/cuda_op/batchnorm.cpp
+    nnfusion/cuda_op/slice.cpp
+    nnfusion/cuda_op/sum.cpp
     PARENT_SCOPE)

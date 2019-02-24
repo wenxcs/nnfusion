@@ -22,6 +22,8 @@ set(OP
     op/max_pool.cpp
     op/avg_pool.cpp
     op/batchnorm.cpp
+    op/concat.cpp
+    op/slice.cpp
 )
 
 add_library(nnfusion_cuda STATIC ${SRC} ${OP})

@@ -3,6 +3,7 @@
  * \brief Predefined Operator Inventory for Unit Tests
  * \author wenxh
  */
+#pragma once
 #include "ngraph/runtime/nnfusion/core/common.hpp"
 
 namespace nnfusion

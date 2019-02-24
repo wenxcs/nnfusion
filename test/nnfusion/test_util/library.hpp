@@ -8,6 +8,9 @@
 #include "ngraph/file_util.hpp"
 #include "ngraph/runtime/nnfusion/core/op.hpp"
 
+#include <algorithm>
+#include <string>
+
 #ifdef WIN32
 #include <windows.h>
 #define CLOSE_LIBRARY(a) FreeLibrary(a)
@@ -99,5 +102,9 @@ namespace nnfusion
             delete arg;
             return vec_rc;
         }
+
+        string trim(string str);
     }
 }
+
+#define TRIM(x) nnfusion::library::trim(x)
