@@ -458,7 +458,7 @@ TEST(tensorflow_import, split_op)
     auto model = frontend::load_tensorflow_model(
         file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_split_graph.pb"));
 
-    // input size : {5, 30}, splits : {3, 9, 18}, axis : 1,
+    // input size : {5, 30}, num_or_size_splits : 10, axis : 1,
     std::vector<std::vector<int>> inputs{};
     std::vector<std::vector<int>> expected_outputs{
         {15}, {15}, {15}, {15}, {15}, {15}, {15}, {15}, {15}, {15}};
@@ -493,10 +493,42 @@ TEST(tensorflow_import, split_add_op)
     auto model = frontend::load_tensorflow_model(file_util::path_join(
         SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_split_add_graph.pb"));
 
-    // input size : {5, 30}, splits : {3, 9, 18}, axis : 1,
     std::vector<std::vector<int>> inputs{};
     std::vector<std::vector<int>> expected_outputs{};
     expected_outputs.emplace_back(std::vector<int>(50, 3));
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs[0]);
+    }
+}
+
+TEST(tensorflow_import, mean_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_mean_graph.pb"));
+
+    Inputs inputs{test::NDArray<float, 2>{{1, 1, 1, 1}, {2, 2, 2, 2}}.get_vector()};
+    Outputs expected_outputs{{1.5, 1.5, 1.5, 1.5}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs[0]);
+    }
+}
+
+TEST(tensorflow_import, slice_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_slice_graph.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+    std::vector<std::vector<int>> expected_outputs{
+        test::NDArray<int, 2>{{3, 3, 3}, {5, 5, 5}}.get_vector()};
 
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
     {

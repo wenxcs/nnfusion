@@ -8,6 +8,7 @@
 #include "ngraph/axis_vector.hpp"
 #include "ngraph/builder/autobroadcast.hpp"
 #include "ngraph/builder/numpy_transpose.hpp"
+#include "ngraph/builder/reduce_ops.hpp"
 #include "ngraph/coordinate_diff.hpp"
 #include "ngraph/op/abs.hpp"
 #include "ngraph/op/add.hpp"
@@ -621,8 +622,7 @@ namespace ngraph
                 {
                     concat_axis += int64(ng_args[0]->get_shape().size());
                 }
-
-                auto ng_concat_op =
+                std::shared_ptr<ngraph::Node> ng_concat_op =
                     std::make_shared<ngraph::op::Concat>(ng_args, size_t(concat_axis));
                 ng_concat_op->set_name(node.name());
 
@@ -858,6 +858,134 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateMeanOp(const tensorflow::NodeDef& node,
+                                            const NodeMap& all_ng_nodes,
+                                            ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_axes_op = all_ng_nodes.at(node.input(1));
+
+                bool tf_keep_dims;
+                if (GetNodeAttr(node.attr(), "keep_dims", tf_keep_dims) == false)
+                {
+                    if (GetNodeAttr(node.attr(), "keepdims", tf_keep_dims) == false)
+                    {
+                        tf_keep_dims = false;
+                    }
+                }
+
+                ngraph::Shape shape = ng_input->get_shape();
+                int rank = shape.size();
+
+                std::vector<int64> mean_axes;
+                assert(GetValueFromNGraphOp<int64>(ng_axes_op, &mean_axes) == true);
+
+                assert(CheckAxisDimInRange(mean_axes, rank));
+
+                std::vector<size_t> ng_reduction_axes_vect(mean_axes.size());
+                std::transform(mean_axes.begin(),
+                               mean_axes.end(),
+                               ng_reduction_axes_vect.begin(),
+                               [rank](int idx) { return idx + (idx < 0 ? (int)rank : 0); });
+                ngraph::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
+
+                std::shared_ptr<ngraph::Node> ng_mean =
+                    ngraph::builder::mean(ng_input, ng_reduction_axes);
+
+                // If keep_dims is specified we need to reshape to put back the reduced
+                // axes, with length 1.
+                if (tf_keep_dims)
+                {
+                    ngraph::Shape ng_result_shape_with_keep(rank);
+                    for (size_t i = 0; i < rank; i++)
+                    {
+                        ng_result_shape_with_keep[i] =
+                            ng_reduction_axes.count(i) == 0 ? shape[i] : 1;
+                    }
+
+                    ngraph::AxisVector ng_axis_order(ng_mean->get_shape().size());
+                    std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
+                    ng_mean = std::make_shared<ngraph::op::Reshape>(
+                        ng_mean, ng_axis_order, ng_result_shape_with_keep);
+                }
+                ng_mean->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_mean}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateSliceOp(const tensorflow::NodeDef& node,
+                                             const NodeMap& all_ng_nodes,
+                                             ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_begin = all_ng_nodes.at(node.input(1));
+                auto ng_size = all_ng_nodes.at(node.input(2));
+
+                std::vector<int64> lower_vec;
+                std::vector<int64> size_vec;
+                assert(GetValueFromNGraphOp<int64>(ng_begin, &lower_vec) == true);
+                assert(GetValueFromNGraphOp<int64>(ng_size, &size_vec) == true);
+
+                if (lower_vec.size() != size_vec.size())
+                {
+                    std::cerr << "Cannot translate sliceop: Size of lower = " << lower_vec.size()
+                              << ", size of size_vec = " << size_vec.size()
+                              << ". Expected them to match.";
+                    assert(false);
+                }
+
+                std::vector<int> upper_vec(lower_vec.size());
+                const auto ng_input_shape = ng_input->get_shape();
+                std::stringstream err_stream;
+                std::string err_msg;
+                for (size_t i = 0; i < size_vec.size(); i++)
+                {
+                    if (size_vec[i] != -1)
+                    {
+                        upper_vec[i] = lower_vec[i] + size_vec[i];
+                    }
+                    else
+                    {
+                        // support -1 for size_vec, to the end of the tensor
+                        upper_vec[i] = ng_input_shape[i];
+                    }
+
+                    // check for this condition: 0 <= begin[i] <= begin[i] + size[i] <= Di
+                    if (0 > lower_vec[i])
+                    {
+                        err_stream << "lower < 0: " << lower_vec[i]
+                                   << ". It should have been positive.\n";
+                    }
+                    if (lower_vec[i] > upper_vec[i])
+                    {
+                        err_stream << "upper < lower: upper = " << upper_vec[i]
+                                   << ", lower = " << lower_vec[i] << "\n";
+                    }
+                    if (upper_vec[i] > ng_input_shape[i])
+                    {
+                        err_stream << "dim < upper: dim = " << ng_input_shape[i]
+                                   << ", upper = " << upper_vec[i] << "\n";
+                    }
+
+                    err_msg = err_stream.str();
+                    if (!err_msg.empty())
+                    {
+                        std::cerr << "Cannot translate sliceop at position " << i << " of "
+                                  << size_vec.size() << ". The reasons are:\n"
+                                  << err_msg;
+                        assert(false);
+                    }
+                }
+
+                std::vector<size_t> l(lower_vec.begin(), lower_vec.end());
+                std::vector<size_t> u(upper_vec.begin(), upper_vec.end());
+                auto ng_slice = std::make_shared<ngraph::op::Slice>(ng_input, l, u);
+
+                ng_slice->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_slice}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -874,6 +1002,7 @@ namespace ngraph
                 {"Identity", TranslateIdentityOp},
                 {"MatMul", TranslateMatMulOp},
                 {"MaxPool", TranslateMaxPoolOp},
+                {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
@@ -882,6 +1011,7 @@ namespace ngraph
                 {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
                 {"Reshape", TranslateReshapeOp},
                 {"Sigmoid", TranslateSigmoidOp},
+                {"Slice", TranslateSliceOp},
                 {"Split", TranslateSplitOp},
                 {"SplitV", TranslateSplitVOp},
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
@@ -897,6 +1027,7 @@ namespace ngraph
                 for (const auto& node_proto : proto.node())
                 {
                     auto ng_nodes = convert_node(node_proto);
+
                     for (auto& node : ng_nodes)
                     {
                         m_ng_node[node.first] = node.second;
@@ -966,3 +1097,4 @@ namespace ngraph
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace ngraph
+//----------------------------------------------------------------------------------------------
