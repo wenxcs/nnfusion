@@ -34,10 +34,10 @@ cuda::MaxPool1D::MaxPool1D(ir::Operator_p inter_op)
     assert_bool(op->padding_below == op->padding_above)
         << "currently don't suport asymetric padding!";
 
-    size_t window_width = op->window_shape.back();
-    size_t window_stride = op->window_stride.back();
-    size_t input_width = op->input_shape.back();
-    size_t output_width = op->output_shape.back();
+    window_width = op->window_shape.back();
+    window_stride = op->window_stride.back();
+    input_width = op->input_shape.back();
+    output_width = op->output_shape.back();
 }
 
 string cuda::MaxPool1D::codegen_function_name()

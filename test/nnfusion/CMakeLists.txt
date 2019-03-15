@@ -14,6 +14,7 @@ set(NNFUSION_TESTS
     nnfusion/op/concat.cpp
     nnfusion/op/slice.cpp
     nnfusion/op/sum.cpp
+    nnfusion/op/max_pool.cpp
     #core
     nnfusion/core/interpreter.cpp
     #cuda_op
@@ -24,4 +25,5 @@ set(NNFUSION_TESTS
     nnfusion/cuda_op/batchnorm.cpp
     nnfusion/cuda_op/slice.cpp
     nnfusion/cuda_op/sum.cpp
+    nnfusion/cuda_op/max_pool.cpp
     PARENT_SCOPE)
