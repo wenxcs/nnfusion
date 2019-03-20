@@ -24,6 +24,15 @@ namespace nnfusion
                 return constant;
             }
         }
+
+        template <>
+        vector<float> generate_output<op::Constant, float>(int option)
+        {
+            switch (option)
+            {
+            case 0: return vector<float>{0, 1, 2, 3, 4, 5, 6, 7};
+            }
+        }
     }
 }
 

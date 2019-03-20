@@ -15,6 +15,9 @@ set(NNFUSION_TESTS
     nnfusion/op/slice.cpp
     nnfusion/op/sum.cpp
     nnfusion/op/max_pool.cpp
+    nnfusion/op/result.cpp
+    nnfusion/op/reshape.cpp
+    nnfusion/op/softmax.cpp
     #core
     nnfusion/core/interpreter.cpp
     #cuda_op
@@ -26,4 +29,9 @@ set(NNFUSION_TESTS
     nnfusion/cuda_op/slice.cpp
     nnfusion/cuda_op/sum.cpp
     nnfusion/cuda_op/max_pool.cpp
+    nnfusion/cuda_op/broadcast.cpp
+    nnfusion/cuda_op/result.cpp
+    nnfusion/cuda_op/constant_navie.cpp
+    nnfusion/cuda_op/reshape.cpp
+    nnfusion/cuda_op/softmax.cpp
     PARENT_SCOPE)

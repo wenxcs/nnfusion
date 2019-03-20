@@ -15,3 +15,4 @@
 #include "op/reshape.hpp"
 #include "op/result.hpp"
 #include "op/slice.hpp"
+#include "op/softmax.hpp"

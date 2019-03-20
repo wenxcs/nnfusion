@@ -43,6 +43,23 @@ namespace nnfusion
                                                            std::string i_reduced_strides,
                                                            std::string o_coordinates,
                                                            size_t rank,
-                                                           bool register_arguments);
+                                                           bool register_arguments,
+                                                           std::string reduced_idx = "reduced_idx");
+
+        void div_to_mul(const NVShape& shape, std::vector<int>& magic, std::vector<int>& shift);
+
+        void get_reduce_strides(NVShape input_shape,
+                                NVShape reduce_axis,
+                                NVShape& non_reduce_shape,
+                                NVShape& non_reduce_strides,
+                                NVShape& non_reduce_strides_in_input,
+                                NVShape& reduce_shape,
+                                NVShape& reduce_strides,
+                                NVShape& reduce_strides_in_input);
+
+        void simplify_reduce_shape(NVShape in,
+                                   NVShape reduce_axis,
+                                   NVShape& simplified_shape,
+                                   NVShape& simplified_reduce_axis);
     }
 }

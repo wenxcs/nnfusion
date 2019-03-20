@@ -42,7 +42,8 @@ namespace nnfusion
         {
             switch (option)
             {
-            case 0: return vector<float>{6}; break;
+            case 0: return vector<float>{6};
+            case 1: return vector<float>{1, 2, 3, 4};
             };
         }
 
@@ -51,7 +52,8 @@ namespace nnfusion
         {
             switch (option)
             {
-            case 0: return vector<float>{6, 6, 6, 6}; break;
+            case 0: return vector<float>{6, 6, 6, 6};
+            case 1: return vector<float>{1, 2, 3, 4};
             }
         }
     }
@@ -104,7 +106,7 @@ TEST(nnfusion_ir, broadcast)
 
 TEST(nnfusion_ir, broadcast_same_shape)
 {
-    auto node = nnfusion::inventory::create_object<op::Broadcast>(0);
+    auto node = nnfusion::inventory::create_object<op::Broadcast>(1);
     EXPECT_TRUE(node != nullptr);
 
     // Static Method
@@ -125,5 +127,6 @@ TEST(nnfusion_ir, broadcast_same_shape)
     //\todo will check tensor descriptor
     //\todo Check the name generated this pahse
 
-    //\todo check result op
+    EXPECT_TRUE(compare_vector(op->out[0].get_shape(), Shape{4}));
+    EXPECT_TRUE(compare_vector(op->args[0].get_shape(), Shape{4}));
 }

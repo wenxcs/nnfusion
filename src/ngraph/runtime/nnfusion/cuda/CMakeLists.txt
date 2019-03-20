@@ -24,6 +24,7 @@ set(OP
     op/batchnorm.cpp
     op/concat.cpp
     op/slice.cpp
+    op/softmax.cpp
 )
 
 add_library(nnfusion_cuda STATIC ${SRC} ${OP})

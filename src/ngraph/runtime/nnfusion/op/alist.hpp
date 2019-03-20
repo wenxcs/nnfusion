@@ -16,4 +16,5 @@
 #include "reshape.hpp"
 #include "result.hpp"
 #include "slice.hpp"
+#include "softmax.hpp"
 #include "sum.hpp"

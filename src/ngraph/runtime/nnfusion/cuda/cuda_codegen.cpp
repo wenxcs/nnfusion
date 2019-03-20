@@ -28,6 +28,7 @@ bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
         {type_index(typeid(ngraph::op::AvgPool)), AvgPool::codegen},
         {type_index(typeid(ngraph::op::BatchNormInference)), BatchNorm::codegen},
         {type_index(typeid(ngraph::op::Pad)), Pad::codegen},
+        {type_index(typeid(ngraph::op::Softmax)), Softmax::codegen},
     };
     auto& node = *(inter_op->node);
     auto it = typeid_map.find(type_index(typeid(node)));

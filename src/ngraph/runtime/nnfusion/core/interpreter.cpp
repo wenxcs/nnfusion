@@ -88,6 +88,7 @@ ir::Operator_p FunctionTranslator::translate_node(shared_ptr<Node> node)
          ir::Elementwise<ngraph::op::Multiply>::translate},
         {type_index(typeid(ngraph::op::Subtract)),
          ir::Elementwise<ngraph::op::Subtract>::translate},
+        {type_index(typeid(ngraph::op::Softmax)), ir::Softmax::translate},
     };
     auto it = typeid_map.find(type_index(typeid(*node)));
     if (it == typeid_map.end())

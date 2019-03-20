@@ -100,7 +100,8 @@ std::string cuda::collective_coordinate_transform_helper(CodeWriter& writer,
                                                          std::string i_reduced_strides,
                                                          std::string o_coordinates,
                                                          size_t rank,
-                                                         bool register_arguments)
+                                                         bool register_arguments,
+                                                         std::string reduced_idx)
 {
     coordinate_transform_to_multi_d(writer,
                                     i_strides,
@@ -115,13 +116,148 @@ std::string cuda::collective_coordinate_transform_helper(CodeWriter& writer,
     std::string brace_close = (register_arguments) ? "" : "]";
 
     // index into reduced tensor from coordinates of non-reduced tensor
-    std::string reduced_idx = "reduced_idx";
-    writer << "int " << reduced_idx << " = 0;\n";
+    writer << "uint32_t " << reduced_idx << " = 0;\n";
     for (size_t i = 0; i < rank; i++)
     {
-        writer << "reduced_idx += " << o_coordinates << i << " * " << i_reduced_strides
+        writer << reduced_idx << " += " << o_coordinates << i << " * " << i_reduced_strides
                << brace_open << i << brace_close << ";\n";
     }
-
     return reduced_idx;
+}
+
+void cuda::div_to_mul(const NVShape& shape, std::vector<int>& magic, std::vector<int>& shift)
+{
+    for (int i = 0; i < shape.size(); i++)
+    {
+        int _magic;
+        int _shift;
+        std::tie(_magic, _shift) = idiv_magic_u64(shape[i]);
+        magic.push_back(_magic);
+        shift.push_back(_shift);
+    }
+}
+
+void cuda::simplify_reduce_shape(NVShape in,
+                                 NVShape reduce_axis,
+                                 NVShape& simplified_shape,
+                                 NVShape& simplified_reduce_axis)
+{
+    int32_t rank = in.size();
+    // Sort the axis incase it's not sorted.
+    std::sort(reduce_axis.begin(), reduce_axis.end());
+    // Clear simplified_shape and axis
+    simplified_shape.clear();
+    simplified_reduce_axis.clear();
+    // Combine axis if there is two or more adjeciant reuce_axis
+    // combine axis if there is two or more adjeciant non_reuce_axis
+    // update combined shape and axis
+    NVShape combined_reduce_axis;
+    NVShape adj_map(rank, 0);
+    size_t combined_axis_count = 0;
+    if (reduce_axis.empty())
+    {
+        simplified_shape = in;
+        simplified_reduce_axis = reduce_axis;
+        return;
+    }
+    for (int32_t i = 0; i < static_cast<int32_t>(reduce_axis[0]) - 1; i++)
+    {
+        adj_map[i] = 1;
+        combined_axis_count++;
+    }
+    for (int32_t i = 0; i < reduce_axis.size() - 1; i++)
+    {
+        if (static_cast<int32_t>(reduce_axis[i + 1]) - static_cast<int32_t>(reduce_axis[i]) == 1)
+        {
+            adj_map[reduce_axis[i]] = 1;
+            combined_axis_count++;
+        }
+        else
+        {
+            combined_reduce_axis.push_back(reduce_axis[i] - combined_axis_count);
+            for (int32_t j = static_cast<int32_t>(reduce_axis[i]) + 1;
+                 j < static_cast<int32_t>(reduce_axis[i + 1]) - 1;
+                 j++)
+            {
+                adj_map[j] = 1;
+                combined_axis_count++;
+            }
+        }
+    }
+    combined_reduce_axis.push_back(reduce_axis.back() - combined_axis_count);
+    for (int32_t i = static_cast<int32_t>(reduce_axis.back()) + 1; i < rank - 1; i++)
+    {
+        adj_map[i] = 1;
+    }
+
+    NVShape combined_shape;
+    size_t shape_i = 1;
+    for (int i = 0; i < rank; i++)
+    {
+        if (adj_map[i] == 1)
+        {
+            shape_i *= in[i];
+        }
+        else
+        {
+            combined_shape.push_back(shape_i * in[i]);
+            shape_i = 1;
+        }
+    }
+
+    // eleminate dimensons when dimension size = 1, update shape and reduce axis
+    size_t reduce_idx = 0;
+    size_t eliminated_axis_count = 0;
+    for (int32_t i = 0; i < combined_shape.size(); i++)
+    {
+        if (combined_shape[i] == 1)
+        {
+            eliminated_axis_count++;
+        }
+        else
+        {
+            simplified_shape.push_back(combined_shape[i]);
+            if (i == combined_reduce_axis[reduce_idx])
+            {
+                simplified_reduce_axis.push_back(i - eliminated_axis_count);
+            }
+        }
+        if (reduce_idx < combined_reduce_axis.size() - 1)
+        {
+            reduce_idx = (i == combined_reduce_axis[reduce_idx]) ? reduce_idx + 1 : reduce_idx;
+        }
+    }
+}
+
+void cuda::get_reduce_strides(NVShape input_shape,
+                              NVShape reduce_axis,
+                              NVShape& non_reduce_shape,
+                              NVShape& non_reduce_strides,
+                              NVShape& non_reduce_strides_in_input,
+                              NVShape& reduce_shape,
+                              NVShape& reduce_strides,
+                              NVShape& reduce_strides_in_input)
+{
+    size_t rank = input_shape.size();
+    NVShape reduce_flag(rank, 0);
+    for (auto a : reduce_axis)
+    {
+        reduce_flag[a] = 1;
+    }
+    NVShape input_strides = row_major_strides(input_shape);
+    for (int i = 0; i < rank; i++)
+    {
+        if (reduce_flag[i] != 0)
+        {
+            reduce_shape.push_back(input_shape[i]);
+            reduce_strides_in_input.push_back(input_strides[i]);
+        }
+        else
+        {
+            non_reduce_shape.push_back(input_shape[i]);
+            non_reduce_strides_in_input.push_back(input_strides[i]);
+        }
+    }
+    reduce_strides = row_major_strides(reduce_shape);
+    non_reduce_strides = row_major_strides(non_reduce_shape);
 }
