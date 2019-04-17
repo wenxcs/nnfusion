@@ -82,30 +82,37 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 include(var_functions)
 
-option(NGRAPH_UNIT_TEST_ENABLE "Control the building of unit tests" TRUE)
-option(NGRAPH_TOOLS_ENABLE "Control the building of tool" TRUE)
-option(NGRAPH_CPU_ENABLE "Control the building of the CPU backend" TRUE)
-option(NGRAPH_INTELGPU_ENABLE "Control the building of the Intel GPU backend with clDNN" FALSE)
-option(NGRAPH_GPU_ENABLE "Control the building of the GPU backend" FALSE)
-option(NGRAPH_INTERPRETER_ENABLE "Control the building of the INTERPRETER backend" TRUE)
-option(NGRAPH_HYBRID_ENABLE "Control the building of the HYBRID backend" FALSE)
-option(NGRAPH_DISTRIBUTED_ENABLE "Add distributed mode to the CPU backend" FALSE)
+# Options for Compiling
 option(NGRAPH_DEBUG_ENABLE "Enable output for NGRAPH_DEBUG statements" FALSE)
 option(NGRAPH_ONNX_IMPORT_ENABLE "Enable ONNX importer" FALSE)
-option(NGRAPH_DEX_ONLY "Build CPU DEX without codegen" FALSE)
 option(NGRAPH_CODE_COVERAGE_ENABLE "Enable code coverage data collection" FALSE)
 option(NNFUSION_TENSORFLOW_IMPORT_ENABLE "Enable Tensorflow importer for NNFusion" TRUE)
-option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object" TRUE)
+option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object(Onnx support required Protobuf-3.5.1 from our thirdparty repo)" TRUE)
+option(NGRAPH_USE_PREBUILT_LLVM "Using Prebuilt LLVM" TRUE)
+
+# Options for features
+option(NGRAPH_UNIT_TEST_ENABLE "Control the building of unit tests" TRUE)
+option(NGRAPH_TOOLS_ENABLE "Control the building of tool" TRUE)
+
+#   Backend Support Options
+#       Original Ngraphs
+option(NGRAPH_CPU_ENABLE "Control the building of the CPU backend" FALSE)
+option(NGRAPH_INTELGPU_ENABLE "Control the building of the Intel GPU backend with clDNN" FALSE)
+option(NGRAPH_GPU_ENABLE "Control the building of the GPU backend" FALSE)
+option(NGRAPH_INTERPRETER_ENABLE "Control the building of the INTERPRETER backend" FALSE)
+option(NGRAPH_HYBRID_ENABLE "Control the building of the HYBRID backend" FALSE)
+option(NGRAPH_DISTRIBUTED_ENABLE "Add distributed mode to the CPU backend" FALSE)
+option(NGRAPH_DEX_ONLY "Build CPU DEX without codegen" FALSE)
+option(NGRAPH_PLAIDML_ENABLE "Enable the PlaidML backend" FALSE)
+#       NNFusion
 option(NNFUSION_ENABLE "Control the building of the nnfusion backend" TRUE)
+
 set(NNFUSION_THIRDPARTY_FOLDER "" CACHE STRING "NNFusion Thirdpary libraries folder location")
-set(NGRAPH_USE_PREBUILT_LLVM TRUE)
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     set(NGRAPH_USE_SYSTEM_PROTOBUF FALSE)
     option(NGRAPH_ONNXIFI_ENABLE "Enable ONNX Interface for Framework Integration" TRUE)
 endif()
-
-option(NGRAPH_PLAIDML_ENABLE "Enable the PlaidML backend" FALSE)
 
 #-----------------------------------------------------------------------------------------------
 # Installation logic...
@@ -135,6 +142,9 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN")
 #-----------------------------------------------------------------------------------------------
 # Compiler-specific logic...
 #-----------------------------------------------------------------------------------------------
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 # Compiler-specific logic...
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
@@ -220,6 +230,9 @@ add_custom_target(style-check
     COMMAND ${PROJECT_SOURCE_DIR}/maint/check-code-format.sh
 )
 
+add_custom_target(style
+    COMMAND ${PROJECT_SOURCE_DIR}/maint/apply-code-format.sh
+)
 #-----------------------------------------------------------------------------------------------
 # enable or disable output from NGRAPH_DEBUG statements
 #-----------------------------------------------------------------------------------------------
@@ -281,13 +294,19 @@ endif()
 if(NNFUSION_THIRDPARTY_FOLDER STREQUAL "")
     include(cmake/external_gtest.cmake)
     include(cmake/external_json.cmake)
-    include(cmake/external_eigen.cmake)
-    include(cmake/external_mkldnn.cmake)
+    if(NGRAPH_CPU_ENABLE)
+        include(cmake/external_eigen.cmake)
+        include(cmake/external_mkldnn.cmake)
+        include(cmake/external_tbb.cmake)
+    endif()
 else()
     include(cmake/thirdparty/gtest.cmake)
     include(cmake/thirdparty/json.cmake)
-    include(cmake/thirdparty/eigen.cmake)
-    include(cmake/thirdparty/mkldnn.cmake)
+    if(NGRAPH_CPU_ENABLE)
+        include(cmake/thirdparty/eigen.cmake)
+        include(cmake/thirdparty/mkldnn.cmake)
+        include(cmake/thirdparty/tbb.cmake)
+    endif()
 endif()
 
 if (NGRAPH_USE_PREBUILT_LLVM OR DEFINED LLVM_TARBALL_URL)
@@ -302,12 +321,6 @@ else()
     else()
         include(cmake/thirdparty/llvm.cmake)
     endif()
-endif()
-
-if(NNFUSION_THIRDPARTY_FOLDER STREQUAL "")
-    include(cmake/external_tbb.cmake)
-else()
-    include(cmake/thirdparty/tbb.cmake)
 endif()
 
 if (NGRAPH_HALIDE)

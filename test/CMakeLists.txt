@@ -57,10 +57,9 @@ if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     list(APPEND SRC tensorflow_import.cpp)
     if (NNFUSION_ENABLE)
         add_subdirectory(nnfusion)
-        list(APPEND SRC nnfusion_backend.cpp ${NNFUSION_TESTS})
+        list(APPEND SRC nnfusion_backend.cpp)
     endif()
 endif()
-
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     list(APPEND SRC onnx_import.cpp)
@@ -77,6 +76,10 @@ if (NGRAPH_INTERPRETER_ENABLE)
         hybrid_backend.cpp
         hybrid_utils.cpp)
     set(ACTIVE_BACKEND_LIST ${ACTIVE_BACKEND_LIST} INTERPRETER)
+endif()
+
+if (NNFUSION_ENABLE)
+    list(APPEND SRC ${NNFUSION_TESTS})
 endif()
 
 if (NGRAPH_HYBRID_ENABLE)
@@ -185,7 +188,7 @@ if(NGRAPH_DISTRIBUTED_ENABLE)
 endif()
 
 target_link_libraries(unit-test PRIVATE ngraph_test_util)
-target_link_libraries(unit-test PRIVATE ngraph libgtest libjson pthread)
+target_link_libraries(unit-test PRIVATE ngraph libgtest libjson Threads::Threads)
 target_link_libraries(unit-test PRIVATE ${CMAKE_DL_LIBS})
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
@@ -224,13 +227,17 @@ target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_include_directories(unit-test PRIVATE ${TFPROTO_INCLUDE})
     target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_import_proto)
-    target_link_libraries(unit-test PRIVATE cuda_codegen_backend)
+    if (NNFUSION_ENABLE)
+        target_link_libraries(unit-test PRIVATE cuda_codegen_backend)
+    endif()
 endif()
 
 if (NGRAPH_ONNXIFI_ENABLE)
     target_include_directories(unit-test SYSTEM PUBLIC ${ONNX_INCLUDE_DIR})
     target_link_libraries(unit-test PRIVATE onnxifi-ngraph)
 endif()
+
+target_link_libraries(unit-test PRIVATE codegen)
 
 add_custom_target(unit-test-check
     COMMAND ${PROJECT_BINARY_DIR}/test/unit-test \${ARGS}

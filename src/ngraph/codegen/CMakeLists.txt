@@ -15,7 +15,7 @@
 # ******************************************************************************
 
 
-if (NGRAPH_GPU_ENABLE OR (NGRAPH_CPU_ENABLE AND NOT NGRAPH_DEX_ONLY))
+if (NNFUSION_ENABLE OR (NGRAPH_GPU_ENABLE OR (NGRAPH_CPU_ENABLE AND NOT NGRAPH_DEX_ONLY)))
     set(SRC
         code_writer.cpp
         compiler.cpp

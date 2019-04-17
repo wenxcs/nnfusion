@@ -14,15 +14,12 @@
 # limitations under the License.
 # ******************************************************************************
 
-add_subdirectory(examples)
-
 if ("${NGRAPH_BUILD_DOCS}" MATCHES "^ON$")
     add_custom_target( docs
         COMMENT "Build all of the documentation types selected during CMake configuration."
         )
 
     add_subdirectory( doxygen )
-    add_subdirectory( sphinx )
 else()
     add_custom_target( docs
         COMMAND echo
