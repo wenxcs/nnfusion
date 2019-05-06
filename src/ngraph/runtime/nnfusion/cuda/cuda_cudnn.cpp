@@ -62,7 +62,7 @@ LanguageUnit_p cuda::cudnn_tensor_descriptor_from_shape(const ngraph::Shape& sha
     {
         auto expand_vector_int = [](string name, vector<int>& d) {
             stringstream ss;
-            assert_bool(d.size() > 0);
+            enforce(d.size() > 0);
             ss << "int " << name << "[] = {";
             for (int i = 0; i + 1 < d.size(); i++)
                 ss << to_string(d[i]) << ", ";
@@ -172,7 +172,7 @@ LanguageUnit_p cuda::get_cudnn_convolution_descriptor(const Shape& padding,
     {
         auto expand_vector_int = [](string name, vector<int>& d) {
             stringstream ss;
-            assert_bool(d.size() > 0);
+            enforce(d.size() > 0);
             ss << "int " << name << "[] = {";
             for (int i = 0; i + 1 < d.size(); i++)
                 ss << to_string(d[i]) << ", ";

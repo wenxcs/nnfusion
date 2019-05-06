@@ -44,7 +44,7 @@ namespace nnfusion
             MaxPoolmD(ir::Operator_p inter_op)
                 : MaxPool(inter_op)
             {
-                assert_bool(op->padding_below == op->padding_above)
+                enforce(op->padding_below == op->padding_above)
                     << "currently don't suport asymetric padding!";
             }
             string codegen_function_name() override;

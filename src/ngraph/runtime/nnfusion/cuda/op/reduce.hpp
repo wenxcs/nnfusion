@@ -28,7 +28,7 @@ namespace nnfusion
             Reduce(ir::Operator_p inter_op)
                 : CudaFunction(inter_op)
             {
-                assert_nullptr(this->op = static_pointer_cast<ir::Reduce>(inter_op));
+                enforce_not_nullptr(this->op = static_pointer_cast<ir::Reduce>(inter_op));
 
                 input_shape = op->args[0].get_shape();
                 data_bytes = op->out[0].get_element_type().size();
@@ -334,7 +334,7 @@ namespace nnfusion
                     if (nthreads > nthreads_acc * (unroll_size + 1))
                     {
                         //todo(wenxh): Ignore this Case
-                        // assert_bool(false) << "no support for GPU memory allocation.";
+                        // enforce(false) << "no support for GPU memory allocation.";
                     }
                     else
                     {
@@ -357,7 +357,7 @@ namespace nnfusion
                     const uint32_t unroll_size = 8;
                     if (nthreads > nthreads_acc * (unroll_size + 1))
                     {
-                        assert_bool(false) << "no support for GPU memory allocation.";
+                        enforce(false) << "no support for GPU memory allocation.";
                     }
                     else
                     {
@@ -382,7 +382,7 @@ namespace nnfusion
                         reduce_op,
                         CudaOpMap<T>::math_kernel,
                         vector<string>{op->dtypes[0], op->dtypes[0], op->dtypes[1]});
-                    assert_nullptr(math_kernel);
+                    enforce_not_nullptr(math_kernel);
                     cw->require(math_kernel);
                 }
 
@@ -392,8 +392,7 @@ namespace nnfusion
             static CudaFunction_p codegen(ir::Operator_p inter_op)
             {
                 create_ptr(Reduce, cop, inter_op);
-                NGRAPH_DEBUG << "Codegen for Reduce function:" << cop->codegen_function_name()
-                             << endl;
+                LOG_INFO << "Codegen for Reduce function:" << cop->codegen_function_name() << endl;
                 return cop;
             }
         };

@@ -4,7 +4,7 @@
 cuda::Concat::Concat(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::Concat>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::Concat>(inter_op));
     input_num = op->input_shapes.size();
     split_input_size = 256; //max num of inputs fit 4KB parameter space: 256 * 8 + 7 * ?
     residue = input_num % split_input_size;
@@ -191,6 +191,6 @@ LanguageUnit_p cuda::Concat::codegen_dependency()
 cuda::CudaFunction_p cuda::Concat::codegen(ir::Operator_p inter_op)
 {
     Concat_p cop(new Concat(inter_op));
-    NGRAPH_DEBUG << "Codegen for Concat function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Concat function:" << cop->codegen_function_name() << endl;
     return cop;
 }

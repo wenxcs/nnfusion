@@ -45,8 +45,11 @@ namespace nnfusion
 
 } // namespace  error
 
-#define assert_nullptr(ptr_)                                                                       \
+#define enforce_not_nullptr(ptr_)                                                                  \
     NGRAPH_ASSERT_STREAM(nnfusion::error::NullPointer, ((ptr_) != nullptr)) << " "
 
-#define assert_bool(bval)                                                                          \
-    NGRAPH_ASSERT_STREAM(nnfusion::error::RuntimeError, ((bval) == true)) << " "
+#define enforce(bval) NGRAPH_ASSERT_STREAM(nnfusion::error::RuntimeError, ((bval) == true)) << " "
+
+#define check(ret)                                                                                 \
+    if (!ret)                                                                                      \
+        return false;

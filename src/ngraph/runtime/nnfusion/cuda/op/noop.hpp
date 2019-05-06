@@ -34,8 +34,7 @@ namespace nnfusion
             static CudaFunction_p codegen(ir::Operator_p inter_op)
             {
                 create_ptr(Noop, cop, inter_op);
-                NGRAPH_DEBUG << "Codegen for Noop function:" << cop->codegen_function_name()
-                             << endl;
+                LOG_INFO << "Codegen for Noop function:" << cop->codegen_function_name() << endl;
                 return cop;
             }
         };

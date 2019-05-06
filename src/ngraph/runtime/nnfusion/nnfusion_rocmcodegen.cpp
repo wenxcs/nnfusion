@@ -47,8 +47,8 @@ bool rocm_codegen::codegen(shared_ptr<Function> func)
     if (func_unit.m_is_translated == false)
     {
         auto tus = m_functrans->translate(func);
-        assert_nullptr(tus);
-        assert_bool(m_codegen->codegen(tus));
+        enforce_not_nullptr(tus);
+        enforce(m_codegen->codegen(tus));
     }
     return true;
 }
@@ -56,7 +56,7 @@ bool rocm_codegen::codegen(shared_ptr<Function> func)
 // Unimplement Functions for codegen backend
 bool rocm_codegen::compile(shared_ptr<Function> func)
 {
-    NGRAPH_DEBUG << "Unimplemented function compile() for rocm_codegen backend;" << endl;
+    LOG_INFO << "Unimplemented function compile() for rocm_codegen backend;" << endl;
     return this->codegen(func);
 }
 
@@ -64,7 +64,7 @@ bool rocm_codegen::call(shared_ptr<Function> func,
                         const vector<shared_ptr<runtime::Tensor>>& outputs,
                         const vector<shared_ptr<runtime::Tensor>>& inputs)
 {
-    NGRAPH_DEBUG << "Unimplemented function call() for rocm_codegen backend;" << endl;
+    LOG_INFO << "Unimplemented function call() for rocm_codegen backend;" << endl;
     bool rc = true;
 
     validate_call(func, outputs, inputs);
@@ -81,7 +81,7 @@ bool rocm_codegen::call(shared_ptr<Function> func,
 shared_ptr<runtime::Tensor> rocm_codegen::create_tensor(const element::Type& element_type,
                                                         const Shape& shape)
 {
-    NGRAPH_DEBUG << "Unimplemented function create_tensor() for rocm_codegen backend;" << endl;
+    LOG_INFO << "Unimplemented function create_tensor() for rocm_codegen backend;" << endl;
     return nullptr;
 }
 
@@ -89,6 +89,6 @@ shared_ptr<runtime::Tensor> rocm_codegen::create_tensor(const element::Type& ele
                                                         const Shape& shape,
                                                         void* memory_pointer)
 {
-    NGRAPH_DEBUG << "Unimplemented function create_tensor() for rocm_codegen backend;" << endl;
+    LOG_INFO << "Unimplemented function create_tensor() for rocm_codegen backend;" << endl;
     return nullptr;
 }

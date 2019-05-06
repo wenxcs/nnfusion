@@ -7,7 +7,7 @@ Dot::Dot(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
     _op = static_pointer_cast<ir::Dot>(inter_op);
-    assert_nullptr(_op) << "Wrong Operator was given.";
+    enforce_not_nullptr(_op) << "Wrong Operator was given.";
 }
 
 string Dot::codegen_function_name()
@@ -66,7 +66,7 @@ LanguageUnit_p Dot::codegen_function_definition()
                            << " respectively, at Node " << _op->node->get_name()
                            << ", do not match for dot op";
 
-                    assert_bool(false) << ss_err.str();
+                    enforce(false) << ss_err.str();
                 }
             }
 
@@ -127,7 +127,7 @@ LanguageUnit_p Dot::codegen_function_definition()
                            << " respectively, at Node " << _op->node->get_name()
                            << ", do not match for dot op";
 
-                    assert_bool(false) << ss_err.str();
+                    enforce(false) << ss_err.str();
                 }
             }
             // check and calculate m for arg0 and out
@@ -146,7 +146,7 @@ LanguageUnit_p Dot::codegen_function_definition()
                            << " respectively, at Node " << _op->node->get_name()
                            << ", do not match for dot op";
 
-                    assert_bool(false) << ss_err.str();
+                    enforce(false) << ss_err.str();
                 }
             }
             // check and calculate n for arg1 and out
@@ -165,7 +165,7 @@ LanguageUnit_p Dot::codegen_function_definition()
                            << " respectively, at Node " << _op->node->get_name()
                            << ", do not match for dot op";
 
-                    assert_bool(false) << ss_err.str();
+                    enforce(false) << ss_err.str();
                 }
             }
 
@@ -216,6 +216,6 @@ LanguageUnit_p Dot::codegen_dependency()
 CudaFunction_p Dot::codegen(ir::Operator_p inter_op)
 {
     Dot_p cop(new Dot(inter_op));
-    NGRAPH_DEBUG << "Codegen for Dot function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Dot function:" << cop->codegen_function_name() << endl;
     return cop;
 }

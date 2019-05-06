@@ -28,8 +28,8 @@ LanguageUnit_p cuda::Result::codegen_function_call()
 {
     LanguageUnit_p cw(new LanguageUnit);
     LanguageUnit& writer = *cw;
-    assert_bool(op->args.size() == 1) << "Input size mismatches.";
-    assert_bool(op->out.size() == 1) << "Output size mismatches.";
+    enforce(op->args.size() == 1) << "Input size mismatches.";
+    enforce(op->out.size() == 1) << "Output size mismatches.";
     emit_memcpyDtD(writer, op->out[0], op->args[0]);
     return cw;
 }
@@ -45,6 +45,6 @@ LanguageUnit_p cuda::Result::codegen_dependency()
 cuda::CudaFunction_p cuda::Result::codegen(ir::Operator_p inter_op)
 {
     Result_p cop(new Result(inter_op));
-    NGRAPH_DEBUG << "Codegen for Result function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Result function:" << cop->codegen_function_name() << endl;
     return cop;
 }

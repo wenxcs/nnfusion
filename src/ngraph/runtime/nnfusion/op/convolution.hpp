@@ -21,7 +21,7 @@ namespace nnfusion
                 : Operator(node)
             {
                 this->node = static_pointer_cast<ngraph::op::Convolution>(node);
-                assert_nullptr(this->node) << "Input ngraph::Node is invalid.";
+                enforce_not_nullptr(this->node) << "Input ngraph::Node is invalid.";
 
                 input_shape = args[0].get_shape();
                 filter_shape = args[1].get_shape();

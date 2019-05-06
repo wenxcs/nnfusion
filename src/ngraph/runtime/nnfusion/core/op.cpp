@@ -22,7 +22,7 @@ Operator::Operator(shared_ptr<Node> node)
     {
         const descriptor::Output& output = input.get_output();
         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-        assert_nullptr(tv);
+        enforce_not_nullptr(tv);
         in.push_back(TensorWrapper(tv, tv->get_name()));
         node_input_names.emplace_back(tv->get_name());
     }
@@ -30,7 +30,7 @@ Operator::Operator(shared_ptr<Node> node)
     for (const descriptor::Output& output : node->get_outputs())
     {
         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-        assert_nullptr(tv);
+        enforce_not_nullptr(tv);
         out.push_back(TensorWrapper(tv, tv->get_name()));
         node_output_names.emplace_back(tv->get_name());
     }
@@ -38,12 +38,12 @@ Operator::Operator(shared_ptr<Node> node)
     // Output debug info of node
     if (!node->is_parameter() && !node->is_constant())
     {
-        NGRAPH_DEBUG << "Node:\t" << node->get_name() << "\t(";
+        LOG_INFO << "Node:\t" << node->get_name() << "\t(";
         vector<string> parameter_nodes = node_input_names;
         parameter_nodes.insert(
             parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
-        NGRAPH_DEBUG << join(parameter_nodes);
-        NGRAPH_DEBUG << ")\n";
+        LOG_INFO << join(parameter_nodes);
+        LOG_INFO << ")\n";
     }
 
     for (auto& arg : in)
@@ -77,23 +77,23 @@ ir::Function::Function()
 ir::Function::Function(shared_ptr<Operator> op)
     : Function()
 {
-    assert_nullptr(this->op = op);
+    enforce_not_nullptr(this->op = op);
 }
 
 LanguageUnit_p ir::Function::codegen_source()
 {
-    assert_bool(isCodeGened == false) << "Code only generated once.";
-    assert_nullptr(this->dep_unit = codegen_dependency());
+    enforce(isCodeGened == false) << "Code only generated once.";
+    enforce_not_nullptr(this->dep_unit = codegen_dependency());
     if (definition_pool.find(codegen_function_name()) != definition_pool.end())
     {
-        assert_nullptr(this->definition_unit = definition_pool[codegen_function_name()]);
+        enforce_not_nullptr(this->definition_unit = definition_pool[codegen_function_name()]);
     }
     else
     {
-        assert_nullptr(this->definition_unit = codegen_function_definition());
+        enforce_not_nullptr(this->definition_unit = codegen_function_definition());
     }
-    assert_nullptr(this->call_unit = codegen_function_call());
-    assert_nullptr(this->test_unit = codegen_test());
+    enforce_not_nullptr(this->call_unit = codegen_function_call());
+    enforce_not_nullptr(this->test_unit = codegen_test());
     // Pass other to dep_unit
     for (auto& it : call_unit->local_symbol)
         dep_unit->require(it.second);
@@ -107,8 +107,8 @@ LanguageUnit_p ir::Function::codegen_source()
 
     // orgaize dep
     this->definition_unit->require(this->dep_unit);
-    assert_bool(this->call_unit->require(this->definition_unit));
-    assert_bool(this->test_unit->require(this->definition_unit));
+    enforce(this->call_unit->require(this->definition_unit));
+    enforce(this->test_unit->require(this->definition_unit));
 
     isCodeGened = true;
     return this->call_unit;

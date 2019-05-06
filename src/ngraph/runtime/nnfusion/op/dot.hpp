@@ -20,7 +20,7 @@ namespace nnfusion
                 : Operator(node)
             {
                 auto dot = static_pointer_cast<ngraph::op::Dot>(node);
-                assert_nullptr(dot) << "Invalid input.";
+                enforce_not_nullptr(dot) << "Invalid input.";
                 reduction_axes = dot->get_reduction_axes_count();
                 arg0_shape = ngraph::Shape(args[0].get_shape());
                 arg1_shape = ngraph::Shape(args[1].get_shape());

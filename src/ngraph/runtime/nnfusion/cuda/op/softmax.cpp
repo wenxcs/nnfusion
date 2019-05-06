@@ -6,13 +6,13 @@ using namespace nnfusion::cuda;
 Softmax::Softmax(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::Softmax>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::Softmax>(inter_op));
 }
 
 CudaFunction_p Softmax::codegen(ir::Operator_p inter_op)
 {
     auto irop = static_pointer_cast<ir::Softmax>(inter_op);
-    assert_nullptr(irop) << "Input operator is invalid.";
+    enforce_not_nullptr(irop) << "Input operator is invalid.";
     auto iter = irop->reduce_axis.begin();
     NVShape reduce_axis;
     while (iter != irop->reduce_axis.end())
@@ -44,13 +44,13 @@ CudaFunction_p Softmax::codegen(ir::Operator_p inter_op)
         // if reduce not include last axis, this is a heuristic to choose by reduce axis for better cache
         // a more accurate but slow way is to tune with actual kernel
         create_ptr(SoftmaxStridesBackNotOne, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
     else
     {
         create_ptr(SoftmaxStridesBackOne, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
 }

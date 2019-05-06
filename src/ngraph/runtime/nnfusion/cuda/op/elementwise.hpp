@@ -19,7 +19,8 @@ namespace nnfusion
             Elementwise(ir::Operator_p inter_op)
                 : CudaFunction(inter_op)
             {
-                assert_nullptr(this->inter_op = static_pointer_cast<ir::Elementwise<T>>(inter_op));
+                enforce_not_nullptr(this->inter_op =
+                                        static_pointer_cast<ir::Elementwise<T>>(inter_op));
             }
 
             string codegen_function_name() override
@@ -45,12 +46,12 @@ namespace nnfusion
                 if (CudaOpMap<T>::math_kernel != nullptr)
                 {
                     auto math_kernel = get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
-                    assert_nullptr(math_kernel);
+                    enforce_not_nullptr(math_kernel);
                     cw->require(math_kernel);
                 }
 
                 auto num_inputs = data_types.size() - 1;
-                assert_bool(num_inputs > 0)
+                enforce(num_inputs > 0)
                     << "At least one input and one output tesnor for elementwise-op.";
                 writer << "extern \"C\" __global__ void " << name << "(";
                 for (size_t i = 0; i < num_inputs; i++)
@@ -124,8 +125,8 @@ namespace nnfusion
             static CudaFunction_p codegen(ir::Operator_p inter_op)
             {
                 create_ptr(Elementwise, cop, inter_op);
-                NGRAPH_DEBUG << "Codegen for Elementwise function:" << cop->codegen_function_name()
-                             << endl;
+                LOG_INFO << "Codegen for Elementwise function:" << cop->codegen_function_name()
+                         << endl;
                 return cop;
             }
         };

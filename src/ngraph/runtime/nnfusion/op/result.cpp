@@ -15,7 +15,7 @@ Operator_p Result::translate(shared_ptr<Node> node)
     if (inter_op->args[0].get_name() == inter_op->out[0].get_name())
     {
         create_ptr(Noop, notrans, node);
-        NGRAPH_DEBUG << "Skipping translation for " << node->get_name() << "\n";
+        LOG_INFO << "Skipping translation for " << node->get_name() << "\n";
         return notrans;
     }
 

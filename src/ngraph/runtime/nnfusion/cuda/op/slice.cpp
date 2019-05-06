@@ -4,7 +4,7 @@
 cuda::Slice::Slice(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::Slice>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::Slice>(inter_op));
 
     nthreads = static_cast<uint32_t>(shape_size(op->output_shape));
     // TODO: currently we set it to 64, will add tuning method later
@@ -90,6 +90,6 @@ LanguageUnit_p cuda::Slice::codegen_dependency()
 cuda::CudaFunction_p cuda::Slice::codegen(ir::Operator_p inter_op)
 {
     Slice_p cop(new Slice(inter_op));
-    NGRAPH_DEBUG << "Codegen for Slice function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Slice function:" << cop->codegen_function_name() << endl;
     return cop;
 }

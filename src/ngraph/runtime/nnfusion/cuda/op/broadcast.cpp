@@ -6,7 +6,7 @@ Broadcast::Broadcast(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
     _op = static_pointer_cast<ir::Broadcast>(inter_op);
-    assert_nullptr(_op) << "Wrong Operator was given.";
+    enforce_not_nullptr(_op) << "Wrong Operator was given.";
 }
 
 string Broadcast::codegen_function_name()
@@ -104,6 +104,6 @@ LanguageUnit_p Broadcast::codegen_dependency()
 CudaFunction_p Broadcast::codegen(ir::Operator_p inter_op)
 {
     create_ptr(Broadcast, cop, inter_op);
-    NGRAPH_DEBUG << "Codegen for Broadcast function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Broadcast function:" << cop->codegen_function_name() << endl;
     return cop;
 }

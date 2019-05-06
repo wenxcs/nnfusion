@@ -5,7 +5,7 @@
 cuda::Convolution::Convolution(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::Convolution>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::Convolution>(inter_op));
 }
 
 LanguageUnit_p cuda::Convolution::codegen_dependency()
@@ -18,20 +18,20 @@ LanguageUnit_p cuda::Convolution::codegen_dependency()
 cuda::CudaFunction_p cuda::Convolution::codegen(ir::Operator_p inter_op)
 {
     auto convolution = static_pointer_cast<ir::Convolution>(inter_op);
-    assert_nullptr(convolution);
+    enforce_not_nullptr(convolution);
 
     if (convolution->padding_below_diff.size() > 3)
     {
         // <TODO> Support Conv3D or others.
-        assert_bool(false) << "Current we only support Conv2D";
+        enforce(false) << "Current we only support Conv2D";
         create_ptr(ConvolutionCuda, cop, inter_op);
-        NGRAPH_DEBUG << "Codegen for Cuda Convolution." << endl;
+        LOG_INFO << "Codegen for Cuda Convolution." << endl;
         return cop;
     }
     else
     {
         create_ptr(ConvolutionCudnn, cop, inter_op);
-        NGRAPH_DEBUG << "Codegen for Cudnn Convolution." << endl;
+        LOG_INFO << "Codegen for Cudnn Convolution." << endl;
         return cop;
     }
 }
@@ -64,9 +64,9 @@ cuda::ConvolutionCudnn::ConvolutionCudnn(ir::Operator_p inter_op)
             break;
         }
     }
-    assert_bool(is_deconvolution == false) << "Deconvolution is not supported by now.";
+    enforce(is_deconvolution == false) << "Deconvolution is not supported by now.";
     bool pad_required = (op->padding_below_diff != op->padding_above_diff);
-    assert_bool(pad_required == false) << "Asymetric padding is not supported by now.";
+    enforce(pad_required == false) << "Asymetric padding is not supported by now.";
 }
 
 LanguageUnit_p cuda::ConvolutionCudnn::codegen_function_definition()
