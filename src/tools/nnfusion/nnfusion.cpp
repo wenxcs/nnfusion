@@ -8,6 +8,7 @@
 
 #include "ngraph/except.hpp"
 #include "ngraph/file_util.hpp"
+#include "ngraph/frontend/onnx_import/onnx.hpp"
 #include "ngraph/frontend/tensorflow_import/tensorflow.hpp"
 #include "ngraph/graph_util.hpp"
 #include "ngraph/pass/manager.hpp"
@@ -129,7 +130,13 @@ int main(int argc, char** argv)
         {
             std::vector<std::shared_ptr<Function>> functions =
                 ngraph::frontend::load_tensorflow_model(model);
+            // TODO(jxue): currently we only use the first output function, need to support compile
+            // multiple output functions in the future
             f = functions.front();
+        }
+        else if (format == "onnx")
+        {
+            f = onnx_import::import_onnx_function(model);
         }
         else
         {

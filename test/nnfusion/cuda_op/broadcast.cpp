@@ -20,7 +20,7 @@ const static std::string broadcast_0_def =
     {
         int coordinate_product = tid;
         int coordinate0 = division_by_invariant_multiplication(coordinate_product, stride_magic0, stride_shift0);
-        int reduced_idx = 0;
+        uint32_t reduced_idx = 0;
         reduced_idx += coordinate0 * reduced_strides0;
         out[tid] = load(in, reduced_idx);
     }
@@ -50,7 +50,7 @@ TEST(nnfusion_cuda_op, broadcast)
     { // Test methods
         // Check generated function definition:
         auto def = cuda_op->codegen_function_definition();
-        EXPECT_TRUE(def->get_code() == broadcast_0_def);
+        EXPECT_TRUE(TRIM(def->get_code()) == TRIM(broadcast_0_def));
         // Check function call
         auto call = cuda_op->codegen_function_call();
         EXPECT_TRUE(call->get_code().size() > 0);
@@ -65,7 +65,7 @@ TEST(nnfusion_cuda_op, broadcast)
 
     { // Test codegen procedure
         auto test = cuda_op->codegen_source();
-        EXPECT_TRUE(cuda_op->definition_unit->get_code() == broadcast_0_def);
+        EXPECT_TRUE(TRIM(cuda_op->definition_unit->get_code()) == TRIM(broadcast_0_def));
         EXPECT_TRUE(cuda_op->call_unit->get_code().size() > 0);
         EXPECT_TRUE(cuda_op->dep_unit->required.count("header::cuda") == 1);
 

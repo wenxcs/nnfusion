@@ -32,6 +32,7 @@ configure_file(VERSION.in VERSION)
 message(STATUS "NGRAPH_VERSION ${NGRAPH_VERSION}")
 message(STATUS "NGRAPH_VERSION_SHORT ${NGRAPH_VERSION_SHORT}")
 message(STATUS "NGRAPH_API_VERSION ${NGRAPH_API_VERSION}")
+message(STATUS "NNFUSION_VERSION ${NGRAPH_VERSION}")
 
 set(NGRAPH_INCLUDE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -87,7 +88,7 @@ option(NGRAPH_DEBUG_ENABLE "Enable output for NGRAPH_DEBUG statements" FALSE)
 option(NGRAPH_ONNX_IMPORT_ENABLE "Enable ONNX importer" FALSE)
 option(NGRAPH_CODE_COVERAGE_ENABLE "Enable code coverage data collection" FALSE)
 option(NNFUSION_TENSORFLOW_IMPORT_ENABLE "Enable Tensorflow importer for NNFusion" TRUE)
-option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object(Onnx support required Protobuf-3.5.1 from our thirdparty repo)" TRUE)
+option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object(Onnx support required Protobuf-3.5.1 from our thirdparty repo)" FALSE)
 option(NGRAPH_USE_PREBUILT_LLVM "Using Prebuilt LLVM" TRUE)
 
 # Options for features
@@ -99,7 +100,7 @@ option(NGRAPH_TOOLS_ENABLE "Control the building of tool" TRUE)
 option(NGRAPH_CPU_ENABLE "Control the building of the CPU backend" FALSE)
 option(NGRAPH_INTELGPU_ENABLE "Control the building of the Intel GPU backend with clDNN" FALSE)
 option(NGRAPH_GPU_ENABLE "Control the building of the GPU backend" FALSE)
-option(NGRAPH_INTERPRETER_ENABLE "Control the building of the INTERPRETER backend" FALSE)
+option(NGRAPH_INTERPRETER_ENABLE "Control the building of the INTERPRETER backend" TRUE)
 option(NGRAPH_HYBRID_ENABLE "Control the building of the HYBRID backend" FALSE)
 option(NGRAPH_DISTRIBUTED_ENABLE "Add distributed mode to the CPU backend" FALSE)
 option(NGRAPH_DEX_ONLY "Build CPU DEX without codegen" FALSE)

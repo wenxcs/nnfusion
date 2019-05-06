@@ -16,7 +16,7 @@ LU_DEFINE(header::cublas, "#include <cublas_v2.h>\n");
 LU_DEFINE(header::cudnn, "#include <cudnn.h>\n");
 LU_DEFINE(header::stdio, "#include <stdio.h>\n");
 LU_DEFINE(header::cmath, "#include <cmath>\n");
-LU_DEFINE(header::algorithm, "#include <algorithm>\n");
+// LU_DEFINE(header::algorithm, "#include <algorithm>\n");
 LU_DEFINE(header::fstream, "#include <fstream>\n");
 LU_DEFINE(header::stdexcept, "#include <stdexcept>\n");
 LU_DEFINE(header::sstream, "#include <sstream>\n");
@@ -220,5 +220,7 @@ LU_DEFINE(
         }                                                                                          \
     } while (0)
 )");
+
+LU_DEFINE(macro::MIN, "#define MIN(a,b) ((a)>(b)?(b):(a))\n")
 
 #undef LU_DEFINE

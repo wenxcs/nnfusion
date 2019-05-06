@@ -333,7 +333,8 @@ namespace nnfusion
                     const uint32_t unroll_size = 8;
                     if (nthreads > nthreads_acc * (unroll_size + 1))
                     {
-                        assert_bool(false) << "no support for GPU memory allocation.";
+                        //todo(wenxh): Ignore this Case
+                        // assert_bool(false) << "no support for GPU memory allocation.";
                     }
                     else
                     {
@@ -372,7 +373,7 @@ namespace nnfusion
 
                 cw->require(header::cuda);
                 cw->require(header::stdio);
-                cw->require(header::algorithm);
+                cw->require(macro::MIN);
                 cw->require(declaration::num_SMs);
 
                 if (CudaOpMap<T>::math_kernel != nullptr)

@@ -11,7 +11,7 @@ namespace nnfusion
         namespace header
         {
             LU_DEFINE(stdio);
-            LU_DEFINE(algorithm);
+            // LU_DEFINE(algorithm);
             LU_DEFINE(fstream);
             LU_DEFINE(stdexcept);
             LU_DEFINE(sstream);
@@ -32,6 +32,7 @@ namespace nnfusion
             LU_DEFINE(CUBLAS_SAFE_CALL_NO_THROW);
             LU_DEFINE(CUBLAS_SAFE_CALL);
             LU_DEFINE(CUDA_SAFE_LAUNCH);
+            LU_DEFINE(MIN);
         }
 
         namespace declaration

@@ -37,6 +37,30 @@ bool LanguageUnit::require(shared_ptr<LanguageUnit> lu)
     return true;
 }
 
+bool LanguageUnit::remove(shared_ptr<LanguageUnit> lu)
+{
+    auto sym = lu->get_symbol();
+    this->required.erase(sym);
+    this->local_symbol.erase(sym);
+    return true;
+}
+
+bool LanguageUnit::replace(shared_ptr<LanguageUnit> lu, shared_ptr<LanguageUnit> b)
+{
+    auto sym = lu->get_symbol();
+    if (required.count(sym) != 0)
+    {
+        this->required.erase(sym);
+        require(b);
+    }
+    if (this->local_symbol.count(sym) != 0)
+    {
+        this->local_symbol.erase(sym);
+        require(b);
+    }
+    return true;
+}
+
 string LanguageUnit::collect_code()
 {
     LanguageUnit lu;

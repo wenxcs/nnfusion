@@ -13,6 +13,7 @@ namespace nnfusion
         {
         private:
             string const_name;
+            string folder;
             ir::Constant_p inter_op;
 
         public:

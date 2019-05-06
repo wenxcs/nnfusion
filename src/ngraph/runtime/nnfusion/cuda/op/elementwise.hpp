@@ -98,7 +98,7 @@ namespace nnfusion
                     fmin(num_SMs * 32, align_to_block_size(nthreads, block_size_x));
                 */
 
-                writer << codegen_function_name() << "<<<dim3(std::min(num_SMs * 32, "
+                writer << codegen_function_name() << "<<<dim3(MIN(num_SMs * 32, "
                        << align_to_block_size(nthreads, block_size_x) << "), " << 1 << ", " << 1
                        << "), dim3(" << block_size_x << ", " << 1 << ", " << 1 << "), " << 0 << ", "
                        << 0 << ">>>"
@@ -115,7 +115,7 @@ namespace nnfusion
 
                 cw->require(header::cuda);
                 cw->require(header::stdio);
-                cw->require(header::algorithm);
+                cw->require(macro::MIN);
                 cw->require(declaration::num_SMs);
 
                 return cw;

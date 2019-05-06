@@ -475,19 +475,19 @@ LanguageUnit_p SoftmaxStridesBackOne::codegen_function_definition()
         if (non_reduce_rank > 0)
         {
             writer << "uint32_t bid = blockIdx.x;\n";
+            collective_coordinate_transform_helper(writer,
+                                                   "bid",
+                                                   "non_reduce_strides",
+                                                   "non_reduce_strides_magic",
+                                                   "non_reduce_strides_shift",
+                                                   "non_reduce_strides_in_input",
+                                                   "non_reduce_coordinate",
+                                                   non_reduce_rank,
+                                                   true,
+                                                   "non_reduce_input_index");
         }
         writer << "uint32_t tid = threadIdx.x;\n";
         writer << "uint32_t step = blockDim.x;\n";
-        collective_coordinate_transform_helper(writer,
-                                               "bid",
-                                               "non_reduce_strides",
-                                               "non_reduce_strides_magic",
-                                               "non_reduce_strides_shift",
-                                               "non_reduce_strides_in_input",
-                                               "non_reduce_coordinate",
-                                               non_reduce_rank,
-                                               true,
-                                               "non_reduce_input_index");
         writer << "uint32_t input_idx;\n";
         writer << "uint32_t reduce_idx = tid;\n";
         writer << op->dtypes[1] << " r_max;\n";
@@ -560,6 +560,7 @@ LanguageUnit_p SoftmaxStridesBackOne::codegen_function_definition()
             {
                 if (num_of_warp > i)
                 {
+                    // Todo(wenxh): __shfl_down_sync needs at least cuda 9.0
                     writer << "input_i = __shfl_down_sync(0xffffffff, r_max, " << i << ", "
                            << WARPSIZE << ");\n";
                     max_lambda();

@@ -1,15 +1,49 @@
 // Microsoft (c) 2019, Wenxiang
 #include "constant_naive.hpp"
 
+#include <bits/stdc++.h>
+#include <iostream>
+#include <stdexcept>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 using namespace nnfusion::cuda;
+
+static bool create_dir(std::string tar_path)
+{
+    bool flag;
+    int mkdir_status;
+    struct stat s;
+    int err = stat(tar_path.c_str(), &s);
+    if (-1 == err)
+    {
+        mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (-1 == mkdir_status)
+        {
+            printf("Error creating directory: %s", (tar_path).c_str());
+            flag = false;
+        }
+        else
+            flag = true;
+    }
+    else
+    {
+        flag = true;
+    }
+    return flag;
+}
 
 ConstantNaive::ConstantNaive(ir::Constant_p inter_op)
     : CudaFunction(inter_op)
 {
     assert_nullptr(inter_op) << "Constant Node is null.";
     assert_bool(inter_op->out.size() == 1) << "Constant Node only has one output.";
+    folder = "./Constant/";
+    create_dir(folder);
     const_name = inter_op->out[0].get_name();
-    ofstream bin_file(const_name + ".bin", ios::out | ios::binary);
+    ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
     NGRAPH_DEBUG << "Write Const [" << const_name << "] into file : " << const_name << ".bin ["
                  << inter_op->data_size << "] bytes" << endl;
     bin_file.write((const char*)inter_op->data_ptr, inter_op->data_size);
@@ -36,7 +70,7 @@ LanguageUnit_p ConstantNaive::codegen_function_definition()
     {
         // Where should we put the planning code
         // *lu << "cudaMalloc((void**)out, " << inter_op->data_size << ")\n";
-        *lu << "std::ifstream bin_file(\"" << const_name
+        *lu << "std::ifstream bin_file(\"" << folder + const_name
             << ".bin\" , std::ios::in | std::ios::binary);\n"
             << "cudaMalloc((void**)out, " << inter_op->data_size << ");\n"
             << "char* tmp_mem = new char[" << inter_op->data_size << "];\n"

@@ -15,7 +15,9 @@
 # ******************************************************************************
 
 add_subdirectory(nbench)
-add_subdirectory(nnfusion)
+if(NNFUSION_TENSORFLOW_IMPORT_ENABLE AND NGRAPH_ONNX_IMPORT_ENABLE)
+    add_subdirectory(nnfusion)
+endif()
 add_subdirectory(ngraph-to-plaidml)
 add_subdirectory(reserialize)
 if (NGRAPH_ONNX_IMPORT_ENABLE)

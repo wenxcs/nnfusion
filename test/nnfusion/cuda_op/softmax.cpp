@@ -211,12 +211,12 @@ const static std::string softmax_1_def =
     int non_reduce_strides_shift0 = 0;
     extern __shared__ float sdata[];
     uint32_t bid = blockIdx.x;
-    uint32_t tid = threadIdx.x;
-    uint32_t step = blockDim.x;
     int coordinate_product = bid;
     int non_reduce_coordinate0 = division_by_invariant_multiplication(coordinate_product, non_reduce_strides_magic0, non_reduce_strides_shift0);
     uint32_t non_reduce_input_index = 0;
     non_reduce_input_index += non_reduce_coordinate0 * non_reduce_strides_in_input0;
+    uint32_t tid = threadIdx.x;
+    uint32_t step = blockDim.x;
     uint32_t input_idx;
     uint32_t reduce_idx = tid;
     float r_max;

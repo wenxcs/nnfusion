@@ -34,6 +34,9 @@ namespace nnfusion
     class NaiveCudaCodeGenerator : public CodeGenerator
     {
     public:
+        LanguageUnit_p lu_cmakefile, lu_nnfusion_rt, lu_header, lu_main;
+
+    public:
         NaiveCudaCodeGenerator()
             : CodeGenerator()
         {
@@ -49,5 +52,7 @@ namespace nnfusion
         }
 
         bool codegen(shared_ptr<TranslationUnit> tu) override;
+        virtual bool projgen();
+        virtual bool setpwd();
     };
 }
