@@ -1,7 +1,7 @@
 # Microsoft (c) 2019, Wenxiang Hu
 
 set(SRC
-    ir.h
+    ir.cpp
 )
 add_library(nnfusion_core STATIC ${SRC})
 target_include_directories(nnfusion_core SYSTEM PUBLIC

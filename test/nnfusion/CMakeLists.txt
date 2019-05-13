@@ -2,6 +2,7 @@
 set(NNFUSION_TESTS
     #test
     nnfusion/test_util/library.cpp
+    nnfusion/test_util/ir.cpp
     #op
     nnfusion/op/avg_pool.cpp
     nnfusion/op/noop.cpp
