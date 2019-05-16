@@ -20,6 +20,7 @@
 #include "attribute.hpp"
 #include "dependency.hpp"
 #include "value.hpp"
+#include "tag.hpp"
 
 //typesdef
 #define int64_t long long

@@ -35,14 +35,6 @@ namespace nnfusion
             return names[int(kind)];
         }
 
-        static inline const char* toString(AttributeKind kind)
-        {
-            static constexpr const char* names[] = {
-                "f", "fs", "i", "is", "s", "ss", "t", "ts", "g", "gs"};
-            enforce(size_t(kind) < sizeof(names) / sizeof(AttributeKind));
-            return names[int(kind)];
-        }
-
         struct AttributeValue
         {
             AttributeValue(Symbol name)
@@ -116,8 +108,9 @@ namespace nnfusion
         // Node * n = g->create(kSelect)->set_i(kOffset,3)->set_f(kValue,3.5);
         // we return Derived* pointers because Nodes are normally held as pointers.
         template <typename Derived>
-        struct Attributes
+        class Attributes
         {
+        public:
             Attributes() {}
             void copyAttributes(const Attributes& rhs)
             {
@@ -145,7 +138,6 @@ namespace nnfusion
                     names.push_back(a->name);
                 return names;
             }
-
 #define CREATE_ACCESSOR(Kind, method)                                                              \
     Derived* method##_(Symbol name, Kind##Attr::ConstructorType v)                                 \
     {                                                                                              \
@@ -158,10 +150,12 @@ namespace nnfusion
             CREATE_ACCESSOR(Strings, ss)
             CREATE_ACCESSOR(Int, i)
             CREATE_ACCESSOR(Ints, is)
+/*
             CREATE_ACCESSOR(Tensor, t)
             CREATE_ACCESSOR(Tensors, ts)
             CREATE_ACCESSOR(Graph, g)
             CREATE_ACCESSOR(Graphs, gs)
+            */
 
 #undef CREATE_ACCESSOR
 
@@ -210,7 +204,7 @@ namespace nnfusion
                     return v->name == name;
                 });
                 enforce(!required || it != values_.end()) << "required undefined attribute:"
-                                                          << name.toString();
+                                                          << name;
                 return it;
             }
         };

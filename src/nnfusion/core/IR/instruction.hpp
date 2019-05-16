@@ -13,12 +13,14 @@ namespace nnfusion
 {
     namespace ir
     {
-        class Instruction: // public Attributes<Node>
+        class Instruction : public Attributes<Node>
         {
             friend class Value;
             friend class Use;
             DISALLOW_COPY_AND_ASSIGN(Instruction);
 
+        public:
+            Instruction() {}
         private:
             // each node but Return/Param
             // is associated with exactly one place in the node list...
@@ -31,11 +33,17 @@ namespace nnfusion
             // This list represents a topological sort
 
             Instruction* next_in_graph[2] = {nullptr, nullptr};
-            Instruction*& next() { return next_in_graph[kNextDirection]; }
-            Instruction*& prev() { return next_in_graph[kPrevDirection]; }
-            Instruction* const& next() const { return next_in_graph[kNextDirection]; }
-            Instruction* const& prev() const { return next_in_graph[kPrevDirection]; }
-            const NodeKind kind_;
+            Instruction* next() { return nullptr; }; // return next_in_graph[kNextDirection]; }
+            Instruction* prev() { return nullptr; }; // return next_in_graph[kPrevDirection]; }
+            Instruction* const next() const
+            {
+                return nullptr;
+            }; //return next_in_graph[kNextDirection]; }
+            Instruction* const prev() const
+            {
+                return nullptr;
+            }; //return next_in_graph[kPrevDirection]; }
+            NodeKind kind_;
             std::vector<Value*> inputs_;
             std::vector<Value*> outputs_;
             bool has_name_;
@@ -103,38 +111,53 @@ namespace nnfusion
             */
             bool hasUses() const
             {
+                enforce(false) << "Not implemented.";
+                /*
                 for (auto o : outputs_)
                 {
                     if (o->uses().size() > 0)
                         return true;
                 }
                 return false;
+                */
             }
             void replaceAllUsesWith(Instruction* n)
             {
+                enforce(false) << "Not implemented.";
+                /*
                 enforce(outputs_.size() == n->outputs_.size());
                 size_t nOutputs = outputs_.size();
                 for (size_t i = 0; i < nOutputs; i++)
                 {
                     outputs_[i]->replaceAllUsesWith(n->outputs_[i]);
                 }
+                */
             }
             // lots of things like chunk have a single input or single output, so we have a
             // helper to make accessing it easier
             Value* input()
             {
+                enforce(false) << "Not implemented.";
+                /*
                 enforce(inputs_.size() == 1);
                 return inputs_.at(0);
+                */
             }
             Value* output()
             {
+                enforce(false) << "Not implemented.";
+                /*
                 enforce(outputs_.size() == 1);
                 return outputs_.at(0);
+                */
             }
             const Value* input() const
             {
+                enforce(false) << "Not implemented.";
+                /*
                 enforce(inputs_.size() == 1);
                 return inputs_.at(0);
+                */
             }
             // Access a particular input.  This is a checked index.
             Value* input(size_t i) { return inputs_.at(i); }
@@ -212,8 +235,11 @@ namespace nnfusion
 
             Value* addOutput()
             {
+                enforce(false) << "Not implemented.";
+                /*
                 outputs_.push_back(new Value(this, outputs_.size()));
                 return outputs_.back();
+                */
             }
 
             void eraseOutput(size_t i);
@@ -353,17 +379,21 @@ namespace nnfusion
             template <typename T>
             T* cast()
             {
+                /*
                 if (T::Kind == kind())
                     return static_cast<T*>(this);
+                    */
                 return nullptr;
             }
             template <typename T>
             T* expect()
             {
+                /*
                 enforce(T::Kind == kind(),
                         "expected a %s but found a %s",
                         T::Kind.toString(),
                         kind().toString());
+                */
                 return static_cast<T*>(this);
             }
 
@@ -373,12 +403,16 @@ namespace nnfusion
             // Lookup iterator in use list of _input i_ that corresponds to its use of _this_
             use_list::iterator findUseForInput(size_t i)
             {
+                enforce(false) << "Not implemented.";
+                /*
                 auto& input_uses = inputs_[i]->uses_;
                 // O(N) on the use list, but unless we get nodes with +100 uses
                 // vector traversal still is probably faster than linked list
-                auto use_it = std::find(input_uses.begin(), input_uses.end(), Use(this, i));
+                auto use_it = std::find(input_uses.begin(), input_uses.end(), Use((Node*)this, i));
+                
                 enforce(use_it != input_uses.end());
                 return use_it;
+                */
             }
 
             // remove the use of input i, this sets input i to nullptr, but
@@ -386,12 +420,15 @@ namespace nnfusion
             // or erasing the entry from the list.
             Value* dropInput(size_t i)
             {
+                enforce(false) << "Not implemented.";
+                /*
                 enforce(i < inputs_.size());
                 auto input_node = inputs_[i];
                 auto use_it = findUseForInput(i);
                 input_node->uses_.erase(use_it);
                 inputs_[i] = nullptr;
                 return input_node;
+                */
             }
 
             bool inGraphList() const
@@ -401,6 +438,8 @@ namespace nnfusion
             }
             void removeFromList()
             {
+                enforce(false) << "Not implemented.";
+                /*
                 enforce(inGraphList());
                 Node* next = this->next();
                 Node* prev = this->prev();
@@ -408,6 +447,7 @@ namespace nnfusion
                 next->prev() = prev;
                 this->next() = nullptr;
                 this->prev() = nullptr;
+                */
             }
 
         protected:
@@ -479,7 +519,6 @@ namespace nnfusion
             int64_t version() const { return version_; }
             void incrementVersion(int64_t step) { version_ += step; }
             void setVersion(int64_t newVal) { version_ = newVal; }
-        };
         */
     }
 }

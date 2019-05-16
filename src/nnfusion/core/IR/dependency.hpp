@@ -36,6 +36,7 @@ namespace nnfusion
 {
     namespace ir
     {
+        class Value;
         class ResourceGuard final
         {
             std::function<void()> destructor_;

@@ -2,8 +2,10 @@
 // Metagraph IR, which is to guide the codegen procedcure.
 // This IR is based on ONNIX::ir's interface, but
 // Instructions has attribute, namespace, and tag
+#pragma once
 
 #include "dependency.hpp"
+#include "instruction.hpp"
 
 namespace nnfusion
 {
@@ -13,14 +15,16 @@ namespace nnfusion
         class Value final
         {
             DISALLOW_COPY_AND_ASSIGN(Value);
+
+        public:
             Value(Instruction* node_, size_t offset_);
+            use_list uses_;
 
         private:
             Node* node_;
             size_t offset_;
             size_t unique_ = 0; // unique id
             size_t stage_ = 0;  // 0-forward, 1-backward, 2-double-backward,...
-            use_list uses_;
             bool has_unique_name_;
             std::string unique_name_;
             int32_t elem_type_;
