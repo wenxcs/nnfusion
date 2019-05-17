@@ -48,6 +48,8 @@ namespace ngraph
         class Result;
     }
 
+    class Edge;
+
     void replace_node_users_arguments(std::shared_ptr<Node> target,
                                       std::shared_ptr<Node> replacement);
 
@@ -142,6 +144,8 @@ namespace ngraph
         virtual bool is_constant() const;
         virtual bool is_commutative() { return false; }
         size_t get_instance_id() const { return m_instance_id; }
+        size_t get_id() const { return m_id; }
+        size_t set_id(size_t id) { m_id = id; }
         friend std::ostream& operator<<(std::ostream&, const Node&);
         virtual std::ostream& write_short_description(std::ostream&) const;
         virtual std::ostream& write_long_description(std::ostream&) const;
@@ -166,6 +170,20 @@ namespace ngraph
         {
             m_control_dependencies.erase(node);
         }
+
+        /// Get in edges
+        const std::set<std::shared_ptr<Edge>>& get_in_edges() const;
+
+        void add_in_edge(std::shared_ptr<Edge> edge);
+
+        void remove_in_edge(std::shared_ptr<Edge> edge) { m_in_edges.erase(edge); }
+        /// Get out edges
+        const std::set<std::shared_ptr<Edge>>& get_out_edges() const;
+
+        void add_out_edge(std::shared_ptr<Edge> edge);
+
+        void remove_out_edge(std::shared_ptr<Edge> edge) { m_out_edges.erase(edge); }
+        void Clear();
 
         /// Returns the number of outputs on the for the node.
         size_t get_output_size() const;
@@ -250,6 +268,7 @@ namespace ngraph
 
         std::string m_node_type;
         size_t m_instance_id;
+        size_t m_id; // m_id is for graph, the index in graph m_nodes
         std::string m_name;
         const std::string m_unique_name;
         static std::atomic<size_t> m_next_instance_id;
@@ -257,6 +276,9 @@ namespace ngraph
         std::deque<descriptor::Output> m_outputs;
         std::unordered_map<Node*, autodiff::Adjoints> m_adjoint_map;
         Placement m_placement = Placement::DEFAULT;
+
+        std::set<std::shared_ptr<Edge>> m_in_edges;
+        std::set<std::shared_ptr<Edge>> m_out_edges;
     };
 
     class NodeValidationError : public AssertionFailure

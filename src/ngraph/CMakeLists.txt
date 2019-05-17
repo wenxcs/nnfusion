@@ -163,6 +163,7 @@ set (SRC
     graph_util.cpp
     placement.cpp
     cpio.cpp
+    graph.cpp
     )
 if(NGRAPH_DISTRIBUTED_ENABLE)
     list(APPEND SRC distributed.cpp)

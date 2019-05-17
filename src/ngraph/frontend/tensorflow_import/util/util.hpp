@@ -25,6 +25,30 @@ namespace ngraph
     {
         namespace tensorflow_import
         {
+            static const int kControlSlot = -1;
+            struct TensorId : public std::pair<std::string, int>
+            {
+                TensorId() {}
+                TensorId(const std::string& str, int idx)
+                {
+                    first = str;
+                    second = idx;
+                }
+                TensorId(const TensorId& id)
+                    : TensorId(id.first, id.second)
+                {
+                }
+
+                const std::string& node() const { return first; }
+                int index() const { return second; }
+                std::string ToString() const
+                {
+                    if (second == kControlSlot)
+                        return "^" + first;
+                    return first + ":" + std::to_string(second);
+                }
+            };
+
             // Validates type T for whether it is a supported DataType.
             template <class T>
             struct IsValidDataType;
@@ -100,6 +124,11 @@ namespace ngraph
             // the dimension lengths in tf_shape are negative.
             bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
                                             ngraph::Shape* ng_shape);
+
+            std::shared_ptr<ngraph::Node> GetInputNode(const NodeMap& all_ng_nodes,
+                                                       const tensorflow::NodeDef& node,
+                                                       size_t input_idx);
+            TensorId ParseTensorName(const std::string& name);
 
             template <typename T, typename VecT = T>
             std::vector<VecT>
@@ -389,6 +418,7 @@ namespace ngraph
                 }
                 return true;
             }
+
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace ngraph

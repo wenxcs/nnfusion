@@ -8,7 +8,7 @@
 #include <iostream>
 #include <string>
 
-#include "util/graph.hpp"
+#include "util/graph_convert.hpp"
 
 namespace ngraph
 {

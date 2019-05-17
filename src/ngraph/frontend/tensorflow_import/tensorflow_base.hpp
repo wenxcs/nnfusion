@@ -27,7 +27,7 @@ namespace ngraph
         {
             using NamedNode = std::pair<std::string, std::shared_ptr<ngraph::Node>>;
             using NamedNodeVector = std::vector<NamedNode>;
-            using NodeMap = std::map<std::string, std::shared_ptr<ngraph::Node>>;
+            using NodeMap = std::map<std::string, std::vector<std::shared_ptr<ngraph::Node>>>;
             using ConvertFunc = std::function<NamedNodeVector(
                 const tensorflow::NodeDef&, const NodeMap&, ngraph::op::ParameterVector&)>;
 

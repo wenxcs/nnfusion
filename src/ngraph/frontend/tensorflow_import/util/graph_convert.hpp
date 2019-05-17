@@ -5,11 +5,14 @@
 
 #pragma once
 
+#include <queue>
 #include <string>
 #include <vector>
 
 #include "../tensorflow_base.hpp"
+#include "ngraph/graph.hpp"
 #include "ngraph/op/parameter_vector.hpp"
+#include "util.hpp"
 
 namespace ngraph
 {
@@ -17,10 +20,10 @@ namespace ngraph
     {
         namespace tensorflow_import
         {
-            class TensorflowGraph
+            class GraphConvert
             {
             public:
-                TensorflowGraph(const tensorflow::GraphDef& proto);
+                GraphConvert(const tensorflow::GraphDef& proto);
 
                 // const std::vector<Node>& get_nodes() const { return m_nodes; }
                 // const std::vector<ValueInfo>& get_inputs() const { return m_inputs; }
@@ -29,10 +32,12 @@ namespace ngraph
                 {
                     return m_parameters;
                 }
-                // std::shared_ptr<ngraph::Node> get_ng_node(const std::string& name) const
-                // {
-                //     return m_ng_node.at(name);
-                // }
+
+                std::vector<std::shared_ptr<ngraph::Node>>
+                    get_ng_node(const std::string& name) const
+                {
+                    return m_ng_node.at(name);
+                }
 
                 NamedNodeVector convert_node(const tensorflow::NodeDef& node);
 
@@ -53,6 +58,12 @@ namespace ngraph
                 std::set<std::string> is_input;
                 std::set<std::string> is_output;
                 NodeMap m_ng_node;
+                std::shared_ptr<ngraph::Graph> m_ngraph;
+
+                std::queue<uint32_t> topology_;
+                std::unordered_map<std::string, uint32_t> tensorflow_name2nodeIdx_map_;
+                std::vector<uint32_t> pending_counts_;
+                std::vector<std::vector<uint32_t>> tensorflow_node_outputs_;
             };
 
             // inline std::ostream& operator<<(std::ostream& outs, const Graph& graph)

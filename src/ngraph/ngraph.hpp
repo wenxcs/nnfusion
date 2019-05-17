@@ -56,6 +56,7 @@
 #include "ngraph/dimension.hpp"
 #include "ngraph/except.hpp"
 #include "ngraph/function.hpp"
+#include "ngraph/graph.hpp"
 #include "ngraph/node.hpp"
 #include "ngraph/op/abs.hpp"
 #include "ngraph/op/acos.hpp"
