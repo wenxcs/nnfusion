@@ -5,6 +5,7 @@ if (NNFUSION_ENABLE)
     # Make pass and op object
     add_subdirectory(pass)
     add_subdirectory(op)
+    add_subdirectory(util)
 
     # This is the source file shared by devices
     set(CORE
@@ -32,6 +33,7 @@ if (NNFUSION_ENABLE)
         nnfusion_cuda
         nnfusion_op
         nnfusion_pass
+        nnfusion_util_
         codegen
     )
     set_target_properties(cuda_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})
@@ -58,6 +60,7 @@ if (NNFUSION_ENABLE)
         nnfusion_op
         nnfusion_pass
         nnfusion_rocm
+        nnfusion_util_
         codegen
     )
     set_target_properties(rocm_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})

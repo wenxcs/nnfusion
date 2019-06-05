@@ -8,13 +8,13 @@ using namespace nnfusion::ir;
 Reshape::Reshape(shared_ptr<Node> node)
     : Operator(node)
 {
-    assert_bool(out[0].get_size() > 0) << "Invalid output shape for Reshape.";
+    enforce(out[0].get_size() > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<ngraph::op::Reshape>(node);
 
     //Noop
     if (out[0].get_name() == args[0].get_name())
     {
-        NGRAPH_DEBUG << "Same input and output tensor." << endl;
+        LOG_INFO << "Same input and output tensor." << endl;
         return;
     }
 
@@ -28,7 +28,7 @@ Reshape::Reshape(shared_ptr<Node> node)
     //for a zero-size tensor, or change from 1^m shape to 1^n shape, just do a copy
     if (!reshape->get_is_transpose() || result_shape_product < 2)
     {
-        NGRAPH_DEBUG << "No need for zero-size or 1-d tensor reshape." << endl;
+        LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
         return;
     }
 
@@ -128,13 +128,13 @@ Operator_p Reshape::translate(shared_ptr<Node> node)
     /* //<TODO> Support this in future
     if (inter_op->isNoop())
     {
-        NGRAPH_DEBUG << "Translate this Reshape to Noop" << endl;
+        LOG_INFO << "Translate this Reshape to Noop" << endl;
         create_ptr(Noop, nop, node);
         return nop;
     }
     if (inter_op->isMemcpy())
     {
-        NGRAPH_DEBUG << "Translate this Reshape to Result(memcopy)" << endl;
+        LOG_INFO << "Translate this Reshape to Result(memcopy)" << endl;
         create_ptr(Result, res, node);
         return res;
     }

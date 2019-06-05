@@ -4,7 +4,7 @@
 cuda::Anyop::Anyop(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->aop = static_pointer_cast<ir::Anyop>(inter_op));
+    enforce_not_nullptr(this->aop = static_pointer_cast<ir::Anyop>(inter_op));
 }
 
 string cuda::Anyop::codegen_function_name()
@@ -57,7 +57,7 @@ LanguageUnit_p cuda::Anyop::codegen_dependency()
 cuda::CudaFunction_p cuda::Anyop::codegen(ir::Operator_p inter_op)
 {
     Anyop_p cop(new Anyop(inter_op));
-    NGRAPH_DEBUG << "Codegen for Anyop function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Anyop function:" << cop->codegen_function_name() << endl;
     std::cerr << "WARNING: using Any op for " << cop->op->node->get_friendly_name() << endl;
     return cop;
 }

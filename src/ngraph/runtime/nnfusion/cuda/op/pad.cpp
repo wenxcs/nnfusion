@@ -4,7 +4,7 @@
 cuda::Pad::Pad(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::Pad>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::Pad>(inter_op));
 }
 
 string cuda::Pad::codegen_function_name()
@@ -106,6 +106,6 @@ LanguageUnit_p cuda::Pad::codegen_dependency()
 cuda::CudaFunction_p cuda::Pad::codegen(ir::Operator_p inter_op)
 {
     Pad_p cop(new Pad(inter_op));
-    NGRAPH_DEBUG << "Codegen for Pad function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for Pad function:" << cop->codegen_function_name() << endl;
     return cop;
 }

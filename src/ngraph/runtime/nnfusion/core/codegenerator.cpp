@@ -20,11 +20,12 @@ bool CodeGenerator::codegen(shared_ptr<vector<ir::Operator_p>> inter_ops)
 
 bool CodeGenerator::codegen(shared_ptr<TranslationUnitMap> tum)
 {
-    assert_nullptr(tum);
+    enforce_not_nullptr(tum);
     auto& tu_map = *tum;
     for (auto& it : tu_map)
     {
-        codegen(it.second);
+        if (codegen(it.second))
+            return false;
     }
     return true;
 }
@@ -44,7 +45,12 @@ CodeGenerator::CodeGenerator(shared_ptr<vector<shared_ptr<ICodeGeneratorPass>>> 
 
 bool CodeGenerator::append_pass(shared_ptr<ICodeGeneratorPass> pass)
 {
-    assert_nullptr(this->pass_manager);
-    assert_nullptr(pass);
+    enforce_not_nullptr(this->pass_manager);
+    if (pass == nullptr)
+    {
+        LOG_WARN << "The pass manager is adding a null pass.";
+        return false;
+    }
     this->pass_manager->push_back(pass);
+    return true;
 }

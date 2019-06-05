@@ -18,7 +18,7 @@ namespace nnfusion
             Elementwise(shared_ptr<Node> node)
                 : Operator(node)
             {
-                assert_bool(out.size() == 1)
+                enforce(out.size() == 1)
                     << "Multi-output elementwise ops are not currently supported.";
 
                 for (auto& arg : args)
@@ -38,7 +38,7 @@ namespace nnfusion
                     return notrans;
                 }
 
-                NGRAPH_DEBUG << "Translated " << node->get_name() << endl;
+                LOG_INFO << "Translated " << node->get_name() << endl;
                 return inter_op;
             }
         };

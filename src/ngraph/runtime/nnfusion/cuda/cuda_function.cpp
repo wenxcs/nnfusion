@@ -38,7 +38,7 @@ LanguageUnit_p CudaFunction::codegen_test()
     //   call_global_func<<<(1, 1, 1), (1, 1, 1), 0, 0>>(in0, ..., out0, ...)
     //}
 
-    assert_nullptr(op);
+    enforce_not_nullptr(op);
 
     auto& arg = op->args;
     auto& out = op->out;
@@ -102,7 +102,7 @@ LanguageUnit_p CudaFunction::codegen_test()
                    << " * " << tensor.get_element_type().size() << ");\n";
         }
 
-        assert_nullptr(this->call_unit);
+        enforce_not_nullptr(this->call_unit);
         writer << this->call_unit->get_code();
 
         for (size_t i = 0; i < out.size(); i++)

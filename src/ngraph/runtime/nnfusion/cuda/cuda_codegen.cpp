@@ -104,17 +104,17 @@ bool CudaCodeGenPass::run(ir::Operator_p& inter_op)
     CudaFunction_p cop(nullptr);
     if (it == typeid_map.end())
     {
-        NGRAPH_DEBUG << "Unsupported op '" << node.description() << "', using Anyop." << endl;
+        LOG_INFO << "Unsupported op '" << node.description() << "', using Anyop." << endl;
         cop = Anyop::codegen(inter_op);
     }
     else
     {
-        NGRAPH_DEBUG << "Codegen op '" << node.description() << "'" << endl;
+        LOG_INFO << "Codegen op '" << node.description() << "'" << endl;
         cop = it->second(inter_op);
     }
-    assert_nullptr(cop);
+    enforce_not_nullptr(cop);
     auto cw = cop->codegen_source();
-    assert_nullptr(cw);
+    enforce_not_nullptr(cw);
     //Replacing the inter_op with CodegenOP
     inter_op = cop;
     return true;
@@ -128,7 +128,7 @@ bool CudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
     {
         auto base = static_cast<CodeGenerator*>(this);
         rc = base->codegen(op);
-        assert_bool(rc);
+        enforce(rc);
         if (!rc)
             return rc;
     }
@@ -181,12 +181,12 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
     {
         auto base = static_cast<CodeGenerator*>(this);
         rc = base->codegen(op);
-        assert_bool(rc);
+        enforce(rc);
         if (!rc)
             return rc;
     }
 
-    NGRAPH_DEBUG << "Start dump whole source file...\n";
+    LOG_INFO << "Start dump whole source file...\n";
     // Code Gen
     LanguageUnit& lu = *this->lu_nnfusion_rt;
     lu << "// Microsoft (c) 2019, MSRA/NNFUSION Team\n";
@@ -304,7 +304,7 @@ bool NaiveCudaCodeGenerator::codegen(shared_ptr<TranslationUnit> tu)
 
         //Planning
         {
-            // assert_bool(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
+            // enforce(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu_main_init << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, "
                          << tu->memory_pool_size << "));\n";
             lu << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, " << tu->memory_pool_size

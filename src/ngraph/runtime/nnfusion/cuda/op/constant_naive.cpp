@@ -38,14 +38,14 @@ static bool create_dir(std::string tar_path)
 ConstantNaive::ConstantNaive(ir::Constant_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(inter_op) << "Constant Node is null.";
-    assert_bool(inter_op->out.size() == 1) << "Constant Node only has one output.";
+    enforce_not_nullptr(inter_op) << "Constant Node is null.";
+    enforce(inter_op->out.size() == 1) << "Constant Node only has one output.";
     folder = "./Constant/";
     create_dir(folder);
     const_name = inter_op->out[0].get_name();
     ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
-    NGRAPH_DEBUG << "Write Const [" << const_name << "] into file : " << const_name << ".bin ["
-                 << inter_op->data_size << "] bytes" << endl;
+    LOG_INFO << "Write Const [" << const_name << "] into file : " << const_name << ".bin ["
+             << inter_op->data_size << "] bytes" << endl;
     bin_file.write((const char*)inter_op->data_ptr, inter_op->data_size);
     bin_file.close();
     this->inter_op = inter_op;
@@ -101,6 +101,6 @@ LanguageUnit_p ConstantNaive::codegen_dependency()
 CudaFunction_p ConstantNaive::codegen(ir::Operator_p inter_op)
 {
     create_ptr(ConstantNaive, cop, static_pointer_cast<ir::Constant>(inter_op));
-    NGRAPH_DEBUG << "Codegen for ConstantNaive:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for ConstantNaive:" << cop->codegen_function_name() << endl;
     return cop;
 }

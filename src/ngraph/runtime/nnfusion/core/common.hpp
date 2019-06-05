@@ -109,11 +109,12 @@ namespace nnfusion
 using namespace std;
 using namespace nnfusion;
 
+#include "../util/log.hpp"
 #include "exceptions.hpp"
 #include "tensorwrapper.hpp"
 
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 
 // Uncomment this for quick debug
-// #undef NGRAPH_DEBUG
-// #define NGRAPH_DEBUG std::cout
+// #undef LOG_INFO
+// #define LOG_INFO std::cout

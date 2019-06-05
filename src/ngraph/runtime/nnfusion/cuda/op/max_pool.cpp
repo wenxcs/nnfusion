@@ -6,18 +6,18 @@
 cuda::MaxPool::MaxPool(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::MaxPool>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::MaxPool>(inter_op));
 }
 
 cuda::CudaFunction_p cuda::MaxPool::codegen(ir::Operator_p inter_op)
 {
     auto op = static_pointer_cast<ir::MaxPool>(inter_op);
-    assert_nullptr(op);
+    enforce_not_nullptr(op);
     if (op->input_shape.size() == 3)
     {
         // MaxPool1d of cuda code
         MaxPool_p cop(new MaxPool1D(inter_op));
-        NGRAPH_DEBUG << "Codegen for MaxPool function:" << cop->codegen_function_name() << endl;
+        LOG_INFO << "Codegen for MaxPool function:" << cop->codegen_function_name() << endl;
         return cop;
     }
     else
@@ -31,8 +31,7 @@ cuda::CudaFunction_p cuda::MaxPool::codegen(ir::Operator_p inter_op)
 cuda::MaxPool1D::MaxPool1D(ir::Operator_p inter_op)
     : MaxPool(inter_op)
 {
-    assert_bool(op->padding_below == op->padding_above)
-        << "currently don't suport asymetric padding!";
+    enforce(op->padding_below == op->padding_above) << "currently don't suport asymetric padding!";
 
     window_width = op->window_shape.back();
     window_stride = op->window_stride.back();
@@ -139,7 +138,7 @@ string cuda::MaxPoolmD::codegen_test_name()
 
 LanguageUnit_p cuda::MaxPoolmD::codegen_function_definition()
 {
-    assert_bool(op->input_shape.size() == 4 || op->input_shape.size() == 5)
+    enforce(op->input_shape.size() == 4 || op->input_shape.size() == 5)
         << "Cudnn Pooling wrong input.";
     create_ptr(LanguageUnit, plu, codegen_function_name());
     auto& lu = *plu;
@@ -182,7 +181,7 @@ LanguageUnit_p cuda::MaxPoolmD::codegen_function_definition()
 
             auto expand_vector_int = [](string name, vector<int>& d) {
                 stringstream ss;
-                assert_bool(d.size() > 0);
+                enforce(d.size() > 0);
                 ss << "int " << name << "[] = {";
                 for (int i = 0; i + 1 < d.size(); i++)
                     ss << to_string(d[i]) << ", ";

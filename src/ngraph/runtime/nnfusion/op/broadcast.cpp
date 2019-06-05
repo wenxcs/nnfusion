@@ -9,7 +9,7 @@ Broadcast::Broadcast(shared_ptr<Node> node)
     , isMemcpy(false)
 {
     auto broadcast = static_pointer_cast<ngraph::op::Broadcast>(node);
-    assert_nullptr(broadcast) << "Node type is not Broadcast.";
+    enforce_not_nullptr(broadcast) << "Node type is not Broadcast.";
     auto& axes = broadcast->get_broadcast_axes();
     if (axes.empty())
     {
@@ -54,7 +54,7 @@ Broadcast::Broadcast(shared_ptr<Node> node)
 Operator_p Broadcast::translate(shared_ptr<Node> node)
 {
     auto broadcast = static_pointer_cast<ngraph::op::Broadcast>(node);
-    assert_nullptr(broadcast) << "Node type is not Broadcast.";
+    enforce_not_nullptr(broadcast) << "Node type is not Broadcast.";
     auto& axes = broadcast->get_broadcast_axes();
     // If axes is empty, issue result op to do a memcopy
     if (axes.empty())

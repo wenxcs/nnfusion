@@ -22,6 +22,8 @@ add_subdirectory(resource)
 
 add_subdirectory(ngraph)
 
+add_subdirectory(nnfusion)
+
 if (NGRAPH_TOOLS_ENABLE)
     add_subdirectory(tools)
     message(STATUS "tools enabled")

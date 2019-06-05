@@ -6,18 +6,18 @@
 cuda::AvgPool::AvgPool(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::AvgPool>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::AvgPool>(inter_op));
 }
 
 cuda::CudaFunction_p cuda::AvgPool::codegen(ir::Operator_p inter_op)
 {
     auto op = static_pointer_cast<ir::AvgPool>(inter_op);
-    assert_nullptr(op);
+    enforce_not_nullptr(op);
     if (op->input_shape.size() == 3)
     {
         // AvgPool1d of cuda code
         AvgPool_p cop(new AvgPool1D(inter_op));
-        NGRAPH_DEBUG << "Codegen for AvgPool function:" << cop->codegen_function_name() << endl;
+        LOG_INFO << "Codegen for AvgPool function:" << cop->codegen_function_name() << endl;
         return cop;
     }
     else
@@ -332,7 +332,7 @@ LanguageUnit_p cuda::AvgPoolmD::codegen_function_definition()
 {
     auto cudnn_avg_type = op->include_pad ? "CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING"
                                           : "CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING";
-    assert_bool(op->input_shape.size() == 4 || op->input_shape.size() == 5)
+    enforce(op->input_shape.size() == 4 || op->input_shape.size() == 5)
         << "Cudnn Pooling wrong input.";
     create_ptr(LanguageUnit, plu, codegen_function_name());
     auto& lu = *plu;
@@ -375,7 +375,7 @@ LanguageUnit_p cuda::AvgPoolmD::codegen_function_definition()
 
             auto expand_vector_int = [](string name, vector<int>& d) {
                 stringstream ss;
-                assert_bool(d.size() > 0);
+                enforce(d.size() > 0);
                 ss << "int " << name << "[] = {";
                 for (int i = 0; i + 1 < d.size(); i++)
                     ss << to_string(d[i]) << ", ";

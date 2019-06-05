@@ -7,45 +7,45 @@
 cuda::Reshape::Reshape(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::Reshape>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::Reshape>(inter_op));
 }
 
 cuda::CudaFunction_p cuda::Reshape::codegen(ir::Operator_p inter_op)
 {
     auto irop = static_pointer_cast<ir::Reshape>(inter_op);
-    assert_nullptr(irop) << "Input operator is invalid.";
-    NGRAPH_DEBUG << "Codegen for Reshape function:" << irop->arg_rank << endl;
+    enforce_not_nullptr(irop) << "Input operator is invalid.";
+    LOG_INFO << "Codegen for Reshape function:" << irop->arg_rank << endl;
 
     // <TODO> make noop & memcpy in other place
     if (irop->isNoop())
     {
         create_ptr(Noop, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
     if (irop->isMemcpy())
     {
         create_ptr(Result, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
-    assert_bool(!irop->isNoop() && !irop->isMemcpy()) << "Wrong Codegen for this operator.";
+    enforce(!irop->isNoop() && !irop->isMemcpy()) << "Wrong Codegen for this operator.";
     if (irop->arg_rank == 2)
     {
         create_ptr(Reshape2D, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
     else if (irop->arg_rank == 3)
     {
         create_ptr(Reshape3D, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
     else
     {
         create_ptr(ReshapehD, cop, inter_op);
-        NGRAPH_DEBUG << cop->codegen_function_name() << endl;
+        LOG_INFO << cop->codegen_function_name() << endl;
         return cop;
     }
 }

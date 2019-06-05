@@ -5,7 +5,7 @@
 cuda::BatchNorm::BatchNorm(ir::Operator_p inter_op)
     : CudaFunction(inter_op)
 {
-    assert_nullptr(this->op = static_pointer_cast<ir::BatchNorm>(inter_op));
+    enforce_not_nullptr(this->op = static_pointer_cast<ir::BatchNorm>(inter_op));
     if (op->epsilon < 1e-5)
     {
         throw std::runtime_error("Batch Norm epsilon is less than 1e-5");
@@ -99,6 +99,6 @@ LanguageUnit_p cuda::BatchNorm::codegen_dependency()
 cuda::CudaFunction_p cuda::BatchNorm::codegen(ir::Operator_p inter_op)
 {
     BatchNorm_p cop(new BatchNorm(inter_op));
-    NGRAPH_DEBUG << "Codegen for BatchNorm function:" << cop->codegen_function_name() << endl;
+    LOG_INFO << "Codegen for BatchNorm function:" << cop->codegen_function_name() << endl;
     return cop;
 }

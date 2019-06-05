@@ -15,8 +15,8 @@ namespace nnfusion
                 : Reduce(node)
             {
                 auto sum = static_pointer_cast<ngraph::op::Sum>(node);
-                assert_bool(args[0].get_size() != 0) << "Reset memory instead of Sum";
-                assert_bool(args[0].get_size() != out[0].get_size()) << "Memcpy instead of Sum";
+                enforce(args[0].get_size() != 0) << "Reset memory instead of Sum";
+                enforce(args[0].get_size() != out[0].get_size()) << "Memcpy instead of Sum";
                 auto axes_set = sum->get_reduction_axes();
                 for (auto a : axes_set)
                 {

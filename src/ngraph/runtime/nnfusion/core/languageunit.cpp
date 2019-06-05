@@ -26,19 +26,27 @@ void LanguageUnit::clean_require()
 
 bool LanguageUnit::require(const string required)
 {
+    //Todo(wenxh): check if the required string meets the grammar
+    if (required.size() == 0)
+    {
+        LOG_WARN << "Empty required string.";
+    }
     this->required.insert(required);
     return true;
 }
 
 bool LanguageUnit::require(shared_ptr<LanguageUnit> lu)
 {
-    this->required.insert(lu->get_symbol());
+    enforce_not_nullptr(lu);
+    if (!require(lu->get_symbol()))
+        return false;
     this->local_symbol.emplace(lu->get_symbol(), lu);
     return true;
 }
 
 bool LanguageUnit::remove(shared_ptr<LanguageUnit> lu)
 {
+    enforce_not_nullptr(lu);
     auto sym = lu->get_symbol();
     this->required.erase(sym);
     this->local_symbol.erase(sym);
@@ -66,9 +74,9 @@ string LanguageUnit::collect_code()
     LanguageUnit lu;
     for (auto& it : this->required)
     {
-        assert_bool(this->local_symbol.find(it) != this->local_symbol.end())
+        enforce(this->local_symbol.find(it) != this->local_symbol.end())
             << "Cannot collect code from non-existed Language Unint.";
-        assert_nullptr(this->local_symbol[it])
+        enforce_not_nullptr(this->local_symbol[it])
             << "Cannot collect code from non-existed null pointer.";
         lu << this->local_symbol[it]->collect_code() << "\n";
     }
@@ -86,9 +94,9 @@ string LanguageUnit::collect_required_code()
     LanguageUnit lu;
     for (auto& it : this->required)
     {
-        assert_bool(this->local_symbol.find(it) != this->local_symbol.end())
+        enforce(this->local_symbol.find(it) != this->local_symbol.end())
             << "Cannot collect code from non-existed Language Unint.";
-        assert_nullptr(this->local_symbol[it])
+        enforce_not_nullptr(this->local_symbol[it])
             << "Cannot collect code from non-existed null pointer.";
         lu << this->local_symbol[it]->collect_code() << "\n";
     }
