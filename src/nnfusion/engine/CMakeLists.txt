@@ -24,7 +24,13 @@ if (NNFUSION_ENABLE)
         nnfusion_engine_pass
         nnfusion_util_
         codegen
+        # kernels
+        kernels_registration
+        -Wl,--whole-archive 
+        kernels_cuda 
+        -Wl,--no-whole-archive
     )
+
     set_target_properties(nnfusion_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})
 
     install(TARGETS nnfusion_backend

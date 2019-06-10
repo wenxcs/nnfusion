@@ -7,13 +7,16 @@
 
 namespace nnfusion
 {
-    namespace interpreter
-    {
         class CodeGenerator : public IInterpreterPass
         {
         public:
+            CodeGenerator(string DeviceStr)
+            {
+                device = DeviceStr;
+            }
             bool run(std::shared_ptr<InterpreterContext> ctx,
                      std::shared_ptr<TranslationUnit> tu) override;
+        private:
+            string device = "cuda";
         };
-    }
 }

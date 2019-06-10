@@ -71,4 +71,19 @@ namespace nnfusion
         std::string min() const override { return to_string<T>(std::numeric_limits<T>::min()); }
         std::string max() const override { return to_string<T>(std::numeric_limits<T>::max()); }
     };
+
+    enum DataType
+    {
+        DT_FLOAT,
+        DT_DOUBLE,
+        DT_INT8,
+        DT_INT16,
+        DT_INT32,
+        DT_INT64,
+        DT_UINT8,
+        DT_UINT16,
+        DT_UINT32,
+        DT_UINT64,
+        DT_CHAR,
+    };
 }

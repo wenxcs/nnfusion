@@ -103,10 +103,9 @@
 
 using namespace std;
 
-#include "nnfusion/util/error.hpp"
-#include "nnfusion/util/log.hpp"
-#include "nnfusion/util/type_info.hpp"
-#include "tensor_wrapper.hpp"
+#include "nnfusion/util/util.h"
+#include "nnfusion/engine/tensorwrapper.h"
+#include "nnfusion/engine/type_info.h"
 
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 

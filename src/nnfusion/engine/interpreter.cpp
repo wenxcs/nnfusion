@@ -2,11 +2,13 @@
 #include "interpreter.h"
 #include "nnfusion/engine/pass/extract_function_signature.h"
 #include "nnfusion/engine/pass/ngraph_function_pass.h"
+#include "nnfusion/engine/pass/codegenerator.h"
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
+    m_passes->push_back(make_shared<CodeGenerator>(CodeGenerator("CUDA")));
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,
@@ -18,6 +20,7 @@ Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes
 
 bool Interpreter::translate(TranslationUnit::Pointer tu)
 {
+    enforce_not_nullptr(m_passes);
     return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
 }
 

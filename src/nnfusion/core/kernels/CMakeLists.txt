@@ -4,7 +4,7 @@
 set(SRC
     kernel_emitter.cpp
     language_unit.cpp
-    tensor_wrapper.cpp
+    tensorwrapper.cpp
 )
 add_library(kernels_common STATIC ${SRC})
 target_include_directories(kernels_common SYSTEM PUBLIC
