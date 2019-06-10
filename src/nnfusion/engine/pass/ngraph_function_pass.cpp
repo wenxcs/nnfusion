@@ -4,9 +4,9 @@
 using namespace nnfusion::interpreter;
 
 bool NgraphFunctionPass::run(std::shared_ptr<InterpreterContext> ctx,
-                             std::shared_ptr<TranslationUnit> tu,
-                             std::shared_ptr<ngraph::Function> function)
+                             std::shared_ptr<TranslationUnit> tu)
 {
+    std::shared_ptr<ngraph::Function> function = tu->m_function;
     ngraph::pass::Manager pass_manager;
     pass_manager.register_pass<ngraph::pass::AssignLayout<descriptor::layout::DenseTensorLayout>>();
     pass_manager.register_pass<ngraph::pass::Liveness>();

@@ -15,18 +15,16 @@ namespace nnfusion
     {
     public:
         virtual bool run(shared_ptr<InterpreterContext> ctx,
-                         shared_ptr<TranslationUnit> tu,
-                         shared_ptr<ngraph::Function> function) = 0;
+                         shared_ptr<TranslationUnit> tu) = 0;
 
         static bool run_passes(const vector<shared_ptr<IInterpreterPass>>& passes,
                                shared_ptr<InterpreterContext> ctx,
-                               shared_ptr<TranslationUnit> tu,
-                               shared_ptr<ngraph::Function> function)
+                               shared_ptr<TranslationUnit> tu)
         {
             bool rc = true;
             for (auto& pass : passes)
             {
-                rc = pass->run(ctx, tu, function);
+                rc = pass->run(ctx, tu);
                 if (!rc)
                     break;
             }
@@ -54,6 +52,7 @@ namespace nnfusion
     class TranslationUnit
     {
     public:
+        using Pointer = shared_ptr<TranslationUnit>;
         shared_ptr<ngraph::Function> m_function;
         shared_ptr<vector<ir::Operator_p>> inter_ops;
         shared_ptr<set<string>> input_names;
@@ -105,6 +104,8 @@ namespace nnfusion
         ~Interpreter(){};
 
         shared_ptr<TranslationUnitMap> translate(shared_ptr<ngraph::Function> function);
+
+        bool translate(TranslationUnit::Pointer tu);
 
         static const size_t s_memory_pool_alignment;
 

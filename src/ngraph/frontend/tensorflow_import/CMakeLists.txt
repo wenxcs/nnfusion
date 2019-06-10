@@ -22,8 +22,8 @@ add_library(tensorflow_import_interface STATIC
 )
 
 add_library(tensorflow_import STATIC
-        util/graph.cpp
-        util/graph.hpp
+        util/graph_convert.cpp
+        util/graph_convert.hpp
 	util/util.cpp
 	util/util.hpp
         ops/const.cpp

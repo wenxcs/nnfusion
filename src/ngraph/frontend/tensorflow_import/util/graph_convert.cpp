@@ -3,7 +3,7 @@
 //  Licensed under the MIT License. See License.txt in the project root for license information.
 //----------------------------------------------------------------------------------------------
 
-#include "graph.hpp"
+#include "graph_convert.hpp"
 #include "../ops/const.hpp"
 #include "ngraph/axis_vector.hpp"
 #include "ngraph/builder/autobroadcast.hpp"
@@ -44,7 +44,8 @@ namespace ngraph
                                                 const NodeMap& all_ng_nodes,
                                                 ngraph::op::ParameterVector& parameters)
             {
-                NamedNodeVector ret{{node.name(), all_ng_nodes.at(node.input(0))}};
+                auto input_node = GetInputNode(all_ng_nodes, node, 0);
+                NamedNodeVector ret{{node.name(), input_node}};
                 return ret;
             }
 
@@ -53,7 +54,8 @@ namespace ngraph
                                              const NodeMap& all_ng_nodes,
                                              ngraph::op::ParameterVector& parameters)
             {
-                auto ng_node = std::make_shared<T>(all_ng_nodes.at(node.input(0)));
+                auto input_node = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_node = std::make_shared<T>(input_node);
                 ng_node->set_name(node.name());
                 NamedNodeVector ret{{node.name(), ng_node}};
                 return ret;
@@ -64,8 +66,8 @@ namespace ngraph
                                               const NodeMap& all_ng_nodes,
                                               ngraph::op::ParameterVector& parameters)
             {
-                auto ng_lhs = all_ng_nodes.at(node.input(0));
-                auto ng_rhs = all_ng_nodes.at(node.input(1));
+                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
                 std::tie(ng_lhs, ng_rhs) =
                     ngraph::builder::numpy_broadcast(std::make_pair(ng_lhs, ng_rhs));
                 auto ng_node = std::make_shared<T>(ng_lhs, ng_rhs);
@@ -95,11 +97,11 @@ namespace ngraph
             }
 
             NamedNodeVector TranslateMatMulOp(const tensorflow::NodeDef& node,
-                                              const NodeMap& all_ng_node,
+                                              const NodeMap& all_ng_nodes,
                                               ngraph::op::ParameterVector& parameters)
             {
-                auto ng_lhs = all_ng_node.at(node.input(0));
-                auto ng_rhs = all_ng_node.at(node.input(1));
+                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
                 // Transpose arguments if requested.
                 bool transpose_a = false;
                 bool transpose_b = false;
@@ -120,11 +122,11 @@ namespace ngraph
             }
 
             NamedNodeVector TranslateBiasAddOp(const tensorflow::NodeDef& node,
-                                               const NodeMap& all_ng_node,
+                                               const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_node.at(node.input(0));
-                auto ng_bias = all_ng_node.at(node.input(1));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_bias = GetInputNode(all_ng_nodes, node, 1);
                 std::string tf_data_format;
                 assert(GetNodeAttr(node.attr(), "data_format", tf_data_format) == true);
 
@@ -179,8 +181,8 @@ namespace ngraph
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_shape_op = all_ng_nodes.at(node.input(1));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_shape_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> shape;
                 assert(GetValueFromNGraphOp<int64>(ng_shape_op, &shape) == true);
@@ -250,7 +252,7 @@ namespace ngraph
                                             const NodeMap& all_ng_nodes,
                                             ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 tensorflow::DataType dtype;
                 assert(GetNodeAttr(node.attr(), "DstT", dtype) == true);
                 ngraph::element::Type ng_et;
@@ -265,7 +267,7 @@ namespace ngraph
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 std::vector<int32> tf_strides;
                 std::vector<int32> tf_ksize;
                 std::string tf_padding_type;
@@ -327,8 +329,8 @@ namespace ngraph
                 std::string tf_padding_type;
                 std::string tf_data_format;
                 // Make sure the order maters!
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_filter = all_ng_nodes.at(node.input(1));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_filter = GetInputNode(all_ng_nodes, node, 1);
 
                 assert(GetNodeAttr(node.attr(), "strides", tf_strides));
                 assert(GetNodeAttr(node.attr(), "dilations", tf_dilations));
@@ -382,7 +384,7 @@ namespace ngraph
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 std::vector<int32> tf_strides;
                 std::vector<int32> tf_ksize;
                 std::string tf_padding_type;
@@ -443,8 +445,8 @@ namespace ngraph
                                             const NodeMap& all_ng_nodes,
                                             ngraph::op::ParameterVector& parameters)
             {
-                auto ng_shape_op = all_ng_nodes.at(node.input(0));
-                auto ng_value = all_ng_nodes.at(node.input(1));
+                auto ng_shape_op = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_value = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<size_t> dims_vec;
                 assert(GetValueFromNGraphOp<size_t>(ng_shape_op, &dims_vec) == true);
@@ -469,8 +471,8 @@ namespace ngraph
                                            const NodeMap& all_ng_nodes,
                                            ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_padding_op = all_ng_nodes.at(node.input(1));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_padding_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> paddings;
                 assert(GetValueFromNGraphOp<int64>(ng_padding_op, &paddings) == true);
@@ -508,9 +510,9 @@ namespace ngraph
                                              const NodeMap& all_ng_nodes,
                                              ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_padding_op = all_ng_nodes.at(node.input(1));
-                auto ng_constant_value_op = all_ng_nodes.at(node.input(2));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_padding_op = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_constant_value_op = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> paddings;
                 assert(GetValueFromNGraphOp<int64>(ng_padding_op, &paddings) == true);
@@ -559,11 +561,11 @@ namespace ngraph
                     std::cout << "is_training attribute not present, setting to true";
                     tf_is_training = true;
                 }
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_scale = all_ng_nodes.at(node.input(1));
-                auto ng_offset = all_ng_nodes.at(node.input(2));
-                auto ng_mean = all_ng_nodes.at(node.input(3));
-                auto ng_variance = all_ng_nodes.at(node.input(4));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_scale = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_offset = GetInputNode(all_ng_nodes, node, 2);
+                auto ng_mean = GetInputNode(all_ng_nodes, node, 3);
+                auto ng_variance = GetInputNode(all_ng_nodes, node, 4);
 
                 std::string tf_data_format;
                 assert(GetNodeAttr(node.attr(), "data_format", tf_data_format));
@@ -608,11 +610,11 @@ namespace ngraph
                 ngraph::NodeVector ng_args;
                 for (int i = 0; i < input_cnt - 1; i++)
                 {
-                    auto ng_arg = all_ng_nodes.at(node.input(i));
+                    auto ng_arg = GetInputNode(all_ng_nodes, node, i);
                     ng_args.push_back(ng_arg);
                 }
 
-                auto ng_concat_axis_op = all_ng_nodes.at(node.input(input_cnt - 1));
+                auto ng_concat_axis_op = GetInputNode(all_ng_nodes, node, input_cnt - 1);
                 std::vector<int> tf_concat_axis_vec;
                 assert(GetValueFromNGraphOp<int>(ng_concat_axis_op, &tf_concat_axis_vec) == true);
 
@@ -634,7 +636,7 @@ namespace ngraph
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 auto exp_op = std::make_shared<ngraph::op::Exp>(
                     std::make_shared<ngraph::op::Negative>(ng_input));
                 auto constant_1 = std::make_shared<ngraph::op::Constant>(
@@ -655,8 +657,8 @@ namespace ngraph
                                            const NodeMap& all_ng_nodes,
                                            ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_axes_op = all_ng_nodes.at(node.input(1));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_axes_op = GetInputNode(all_ng_nodes, node, 1);
 
                 bool tf_keep_dims;
                 if (GetNodeAttr(node.attr(), "keep_dims", tf_keep_dims) == false)
@@ -711,8 +713,8 @@ namespace ngraph
                                              const NodeMap& all_ng_nodes,
                                              ngraph::op::ParameterVector& parameters)
             {
-                auto ng_split_dim = all_ng_nodes.at(node.input(0));
-                auto ng_input = all_ng_nodes.at(node.input(1));
+                auto ng_split_dim = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_input = GetInputNode(all_ng_nodes, node, 1);
 
                 // num_split : The number of ways to split. Must evenly divide
                 // value.shape[split_dim]
@@ -748,10 +750,10 @@ namespace ngraph
                 for (int i = 0; i < ng_split_op_list.size(); i++)
                 {
                     std::string node_name = node.name();
-                    if (i > 0)
-                    {
-                        node_name.append(":").append(std::to_string(i));
-                    }
+                    //if (i > 0)
+                    //{
+                    //    node_name.append("_").append(std::to_string(i));
+                    //}
                     ret.push_back({node_name, ng_split_op_list[i]});
                 }
                 return ret;
@@ -761,9 +763,9 @@ namespace ngraph
                                               const NodeMap& all_ng_nodes,
                                               ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_length_op = all_ng_nodes.at(node.input(1));
-                auto ng_split_dim = all_ng_nodes.at(node.input(2));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_length_op = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_split_dim = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int> lengths;
                 assert(GetValueFromNGraphOp<int>(ng_length_op, &lengths) == true);
@@ -848,10 +850,10 @@ namespace ngraph
                 for (int i = 0; i < ng_split_op_list.size(); i++)
                 {
                     std::string node_name = node.name();
-                    if (i > 0)
-                    {
-                        node_name.append(":").append(std::to_string(i));
-                    }
+                    //if (i > 0)
+                    //{
+                    //    node_name.append("_").append(std::to_string(i));
+                    //}
 
                     ret.push_back({node_name, ng_split_op_list[i]});
                 }
@@ -862,8 +864,8 @@ namespace ngraph
                                             const NodeMap& all_ng_nodes,
                                             ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_axes_op = all_ng_nodes.at(node.input(1));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_axes_op = GetInputNode(all_ng_nodes, node, 1);
 
                 bool tf_keep_dims;
                 if (GetNodeAttr(node.attr(), "keep_dims", tf_keep_dims) == false)
@@ -917,9 +919,9 @@ namespace ngraph
                                              const NodeMap& all_ng_nodes,
                                              ngraph::op::ParameterVector& parameters)
             {
-                auto ng_input = all_ng_nodes.at(node.input(0));
-                auto ng_begin = all_ng_nodes.at(node.input(1));
-                auto ng_size = all_ng_nodes.at(node.input(2));
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_begin = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_size = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> lower_vec;
                 std::vector<int64> size_vec;
@@ -1018,19 +1020,88 @@ namespace ngraph
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>}};
 
-            TensorflowGraph::TensorflowGraph(const tensorflow::GraphDef& proto)
+            struct InputInfo
+            {
+                explicit InputInfo(const std::string& node_name,
+                                   std::shared_ptr<ngraph::Node> n,
+                                   int i)
+                    : name(node_name)
+                    , node(n)
+                    , index(i)
+                {
+                }
+                std::string name;
+                std::shared_ptr<ngraph::Node> node;
+                int index;
+            };
+
+            GraphConvert::GraphConvert(const tensorflow::GraphDef& proto)
                 : m_graph_proto{&proto}
             {
                 std::cerr << "Converting Tensorflow Graph" << std::endl;
+                m_ngraph = std::make_shared<ngraph::Graph>();
 
                 generate_topology();
-                for (const auto& node_proto : proto.node())
-                {
-                    auto ng_nodes = convert_node(node_proto);
 
+                uint32_t processed = 0;
+
+                std::vector<InputInfo> inputs;
+                while (!topology_.empty())
+                {
+                    uint32_t node_idx = topology_.front();
+                    topology_.pop();
+                    ++processed;
+                    inputs.clear();
+                    const auto& node_proto = proto.node(node_idx);
+                    std::cout << node_proto.DebugString() << std::endl;
+
+                    size_t i = 0;
+                    for (auto& input : node_proto.input())
+                    {
+                        TensorId input_tensor(ParseTensorName(input));
+                        int src_index;
+                        std::shared_ptr<ngraph::Node> src_node;
+
+                        auto iter = m_ng_node.find(input_tensor.first);
+                        if (iter == m_ng_node.end())
+                        {
+                            std::cerr << "Node " << node_proto.name()
+                                      << " has Un-Converted input node: " << input_tensor.first;
+                            assert(false);
+                        }
+                        src_index = input_tensor.second;
+
+                        src_node = iter->second.at(src_index);
+                        inputs.emplace_back(input_tensor.first, src_node, 0);
+                        i++;
+                    }
+
+                    auto ng_nodes = convert_node(node_proto);
                     for (auto& node : ng_nodes)
                     {
-                        m_ng_node[node.first] = node.second;
+                        m_ng_node[node.first].push_back(node.second);
+                        m_ngraph->AddNode(node.second);
+                        int input_idx = 0;
+
+                        for (auto& input : node_proto.input())
+                        {
+                            m_ngraph->AddEdge(inputs[input_idx].node,
+                                              inputs[input_idx].index,
+                                              node.second,
+                                              input_idx);
+                            input_idx++;
+                            // TODO: ADD CONTROL EDGE;
+                        }
+                    }
+
+                    for (size_t i = 0; i < tensorflow_node_outputs_[node_idx].size(); ++i)
+                    {
+                        const int output = tensorflow_node_outputs_[node_idx][i];
+                        pending_counts_[output]--;
+                        if (pending_counts_[output] == 0)
+                        {
+                            topology_.push(output);
+                        }
                     }
                     if (is_input.find(node_proto.name()) != is_input.end())
                     {
@@ -1049,8 +1120,43 @@ namespace ngraph
                 }
             }
 
-            void TensorflowGraph::generate_topology()
+            void GraphConvert::generate_topology()
             {
+                const size_t num_nodes = m_graph_proto->node_size();
+
+                for (size_t n = 0; n < num_nodes; ++n)
+                {
+                    tensorflow_name2nodeIdx_map_[m_graph_proto->node(n).name()] = n;
+                }
+
+                pending_counts_.reserve(num_nodes);
+                tensorflow_node_outputs_.resize(num_nodes);
+                for (size_t n = 0; n < num_nodes; ++n)
+                {
+                    const auto& node_proto = m_graph_proto->node(n);
+                    int pending_count = node_proto.input_size();
+                    for (size_t i = 0; i < node_proto.input_size(); ++i)
+                    {
+                        // TODO: "name:num" or "^name"
+                        std::string input_name = node_proto.input(i);
+                        TensorId input_tensor(ParseTensorName(input_name));
+
+                        auto iter = tensorflow_name2nodeIdx_map_.find(input_tensor.first);
+                        if (iter == tensorflow_name2nodeIdx_map_.end())
+                        {
+                            std::cerr << "Node " << node_proto.name()
+                                      << " has Unknown input node: " << input_name;
+                            assert(false);
+                        }
+                        tensorflow_node_outputs_[iter->second].push_back(n);
+                    }
+                    if (pending_count == 0)
+                    {
+                        topology_.push(n);
+                    }
+                    pending_counts_.push_back(pending_count);
+                }
+
                 for (const auto& node_proto : m_graph_proto->node())
                     out_edges_count[node_proto.name()] = 0;
                 for (const auto& node_proto : m_graph_proto->node())
@@ -1070,7 +1176,7 @@ namespace ngraph
                         is_output.insert(it.first);
             }
 
-            NamedNodeVector TensorflowGraph::convert_node(const tensorflow::NodeDef& node)
+            NamedNodeVector GraphConvert::convert_node(const tensorflow::NodeDef& node)
             {
                 auto func = TRANSLATE_OP_MAP.find(node.op());
                 if (func != TRANSLATE_OP_MAP.end())
@@ -1084,7 +1190,7 @@ namespace ngraph
                 }
             }
 
-            std::vector<std::shared_ptr<ngraph::Function>> TensorflowGraph::get_outputs()
+            std::vector<std::shared_ptr<ngraph::Function>> GraphConvert::get_outputs()
             {
                 std::vector<std::shared_ptr<Function>> output_functions;
                 for (const auto& output : m_outputs)

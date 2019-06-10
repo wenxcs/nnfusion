@@ -185,9 +185,9 @@ bool ExtractFunctionSignature::extract_output(std::shared_ptr<InterpreterContext
 }
 
 bool ExtractFunctionSignature::run(std::shared_ptr<InterpreterContext> ctx,
-                                   std::shared_ptr<TranslationUnit> tu,
-                                   std::shared_ptr<ngraph::Function> function)
+                                   std::shared_ptr<TranslationUnit> tu)
 {
+    auto function = tu->m_function;
     tu->memory_pool_size = function->get_temporary_pool_size();
     enforce(extract_result(tu, function));
     enforce(extract_constants(ctx, tu, function));

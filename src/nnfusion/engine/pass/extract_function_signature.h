@@ -34,8 +34,7 @@ namespace nnfusion
                                 std::shared_ptr<ngraph::Function> function);
 
             bool run(std::shared_ptr<InterpreterContext> ctx,
-                     std::shared_ptr<TranslationUnit> tu,
-                     std::shared_ptr<ngraph::Function> function) override;
+                     std::shared_ptr<TranslationUnit> tu) override;
         };
     }
 }

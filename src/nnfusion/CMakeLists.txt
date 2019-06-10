@@ -4,6 +4,7 @@ if (NNFUSION_ENABLE)
 
     add_subdirectory(IR)
     add_subdirectory(engine)
+    add_subdirectory(core)
     add_subdirectory(util)
 
 endif()

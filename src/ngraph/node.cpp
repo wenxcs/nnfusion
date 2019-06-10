@@ -21,6 +21,7 @@
 
 #include "ngraph/autodiff/adjoints.hpp"
 #include "ngraph/descriptor/layout/tensor_layout.hpp"
+#include "ngraph/graph.hpp"
 #include "ngraph/node.hpp"
 #include "ngraph/op/parameter.hpp"
 #include "ngraph/op/result.hpp"
@@ -188,6 +189,33 @@ const std::set<std::shared_ptr<Node>>& Node::get_control_dependencies() const
 void Node::add_control_dependency(std::shared_ptr<Node> node)
 {
     m_control_dependencies.insert(node);
+}
+
+const std::set<std::shared_ptr<Edge>>& Node::get_in_edges() const
+{
+    return m_in_edges;
+}
+
+void Node::add_in_edge(std::shared_ptr<Edge> edge)
+{
+    m_in_edges.insert(edge);
+}
+
+const std::set<std::shared_ptr<Edge>>& Node::get_out_edges() const
+{
+    return m_out_edges;
+}
+
+void Node::add_out_edge(std::shared_ptr<Edge> edge)
+{
+    m_out_edges.insert(edge);
+}
+
+void Node::Clear()
+{
+    m_in_edges.clear();
+    m_out_edges.clear();
+    m_id = -1;
 }
 
 std::vector<std::shared_ptr<Function>> Node::get_functions() const

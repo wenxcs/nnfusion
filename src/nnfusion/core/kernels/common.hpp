@@ -1,63 +1,26 @@
-//*****************************************************************************
-// Copyright 2017-2018 Intel Corporation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
-
-//
-// The public API for ngraph++
-//
+// Microsoft (c) 2019, NNFusion Team
 
 #pragma once
 
-#ifdef IN_NGRAPH_LIBRARY
-#error("ngraph.hpp is for external use only")
-#endif
+#include <cstdlib>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
-/// \namespace ngraph
-/// \brief The Intel Nervana Graph C++ API.
-
-/// \namespace ngraph::descriptor
-/// \brief Descriptors are compile-time representations of objects that will appear at run-time.
-
-/// \namespace ngraph::descriptor::layout
-/// \brief Layout descriptors describe how tensor views are implemented.
-
-/// \namespace ngraph::op
-/// \brief Ops used in graph-building.
-
-/// \namespace ngraph::runtime
-/// \brief The objects used for executing the graph.
-
-/// \namespace ngraph::builder
-/// \brief Convenience functions that create addional graph nodes to implement commonly-used
-///        recipes, for example auto-broadcast.
-
-#include "ngraph/builder/autobroadcast.hpp"
-#include "ngraph/builder/numpy_transpose.hpp"
-#include "ngraph/builder/reduce_ops.hpp"
-#include "ngraph/builder/tensor_mask.hpp"
-#include "ngraph/coordinate_transform.hpp"
-#include "ngraph/descriptor/input.hpp"
+#include "ngraph/codegen/code_writer.hpp"
 #include "ngraph/descriptor/layout/dense_tensor_layout.hpp"
-#include "ngraph/descriptor/layout/tensor_layout.hpp"
-#include "ngraph/descriptor/output.hpp"
 #include "ngraph/descriptor/tensor.hpp"
-#include "ngraph/dimension.hpp"
-#include "ngraph/except.hpp"
 #include "ngraph/function.hpp"
-#include "ngraph/graph.hpp"
-#include "ngraph/node.hpp"
+#include "ngraph/graph_util.hpp"
 #include "ngraph/op/abs.hpp"
 #include "ngraph/op/acos.hpp"
 #include "ngraph/op/add.hpp"
@@ -77,7 +40,6 @@
 #include "ngraph/op/convolution.hpp"
 #include "ngraph/op/cos.hpp"
 #include "ngraph/op/cosh.hpp"
-#include "ngraph/op/dequantize.hpp"
 #include "ngraph/op/divide.hpp"
 #include "ngraph/op/dot.hpp"
 #include "ngraph/op/equal.hpp"
@@ -107,12 +69,12 @@
 #include "ngraph/op/parameter.hpp"
 #include "ngraph/op/power.hpp"
 #include "ngraph/op/product.hpp"
-#include "ngraph/op/quantize.hpp"
 #include "ngraph/op/reduce.hpp"
 #include "ngraph/op/reduce_window.hpp"
 #include "ngraph/op/relu.hpp"
 #include "ngraph/op/replace_slice.hpp"
 #include "ngraph/op/reshape.hpp"
+#include "ngraph/op/result.hpp"
 #include "ngraph/op/reverse.hpp"
 #include "ngraph/op/reverse_sequence.hpp"
 #include "ngraph/op/select.hpp"
@@ -130,9 +92,30 @@
 #include "ngraph/op/tan.hpp"
 #include "ngraph/op/tanh.hpp"
 #include "ngraph/op/topk.hpp"
-#include "ngraph/partial_shape.hpp"
+#include "ngraph/pass/assign_layout.hpp"
+#include "ngraph/pass/liveness.hpp"
+#include "ngraph/pass/manager.hpp"
+#include "ngraph/pass/memory_layout.hpp"
 #include "ngraph/runtime/backend.hpp"
-#include "ngraph/runtime/tensor.hpp"
 #include "ngraph/shape.hpp"
-#include "ngraph/shape_util.hpp"
 #include "ngraph/type/element_type.hpp"
+#include "ngraph/util.hpp"
+
+using namespace std;
+
+#include "nnfusion/util/error.hpp"
+#include "nnfusion/util/log.hpp"
+#include "nnfusion/util/type_info.hpp"
+#include "tensor_wrapper.hpp"
+
+#define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
+
+namespace nnfusion
+{
+    enum DeviceType
+    {
+        CUDA_GPU,
+        ROCM_GPU,
+        GENERIC_CPU
+    };
+}

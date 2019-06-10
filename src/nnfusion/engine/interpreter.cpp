@@ -16,12 +16,17 @@ Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes
     this->m_trans_ctx = ctx;
 }
 
+bool Interpreter::translate(TranslationUnit::Pointer tu)
+{
+    return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
+}
+
 shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Function> function)
 {
     static interpreter::NgraphFunctionPass ngraph_passes;
     static interpreter::ExtractFunctionSignature extract_global;
     shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
-    enforce(ngraph_passes.run(m_trans_ctx, nullptr, function));
+    enforce(ngraph_passes.run(m_trans_ctx, nullptr));
     // Iterator through all functions
 
     // Deal with translation unit's program
@@ -37,11 +42,11 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
         bb_main->next = nullptr;
         _tu->program.engtry = bb_main;
         _tu->program.exit = bb_main;
+        _tu->m_function = current_function;
 
-        enforce(extract_global.run(m_trans_ctx, _tu, current_function))
-            << "Error when extract global graph info.";
+        enforce(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 
-        enforce(IInterpreterPass::run_passes(*(this->m_passes), m_trans_ctx, _tu, current_function))
+        enforce(IInterpreterPass::run_passes(*(this->m_passes), m_trans_ctx, _tu))
             << "Error when apply passes on functions.";
 
         // Translate the Node
@@ -86,6 +91,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
             }
         }
 
+        /*
         for (auto& ins : *bb_main)
         {
             std::stringstream ss;
@@ -101,10 +107,13 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
             {
                 ss << in.get_name() << ", ";
             }
-            ss << "}, /*tag:*/";
+            ss << "}, (tag:)";
             ss << " DEBUG : " << ins->Tag().Get<int>("DEBUG") << " }";
             LOG_INFO << ss.str();
         }
+        */
+
+        translate(_tu);
     }
     return _tus;
 }
