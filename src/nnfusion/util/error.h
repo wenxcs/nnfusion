@@ -54,6 +54,6 @@ namespace nnfusion
     if (!ret)                                                                                      \
         return false;
 
-#define status bool
-#define ok true
-#define fail false
+#define STATUS bool
+#define STATUS_OK true
+#define STATUS_FAILED false

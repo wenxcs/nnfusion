@@ -6,35 +6,12 @@
 #pragma once
 
 #include "dependency.hpp"
+#include "nnfusion/engine/tensorwrapper.h"
 
 namespace nnfusion
 {
     namespace ir
     {
-        enum class AttributeKind
-        {
-            // float, float list, int, int list, string, string list,
-            // tensor, tensor list, subgraph, subgraph list
-            f,
-            fs,
-            i,
-            is,
-            s,
-            ss,
-            t,
-            ts,
-            g,
-            gs
-        };
-
-        static inline const char* toString(AttributeKind kind)
-        {
-            static constexpr const char* names[] = {
-                "f", "fs", "i", "is", "s", "ss", "t", "ts", "g", "gs"};
-            enforce(size_t(kind) < sizeof(names) / sizeof(AttributeKind));
-            return names[int(kind)];
-        }
-
         struct AttributeValue
         {
             AttributeValue(Symbol name)
@@ -43,12 +20,11 @@ namespace nnfusion
             }
             using Ptr = std::unique_ptr<AttributeValue>;
             Symbol name;
-            virtual AttributeKind kind() const = 0;
             virtual Ptr clone() const = 0;
             virtual ~AttributeValue() = default;
         };
 
-        template <typename T, AttributeKind Kind>
+        template <typename T>
         struct ScalarAttributeValue final : public AttributeValue
         {
             using ConstructorType = const T&;
@@ -63,12 +39,12 @@ namespace nnfusion
             {
                 return Ptr(new ScalarAttributeValue(name, value_));
             }
-            virtual AttributeKind kind() const override { return Kind; }
+
         private:
             ValueType value_;
         };
 
-        template <typename T, AttributeKind Kind>
+        template <typename T>
         struct VectorAttributeValue final : public AttributeValue
         {
             using ConstructorType = const std::vector<T>&&;
@@ -79,7 +55,6 @@ namespace nnfusion
             {
             }
             ValueType& value() { return value_; }
-            virtual AttributeKind kind() const override { return Kind; }
             virtual std::unique_ptr<AttributeValue> clone() const override
             {
                 auto copy = value_;
@@ -90,27 +65,19 @@ namespace nnfusion
             ValueType value_;
         };
 
-        using FloatAttr = ScalarAttributeValue<double, AttributeKind::f>;
-        using FloatsAttr = VectorAttributeValue<double, AttributeKind::fs>;
-        using IntAttr = ScalarAttributeValue<int64_t, AttributeKind::i>;
-        using IntsAttr = VectorAttributeValue<int64_t, AttributeKind::is>;
-        using StringAttr = ScalarAttributeValue<std::string, AttributeKind::s>;
-        using StringsAttr = VectorAttributeValue<std::string, AttributeKind::ss>;
-        // This tensor has different meaning with nnfusion
-        // using TensorAttr = ScalarAttributeValue<Tensor, AttributeKind::t>;
-        // using TensorsAttr = VectorAttributeValue<Tensor, AttributeKind::ts>;
+        using FloatAttr = ScalarAttributeValue<double>;
+        using FloatsAttr = VectorAttributeValue<double>;
+        using IntAttr = ScalarAttributeValue<int64_t>;
+        using IntsAttr = VectorAttributeValue<int64_t>;
+        using StringAttr = ScalarAttributeValue<std::string>;
+        using StringsAttr = VectorAttributeValue<std::string>;
+        using TensorAttr = ScalarAttributeValue<nnfusion::TensorWrapper>;
+        using TensorsAttr = VectorAttributeValue<nnfusion::TensorWrapper>;
 
-        // using GraphAttr = ScalarAttributeValue<std::shared_ptr<Graph>, AttributeKind::g>;
-        // using GraphsAttr = VectorAttributeValue<std::shared_ptr<Graph>, AttributeKind::gs>;
-
-        // CRTP so that Node which inherits Attributes can be return for
-        // method chaining e.g:
-        // Node * n = g->create(kSelect)->set_i(kOffset,3)->set_f(kValue,3.5);
-        // we return Derived* pointers because Nodes are normally held as pointers.
-        template <typename Derived>
         class Attributes
         {
         public:
+            using Pointer = std::shared_ptr<Attributes>;
             Attributes() {}
             void copyAttributes(const Attributes& rhs)
             {
@@ -122,11 +89,10 @@ namespace nnfusion
                 }
             }
             bool hasAttribute(Symbol name) const { return find(name, false) != values_.end(); }
-            AttributeKind kindOf(Symbol name) const { return (*find(name, true))->kind(); }
-            Derived* removeAttribute(Symbol name)
+            Attributes* removeAttribute(Symbol name)
             {
                 values_.erase(find(name, true));
-                return This();
+                return this;
             }
             bool hasAttributes() const { return values_.size() > 0; }
             // The names are returned in order, since name actually is the index.
@@ -139,7 +105,7 @@ namespace nnfusion
                 return names;
             }
 #define CREATE_ACCESSOR(Kind, method)                                                              \
-    Derived* method##_(Symbol name, Kind##Attr::ConstructorType v)                                 \
+    Attributes* method##_(Symbol name, Kind##Attr::ConstructorType v)                              \
     {                                                                                              \
         return set<Kind##Attr>(name, std::forward<Kind##Attr::ConstructorType>(v));                \
     }                                                                                              \
@@ -150,19 +116,14 @@ namespace nnfusion
             CREATE_ACCESSOR(Strings, ss)
             CREATE_ACCESSOR(Int, i)
             CREATE_ACCESSOR(Ints, is)
-/*
             CREATE_ACCESSOR(Tensor, t)
             CREATE_ACCESSOR(Tensors, ts)
-            CREATE_ACCESSOR(Graph, g)
-            CREATE_ACCESSOR(Graphs, gs)
-            */
 
 #undef CREATE_ACCESSOR
 
-        private:
-            Derived* This() { return static_cast<Derived*>(this); }
+        protected:
             template <typename T>
-            Derived* set(Symbol name, typename T::ConstructorType v)
+            Attributes* set(Symbol name, typename T::ConstructorType v)
             {
                 auto it = find(name, false);
                 auto nv = AVPtr(new T(name, std::forward<typename T::ConstructorType>(v)));
@@ -174,7 +135,7 @@ namespace nnfusion
                 {
                     *it = std::move(nv);
                 }
-                return This();
+                return this;
             }
             template <typename T>
             typename T::ValueType& get(Symbol name) const

@@ -11,7 +11,7 @@
 #include <mutex>
 #include <thread>
 
-#include "nnfusion/util/log.hpp"
+#include "log.h"
 
 using namespace std;
 using namespace nnfusion;
