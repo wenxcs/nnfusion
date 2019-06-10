@@ -4,6 +4,7 @@
 
 #include "common.hpp"
 #include "language_unit.hpp"
+#include "nlohmann_json.hpp"
 
 namespace nnfusion
 {
@@ -86,6 +87,9 @@ namespace nnfusion
 
             // mapping: kernel name -> kernel definition
             unordered_map<string, LanguageUnit_p> kernel_definitions;
+
+            // Reserved for simplified representation
+            nlohmann::json attr;
 
             // Emitted code units
             string m_function_name;
