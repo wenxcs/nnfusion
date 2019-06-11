@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "interpreter.hpp"
 #include "nnfusion/engine/pass/codegenerator.hpp"
+#include "nnfusion/engine/pass/device_dispatcher.hpp"
 #include "nnfusion/engine/pass/extract_function_signature.hpp"
 #include "nnfusion/engine/pass/ngraph_function_pass.hpp"
 
@@ -8,7 +9,8 @@ Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
-    m_passes->push_back(make_shared<CodeGenerator>(CodeGenerator("CUDA")));
+    m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
+    m_passes->push_back(make_shared<CodeGenerator>(CodeGenerator()));
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,
@@ -43,7 +45,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
         BasicBlock::pointer bb_main(new BasicBlock);
         bb_main->prior = nullptr;
         bb_main->next = nullptr;
-        _tu->program.engtry = bb_main;
+        _tu->program.entry = bb_main;
         _tu->program.exit = bb_main;
         _tu->m_function = current_function;
 
