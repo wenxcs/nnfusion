@@ -100,12 +100,12 @@ namespace nnfusion
 #define CONCAT(x, y) CONCAT_IMPL(x, y)
 
 #define REGISTER_KERNEL_EMITTER(op_name, attrs, constructor)                                       \
-    KernelRegistrar CONCAT(kernel_registrar, __COUNTER__)(                                         \
+    static KernelRegistrar CONCAT(kernel_registrar, __COUNTER__)(                                  \
         op_name,                                                                                   \
         Name(op_name)                                                                              \
             .attrs                                                                                 \
             .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {    \
-                return make_shared<constructor>(context);                                            \
+                return make_shared<constructor>(context);                                          \
             })                                                                                     \
             .Build());
 

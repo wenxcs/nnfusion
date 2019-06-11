@@ -2,9 +2,8 @@
 #pragma once
 
 #include "engine.hpp"
-#include "op.hpp"
 #include "nnfusion/core/IR/instruction.hpp"
-
+#include "op.hpp"
 
 namespace nnfusion
 {
@@ -14,8 +13,7 @@ namespace nnfusion
     class IInterpreterPass
     {
     public:
-        virtual bool run(shared_ptr<InterpreterContext> ctx,
-                         shared_ptr<TranslationUnit> tu) = 0;
+        virtual bool run(shared_ptr<InterpreterContext> ctx, shared_ptr<TranslationUnit> tu) = 0;
 
         static bool run_passes(const vector<shared_ptr<IInterpreterPass>>& passes,
                                shared_ptr<InterpreterContext> ctx,
@@ -31,9 +29,8 @@ namespace nnfusion
             return rc;
         }
     };
- 
 
-    class BasicBlock: public std::vector<ir::Instruction::Pointer>
+    class BasicBlock : public std::vector<ir::Instruction::Pointer>
     {
     public:
         using pointer = std::shared_ptr<BasicBlock>;
@@ -41,13 +38,12 @@ namespace nnfusion
         pointer next, prior;
     };
 
-    class Program: BasicBlock
+    class Program : BasicBlock
     {
     public:
         using pointer = std::shared_ptr<Program>;
         BasicBlock::pointer entry, exit;
     };
-
 
     class TranslationUnit
     {
@@ -100,7 +96,7 @@ namespace nnfusion
     public:
         Interpreter();
         Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> m_passes,
-                           shared_ptr<InterpreterContext> ctx);
+                    shared_ptr<InterpreterContext> ctx);
         ~Interpreter(){};
 
         shared_ptr<TranslationUnitMap> translate(shared_ptr<ngraph::Function> function);
