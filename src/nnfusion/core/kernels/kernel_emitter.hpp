@@ -62,9 +62,22 @@ namespace nnfusion
             // thus it needs to add a header of "#include <cudnn>
             virtual LanguageUnit_p emit_dependency() = 0;
 
+        public:
+            // Emitted code units
+            LanguageUnit_p dep_unit;
+            LanguageUnit_p body_unit;
+            LanguageUnit_p call_unit;
+            LanguageUnit_p signature_unit;
+            LanguageUnit_p test_unit;
+            LanguageUnit_p test_call_unit;
+            LanguageUnit_p source_unit;
+
         protected:
             // Emit function call
             virtual LanguageUnit_p emit_function_call();
+
+            // Emit function signature
+            virtual LanguageUnit_p emit_function_signature();
 
             // Emit entire source code
             LanguageUnit_p emit_source();
@@ -93,12 +106,6 @@ namespace nnfusion
 
             // Emitted code units
             string m_function_name;
-            LanguageUnit_p m_dependency;
-            LanguageUnit_p m_function_body;
-            LanguageUnit_p m_function_call;
-            LanguageUnit_p m_test;
-            LanguageUnit_p m_test_call;
-            LanguageUnit_p m_source;
         };
     } // namespace kernels
 } // namespace nnfusion

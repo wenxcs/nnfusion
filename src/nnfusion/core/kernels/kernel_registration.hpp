@@ -48,7 +48,7 @@ namespace nnfusion
                           << "m_factory: " << m_factory << std::endl;
             }
 
-        private:
+        public:
             friend class KernelRegistry;
             string m_op_name;
             DeviceType m_device_type;

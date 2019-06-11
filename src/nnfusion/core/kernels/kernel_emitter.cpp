@@ -42,24 +42,26 @@ KernelContext::KernelContext(shared_ptr<Node> node)
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx)
     : m_context(ctx)
     , m_is_emitted(false)
-    , m_dependency(nullptr)
-    , m_function_body(nullptr)
-    , m_function_call(nullptr)
-    , m_test(nullptr)
-    , m_test_call(nullptr)
-    , m_source(nullptr)
+    , dep_unit(nullptr)
+    , body_unit(nullptr)
+    , call_unit(nullptr)
+    , signature_unit(nullptr)
+    , test_unit(nullptr)
+    , test_call_unit(nullptr)
+    , source_unit(nullptr)
 {
 }
 
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type)
     : m_context(ctx)
     , m_is_emitted(false)
-    , m_dependency(nullptr)
-    , m_function_body(nullptr)
-    , m_function_call(nullptr)
-    , m_test(nullptr)
-    , m_test_call(nullptr)
-    , m_source(nullptr)
+    , dep_unit(nullptr)
+    , body_unit(nullptr)
+    , call_unit(nullptr)
+    , signature_unit(nullptr)
+    , test_unit(nullptr)
+    , test_call_unit(nullptr)
+    , source_unit(nullptr)
     , m_kernel_type(kernel_type)
 {
 }
@@ -84,6 +86,32 @@ LanguageUnit_p KernelEmitter::emit_function_call()
     lu << get_function_name() << "(" << join(m_context->input_names, ", ") << ","
        << join(m_context->output_names, ", ") << ");\n";
 
+    return _lu;
+}
+
+LanguageUnit_p KernelEmitter::emit_function_signature()
+{
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_sig"));
+    auto& lu = *_lu;
+
+    vector<string> params;
+    for (size_t i = 0; i < m_context->inputs.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->inputs[i].get_element_type().c_type_string() << "* ";
+        ss << "input" << i;
+        params.push_back(ss.str());
+    }
+    
+    for (size_t i = 0; i < m_context->outputs.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->inputs[i].get_element_type().c_type_string() << "* ";
+        ss << "output" << i;
+        params.push_back(ss.str());
+    }
+
+    lu << "void " << get_function_name() << "(" << join(params, ", ") << ")";
     return _lu;
 }
 
@@ -115,38 +143,39 @@ string KernelEmitter::emit_comments()
 LanguageUnit_p KernelEmitter::emit_source()
 {
     enforce(m_is_emitted == false) << "Code only generated once.";
-    enforce_not_nullptr(this->m_dependency = emit_dependency());
+    enforce_not_nullptr(this->dep_unit = emit_dependency());
     if (this->m_function_name.empty())
     {
         get_function_name();
     }
     if (kernel_definitions.find(this->m_function_name) != kernel_definitions.end())
     {
-        enforce_not_nullptr(this->m_function_body = kernel_definitions[this->m_function_name]);
+        enforce_not_nullptr(this->body_unit = kernel_definitions[this->m_function_name]);
     }
     else
     {
-        enforce_not_nullptr(this->m_function_body = emit_function_body());
+        enforce_not_nullptr(this->body_unit = emit_function_body());
     }
-    enforce_not_nullptr(this->m_function_call = emit_function_call());
+    enforce_not_nullptr(this->call_unit = emit_function_call());
+    enforce_not_nullptr(this->signature_unit = emit_function_signature());
     //enforce_not_nullptr(this->m_test = emit_test());
 
     // Pass other to dep_unit
-    for (auto& it : m_function_call->local_symbol)
-        m_dependency->require(it.second);
-    for (auto& it : m_function_body->local_symbol)
-        m_dependency->require(it.second);
-    for (auto& it : m_test->local_symbol)
-        m_dependency->require(it.second);
-    m_function_call->clean_require();
-    m_function_body->clean_require();
-    m_test->clean_require();
+    for (auto& it : call_unit->local_symbol)
+        dep_unit->require(it.second);
+    for (auto& it : body_unit->local_symbol)
+        dep_unit->require(it.second);
+    for (auto& it : test_unit->local_symbol)
+        dep_unit->require(it.second);
+    call_unit->clean_require();
+    body_unit->clean_require();
+    test_unit->clean_require();
 
     // orgnize dep
-    this->m_function_body->require(this->m_dependency);
-    enforce(this->m_function_call->require(this->m_function_body));
-    enforce(this->m_test->require(this->m_function_body));
+    this->body_unit->require(this->dep_unit);
+    enforce(this->call_unit->require(this->body_unit));
+    enforce(this->test_unit->require(this->body_unit));
 
     m_is_emitted = true;
-    return this->m_function_call;
+    return this->call_unit;
 }
