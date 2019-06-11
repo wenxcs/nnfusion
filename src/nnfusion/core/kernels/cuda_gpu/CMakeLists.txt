@@ -13,6 +13,7 @@ set(UTIL
 
 set(KERNELS
     kernels/pad.cpp
+    kernels/anyop.cpp
 )
 
 add_library(kernels_cuda STATIC ${SRC} ${UTIL} ${KERNELS})

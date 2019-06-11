@@ -1,5 +1,5 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "languageunit.h"
+#include "languageunit.hpp"
 
 LanguageUnit::LanguageUnit(const string symbol)
     : symbol(symbol)

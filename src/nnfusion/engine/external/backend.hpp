@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #pragma once
 
-#include "nnfusion/engine/engine.h"
+#include "nnfusion/engine/engine.hpp"
 
 using Backend = ngraph::runtime::Backend;
 

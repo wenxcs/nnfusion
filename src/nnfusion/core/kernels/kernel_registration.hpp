@@ -105,7 +105,7 @@ namespace nnfusion
         Name(op_name)                                                                              \
             .attrs                                                                                 \
             .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {    \
-                return make_shared<cuda::Pad>(context);                                            \
+                return make_shared<constructor>(context);                                            \
             })                                                                                     \
             .Build());
 

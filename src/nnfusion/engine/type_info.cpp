@@ -14,7 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
-#include "type_info.h"
+#include "type_info.hpp"
 
 const nnfusion::TypeInfo::TypeDispatch nnfusion::TypeInfo::dispatcher{
     {"char", std::make_shared<nnfusion::TypeInfo_Impl<char>>()},

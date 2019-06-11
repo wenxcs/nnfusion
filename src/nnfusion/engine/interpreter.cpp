@@ -1,8 +1,8 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "interpreter.h"
-#include "nnfusion/engine/pass/codegenerator.h"
-#include "nnfusion/engine/pass/extract_function_signature.h"
-#include "nnfusion/engine/pass/ngraph_function_pass.h"
+#include "interpreter.hpp"
+#include "nnfusion/engine/pass/codegenerator.hpp"
+#include "nnfusion/engine/pass/extract_function_signature.hpp"
+#include "nnfusion/engine/pass/ngraph_function_pass.hpp"
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())

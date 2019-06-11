@@ -1,5 +1,5 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "codegenerator.h"
+#include "codegenerator.hpp"
 
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 

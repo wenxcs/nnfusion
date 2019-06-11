@@ -1,5 +1,5 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "ngraph_function_pass.h"
+#include "ngraph_function_pass.hpp"
 
 using namespace nnfusion::interpreter;
 

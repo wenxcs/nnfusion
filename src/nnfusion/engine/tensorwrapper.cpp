@@ -1,5 +1,5 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "tensorwrapper.h"
+#include "tensorwrapper.hpp"
 #include "ngraph/descriptor/layout/tensor_layout.hpp"
 #include "ngraph/descriptor/tensor.hpp"
 
