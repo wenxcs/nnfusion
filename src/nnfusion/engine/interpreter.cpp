@@ -28,10 +28,13 @@ bool Interpreter::translate(TranslationUnit::Pointer tu)
 
 shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Function> function)
 {
+    /*  Run original Ngraph Passes */
     static interpreter::NgraphFunctionPass ngraph_passes;
     static interpreter::ExtractFunctionSignature extract_global;
     shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
-    enforce(ngraph_passes.run(m_trans_ctx, nullptr));
+    shared_ptr<TranslationUnit> ngraph_tu(new TranslationUnit());
+    ngraph_tu->m_function = function;
+    enforce(ngraph_passes.run(m_trans_ctx, ngraph_tu));
     // Iterator through all functions
 
     // Deal with translation unit's program

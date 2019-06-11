@@ -7,10 +7,10 @@
 
 namespace nnfusion
 {
-        class DefaultDeviceDispatcher: public IInterpreterPass
-        {
-        public:
-            bool run(std::shared_ptr<InterpreterContext> ctx,
-                     std::shared_ptr<TranslationUnit> tu) override;
-        };
+    class DefaultDeviceDispatcher : public IInterpreterPass
+    {
+    public:
+        bool run(std::shared_ptr<InterpreterContext> ctx,
+                 std::shared_ptr<TranslationUnit> tu) override;
+    };
 }
