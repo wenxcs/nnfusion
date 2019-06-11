@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 #include "cuda_helper.hpp"
+#include "nnfusion/common/tensorwrapper.hpp"
 
 using CodeWriter = ngraph::codegen::CodeWriter;
 

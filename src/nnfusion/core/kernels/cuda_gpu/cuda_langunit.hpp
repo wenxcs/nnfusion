@@ -1,6 +1,6 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
-#include "../language_unit.hpp"
+#include "nnfusion/common/languageunit.hpp"
 
 #define LU_DEFINE(NAME) extern LanguageUnit_p NAME;
 

@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "device_dispatcher.hpp"
 
-#include "nnfusion/core/kernels/common.hpp"
+#include "nnfusion/common/common.hpp"
 
 using namespace nnfusion;
 

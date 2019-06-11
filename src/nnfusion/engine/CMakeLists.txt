@@ -8,10 +8,7 @@ if (NNFUSION_ENABLE)
     # This is the source file shared by devices
     set(ENGINE
         interpreter.cpp
-        languageunit.cpp
         op.cpp 
-        type_info.cpp
-        tensorwrapper.cpp
         external/nnfusion_cudacodegen.cpp
     )
 
@@ -22,7 +19,8 @@ if (NNFUSION_ENABLE)
     set_target_properties(nnfusion_backend PROPERTIES VERSION ${NGRAPH_VERSION})
     target_link_libraries(nnfusion_backend PRIVATE
         nnfusion_engine_pass
-        nnfusion_util_
+        nnfusion_common
+        nnfusion_util
         codegen
         # kernels
         kernels_registration

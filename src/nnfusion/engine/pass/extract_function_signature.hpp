@@ -1,6 +1,6 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #pragma once
-#include "nnfusion/engine/engine.hpp"
+#include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 
 namespace nnfusion

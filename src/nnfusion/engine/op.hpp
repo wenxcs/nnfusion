@@ -1,8 +1,9 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 
-#include "engine.hpp"
-#include "languageunit.hpp"
+#include "nnfusion/common/common.hpp"
+#include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/common/tensorwrapper.hpp"
 
 namespace nnfusion
 {

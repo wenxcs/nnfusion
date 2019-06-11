@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #pragma once
 
-#include "engine.hpp"
+#include "common.hpp"
 
 namespace nnfusion
 {

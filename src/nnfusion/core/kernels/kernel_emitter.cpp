@@ -83,8 +83,10 @@ LanguageUnit_p KernelEmitter::emit_function_call()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_call"));
     auto& lu = *_lu;
-    lu << get_function_name() << "(" << join(m_context->input_names, ", ") << ","
-       << join(m_context->output_names, ", ") << ");\n";
+    vector<string> names;
+    names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
+    names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
+    lu << get_function_name() << "(" << join(names, ", ") << ");\n";
 
     return _lu;
 }
@@ -159,22 +161,21 @@ LanguageUnit_p KernelEmitter::emit_source()
     enforce_not_nullptr(this->call_unit = emit_function_call());
     enforce_not_nullptr(this->signature_unit = emit_function_signature());
     //enforce_not_nullptr(this->m_test = emit_test());
-
     // Pass other to dep_unit
     for (auto& it : call_unit->local_symbol)
         dep_unit->require(it.second);
     for (auto& it : body_unit->local_symbol)
         dep_unit->require(it.second);
-    for (auto& it : test_unit->local_symbol)
-        dep_unit->require(it.second);
+    // for (auto& it : test_unit->local_symbol)
+    //     dep_unit->require(it.second);
     call_unit->clean_require();
     body_unit->clean_require();
-    test_unit->clean_require();
+    //test_unit->clean_require();
 
     // orgnize dep
     this->body_unit->require(this->dep_unit);
     enforce(this->call_unit->require(this->body_unit));
-    enforce(this->test_unit->require(this->body_unit));
+    //enforce(this->test_unit->require(this->body_unit));
 
     m_is_emitted = true;
     return this->call_unit;

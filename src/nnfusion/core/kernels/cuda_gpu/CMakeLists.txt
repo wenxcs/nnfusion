@@ -23,6 +23,5 @@ target_include_directories(kernels_cuda SYSTEM PUBLIC
 target_compile_options(kernels_cuda PRIVATE "-fPIC")
 
 target_link_libraries(kernels_cuda  PRIVATE
-    kernels_common
     kernels_registration
 )

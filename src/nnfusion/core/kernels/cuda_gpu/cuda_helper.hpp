@@ -1,10 +1,11 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 
-#include "nnfusion/core/kernels/common.hpp"
+#include "nnfusion/common/common.hpp"
+#include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/common/tensorwrapper.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/util/gpu_util.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/util/nvshape.hpp"
-#include "nnfusion/core/kernels/language_unit.hpp"
 
 #include "cuda_kernelops.hpp"
 #include "cuda_testutil.hpp"

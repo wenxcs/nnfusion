@@ -48,6 +48,7 @@ namespace nnfusion
             }
 
             void setOperatorDef(std::shared_ptr<ngraph::Node> op_def) { this->op_def = op_def; }
+            std::shared_ptr<ngraph::Node> operatorDef() { return op_def; }
             Attributes& Attr() { return _attr; }
             Tags& Tag() { return _tag; }
         };

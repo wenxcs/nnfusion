@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #pragma once
 
-#include "engine.hpp"
+#include "nnfusion/common/common.hpp"
 #include "nnfusion/core/IR/instruction.hpp"
 #include "op.hpp"
 

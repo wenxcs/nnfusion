@@ -6,7 +6,7 @@
 #pragma once
 
 #include "dependency.hpp"
-#include "nnfusion/engine/tensorwrapper.hpp"
+#include "nnfusion/common/tensorwrapper.hpp"
 
 namespace nnfusion
 {

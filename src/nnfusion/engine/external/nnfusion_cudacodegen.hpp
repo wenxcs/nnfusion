@@ -2,7 +2,6 @@
 #pragma once
 
 #include "backend.hpp"
-#include "nnfusion/engine/engine.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 
 namespace nnfusion

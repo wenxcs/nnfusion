@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "common.hpp"
 #include "kernel_emitter.hpp"
 
 namespace nnfusion
@@ -91,7 +90,6 @@ namespace nnfusion
         public:
             KernelRegistrar(const string op_name, shared_ptr<KernelRegistration> registration)
             {
-                std::cout << "KernelRegistrar constructor" << std::endl;
                 KernelRegistry::Global()->RegisterKernel(op_name, registration);
             }
         };

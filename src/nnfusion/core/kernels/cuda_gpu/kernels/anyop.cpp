@@ -22,7 +22,7 @@ LanguageUnit_p cuda::AnyOP::emit_function_body()
     // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
     lu.block_begin();
     {
-        lu << "// This function is left blank by purpose.";
+        lu << "// This function is left blank by purpose.\n";
     }
     lu.block_end();
     return _lu;
