@@ -12,6 +12,7 @@ set(UTIL
     util/gpu_util.cpp)
 
 set(KERNELS
+    kernels/batch_matmul.cpp
     kernels/pad.cpp
     kernels/anyop.cpp
 )
