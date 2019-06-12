@@ -32,7 +32,7 @@ LanguageUnit_p cuda::CudaEmitter::emit_function_signature()
         ss << "input" << i;
         params.push_back(ss.str());
     }
-    
+
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;
@@ -41,7 +41,8 @@ LanguageUnit_p cuda::CudaEmitter::emit_function_signature()
         params.push_back(ss.str());
     }
 
-    lu << "extern \"C\" __global__  void " << get_function_name() << "(" << join(params, ", ") << ")";
+    lu << "extern \"C\" __global__  void " << get_function_name() << "(" << join(params, ", ")
+       << ")";
     return _lu;
 }
 

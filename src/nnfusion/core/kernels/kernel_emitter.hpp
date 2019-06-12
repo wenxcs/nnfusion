@@ -56,7 +56,6 @@ namespace nnfusion
             string emit_comments();
 
             bool is_emitted() { return m_is_emitted; }
-
             // Interfaces for generating the kernel code of an operator
 
             // Emit the function body of a specific kernel for this operator
@@ -83,7 +82,6 @@ namespace nnfusion
             // The context for this kernel
             shared_ptr<KernelContext> m_context;
 
-
         protected:
             // Emit function call
             virtual LanguageUnit_p emit_function_call();
@@ -91,8 +89,6 @@ namespace nnfusion
             // Emit function signature
             virtual LanguageUnit_p emit_function_signature();
 
-            
-            
             // A kernel only emits kernel code once
             bool m_is_emitted;
 

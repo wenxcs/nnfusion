@@ -1,8 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
+#include "cuda_helper.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
-#include "cuda_helper.hpp"
 
 namespace nnfusion
 {
@@ -40,7 +40,7 @@ namespace nnfusion
                 virtual void set_launch_config() = 0;
 
                 LanguageUnit_p emit_function_call() override;
-                
+
                 LanguageUnit_p emit_function_signature() override;
 
             protected:

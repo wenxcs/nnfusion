@@ -5,8 +5,8 @@
 #include <unistd.h>
 
 #include "cuda_codegenerator.hpp"
-#include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
+#include "nnfusion/core/kernels/kernel_registration.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -114,7 +114,7 @@ bool CudaCodeGenerator::projgen()
 // }
 
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
-                        std::shared_ptr<TranslationUnit> tu)
+                            std::shared_ptr<TranslationUnit> tu)
 {
     setpwd();
 
@@ -141,10 +141,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             string op_name = ins->operatorDef()->description();
 
-            auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(op_name, CUDA_GPU, DT_FLOAT);
-            if (!kernel_reg) 
+            auto kernel_reg =
+                KernelRegistry::Global()->FindKernelRegistration(op_name, CUDA_GPU, DT_FLOAT);
+            if (!kernel_reg)
             {
-                kernel_reg = KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
+                kernel_reg =
+                    KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
                 enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
             }
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
@@ -180,7 +182,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 re.require(it.second);
                 global_required.insert(it.second->symbol);
-            } 
+            }
         }
         // lu << re.collect_required_code();
     }
@@ -215,7 +217,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
             }
-
         }
 
         //Write Dependency
@@ -308,7 +309,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(_memory_pool+"
                                  << it.get_offset() << ");\n";
                 }
-            }  
+            }
         }
 
         //Function Call

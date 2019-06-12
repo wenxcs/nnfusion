@@ -104,7 +104,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
         ss << "input" << i;
         params.push_back(ss.str());
     }
-    
+
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;

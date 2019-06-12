@@ -12,7 +12,7 @@ namespace nnfusion
     public:
         bool run(std::shared_ptr<InterpreterContext> ctx,
                  std::shared_ptr<TranslationUnit> tu) override;
-                 
+
     private:
         virtual bool projgen();
         virtual bool setpwd();

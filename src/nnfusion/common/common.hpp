@@ -109,11 +109,9 @@ namespace nnfusion
 using namespace std;
 using namespace nnfusion;
 
-
+#include "nlohmann_json.hpp"
 #include "nnfusion/util/util.hpp"
 #include "type_info.hpp"
-#include "nlohmann_json.hpp"
-
 
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 
