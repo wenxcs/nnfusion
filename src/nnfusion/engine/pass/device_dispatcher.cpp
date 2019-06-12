@@ -1,8 +1,6 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "device_dispatcher.hpp"
 
-#include "nnfusion/common/common.hpp"
-
 using namespace nnfusion;
 
 bool DefaultDeviceDispatcher::run(std::shared_ptr<InterpreterContext> ctx,

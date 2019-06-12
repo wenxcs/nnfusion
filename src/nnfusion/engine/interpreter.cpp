@@ -54,9 +54,6 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
 
         enforce(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 
-        enforce(IInterpreterPass::run_passes(*(this->m_passes), m_trans_ctx, _tu))
-            << "Error when apply passes on functions.";
-
         // Translate the Node
         for (shared_ptr<Node> node : m_trans_ctx->m_function_ordered_ops.at(current_function))
         {
