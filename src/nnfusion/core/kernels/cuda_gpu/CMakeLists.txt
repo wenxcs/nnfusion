@@ -12,9 +12,9 @@ set(UTIL
     util/gpu_util.cpp)
 
 set(KERNELS
-    kernels/batch_matmul.cpp
     kernels/pad.cpp
     kernels/anyop.cpp
+    kernels/batch_matmul.cpp
 )
 
 add_library(kernels_cuda STATIC ${SRC} ${UTIL} ${KERNELS})
