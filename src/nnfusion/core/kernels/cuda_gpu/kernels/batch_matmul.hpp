@@ -25,13 +25,13 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class BatchMatmul : public CudaEmitter
+            class BatchMatmul : public CudaLibEmitter
             {
                 shared_ptr<ngraph::op::GenericOp> generic_op;
 
             public:
                 BatchMatmul(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : CudaLibEmitter(ctx)
                     , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
                 {
                 }
@@ -47,13 +47,6 @@ namespace nnfusion
                        << generic_op->localOpConfig.get("adj_x")["b"] << ";\n";
                     lu.block_end();
                     return _lu;
-                }
-
-                void set_launch_config() override
-                {
-                    // Just for test currently
-                    m_gridDim = dim3(4, 1, 1);
-                    m_blockDim = dim3(64, 1, 1);
                 }
 
                 LanguageUnit_p emit_dependency() override

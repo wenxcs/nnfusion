@@ -6,7 +6,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::AnyOP::AnyOP(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : CudaLibEmitter(ctx)
 {
     std::stringstream tag;
     tag << "_AnyOP";
@@ -28,12 +28,6 @@ LanguageUnit_p cuda::AnyOP::emit_function_body()
     return _lu;
 }
 
-void cuda::AnyOP::set_launch_config()
-{
-    m_gridDim = dim3(1, 1, 1);
-    m_blockDim = dim3(1, 1, 1);
-}
-
 LanguageUnit_p cuda::AnyOP::emit_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
@@ -44,5 +38,5 @@ LanguageUnit_p cuda::AnyOP::emit_dependency()
 // Register Pad kernel emitter
 
 REGISTER_KERNEL_EMITTER("AnyOP",                                                      //op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), //attrs
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT),                    //attrs
                         cuda::AnyOP)                                                  // constructor

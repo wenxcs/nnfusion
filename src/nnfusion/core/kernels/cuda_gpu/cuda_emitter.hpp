@@ -34,7 +34,6 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cuda")
                 {
                 }
-                ~CudaEmitter(){};
 
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
@@ -48,17 +47,13 @@ namespace nnfusion
                 dim3 m_gridDim;
             };
 
-            class CudnnEmitter : public KernelEmitter
+            class CudaLibEmitter : public KernelEmitter
             {
             public:
-                CudnnEmitter(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx, "cudnn")
+                CudaLibEmitter(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "cuda_lib")
                 {
                 }
-                ~CudnnEmitter(){};
-
-                // A unified way to generate test code for cuda kernels
-                // LanguageUnit_p emit_test();
             };
 
             // class ElementwiseKernel : public CudaEmitter
