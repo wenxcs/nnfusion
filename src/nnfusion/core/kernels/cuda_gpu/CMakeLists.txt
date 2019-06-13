@@ -13,6 +13,8 @@ set(UTIL
 
 set(KERNELS
     kernels/pad.cpp
+    kernels/anyop.cpp
+    kernels/batch_matmul.cpp
 )
 
 add_library(kernels_cuda STATIC ${SRC} ${UTIL} ${KERNELS})
@@ -22,6 +24,5 @@ target_include_directories(kernels_cuda SYSTEM PUBLIC
 target_compile_options(kernels_cuda PRIVATE "-fPIC")
 
 target_link_libraries(kernels_cuda  PRIVATE
-    kernels_common
     kernels_registration
 )

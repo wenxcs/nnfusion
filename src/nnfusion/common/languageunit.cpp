@@ -1,8 +1,5 @@
-// Microsoft (c) 2019, NNFusion Team
-#include "language_unit.hpp"
-
-using namespace nnfusion;
-using namespace nnfusion::kernels;
+// Microsoft (c) 2019, Wenxiang Hu
+#include "languageunit.hpp"
 
 LanguageUnit::LanguageUnit(const string symbol)
     : symbol(symbol)

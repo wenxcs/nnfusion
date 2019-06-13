@@ -17,16 +17,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ngraph/descriptor/tensor.hpp"
+#include "ngraph/node.hpp"
 #include "nnfusion/util/error.hpp"
-
-//typesdef
-#define int64_t int
-#define uint8_t char
-#define size_t int
-#define Symbol int
-#define Tensor int
-#define Graph int
-#define Node int
 
 #define DISALLOW_COPY_AND_ASSIGN(TypeName)                                                         \
     TypeName(const TypeName&) = delete;                                                            \
@@ -36,6 +29,11 @@ namespace nnfusion
 {
     namespace ir
     {
+        using int64_t = int;
+        using uint8_t = char;
+        using size_t = int;
+        using Symbol = std::string;
+
         class Value;
         class ResourceGuard final
         {
@@ -99,7 +97,7 @@ namespace nnfusion
         }
 
         using node_list = std::vector<Node*>;
-        using value_list = std::vector<Value*>;
+        using value_list = std::vector<ngraph::descriptor::Tensor*>;
         using use_list = std::vector<Use>;
         using NodeKind = Symbol;
     }

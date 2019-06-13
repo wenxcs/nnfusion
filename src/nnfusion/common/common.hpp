@@ -1,7 +1,5 @@
-// Microsoft (c) 2019, NNFusion Team
-
+// Microsoft (c) 2019, Wenxiang Hu
 #pragma once
-
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -101,14 +99,25 @@
 #include "ngraph/type/element_type.hpp"
 #include "ngraph/util.hpp"
 
-using namespace std;
+namespace nnfusion
+{
+    namespace codegen
+    {
+    }
+}
 
-#include "nnfusion/util/error.hpp"
-#include "nnfusion/util/log.hpp"
-#include "nnfusion/util/type_info.hpp"
-#include "tensor_wrapper.hpp"
+using namespace std;
+using namespace nnfusion;
+
+#include "nlohmann_json.hpp"
+#include "nnfusion/util/util.hpp"
+#include "type_info.hpp"
 
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
+
+// Uncomment this for quick debug
+// #undef LOG_INFO
+// #define LOG_INFO std::cout
 
 namespace nnfusion
 {

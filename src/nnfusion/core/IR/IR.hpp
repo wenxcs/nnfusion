@@ -19,8 +19,8 @@
 
 #include "attribute.hpp"
 #include "dependency.hpp"
+#include "instruction.hpp"
 #include "tag.hpp"
-#include "value.hpp"
 
 //typesdef
 #define int64_t long long

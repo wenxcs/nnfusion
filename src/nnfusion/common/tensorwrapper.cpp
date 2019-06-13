@@ -1,5 +1,5 @@
-// Microsoft (c) 2019, NNFusion Team
-#include "tensor_wrapper.hpp"
+// Microsoft (c) 2019, Wenxiang Hu
+#include "tensorwrapper.hpp"
 #include "ngraph/descriptor/layout/tensor_layout.hpp"
 #include "ngraph/descriptor/tensor.hpp"
 
@@ -58,16 +58,17 @@ Strides TensorWrapper::get_strides() const
 
 const element::Type& TensorWrapper::get_element_type() const
 {
+    return element::f32;
     // \todo was return m_tensor->get_tensor_layout()->get_element_type(),
     // What is the side effect.
-    if (m_tensor->get_tensor_layout() != nullptr)
-    {
-        return m_tensor->get_tensor_layout()->get_element_type();
-    }
-    else
-    {
-        return m_tensor->get_element_type();
-    }
+    // if (m_tensor->get_tensor_layout() != nullptr)
+    // {
+    //     return m_tensor->get_tensor_layout()->get_element_type();
+    // }
+    // else
+    // {
+    //     return m_tensor->get_element_type();
+    // }
 }
 
 const std::string& TensorWrapper::get_name() const

@@ -45,7 +45,7 @@ bool KernelRegistry::RegisterKernel(const string op_name,
                                     shared_ptr<KernelRegistration> registration)
 {
     m_kernel_registry.insert(std::make_pair(op_name, registration));
-    std::cout << "Registered kernel for Opeartor: " << op_name << std::endl;
+    LOG_INFO << "Registered kernel for Opeartor: " << op_name << std::endl;
 
     return true;
 }

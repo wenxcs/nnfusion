@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "common.hpp"
-#include "language_unit.hpp"
-#include "nlohmann_json.hpp"
+#include "nnfusion/common/common.hpp"
+#include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/common/tensorwrapper.hpp"
 
 namespace nnfusion
 {
@@ -49,6 +49,13 @@ namespace nnfusion
             // Note that it's kernel developer's responsibility to avoid confilit
             string get_function_name();
 
+            // Emit entire source code
+            LanguageUnit_p emit_source();
+
+            // Emit comments
+            string emit_comments();
+
+            bool is_emitted() { return m_is_emitted; }
             // Interfaces for generating the kernel code of an operator
 
             // Emit the function body of a specific kernel for this operator
@@ -62,19 +69,25 @@ namespace nnfusion
             // thus it needs to add a header of "#include <cudnn>
             virtual LanguageUnit_p emit_dependency() = 0;
 
+        public:
+            // Emitted code units
+            LanguageUnit_p dep_unit;
+            LanguageUnit_p body_unit;
+            LanguageUnit_p call_unit;
+            LanguageUnit_p signature_unit;
+            LanguageUnit_p test_unit;
+            LanguageUnit_p test_call_unit;
+            LanguageUnit_p source_unit;
+
+            // The context for this kernel
+            shared_ptr<KernelContext> m_context;
+
         protected:
             // Emit function call
             virtual LanguageUnit_p emit_function_call();
 
-            // Emit entire source code
-            LanguageUnit_p emit_source();
-
-            // Emit comments
-            string emit_comments();
-
-            bool is_emitted() { return m_is_emitted; }
-            // The context for this kernel
-            shared_ptr<KernelContext> m_context;
+            // Emit function signature
+            virtual LanguageUnit_p emit_function_signature();
 
             // A kernel only emits kernel code once
             bool m_is_emitted;
@@ -93,12 +106,6 @@ namespace nnfusion
 
             // Emitted code units
             string m_function_name;
-            LanguageUnit_p m_dependency;
-            LanguageUnit_p m_function_body;
-            LanguageUnit_p m_function_call;
-            LanguageUnit_p m_test;
-            LanguageUnit_p m_test_call;
-            LanguageUnit_p m_source;
         };
     } // namespace kernels
 } // namespace nnfusion

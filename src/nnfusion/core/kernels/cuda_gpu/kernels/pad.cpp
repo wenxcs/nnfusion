@@ -124,6 +124,7 @@ LanguageUnit_p cuda::Pad::emit_dependency()
 
 // Register Pad kernel emitter
 
+/*
 KernelRegistrar kernel_registrar0(
     "Pad",
     Name("Pad")
@@ -134,8 +135,8 @@ KernelRegistrar kernel_registrar0(
             return make_shared<cuda::Pad>(context);
         })
         .Build());
+*/
 
-// REGISTER_KERNEL_EMITTER(
-//     "Pad",      //op_name
-//     Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),  //attrs
-//     cuda::Pad)  // constructor
+REGISTER_KERNEL_EMITTER("Pad",                                                        // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
+                        cuda::Pad)                                                    // constructor

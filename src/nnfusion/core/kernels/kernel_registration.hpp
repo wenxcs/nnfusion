@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "common.hpp"
 #include "kernel_emitter.hpp"
 
 namespace nnfusion
@@ -48,7 +47,7 @@ namespace nnfusion
                           << "m_factory: " << m_factory << std::endl;
             }
 
-        private:
+        public:
             friend class KernelRegistry;
             string m_op_name;
             DeviceType m_device_type;
@@ -91,7 +90,6 @@ namespace nnfusion
         public:
             KernelRegistrar(const string op_name, shared_ptr<KernelRegistration> registration)
             {
-                std::cout << "KernelRegistrar constructor" << std::endl;
                 KernelRegistry::Global()->RegisterKernel(op_name, registration);
             }
         };
@@ -100,12 +98,12 @@ namespace nnfusion
 #define CONCAT(x, y) CONCAT_IMPL(x, y)
 
 #define REGISTER_KERNEL_EMITTER(op_name, attrs, constructor)                                       \
-    KernelRegistrar CONCAT(kernel_registrar, __COUNTER__)(                                         \
+    static KernelRegistrar CONCAT(kernel_registrar, __COUNTER__)(                                  \
         op_name,                                                                                   \
         Name(op_name)                                                                              \
             .attrs                                                                                 \
             .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {    \
-                return make_shared<cuda::Pad>(context);                                            \
+                return make_shared<constructor>(context);                                          \
             })                                                                                     \
             .Build());
 

@@ -1053,7 +1053,7 @@ namespace ngraph
                     ++processed;
                     inputs.clear();
                     const auto& node_proto = proto.node(node_idx);
-                    std::cout << node_proto.DebugString() << std::endl;
+                    //std::cout << node_proto.DebugString() << std::endl;
 
                     size_t i = 0;
                     for (auto& input : node_proto.input())

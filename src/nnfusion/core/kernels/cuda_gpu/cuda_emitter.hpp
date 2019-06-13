@@ -1,8 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
-#include "../kernel_emitter.hpp"
-#include "../kernel_registration.hpp"
 #include "cuda_helper.hpp"
+#include "nnfusion/core/kernels/kernel_emitter.hpp"
+#include "nnfusion/core/kernels/kernel_registration.hpp"
 
 namespace nnfusion
 {
@@ -34,29 +34,26 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cuda")
                 {
                 }
-                ~CudaEmitter(){};
 
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
 
                 LanguageUnit_p emit_function_call() override;
 
+                LanguageUnit_p emit_function_signature() override;
+
             protected:
                 dim3 m_blockDim;
                 dim3 m_gridDim;
             };
 
-            class CudnnEmitter : public KernelEmitter
+            class CudaLibEmitter : public KernelEmitter
             {
             public:
-                CudnnEmitter(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx, "cudnn")
+                CudaLibEmitter(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "cuda_lib")
                 {
                 }
-                ~CudnnEmitter(){};
-
-                // A unified way to generate test code for cuda kernels
-                // LanguageUnit_p emit_test();
             };
 
             // class ElementwiseKernel : public CudaEmitter
