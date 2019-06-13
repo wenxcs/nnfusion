@@ -34,6 +34,8 @@
 #include "ngraph/op/sum.hpp"
 #include "ngraph/op/tanh.hpp"
 
+#include "nnfusion/core/ops/generic_op.hpp"
+
 namespace ngraph
 {
     namespace frontend
@@ -116,6 +118,40 @@ namespace ngraph
                     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
                 }
                 auto ng_node = std::make_shared<ngraph::op::Dot>(ng_lhs, ng_rhs);
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateBatchMatMulOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+                // Transpose arguments if requested.
+                bool adj_x = false;
+                bool adj_y = false;
+                assert(GetNodeAttr(node.attr(), "adj_x", adj_x) == true);
+                assert(GetNodeAttr(node.attr(), "adj_y", adj_y) == true);
+                if (adj_x)
+                {
+                    ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
+                }
+                if (adj_y)
+                {
+                    ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
+                }
+				ngraph::op::OpConfig::any myConfig;
+				myConfig["adj_x"]["b"] = false;
+				myConfig["adj_y"]["b"] = false;
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+					node.name(),
+					node.op(),
+					std::vector<std::shared_ptr<Node>>({ng_lhs, ng_rhs}),
+					myConfig);
+
                 ng_node->set_name(node.name());
                 NamedNodeVector ret{{node.name(), ng_node}};
                 return ret;
@@ -1003,6 +1039,7 @@ namespace ngraph
                 {"FusedBatchNormV2", TranslateFusedBatchNormOp},
                 {"Identity", TranslateIdentityOp},
                 {"MatMul", TranslateMatMulOp},
+                {"BatchMatMul", TranslateBatchMatMulOp},
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},

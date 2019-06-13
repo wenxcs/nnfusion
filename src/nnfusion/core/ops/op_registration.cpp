@@ -1,7 +1,18 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
 
-#include "generic_op.hpp"
+#include "nnfusion/core/ops/generic_op.hpp"
+
+namespace ngraph {
+
+    namespace op {
+
+        std::unordered_map<std::string, ngraph::op::OpConfig> &get_op_configs() {
+            static std::unordered_map<std::string, ngraph::op::OpConfig> __op_configs;
+            return __op_configs;
+        }
+    }
+}
 
 /**********************************
 Example:
@@ -12,16 +23,7 @@ REGISTER_OP(Softmax)
 
 **********************************/
 
-namespace ngraph
-{
-    namespace op
-    {
-        std::unordered_map<std::string, ngraph::op::OpConfig> __op_configs;
-    }
-}
-
-
-REGISTER_OP(BatchMatmul)
+REGISTER_OP(BatchMatMul)
     .attr<ngraph::op::OpConfig::any>("adj_x", {{"b", false}})
     .attr<ngraph::op::OpConfig::any>("adj_y", {{"b", false}})
     .constrait([](const ngraph::op::OpConfig::any& config) -> bool {
@@ -72,3 +74,4 @@ REGISTER_OP(BatchMatmul)
         target_op.set_output_type(
             0, target_op.get_input_element_type(0), output_shape_0);
     });
+
