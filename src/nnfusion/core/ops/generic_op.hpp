@@ -3,13 +3,15 @@
 
 #include "nnfusion/common/common.hpp"
 
+#define REGISTER_OP(op_x) static ngraph::op::OpConfig __register_op_##op_x = ngraph::op::build_op_config(#op_x)
+
+
 namespace ngraph
 {
     namespace op
     {
         class OpConfig;
         class GenericOp;
-        const std::unordered_map<std::string, OpConfig>& ensure_initialize_op_configs();
 
         class OpConfig
         {
@@ -69,6 +71,24 @@ namespace ngraph
             OpConfig::any j_attrs;
         };
 
+        extern std::unordered_map<std::string, OpConfig> __op_configs;
+
+        inline OpConfig& build_op_config(const std::string &opname) {
+            if (__op_configs.count(opname) > 0)
+                throw std::runtime_error((std::string("OpConfig for opname `") + opname + "` is registered more than once.").c_str());
+            std::cout << "Registering opname `" << opname << "`;\n";
+            return __op_configs[opname];
+        }
+
+        inline const OpConfig& lookup_op_config(const std::string &opname) {
+            auto it = __op_configs.find(opname);
+            if (it == __op_configs.end())
+                throw std::runtime_error(
+                    (std::string("No config-definition found for op type `") + opname + "`")
+                        .c_str());
+            return it->second;
+        }
+
         class GenericOp : public Op
         {
         public:
@@ -84,15 +104,8 @@ namespace ngraph
                 std::cout << "Constructing new op `" << opname << "` with name `" << name
                           << "`, input size = " << inputs.size() << ";\n";
 
-                auto& op_configs = ensure_initialize_op_configs();
-                auto it = op_configs.find(opname);
-                if (it == op_configs.end())
-                    throw std::runtime_error(
-                        (std::string("No config-definition found for op type `") + opname + "`")
-                            .c_str());
-
                 // Merge customOpConfig into default config
-                localOpConfig = it->second;
+                localOpConfig = lookup_op_config(opname);
                 std::unordered_set<std::string> keyset;
                 for (auto& item : localOpConfig.getRoot().items())
                     keyset.insert(item.key());
