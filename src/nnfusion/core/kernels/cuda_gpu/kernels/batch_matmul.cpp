@@ -68,12 +68,16 @@ namespace nnfusion
 
 					auto code = ngraph::op::create_code_from_template(R"(
 						static const float alpha = 1.0f, beta = 0.0f;
-						assert(CUBLAS_STATUS_SUCCESS == @api_name@(
-							hCublas, CUBLAS_OP_N, CUBLAS_OP_N, @m@, @n@, @k@,
+						if (!@hCublas@)
+							assert(CUBLAS_STATUS_SUCCESS == @api_create@(&@hCublas@));
+						assert(CUBLAS_STATUS_SUCCESS == @api_exec@(
+							global_cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, @m@, @n@, @k@,
 							&alpha, input0, @lda@, @stride_a@, input1, @ldb@, @stride_b@,
 							&beta, output0, @ldc@, @stride_c@, @batch@));
 					)", {
-						{"api_name", "cublasSgemmStridedBatched"},
+						{"hCublas", "global_cublas_handle"},
+						{"api_create", "cublasCreate"},
+						{"api_exec", "cublasSgemmStridedBatched"},
 						{"m", m},
 						{"n", n},
 						{"k", k},
@@ -100,9 +104,12 @@ namespace nnfusion
                 {
 					GENERIC_OP_LOGGING();
 
-                    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
-                    _lu->require(header::cuda);
-                    return _lu;
+                    LanguageUnit_p _lu_header(new LanguageUnit(get_function_name() + "_dep"));
+                    _lu_header->require(header::cuda);
+                    _lu_header->require(header::cublas);
+                    _lu_header->require(declaration::global_cublas_handle);
+                    _lu_header->require(macro::CUBLAS_SAFE_CALL);
+                    return _lu_header;
                 }
             };
         } // namespace cuda
