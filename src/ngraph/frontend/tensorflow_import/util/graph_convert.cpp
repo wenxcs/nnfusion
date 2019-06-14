@@ -124,8 +124,8 @@ namespace ngraph
             }
 
             NamedNodeVector TranslateBatchMatMulOp(const tensorflow::NodeDef& node,
-                                              const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                                   const NodeMap& all_ng_nodes,
+                                                   ngraph::op::ParameterVector& parameters)
             {
                 auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
                 auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
@@ -142,15 +142,15 @@ namespace ngraph
                 {
                     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
                 }
-				ngraph::op::OpConfig::any myConfig;
-				myConfig["adj_x"]["b"] = false;
-				myConfig["adj_y"]["b"] = false;
+                ngraph::op::OpConfig::any myConfig;
+                myConfig["adj_x"]["b"] = false;
+                myConfig["adj_y"]["b"] = false;
 
                 auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-					node.name(),
-					node.op(),
-					std::vector<std::shared_ptr<Node>>({ng_lhs, ng_rhs}),
-					myConfig);
+                    node.name(),
+                    node.op(),
+                    std::vector<std::shared_ptr<Node>>({ng_lhs, ng_rhs}),
+                    myConfig);
 
                 ng_node->set_name(node.name());
                 NamedNodeVector ret{{node.name(), ng_node}};

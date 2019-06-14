@@ -3,9 +3,10 @@
 
 #include "nnfusion/common/common.hpp"
 
-#define REGISTER_OP(op_x) static ngraph::op::OpConfig __register_op_##op_x = ngraph::op::build_op_config(#op_x)
-#define GENERIC_OP_LOGGING()  std::cout << "[GENERIC_OP_LOGGING] " << __FILE__ << ": " << __PRETTY_FUNCTION__ << std::endl;
-
+#define REGISTER_OP(op_x)                                                                          \
+    static ngraph::op::OpConfig __register_op_##op_x = ngraph::op::build_op_config(#op_x)
+#define GENERIC_OP_LOGGING()                                                                       \
+    std::cout << "[GENERIC_OP_LOGGING] " << __FILE__ << ": " << __PRETTY_FUNCTION__ << std::endl;
 
 namespace ngraph
 {
@@ -72,10 +73,11 @@ namespace ngraph
             OpConfig::any j_attrs;
         };
 
-		std::unordered_map<std::string, ngraph::op::OpConfig> &get_op_configs();
+        std::unordered_map<std::string, ngraph::op::OpConfig>& get_op_configs();
 
-        inline const OpConfig& lookup_op_config(const std::string &opname) {
-			GENERIC_OP_LOGGING();
+        inline const OpConfig& lookup_op_config(const std::string& opname)
+        {
+            GENERIC_OP_LOGGING();
 
             auto it = get_op_configs().find(opname);
             if (it == get_op_configs().end())
@@ -85,39 +87,47 @@ namespace ngraph
             return it->second;
         }
 
-        inline OpConfig& build_op_config(const std::string &opname) {
-			GENERIC_OP_LOGGING();
+        inline OpConfig& build_op_config(const std::string& opname)
+        {
+            GENERIC_OP_LOGGING();
 
             if (get_op_configs().find(opname) != get_op_configs().end())
-                throw std::runtime_error((std::string("OpConfig for opname `") + opname + "` is registered more than once.").c_str());
+                throw std::runtime_error((std::string("OpConfig for opname `") + opname +
+                                          "` is registered more than once.")
+                                             .c_str());
             std::cout << "Registering opname `" << opname << "`;\n";
             return get_op_configs()[opname];
         }
 
-		inline std::string create_code_from_template(std::string templ, const ngraph::op::OpConfig::any &feed_dict) {
-			for (auto &it: feed_dict.items()) {
-				std::string placeholder = "@" + it.key() + "@";
-				int at = 0;
-				while (true) {
-					at = templ.find(placeholder, at);
-					if (at < 0)
-						break;
-					std::string value;
-					if (it.value().is_string())
-						value = it.value();
-					else if (it.value().is_null())
-						value = "NULL";
-					else {
-						std::stringstream ss;
-						ss << it.value();
-						value = ss.str();
-					}
-					templ = templ.substr(0, at) + value + templ.substr(at + placeholder.size());
-					at += value.size();
-				}
-			}
-			return std::move(templ);
-		};
+        inline std::string create_code_from_template(std::string templ,
+                                                     const ngraph::op::OpConfig::any& feed_dict)
+        {
+            for (auto& it : feed_dict.items())
+            {
+                std::string placeholder = "@" + it.key() + "@";
+                int at = 0;
+                while (true)
+                {
+                    at = templ.find(placeholder, at);
+                    if (at < 0)
+                        break;
+                    std::string value;
+                    if (it.value().is_string())
+                        value = it.value();
+                    else if (it.value().is_null())
+                        value = "NULL";
+                    else
+                    {
+                        std::stringstream ss;
+                        ss << it.value();
+                        value = ss.str();
+                    }
+                    templ = templ.substr(0, at) + value + templ.substr(at + placeholder.size());
+                    at += value.size();
+                }
+            }
+            return std::move(templ);
+        };
 
         class GenericOp : public Op
         {
@@ -131,7 +141,7 @@ namespace ngraph
                 , opname(opname)
                 , inputs(inputs)
             {
-				GENERIC_OP_LOGGING();
+                GENERIC_OP_LOGGING();
 
                 // Merge customOpConfig into default config
                 localOpConfig = lookup_op_config(opname);
@@ -151,18 +161,19 @@ namespace ngraph
                 }
 
                 localOpConfig.check_constrait();
-				validate_and_infer_types();
+                validate_and_infer_types();
             }
 
-			virtual std::shared_ptr<ngraph::Node> copy_with_new_args(const NodeVector& new_args) const override
-			{
-				throw std::runtime_error("Not expected to reach here: copy_with_new_args().");
-				return std::make_shared<GenericOp>(name, opname, new_args, localOpConfig.getRoot());
-			}
+            virtual std::shared_ptr<ngraph::Node>
+                copy_with_new_args(const NodeVector& new_args) const override
+            {
+                throw std::runtime_error("Not expected to reach here: copy_with_new_args().");
+                return std::make_shared<GenericOp>(name, opname, new_args, localOpConfig.getRoot());
+            }
 
             virtual void validate_and_infer_types() override
             {
-				GENERIC_OP_LOGGING();
+                GENERIC_OP_LOGGING();
                 localOpConfig.check_constrait();
                 localOpConfig.f_infershape(*this);
             }

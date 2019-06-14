@@ -30,8 +30,7 @@ REGISTER_OP(BatchMatMul)
         ngraph::Shape output_shape_0;
 
         assert(input_shape_0.size() == input_shape_1.size());
-        assert(target_op.get_input_element_type(0) ==
-               target_op.get_input_element_type(1));
+        assert(target_op.get_input_element_type(0) == target_op.get_input_element_type(1));
 
         for (int i = input_shape_0.size() - 3; i >= 0; --i)
         {
@@ -48,19 +47,13 @@ REGISTER_OP(BatchMatMul)
         bool trans_B = target_op.localOpConfig.getRoot()["adj_y"]["b"];
 
         if (!trans_A && !trans_B)
-            assert(m1 == n0), output_shape_0.push_back(m0),
-                output_shape_0.push_back(n1);
+            assert(m1 == n0), output_shape_0.push_back(m0), output_shape_0.push_back(n1);
         else if (!trans_A && trans_B)
-            assert(m1 == n1), output_shape_0.push_back(m0),
-                output_shape_0.push_back(m1);
+            assert(m1 == n1), output_shape_0.push_back(m0), output_shape_0.push_back(m1);
         else if (trans_A && !trans_B)
-            assert(m0 == m1), output_shape_0.push_back(n0),
-                output_shape_0.push_back(n1);
+            assert(m0 == m1), output_shape_0.push_back(n0), output_shape_0.push_back(n1);
         else // trans_A && trans_B
-            assert(m0 == n1), output_shape_0.push_back(n0),
-                output_shape_0.push_back(m1);
+            assert(m0 == n1), output_shape_0.push_back(n0), output_shape_0.push_back(m1);
 
-        target_op.set_output_type(
-            0, target_op.get_input_element_type(0), output_shape_0);
+        target_op.set_output_type(0, target_op.get_input_element_type(0), output_shape_0);
     });
-

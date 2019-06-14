@@ -3,11 +3,12 @@
 
 #include "nnfusion/core/ops/generic_op.hpp"
 
-namespace ngraph {
-
-    namespace op {
-
-        std::unordered_map<std::string, ngraph::op::OpConfig> &get_op_configs() {
+namespace ngraph
+{
+    namespace op
+    {
+        std::unordered_map<std::string, ngraph::op::OpConfig>& get_op_configs()
+        {
             static std::unordered_map<std::string, ngraph::op::OpConfig> __op_configs;
             return __op_configs;
         }
