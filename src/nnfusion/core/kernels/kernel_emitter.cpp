@@ -71,7 +71,7 @@ string KernelEmitter::get_function_name()
     if (m_function_name.empty())
     {
         std::stringstream func_name;
-        func_name << m_context->node->description() << "_" << join(m_context->dtypes, "_")
+        func_name << m_context->node->description() << "_" << join(m_context->dtypes, "_") << "_"
                   << m_kernel_type << "_" << custom_tag;
         m_function_name = func_name.str();
     }
