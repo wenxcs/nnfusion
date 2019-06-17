@@ -15,6 +15,7 @@ set(KERNELS
     kernels/pad.cpp
     kernels/anyop.cpp
     kernels/batch_matmul.cpp
+    kernels/dot.cpp
 )
 
 add_library(kernels_cuda STATIC ${SRC} ${UTIL} ${KERNELS})

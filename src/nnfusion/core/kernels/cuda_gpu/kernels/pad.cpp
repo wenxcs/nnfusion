@@ -46,7 +46,7 @@ LanguageUnit_p cuda::Pad::emit_function_body()
 
     // function signature:
     // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
-    lu.block_begin();
+    //lu.block_begin();
     {
         lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
         lu << m_context->dtypes[0] << "* in = input0;\n";
@@ -101,7 +101,7 @@ LanguageUnit_p cuda::Pad::emit_function_body()
         }
         lu.block_end();
     }
-    lu.block_end();
+    //lu.block_end();
     return _lu;
 }
 
