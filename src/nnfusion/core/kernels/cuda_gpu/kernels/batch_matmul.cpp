@@ -4,17 +4,16 @@
 // This is the 2rd-generation of kernel definition, recommend to extend new ops with this style
 // Changes needed for creating an new kernel with 2rd generation style:
 //
-// 3 files to change:
+// files to change:
 //   [a] ./new_kernel_0.cpp
-//   [b] ./new_kernel_0.hpp
-//   [c] ../../../ops/op_registration.cpp
+//   [b] ../../../ops/op_define/new_op_0.cpp
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
 
 /*********************************
->> For Config detail, please reference ../../../ops/op_registration.cpp
+>> For Config detail, please reference ../../../ops/op_define/BatchMatMul.cpp
 
 Example:
     BatchMatMul::Config {
@@ -56,33 +55,62 @@ namespace nnfusion
                     generic_op->validate_and_infer_types();
 
                     // Handle matmul without transpose
-                    assert(generic_op->localOpConfig.getRoot()["adj_x"]["b"] == false);
-                    assert(generic_op->localOpConfig.getRoot()["adj_y"]["b"] == false);
-
+                    bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
+                    bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
                     size_t A1 = 1LU;
                     for (int i = input_shape_0.size() - 3; i >= 0; --i)
                         A1 *= input_shape_0[i];
-                    int A2 = input_shape_0[input_shape_0.size() - 2];
-                    int A3 = input_shape_0[input_shape_0.size() - 1];
-                    int A4 = input_shape_1[input_shape_0.size() - 1];
+                    int A2, A3, A4, m, n, k, lda, stride_a, ldb, stride_b, ldc, stride_c;
 
-                    int m = A4, n = A2, k = A3, lda = A4, stride_a = A3 * A4, ldb = A3,
+                    if (!transA && !transB)
+                    {
+                        A2 = input_shape_0[input_shape_0.size() - 2];
+                        A3 = input_shape_0[input_shape_0.size() - 1];
+                        A4 = input_shape_1[input_shape_1.size() - 1];
+                        m = A4, n = A2, k = A3, lda = A4, stride_a = A3 * A4, ldb = A3,
                         stride_b = A2 * A3, ldc = A4, stride_c = A2 * A4;
+                    }
+                    else if (!transA && transB)
+                    {
+                        A2 = input_shape_0[input_shape_0.size() - 2];
+                        A3 = input_shape_0[input_shape_0.size() - 1];
+                        A4 = input_shape_1[input_shape_1.size() - 2];
+                        m = A4, n = A2, k = A3, lda = A3, stride_a = A3 * A4, ldb = A3,
+                        stride_b = A2 * A3, ldc = A4, stride_c = A2 * A4;
+                    }
+                    else if (transA && !transB)
+                    {
+                        A2 = input_shape_0[input_shape_0.size() - 1];
+                        A3 = input_shape_0[input_shape_0.size() - 2];
+                        A4 = input_shape_1[input_shape_1.size() - 1];
+                        m = A4, n = A2, k = A3, lda = A4, stride_a = A3 * A4, ldb = A2,
+                        stride_b = A2 * A3, ldc = A4, stride_c = A2 * A4;
+                    }
+                    else
+                    { // transA && transB
+                        A2 = input_shape_0[input_shape_0.size() - 1];
+                        A3 = input_shape_0[input_shape_0.size() - 2];
+                        A4 = input_shape_1[input_shape_1.size() - 2];
+                        m = A4, n = A2, k = A3, lda = A3, stride_a = A3 * A4, ldb = A2,
+                        stride_b = A2 * A3, ldc = A4, stride_c = A2 * A4;
+                    }
 
                     auto code = ngraph::op::create_code_from_template(
                         R"(
-						static const float alpha = 1.0f, beta = 0.0f;
-						if (!@hCublas@)
-							assert(CUBLAS_STATUS_SUCCESS == @api_create@(&@hCublas@));
-						assert(CUBLAS_STATUS_SUCCESS == @api_exec@(
-							global_cublas_handle, CUBLAS_OP_N, CUBLAS_OP_N, @m@, @n@, @k@,
-							&alpha, input0, @lda@, @stride_a@, input1, @ldb@, @stride_b@,
-							&beta, output0, @ldc@, @stride_c@, @batch@));
-					)",
+                        static const float alpha = 1.0f, beta = 0.0f;
+                        if (!@hCublas@)
+                            CUBLAS_SAFE_CALL(@api_create@(&@hCublas@));
+                        CUBLAS_SAFE_CALL(@api_exec@(
+                            global_cublas_handle, @transA@, @transB@, @m@, @n@, @k@,
+                            &alpha, input0, @lda@, @stride_a@, input1, @ldb@, @stride_b@,
+                            &beta, output0, @ldc@, @stride_c@, @batch@));
+                    )",
                         {
                             {"hCublas", "global_cublas_handle"},
                             {"api_create", "cublasCreate"},
                             {"api_exec", "cublasSgemmStridedBatched"},
+                            {"transA", transB ? "CUBLAS_OP_T" : "CUBLAS_OP_N"},
+                            {"transB", transA ? "CUBLAS_OP_T" : "CUBLAS_OP_N"},
                             {"m", m},
                             {"n", n},
                             {"k", k},

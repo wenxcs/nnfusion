@@ -192,6 +192,6 @@ namespace ngraph
                     target_op.set_output_type(
                         0, target_op.get_input_element_type(i), target_op.get_input_shape(i));
             }
-        }
-    }
-}
+        } // namespace infershape
+    }     // namespace op
+} // namespace ngraph
