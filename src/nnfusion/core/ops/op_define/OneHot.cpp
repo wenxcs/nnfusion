@@ -6,8 +6,8 @@
 REGISTER_OP(OneHot)
     .attr<int>("axis", -1)
     .attr<int>("depth")
-    .attr<ngraph::op::OpConfig::any>("off_value")
-    .attr<ngraph::op::OpConfig::any>("on_value")
+    .attr<ngraph::op::OpConfig::any>("off_value", 1.0f)
+    .attr<ngraph::op::OpConfig::any>("on_value", 0.0f)
     .infershape([](ngraph::op::GenericOp& target_op) -> void {
         assert(1 == target_op.get_input_size());
         auto& shape_0 = target_op.get_input_shape(0);
