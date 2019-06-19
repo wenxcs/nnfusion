@@ -1024,6 +1024,95 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateTransposeOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_permutation_op = GetInputNode(all_ng_nodes, node, 1);
+
+                std::vector<int64> permutation;
+                assert(GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation) == true);
+
+                ngraph::AxisVector ng_axis_order;
+                ng_axis_order.reserve(permutation.size());
+
+                for (auto i : permutation)
+                {
+                    ng_axis_order.push_back(i);
+                }
+
+                ngraph::op::OpConfig::any myConfig;
+                myConfig["axes_order"] = ng_axis_order;
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    node.op(),
+                    std::vector<std::shared_ptr<Node>>({ng_input}),
+                    myConfig);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateOneHotOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_features = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_depth_op = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_on = GetInputNode(all_ng_nodes, node, 2);
+                auto ng_off = GetInputNode(all_ng_nodes, node, 3);
+
+                auto ng_features_shape = ng_features->get_shape();
+                auto ng_features_rank = ng_features_shape.size();
+
+                std::vector<int> depth;
+                assert(GetValueFromNGraphOp<int>(ng_depth_op, &depth) == true);
+                if (depth.size() != 1)
+                {
+                    std::cerr << "OneHot Op: depth of one hot dimension must be scalar "
+                              << depth.size();
+                    assert(false);
+                }
+                std::vector<float> on_value;
+                assert(GetValueFromNGraphOp<float>(ng_on, &on_value) == true);
+                if (on_value.size() != 1)
+                {
+                    std::cerr << "OneHot Op: on value of one hot dimension must be scalar "
+                              << on_value.size();
+                    assert(false);
+                }
+                std::vector<float> off_value;
+                assert(GetValueFromNGraphOp<float>(ng_off, &off_value) == true);
+                if (off_value.size() != 1)
+                {
+                    std::cerr << "OneHot Op: off value of one hot dimension must be scalar "
+                              << off_value.size();
+                    assert(false);
+                }
+
+                int one_hot_axis;
+                assert(GetNodeAttr(node.attr(), "axis", one_hot_axis) == true);
+
+                ngraph::op::OpConfig::any myConfig;
+                myConfig["axis"] = one_hot_axis;
+                myConfig["depth"] = depth[0];
+                myConfig["off_value"] = off_value[0];
+                myConfig["on_value"] = on_value[0];
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    node.op(),
+                    std::vector<std::shared_ptr<Node>>({ng_features}),
+                    myConfig);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -1043,6 +1132,7 @@ namespace ngraph
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
+                {"OneHot", TranslateOneHotOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
@@ -1055,7 +1145,8 @@ namespace ngraph
                 {"SplitV", TranslateSplitVOp},
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
-                {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>}};
+                {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
+                {"Transpose", TranslateTransposeOp}};
 
             struct InputInfo
             {
@@ -1090,7 +1181,6 @@ namespace ngraph
                     ++processed;
                     inputs.clear();
                     const auto& node_proto = proto.node(node_idx);
-                    //std::cout << node_proto.DebugString() << std::endl;
 
                     size_t i = 0;
                     for (auto& input : node_proto.input())
