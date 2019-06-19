@@ -50,7 +50,7 @@ namespace nnfusion
             string get_function_name();
 
             // Emit entire source code
-            LanguageUnit_p emit_source();
+            virtual LanguageUnit_p emit_source();
 
             // Emit comments
             string emit_comments();
