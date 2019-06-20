@@ -1,6 +1,8 @@
 # Microsoft (c) 2019, NNFusion Team
 
 set(SRC
+    constant_folding_pass.cpp
+    graph_pass.cpp
     manager.cpp
 )
 

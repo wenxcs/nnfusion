@@ -3,6 +3,7 @@
 #pragma once
 
 #include "nnfusion/core/graph/graph.hpp"
+#include "graph_pass.hpp"
 
 namespace nnfusion
 {
@@ -13,12 +14,12 @@ namespace nnfusion
             class GraphPass
             {
             public:
-                virtual ~GraphPass() {}
-                virtual bool run_on_graph(std::shared_ptr<Graph>& graph) = 0;
+                GraphPass();
+                ~GraphPass();
+
+                bool run(std::shared_ptr<Graph> graph);
+              
             };
-
-        }
-    }
-}
-
-
+        } //namespace pass
+    } // namespace graph 
+} // namespace nnfusion
