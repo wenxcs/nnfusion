@@ -165,11 +165,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     unordered_set<string> global_required;
     LanguageUnit re("REQUIREMENT");
     {
-        re.require(cuda::header::assert);
-        re.require(cuda::header::stdexcept);
-        re.require(cuda::header::sstream);
-        re.require(cuda::macro::CUDA_SAFE_CALL);
-        re.require(cuda::declaration::typedef_int);
+        re.require(header::assert);
+        re.require(header::stdexcept);
+        re.require(header::sstream);
+        re.require(macro::CUDA_SAFE_CALL);
+        re.require(declaration::typedef_int);
 
         for (auto kernel : kernels)
         {
@@ -523,9 +523,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit& lu_main = *this->lu_main;
     {
         lu_main << function_include << "\n";
-        lu_main << cuda::header::stdexcept->get_code();
+        lu_main << header::stdexcept->get_code();
         lu_main << "#include <sstream>\n";
-        lu_main << cuda::macro::CUDA_SAFE_CALL->get_code();
+        lu_main << macro::CUDA_SAFE_CALL->get_code();
         lu_main << "\n";
         lu_main << "int main(void)";
         lu_main.block_begin();
@@ -659,7 +659,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cuda_init();\n";
     lu_include << "extern \"C\" void cuda_free();\n";
-    lu_include << cuda::header::cuda->get_code();
+    lu_include << header::cuda->get_code();
 
     //generate CMakeList.txt
     LanguageUnit& lu_cmake = *this->lu_cmakefile;

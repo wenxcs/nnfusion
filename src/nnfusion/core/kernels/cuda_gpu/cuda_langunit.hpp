@@ -1,55 +1,38 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
-#include "nnfusion/common/languageunit.hpp"
-
-#define LU_DEFINE(NAME) extern LanguageUnit_p NAME;
+#include "nnfusion/core/kernels/common_langunit.hpp"
 
 namespace nnfusion
 {
     namespace kernels
     {
-        namespace cuda
+        namespace header
         {
-            namespace header
-            {
-                LU_DEFINE(stdio);
-                // LU_DEFINE(algorithm);
-                LU_DEFINE(fstream);
-                LU_DEFINE(stdexcept);
-                LU_DEFINE(sstream);
-                LU_DEFINE(cuda);
-                LU_DEFINE(cublas);
-                LU_DEFINE(cmath);
-                LU_DEFINE(cudnn);
-                LU_DEFINE(assert);
-            }
+            LU_DECLARE(cuda);
+            LU_DECLARE(cublas);
+            LU_DECLARE(cudnn);
+        }
 
-            namespace macro
-            {
-                LU_DEFINE(NNFUSION_DEBUG);
-                LU_DEFINE(CUDA_SAFE_CALL_NO_THROW);
-                LU_DEFINE(CUDA_SAFE_CALL);
-                LU_DEFINE(CUDNN_SAFE_CALL_NO_THROW);
-                LU_DEFINE(CUDNN_SAFE_CALL);
-                LU_DEFINE(CUBLAS_SAFE_CALL_NO_THROW);
-                LU_DEFINE(CUBLAS_SAFE_CALL);
-                LU_DEFINE(CUDA_SAFE_LAUNCH);
-                LU_DEFINE(MIN);
-            }
+        namespace macro
+        {
+            LU_DECLARE(CUDA_SAFE_CALL_NO_THROW);
+            LU_DECLARE(CUDA_SAFE_CALL);
+            LU_DECLARE(CUDNN_SAFE_CALL_NO_THROW);
+            LU_DECLARE(CUDNN_SAFE_CALL);
+            LU_DECLARE(CUBLAS_SAFE_CALL_NO_THROW);
+            LU_DECLARE(CUBLAS_SAFE_CALL);
+            LU_DECLARE(CUDA_SAFE_LAUNCH);
+        }
 
-            namespace declaration
-            {
-                LU_DEFINE(typedef_int);
-                LU_DEFINE(division_by_invariant_multiplication);
-                LU_DEFINE(load);
-                LU_DEFINE(mad16);
-                LU_DEFINE(mod16);
-                LU_DEFINE(global_cublas_handle);
-                LU_DEFINE(global_cudnn_handle);
-                LU_DEFINE(num_SMs);
-            }
-        } // namespace cuda
-    }     // namespace kernels
+        namespace declaration
+        {
+            LU_DECLARE(division_by_invariant_multiplication);
+            LU_DECLARE(load);
+            LU_DECLARE(mad16);
+            LU_DECLARE(mod16);
+            LU_DECLARE(global_cublas_handle);
+            LU_DECLARE(global_cudnn_handle);
+            LU_DECLARE(num_SMs);
+        }
+    } // namespace kernels
 } // namespace nnfusion
-
-#undef LU_DEFINE

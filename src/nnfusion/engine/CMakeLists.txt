@@ -26,6 +26,7 @@ if (NNFUSION_ENABLE)
         kernels_registration
         -Wl,--whole-archive 
         kernels_cuda 
+        kernels_cpu
         -Wl,--no-whole-archive
     )
 
