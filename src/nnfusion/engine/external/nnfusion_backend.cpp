@@ -22,6 +22,8 @@ extern "C" runtime::Backend* new_backend(const char* configuration_string)
         else
             default_device = nnfusion::CUDA_GPU;
     }
+    else
+        default_device = nnfusion::CUDA_GPU;
 
     backend = new cuda_codegen();
     return backend;
