@@ -2,7 +2,10 @@
 #pragma once
 
 #include "backend.hpp"
+#include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/interpreter.hpp"
+
+nnfusion::DeviceType default_device;
 
 namespace nnfusion
 {
