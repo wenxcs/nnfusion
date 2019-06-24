@@ -74,7 +74,9 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
 
 bool RocmCodeGenerator::setpwd()
 {
-    std::string tar_path = "./rocm_codegen/";
+    std::string working_dir = "./nnfusion_rt";
+    std::string tar_path = working_dir + "/rocm_codegen/";
+    create_dir(working_dir);
     create_dir(tar_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
@@ -679,5 +681,8 @@ bool RocmCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                        "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
     assert(0 ==
            system((std::string("cp ") + exepath + "/hipify-adapter ./rocm_adapter.h").c_str()));
+
+    // change to working directory
+    int status = chdir("../../");
     return rc;
 }

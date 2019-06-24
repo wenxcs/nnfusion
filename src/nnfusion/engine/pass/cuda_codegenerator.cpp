@@ -84,7 +84,9 @@ bool save_file(LanguageUnit_p lu)
 
 bool CudaCodeGenerator::setpwd()
 {
-    std::string tar_path = "./cuda_codegen/";
+    std::string working_dir = "./nnfusion_rt";
+    std::string tar_path = working_dir + "/cuda_codegen/";
+    create_dir(working_dir);
     create_dir(tar_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
@@ -666,5 +668,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu_cmake << generate_cmakelists();
 
     projgen();
+
+    // change to working directory
+    int status = chdir("../../");
     return rc;
 }

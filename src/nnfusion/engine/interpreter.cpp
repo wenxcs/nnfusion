@@ -1,5 +1,6 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "interpreter.hpp"
+#include "nnfusion/engine/pass/cpu_codegenerator.hpp"
 #include "nnfusion/engine/pass/cuda_codegenerator.hpp"
 #include "nnfusion/engine/pass/device_dispatcher.hpp"
 #include "nnfusion/engine/pass/extract_function_signature.hpp"
@@ -11,12 +12,13 @@ Interpreter::Interpreter()
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
+    m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
+    m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
     if (getenv("ROCM"))
     {
         m_passes->push_back(make_shared<RocmCodeGenerator>(RocmCodeGenerator()));
         return;
     }
-    m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,

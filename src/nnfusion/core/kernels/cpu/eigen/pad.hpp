@@ -49,30 +49,31 @@ namespace nnfusion
                         for (int i = 0; i < rank; i++)
                         {
                             std::stringstream ss;
-                            ss << "{" << padding_below[i] << ", " << padding_above[i] << "}";
+                            ss << "Eigen::IndexPair<size_t>({" << padding_below[i] << ", "
+                               << padding_above[i] << "})";
                             padding.push_back(ss.str());
                         }
 
                         auto code = ngraph::op::create_code_from_template(
                             R"(
-                                Eigen::array<Eigen::Index, @Rank@> out_dims(@out_dims@);
-                                Eigen::array<Eigen::Index, @Rank@> in_dims(@in_dims@);
-                                Eigen::array<Eigen::IndexPair<size_t>, @Rank@> padding(@padding@);
+Eigen::array<Eigen::Index, @Rank@> out_dims({@out_dims@});
+Eigen::array<Eigen::Index, @Rank@> in_dims({@in_dims@});
+Eigen::array<Eigen::IndexPair<size_t>, @Rank@> padding({@padding@});
 
-                                // for (int i = 0; i < @Rank@; i++)
-                                // {
-                                //     out_dims[i] = output_shape[i];
-                                //     in_dims[i] = input_shape[i];
-                                //     padding[i] = {padding_below[i], padding_above[i]};
-                                // }
-                                Eigen::TensorMap<Eigen::Tensor<@ElementType@, @Rank@, Eigen::RowMajor>> out(
-                                    static_cast<@ElementType@*>(output0), out_dims);
-                                Eigen::TensorMap<Eigen::Tensor<@ElementType@, @Rank@, Eigen::RowMajor>> in(
-                                    static_cast<@ElementType@*>(input0), in_dims);
+// for (int i = 0; i < @Rank@; i++)
+// {
+//     out_dims[i] = output_shape[i];
+//     in_dims[i] = input_shape[i];
+//     padding[i] = {padding_below[i], padding_above[i]};
+// }
+Eigen::TensorMap<Eigen::Tensor<@ElementType@, @Rank@, Eigen::RowMajor>> out(
+    static_cast<@ElementType@*>(output0), out_dims);
+Eigen::TensorMap<Eigen::Tensor<@ElementType@, @Rank@, Eigen::RowMajor>> in(
+    static_cast<@ElementType@*>(input0), in_dims);
 
-                                out.device(eigen::global_thread_pool_device) =
-                                    in.pad(padding, *static_cast<@ElementType@*>(*input1));
-                            )",
+out.device(*global_thread_pool_device) =
+    in.pad(padding, *static_cast<@ElementType@*>(input1));
+)",
                             {{"Rank", rank},
                              {"out_dims", join(output_shape)},
                              {"in_dims", join(input_shape)},

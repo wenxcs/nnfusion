@@ -8,7 +8,7 @@ set(SRC
 file(GLOB eigen_kernels eigen/*.cpp)
 file(GLOB mkl_kernels mkl/*.cpp)
 file(GLOB reference_kernels reference/*.cpp)
-file(GLOB native_kernels general/*.cpp)
+file(GLOB general_kernels general/*.cpp)
 
 set(KERNELS
     ${eigen_kernels}
