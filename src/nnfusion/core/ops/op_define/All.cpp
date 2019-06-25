@@ -12,7 +12,10 @@ REGISTER_OP(All)
         bool keep_dims = target_op.localOpConfig.getRoot()["keep_dims"];
         int axis = target_op.localOpConfig.getRoot()["axis"];
         if (axis == -1)
+        {
             axis = shape_0.size() - 1;
+        }
+        
         ngraph::Shape output_shape_0;
         for (int i = 0; i < axis; ++i)
             output_shape_0.push_back(shape_0[i]);

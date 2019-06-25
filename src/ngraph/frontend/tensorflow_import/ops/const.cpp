@@ -81,6 +81,7 @@ namespace ngraph
                         }
                         n_elements *= shape.dim(i).size();
                     }
+
                     values->resize(n_elements);
                     for (size_t i = 0; i < n_elements; i++)
                     {
@@ -109,6 +110,11 @@ namespace ngraph
                         case tensorflow::DT_DOUBLE:
                             (*values)[i] = (tensor.double_val_size() == 1 ? tensor.double_val()[0]
                                                                           : tensor.double_val()[i]);
+                            break;
+                        // TODO: data type string unsupport now, bert model has string type const op used for assert
+                        case tensorflow::DT_STRING:
+                            (*values)[i] = 0; //(tensor.string_val_size() == 1 ? tensor.string_val()[0]
+                                                                        //   : tensor.string_val()[i]);
                             break;
                         default:
                             return false;
@@ -188,7 +194,11 @@ namespace ngraph
                         {tensorflow::DataType::DT_UINT64,
                          std::make_pair(MakeConstOp<uint64>, ngraph::element::u64)},
                         {tensorflow::DataType::DT_BOOL,
-                         std::make_pair(MakeConstOp<bool, char>, ngraph::element::boolean)}};
+                         std::make_pair(MakeConstOp<bool, char>, ngraph::element::boolean)}, 
+                        {tensorflow::DataType::DT_STRING,
+                         std::make_pair(MakeConstOp<std::string, char>, ngraph::element::i32)}};
+                        // TODO: data type string unsupport now, bert model has string type const op used for assert
+
                 return the_map;
             }
 

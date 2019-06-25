@@ -95,7 +95,7 @@ namespace ngraph
             MATCH_TYPE_AND_ENUM(uint8, tensorflow::DataType::DT_UINT8);
             MATCH_TYPE_AND_ENUM(int16, tensorflow::DataType::DT_INT16);
             MATCH_TYPE_AND_ENUM(int8, tensorflow::DataType::DT_INT8);
-            //MATCH_TYPE_AND_ENUM(string, tensorflow::DataType::DT_STRING);
+            MATCH_TYPE_AND_ENUM(std::string, tensorflow::DataType::DT_STRING);
             //MATCH_TYPE_AND_ENUM(complex64, tensorflow::DataType::DT_COMPLEX64);
             //MATCH_TYPE_AND_ENUM(complex128, tensorflow::DataType::DT_COMPLEX128);
             //MATCH_TYPE_AND_ENUM(qint8, tensorflow::DataType::DT_QINT8);
@@ -138,6 +138,7 @@ namespace ngraph
                 std::vector<VecT> dst_values;
                 std::vector<T> values = ng_constant_op->get_vector<T>();
                 dst_values.resize(values.size());
+                
                 for (size_t i = 0; i < values.size(); i++)
                 {
                     dst_values[i] = static_cast<VecT>(values[i]);

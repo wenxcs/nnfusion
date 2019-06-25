@@ -683,6 +683,23 @@ TEST(tensorflow_import, one_hot_op)
         EXPECT_EQ(expected_outputs[i], outputs.front());
     }
 }
+
+TEST(tensorflow_import, bert_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_bert_large.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+
+    std::vector<std::vector<int>> expected_outputs{{1}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
 //TEST(onnx, model_add_abc_initializers)
 // {
 //     auto function = onnx_import::import_onnx_function(

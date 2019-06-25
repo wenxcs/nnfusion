@@ -23,10 +23,10 @@ REGISTER_OP(BatchMatMul)
         assert(input_shape_0.size() == input_shape_1.size());
         assert(target_op.get_input_element_type(0) == target_op.get_input_element_type(1));
 
-        for (int i = input_shape_0.size() - 3; i >= 0; --i)
+        for (int i = 0; i < input_shape_0.size() - 2; i++)
         {
             assert(input_shape_0[i] == input_shape_1[i]);
-            output_shape_0.push_back(i);
+            output_shape_0.push_back(input_shape_0[i]);
         }
 
         int m0 = input_shape_0[input_shape_0.size() - 2],
@@ -45,6 +45,5 @@ REGISTER_OP(BatchMatMul)
             assert(m0 == m1), output_shape_0.push_back(n0), output_shape_0.push_back(n1);
         else // trans_A && trans_B
             assert(m0 == n1), output_shape_0.push_back(n0), output_shape_0.push_back(m1);
-
         target_op.set_output_type(0, target_op.get_input_element_type(0), output_shape_0);
     });
