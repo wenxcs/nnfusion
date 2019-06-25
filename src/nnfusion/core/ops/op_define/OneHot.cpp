@@ -1,8 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
 
-#include "nnfusion/core/ops/generic_op.hpp"
 #include "ngraph/serializer.hpp"
+#include "nnfusion/core/ops/generic_op.hpp"
 REGISTER_OP(OneHot)
     .attr<int>("axis", -1)
     .attr<int>("depth")
@@ -33,7 +33,8 @@ REGISTER_OP(OneHot)
                 break;
             }
         }
-        ngraph::element::Type type = element::Type(bitwidth, is_real, is_signed, is_quantized, c_type_string);
+        ngraph::element::Type type =
+            element::Type(bitwidth, is_real, is_signed, is_quantized, c_type_string);
 
         if (axis == -1)
             axis = shape_0.size() - 1;

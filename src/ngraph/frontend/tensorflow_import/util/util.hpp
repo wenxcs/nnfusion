@@ -138,7 +138,7 @@ namespace ngraph
                 std::vector<VecT> dst_values;
                 std::vector<T> values = ng_constant_op->get_vector<T>();
                 dst_values.resize(values.size());
-                
+
                 for (size_t i = 0; i < values.size(); i++)
                 {
                     dst_values[i] = static_cast<VecT>(values[i]);
