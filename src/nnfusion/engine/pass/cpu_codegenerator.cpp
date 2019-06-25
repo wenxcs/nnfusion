@@ -424,7 +424,9 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu_cmake << "project(main_test)\n"
              << "cmake_minimum_required(VERSION 3.5)\n\n";
 
-    if (global_required.count("declaration::eigen_global_thread_pool_device") > 0)
+    if (global_required.count("declaration::eigen_global_thread_pool_device") > 0 ||
+        global_required.count("header::eigen_utils") > 0 ||
+        global_required.count("header::eigen_tensor") > 0)
     {
         lu_cmake << "# need to specify the correct path of eigen\n"
                  << "set(EIGEN_DIR \"/usr/include/eigen3\")\n"

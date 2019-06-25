@@ -35,6 +35,12 @@ namespace nnfusion
                     : CpuKernelEmitter(ctx)
                 {
                 }
+
+                LanguageUnit_p emit_eigen_utils();
+
+            protected:
+                std::string emit_eigen_vector(const TensorWrapper& tw, const string& name = "");
+                std::string emit_eigen_matrix(const TensorWrapper& tw, const string& name = "");
             };
 
         } // namespace cpu

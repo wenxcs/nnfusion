@@ -7,6 +7,7 @@ using namespace nnfusion::kernels;
 LU_DEFINE(header::thread, "#include <thread>\n");
 LU_DEFINE(header::eigen_tensor,
           "#define EIGEN_USE_THREADS\n#include <unsupported/Eigen/CXX11/Tensor>\n");
+LU_DEFINE(header::eigen_utils, "#include \"eigen_utils.hpp\"\n");
 
 // Macro
 

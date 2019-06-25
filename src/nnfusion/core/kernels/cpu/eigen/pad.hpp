@@ -10,11 +10,11 @@ namespace nnfusion
         namespace cpu
         {
             template <typename ElementType>
-            class Pad : public CpuKernelEmitter
+            class Pad : public EigenKernelEmitter
             {
             public:
                 Pad(shared_ptr<KernelContext> ctx)
-                    : CpuKernelEmitter(ctx)
+                    : EigenKernelEmitter(ctx)
                 {
                     auto pad = static_pointer_cast<ngraph::op::Pad>(ctx->node);
                     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
@@ -40,7 +40,7 @@ namespace nnfusion
                     auto& lu = *_lu;
 
                     // function signature:
-                    // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
+                    // void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
 
                     if (m_context->inputs[0].get_element_type() == element::f32 &&
                         padding_interior == Shape(input_shape.size()))

@@ -10,6 +10,7 @@ namespace nnfusion
         {
             LU_DECLARE(thread);
             LU_DECLARE(eigen_tensor);
+            LU_DECLARE(eigen_utils);
         }
 
         namespace macro
