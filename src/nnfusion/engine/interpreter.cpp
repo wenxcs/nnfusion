@@ -14,11 +14,7 @@ Interpreter::Interpreter()
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
     m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
     m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
-    if (getenv("ROCM"))
-    {
-        m_passes->push_back(make_shared<RocmCodeGenerator>(RocmCodeGenerator()));
-        return;
-    }
+    m_passes->push_back(make_shared<RocmCodeGenerator>(RocmCodeGenerator()));
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,
