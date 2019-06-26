@@ -95,9 +95,10 @@ namespace nnfusion
                         stride_b = A2 * A3, ldc = A4, stride_c = A2 * A4;
                     }
 
+                    float alpha = 1.0f, beta = 0.0f;
                     auto code = ngraph::op::create_code_from_template(
                         R"(
-                        static const float alpha = 1.0f, beta = 0.0f;
+                        static const float alpha = @alpha@F, beta = @beta@F;
                         if (!@hCublas@)
                             CUBLAS_SAFE_CALL(@api_create@(&@hCublas@));
                         CUBLAS_SAFE_CALL(@api_exec@(
@@ -111,6 +112,8 @@ namespace nnfusion
                             {"api_exec", "cublasSgemmStridedBatched"},
                             {"transA", transB ? "CUBLAS_OP_T" : "CUBLAS_OP_N"},
                             {"transB", transA ? "CUBLAS_OP_T" : "CUBLAS_OP_N"},
+                            {"alpha", alpha},
+                            {"beta", beta},
                             {"m", m},
                             {"n", n},
                             {"k", k},
