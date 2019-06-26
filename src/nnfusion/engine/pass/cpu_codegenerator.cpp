@@ -430,17 +430,37 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     {
         lu_cmake << "# need to specify the correct path of eigen\n"
                  << "set(EIGEN_DIR \"/usr/include/eigen3\")\n"
-                 << "include_directories(${EIGEN_DIR})\n";
+                 << "include_directories(${EIGEN_DIR})\n\n";
     }
 
-    lu_cmake << R"(
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-add_library(nnfusion_cpu_rt nnfusion_rt.cpp)
-target_link_libraries(nnfusion_cpu_rt pthread) 
-target_compile_options(nnfusion_cpu_rt PRIVATE "-fPIC")
-add_executable(main_test main_test.cpp)
-target_link_libraries(main_test nnfusion_cpu_rt)
-)";
+    if (global_required.count("header::cblas") > 0)
+    {
+        lu_cmake << R"(
+set(NNFUSION_THIRDPARTY_FOLDER ~/repo/Thirdparty)
+# include(mkldnn.cmake)
+set(MKL_LIBS libiomp5.so libmklml_intel.so)
+set(MKL_ROOT ${NNFUSION_THIRDPARTY_FOLDER}/mkl/mkl_lnx)
+add_library(libmkl INTERFACE)
+foreach(LIB ${MKL_LIBS})
+    target_link_libraries(libmkl INTERFACE ${MKL_ROOT}/lib/${LIB})
+endforeach()
+        )"
+                 << "\n";
+    }
+
+    lu_cmake << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11\")\n"
+             << "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n";
+    if (global_required.count("header::cblas") > 0)
+    {
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n";
+    }
+    else
+    {
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread)\n";
+    }
+    lu_cmake << "target_compile_options(nnfusion_cpu_rt PRIVATE \"-fPIC\")\n"
+             << "add_executable(main_test main_test.cpp)\n"
+             << "target_link_libraries(main_test nnfusion_cpu_rt)\n";
 
     projgen();
 

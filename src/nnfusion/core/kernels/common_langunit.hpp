@@ -22,6 +22,7 @@ namespace nnfusion
             LU_DECLARE(sstream);
             LU_DECLARE(cmath);
             LU_DECLARE(assert);
+            LU_DECLARE(vector);
         }
 
         namespace macro

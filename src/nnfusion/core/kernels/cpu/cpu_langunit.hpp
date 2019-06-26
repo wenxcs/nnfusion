@@ -11,6 +11,7 @@ namespace nnfusion
             LU_DECLARE(thread);
             LU_DECLARE(eigen_tensor);
             LU_DECLARE(eigen_utils);
+            LU_DECLARE(cblas);
         }
 
         namespace macro
@@ -21,6 +22,7 @@ namespace nnfusion
         {
             LU_DECLARE(eigen_global_thread_pool);
             LU_DECLARE(eigen_global_thread_pool_device);
+            LU_DECLARE(cblas_sgemm_batch);
         }
     } // namespace kernels
 } // namespace nnfusion
