@@ -29,13 +29,19 @@ namespace nnfusion
             class OneHot : public CudaEmitter
             {
                 shared_ptr<ngraph::op::GenericOp> generic_op;
+                size_t groups;
 
             public:
                 OneHot(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
                     , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , groups(1LU)
                 {
                     GENERIC_OP_LOGGING();
+
+                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
+                    for (int i = 0; i < input_shape_0.size(); ++i)
+                        groups *= input_shape_0[i];
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -47,21 +53,19 @@ namespace nnfusion
                     generic_op->validate_and_infer_types();
                     auto& cfg = generic_op->localOpConfig.getRoot();
 
-                    int axis = cfg["axis"];
+                    int axis = cfg["axis"].is_null() ? -1 : (int)cfg["axis"];
+                    if (axis < 0)
+                        axis = input_shape_0.size() - 1;
                     assert(axis == input_shape_0.size() - 1);
-                    size_t groups = 1;
-                    for (int i = 0; i < input_shape_0.size(); ++i)
-                        groups *= input_shape_0[i];
-                    cfg["groups"] = groups;
 
                     auto code = ngraph::op::create_code_from_template(
                         R"(
-    int idx = blockIdx * blockDim.x + threadIdx;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= @groups@)
         return;
     for (int i = 0; i < @depth@; ++i)
         output0[idx * @depth@ + i] = @off_value@;
-    output0[idx * @depth@ + input0[idx]] = @on_value@;
+    output0[idx * @depth@ + (int)input0[idx]] = @on_value@;
 )",
                         {
                             {"groups", groups},
@@ -91,7 +95,8 @@ namespace nnfusion
 
                 void set_launch_config() override
                 {
-                    int groups = generic_op->localOpConfig.getRoot()["groups"];
+                    GENERIC_OP_LOGGING();
+
                     m_gridDim = dim3((groups + 63) / 64, 1, 1);
                     m_blockDim = dim3(64, 1, 1);
                 }

@@ -54,7 +54,6 @@ namespace nnfusion
                     // Check conditions that pair of inputs must satisfy to run BatchMatMul
                     generic_op->validate_and_infer_types();
 
-                    // Handle matmul without transpose
                     bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
                     bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
                     size_t A1 = 1LU;
@@ -102,8 +101,8 @@ namespace nnfusion
                         if (!@hCublas@)
                             CUBLAS_SAFE_CALL(@api_create@(&@hCublas@));
                         CUBLAS_SAFE_CALL(@api_exec@(
-                            global_cublas_handle, @transA@, @transB@, @m@, @n@, @k@,
-                            &alpha, input0, @lda@, @stride_a@, input1, @ldb@, @stride_b@,
+                            @hCublas@, @transA@, @transB@, @m@, @n@, @k@,
+                            &alpha, input1, @lda@, @stride_a@, input0, @ldb@, @stride_b@,
                             &beta, output0, @ldc@, @stride_c@, @batch@));
                     )",
                         {

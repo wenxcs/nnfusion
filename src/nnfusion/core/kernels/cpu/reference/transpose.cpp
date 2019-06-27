@@ -1,44 +1,27 @@
-// Microsoft (c) 2019, NNFusion Team
-#pragma once
-
-// This is the 2rd-generation of kernel definition, recommend to extend new ops with this style
-// Changes needed for creating an new kernel with 2rd generation style.
-//
-
-#include "../cuda_emitter.hpp"
-#include "../cuda_langunit.hpp"
+#include <iostream>
+#include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/core/kernels/kernel_emitter.hpp"
+#include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
 
-/*********************************
-
-REGISTER_OP(Transpose)
-    .attr<std::vector<int>>("axes_order")
-    ...
-
-*********************************/
-
+//Classes
 namespace nnfusion
 {
     namespace kernels
     {
-        namespace cuda
+        namespace cpu
         {
-            class Transpose : public CudaEmitter
+            class TransposeRef : public KernelEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
-
             public:
-                Transpose(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                TransposeRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx)
                     , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
                 {
-                    GENERIC_OP_LOGGING();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    GENERIC_OP_LOGGING();
-
                     const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
 
                     generic_op->validate_and_infer_types();
@@ -77,24 +60,20 @@ namespace nnfusion
                     std::vector<int> input_4d(4 - input_shape_0.size(), 1);
                     for (auto& it : input_shape_0)
                         input_4d.push_back(it);
-                    // for (int i = 0; i < 4; ++i)
-                    //     printf("@@@@ %d, %d, %d\n", input_4d[i], st_in[i], st_out[i]);
 
                     auto code = ngraph::op::create_code_from_template(
                         R"(
-	int offset = blockIdx.x * blockDim.x + threadIdx.x;
-	int step = gridDim.x + blockDim.x;
-	int top = @D_0@ * @D_1@ * @D_2@ * @D_3@;
-	while (offset < top) {
-		int id_3 = offset % @D_3@;
-		int id_2 = offset / @D_3@ % @D_2@;
-		int id_1 = offset / @D_3@ / @D_2@ % @D_1@;
-		int id_0 = offset / @D_3@ / @D_2@ / @D_1@;
+        int offset = 0, top = @D_0@ * @D_1@ * @D_2@ * @D_3@;
+        while (offset < top) {
+                int id_3 = offset % @D_3@;
+                int id_2 = offset / @D_3@ % @D_2@;
+                int id_1 = offset / @D_3@ / @D_2@ % @D_1@;
+                int id_0 = offset / @D_3@ / @D_2@ / @D_1@;
 
-		output0[id_0 * @ST_OUT_0@ + id_1 * @ST_OUT_1@ + id_2 * @ST_OUT_2@ + id_3 * @ST_OUT_3@] =
-			input0[id_0 * @ST_IN_0@ + id_1 * @ST_IN_1@ + id_2 * @ST_IN_2@ + id_3 * @ST_IN_3@];
-		offset += step;
-	}
+                output0[id_0 * @ST_OUT_0@ + id_1 * @ST_OUT_1@ + id_2 * @ST_OUT_2@ + id_3 * @ST_OUT_3@] =
+                        input0[id_0 * @ST_IN_0@ + id_1 * @ST_IN_1@ + id_2 * @ST_IN_2@ + id_3 * @ST_IN_3@];
+                offset ++;
+        }
 )",
                         {
                             {"D_0", input_4d[0]},
@@ -123,26 +102,19 @@ namespace nnfusion
 
                 LanguageUnit_p emit_dependency() override
                 {
-                    GENERIC_OP_LOGGING();
-
-                    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
-                    _lu->require(header::cuda);
-                    return _lu;
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
-                void set_launch_config() override
-                {
-                    m_gridDim = dim3(256, 1, 1);
-                    m_blockDim = dim3(256, 1, 1);
-                }
+            private:
+                shared_ptr<ngraph::op::GenericOp> generic_op;
             };
-        } // namespace cuda
+
+            REGISTER_KERNEL_EMITTER(
+                "Transpose",                                                   // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                TransposeRef)                                                  // constructor
+
+        } // namespace cpu
     }     // namespace kernels
 } // namespace nnfusion
-
-using namespace nnfusion;
-using namespace nnfusion::kernels;
-
-REGISTER_KERNEL_EMITTER("Transpose",                                                  // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Transpose)                                              // constructor
