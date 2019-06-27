@@ -182,6 +182,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
+        for (auto& it : re.local_symbol)
+            if (it.second->symbol.find("cpu_reference_") != string::npos)
+                lu << it.second->get_code();
+        lu << "\n";
 
         //Write Code
         lu << def.collect_code() << "\n";

@@ -1,5 +1,5 @@
 
-#include <iostream>
+// Microsoft (c) 2019, NNFUSION Team
 #include "nnfusion/common/languageunit.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
@@ -8,9 +8,31 @@
 #define STR(x) QUOTE(x)
 #define LU_DEFINE(NAME, code)                                                                      \
     LanguageUnit_p NAME = LanguageUnit_p(new LanguageUnit(STR(NAME), code));
+#define LU_DEFINE_N(NAME, symbol, code)                                                            \
+    LanguageUnit_p NAME = LanguageUnit_p(new LanguageUnit(symbol, code));
 using namespace std;
 
 //LanguageUnits
+LU_DEFINE_N(header_mpi, "header::mpi", "#include \"mpi.h\"\n");
+
+LU_DEFINE(cpu_reference_common, R"(
+class Shape : public std::vector<size_t>
+{
+};
+
+class AxisSet : public std::set<size_t>
+{
+};
+
+class Strides : public std::vector<size_t>
+{
+};
+)");
+
+// Two standalone head file
+LU_DEFINE(header_coordinate_transform, "");
+LU_DEFINE(header_coordinate_diff, "");
+
 LU_DEFINE(cpu_reference_constant, R"(template <typename T>
 void cpu_reference_constant(const T* arg0, T* out, size_t count)
 {
@@ -18,7 +40,8 @@ void cpu_reference_constant(const T* arg0, T* out, size_t count)
     {
         out[i] = arg0[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_log, R"(template <typename T>
 void cpu_reference_log(const T* arg, T* out, size_t count)
 {
@@ -26,7 +49,8 @@ void cpu_reference_log(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_log(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_ceiling, R"(template <typename T>
 void cpu_reference_ceiling(const T* arg, T* out, size_t count)
 {
@@ -34,55 +58,58 @@ void cpu_reference_ceiling(const T* arg, T* out, size_t count)
     {
         out[i] = std::ceil(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_product, R"(template <typename T>
 void cpu_reference_product(const T* arg,
  T* out,
- const Shape& in_shape,
- const Shape& out_shape,
- const AxisSet& reduction_axes)
+ const Shape in_shape,
+ const Shape out_shape,
+ const AxisSet reduction_axes)
 {
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         out[output_transform.index(output_coord)] = 1;
     }
 
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = reduce(input_coord, reduction_axes);
 
         out[output_transform.index(output_coord)] *=
 arg[input_transform.index(input_coord)];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_sum, R"(template <typename T>
 void cpu_reference_sum(const T* arg,
          T* out,
-         const Shape& in_shape,
-         const Shape& out_shape,
-         const AxisSet& reduction_axes)
+         const Shape in_shape,
+         const Shape out_shape,
+         const AxisSet reduction_axes)
 {
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         out[output_transform.index(output_coord)] = 0;
     }
 
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = reduce(input_coord, reduction_axes);
 
         out[output_transform.index(output_coord)] +=
 arg[input_transform.index(input_coord)];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_power, R"(template <typename T>
 void cpu_reference_power(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -90,7 +117,8 @@ void cpu_reference_power(const T* arg0, const T* arg1, T* out, size_t count)
     {
         out[i] = std::pow(arg0[i], arg1[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_cos, R"(template <typename T>
 void cpu_reference_cos(const T* arg, T* out, size_t count)
 {
@@ -98,7 +126,8 @@ void cpu_reference_cos(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_cos(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_relu, R"(template <typename T>
 void cpu_reference_relu(const T* arg, T* out, size_t count)
 {
@@ -116,16 +145,17 @@ void relu_backprop(const T* arg, T* delta_arg, T* out, size_t count)
     {
         out[i] = arg[i] > zero ? delta_arg[i] : zero;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_pad, R"(template <typename T>
 void cpu_reference_pad(const T* arg0,
          const T* arg1,
          T* out,
-         const Shape& arg0_shape,
-         const Shape& out_shape,
-         const Shape& padding_below,
-         const Shape& padding_above,
-         const Shape& padding_interior)
+         const Shape arg0_shape,
+         const Shape out_shape,
+         const Shape padding_below,
+         const Shape padding_above,
+         const Shape padding_interior)
 {
     Coordinate input_start(arg0_shape.size(), 0); // start at (0,0,...,0)
     Coordinate input_end =
@@ -170,9 +200,9 @@ void cpu_reference_pad(const T* arg0,
     NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
       shape_size(output_transform.get_target_shape()));
 
-    for (const Coordinate& in_coord : input_transform)
+    for (const Coordinate in_coord : input_transform)
     {
-        const Coordinate& out_coord = *output_it;
+        const Coordinate out_coord = *output_it;
 
         T v = input_transform.has_source_coordinate(in_coord)
       ? arg0[input_transform.index(in_coord)]
@@ -182,106 +212,17 @@ void cpu_reference_pad(const T* arg0,
 
         ++output_it;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_batch_norm, R"(template <typename T>
-void batch_norm_three_outputs_with_intermediates(double eps,
- const T* arg0,
- const T* arg1,
- const T* arg2,
- T* out0,
- T* out1,
- T* out2,
- T* out3,
- T* out4,
- const Shape& arg2_shape)
-{
-    auto eps_casted = static_cast<T>(eps);
-    auto channels = arg2_shape[1];
-
-    // We use these objects to iterate over the indices in a channel.
-    // The start and end points for the channel axis are modified in the loop.
-    Coordinate start_corner;
-    Coordinate end_corner;
-    for (size_t i = 0; i < arg2_shape.size(); i++)
-    {
-        start_corner.push_back(0);
-        end_corner.push_back(arg2_shape[i]);
-    }
-
-    for (size_t c = 0; c < channels; c++)
-    {
-        T channel_sum = 0;
-
-        start_corner[1] = c;
-        end_corner[1] = c + 1;
-
-        // Compute the mean
-        CoordinateTransform arg2_transform(arg2_shape, start_corner, end_corner);
-        for (Coordinate arg2_coord : arg2_transform)
-        {
-channel_sum += arg2[arg2_transform.index(arg2_coord)];
-        }
-        T channel_mean = channel_sum / (shape_size(arg2_shape) / channels);
-        out1[c] = channel_mean;
-
-        // Compute the variance
-        T channel_diff_square_sum = 0;
-        for (Coordinate arg2_coord : arg2_transform)
-        {
-auto mean_diff = arg2[arg2_transform.index(arg2_coord)] - channel_mean;
-channel_diff_square_sum += mean_diff * mean_diff;
-        }
-        T channel_var = channel_diff_square_sum / (shape_size(arg2_shape) / channels);
-        out2[c] = channel_var;
-
-        // Compute the normalized output
-        for (Coordinate arg2_coord : arg2_transform)
-        {
-auto channel_gamma = arg0[c];
-auto channel_beta = arg1[c];
-
-auto input_index = arg2_transform.index(arg2_coord);
-out3[input_index] = arg2[input_index] - channel_mean;
-out4[input_index] =
-    out3[input_index] / (std::sqrt(channel_var + eps_casted));
-out0[input_index] = out4[input_index] * channel_gamma + channel_beta;
-        }
-    }
-}
-
-template <typename T>
-void batch_norm_three_outputs(double eps,
-      const T* arg0,
-      const T* arg1,
-      const T* arg2,
-      T* out0,
-      T* out1,
-      T* out2,
-      const Shape& arg2_shape)
-{
-    std::vector<T> centered(shape_size(arg2_shape));
-    std::vector<T> normalized(shape_size(arg2_shape));
-    batch_norm_three_outputs_with_intermediates(eps,
-arg0,
-arg1,
-arg2,
-out0,
-out1,
-out2,
-centered.data(),
-normalized.data(),
-arg2_shape);
-}
-
-template <typename T>
-void batch_norm_one_output(double eps,
+void cpu_reference_batch_norm(double eps,
    const T* arg0,
    const T* arg1,
    const T* arg2,
    const T* arg3,
    const T* arg4,
    T* out0,
-   const Shape& arg2_shape)
+   const Shape arg2_shape)
 {
     auto eps_casted = static_cast<T>(eps);
     CoordinateTransform arg2_transform(arg2_shape);
@@ -300,92 +241,7 @@ void batch_norm_one_output(double eps,
         out0[input_index] = normalized * channel_gamma + channel_beta;
     }
 }
-
-template <typename T>
-void batch_norm_backprop(double eps,
- const T* arg0,
- const T* arg1,
- const T* arg2,
- const T* arg3,
- const T* arg4,
- const T* arg5,
- T* out0,
- T* out1,
- T* out2,
- const Shape& arg2_shape)
-{
-    auto eps_casted = static_cast<T>(eps);
-
-    Shape mean_shape{arg2_shape[1]};
-    AxisSet reduction_axes;
-    for (size_t idx = 0; idx < arg2_shape.size(); idx++)
-    {
-        if (idx != 1)
-        {
-reduction_axes.insert(idx);
-        }
-    }
-    auto arg2_num_elements = shape_size(arg2_shape);
-    auto mean_num_elements = shape_size(mean_shape);
-    auto reduction_axes_size = arg2_num_elements / mean_num_elements;
-
-    // Compute the mean, variance, and normalized values
-
-    std::vector<T> bn_output(arg2_num_elements);
-    std::vector<T> centered(arg2_num_elements);
-    std::vector<T> normalized(arg2_num_elements);
-
-    std::vector<T> mean(mean_num_elements);
-    std::vector<T> variance(mean_num_elements);
-    std::vector<T> stddev(mean_num_elements);
-    batch_norm_three_outputs_with_intermediates(eps,
-arg0,
-arg1,
-arg2,
-bn_output.data(),
-mean.data(),
-variance.data(),
-centered.data(),
-normalized.data(),
-arg2_shape);
-
-    for (size_t i = 0; i < mean_num_elements; i++)
-    {
-        stddev[i] = std::sqrt(variance[i] + eps_casted);
-    }
-
-    // Broadcast gamma and the standard deviation
-    std::vector<T> gamma_bcast(arg2_num_elements);
-    std::vector<T> stddev_bcast(arg2_num_elements);
-    broadcast(arg0, gamma_bcast.data(), mean_shape, arg2_shape, reduction_axes);
-    broadcast(
-        stddev.data(), stddev_bcast.data(), mean_shape, arg2_shape, reduction_axes);
-
-    // Bprop into gamma
-    std::vector<T> delta_times_normalized(arg2_num_elements);
-    multiply(normalized.data(), arg5, delta_times_normalized.data(), arg2_num_elements);
-    sum(delta_times_normalized.data(), out1, arg2_shape, mean_shape, reduction_axes);
-
-    // Bprop into beta
-    sum(arg5, out2, arg2_shape, mean_shape, reduction_axes);
-
-    // // Broadcast the gamma and beta grads
-    std::vector<T> delta_gamma_bcast(arg2_num_elements);
-    broadcast(out1, delta_gamma_bcast.data(), mean_shape, arg2_shape, reduction_axes);
-    std::vector<T> delta_beta_bcast(arg2_num_elements);
-    broadcast(out2, delta_beta_bcast.data(), mean_shape, arg2_shape, reduction_axes);
-
-    // Bprop into the input
-    for (size_t i = 0; i < arg2_num_elements; i++)
-    {
-        auto scale_normalized = gamma_bcast[i] / stddev_bcast[i];
-        out0[i] = static_cast<T>(
-scale_normalized *
-(arg5[i] -
- (normalized[i] * delta_gamma_bcast[i] + delta_beta_bcast[i]) /
-     reduction_axes_size));
-    }
-}\n)");
+)");
 LU_DEFINE(cpu_reference_cosh, R"(template <typename T>
 void cpu_reference_cosh(const T* arg, T* out, size_t count)
 {
@@ -393,11 +249,12 @@ void cpu_reference_cosh(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_cosh(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_lrn, R"(template <typename T>
 void cpu_reference_lrn(const T* arg,
          T* out,
-         const Shape& arg_shape,
+         const Shape arg_shape,
          double dalpha,
          double dbeta,
          double dbias,
@@ -410,7 +267,7 @@ void cpu_reference_lrn(const T* arg,
     CoordinateTransform input_transform(arg_shape);
     const size_t CHANNEL_DIM = 1;
     const size_t MAX_C = arg_shape.at(CHANNEL_DIM);
-    for (const Coordinate& in_coord : input_transform)
+    for (const Coordinate in_coord : input_transform)
     {
         size_t c = in_coord.at(CHANNEL_DIM);
         T square_sum = 0;
@@ -430,17 +287,19 @@ square_sum += arg[input_transform.index(sum_coord)] *
         out[input_transform.index(in_coord)] =
 x / (std::pow(bias + (alpha / size) * square_sum, beta));
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_result, R"(template <typename T>
 void cpu_reference_result(const T* arg, T* out, size_t count)
 {
     memcpy(out, arg, sizeof(T) * count);
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_concat, R"(template <typename T>
 void cpu_reference_concat(const std::vector<const T*>& args,
 T* out,
 const std::vector<Shape>& in_shapes,
-const Shape& out_shape,
+const Shape out_shape,
 size_t concatenation_axis)
 {
     // We will copy the inputs to the output one at a time. As we go, we will move out along the
@@ -475,7 +334,7 @@ out_shape, out_start_coord, out_end_coord);
 
         CoordinateTransform::Iterator output_chunk_it = output_chunk_transform.begin();
 
-        for (const Coordinate& input_coord : input_transform)
+        for (const Coordinate input_coord : input_transform)
         {
 size_t input_index = input_transform.index(input_coord);
 size_t output_chunk_index = output_chunk_transform.index(*output_chunk_it);
@@ -486,7 +345,8 @@ out[output_chunk_index] = args[i][input_index];
 
         concatenation_pos += in_shapes[i][concatenation_axis];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_greater, R"(template <typename T>
 void cpu_reference_greater(const T* arg0,
  const T* arg1,
@@ -497,13 +357,14 @@ void cpu_reference_greater(const T* arg0,
     {
         out[i] = arg0[i] > arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_max, R"(template <typename T>
 void cpu_reference_max(const T* arg,
          T* out,
-         const Shape& in_shape,
-         const Shape& out_shape,
-         const AxisSet& reduction_axes)
+         const Shape in_shape,
+         const Shape out_shape,
+         const AxisSet reduction_axes)
 {
     T minval = std::numeric_limits<T>::has_infinity
        ? -std::numeric_limits<T>::infinity()
@@ -511,14 +372,14 @@ void cpu_reference_max(const T* arg,
 
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         out[output_transform.index(output_coord)] = minval;
     }
 
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = reduce(input_coord, reduction_axes);
 
@@ -529,25 +390,27 @@ void cpu_reference_max(const T* arg,
 out[output_transform.index(output_coord)] = x;
         }
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_broadcast, R"(template <typename T>
 void cpu_reference_broadcast(const T* arg,
    T* out,
-   const Shape& in_shape,
-   const Shape& out_shape,
-   const AxisSet& broadcast_axes)
+   const Shape in_shape,
+   const Shape out_shape,
+   const AxisSet broadcast_axes)
 {
     CoordinateTransform input_transform(in_shape);
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         Coordinate input_coord = reduce(output_coord, broadcast_axes);
 
         out[output_transform.index(output_coord)] =
 arg[input_transform.index(input_coord)];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_or, R"(template <typename T>
 void logical_cpu_reference_or(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -555,7 +418,8 @@ void logical_cpu_reference_or(const T* arg0, const T* arg1, T* out, size_t count
     {
         out[i] = static_cast<T>(arg0[i] || arg1[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_equal, R"(template <typename T>
 void cpu_reference_equal(const T* arg0,
            const T* arg1,
@@ -566,19 +430,20 @@ void cpu_reference_equal(const T* arg0,
     {
         out[i] = arg0[i] == arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_convolution, R"(template <typename T>
 void cpu_reference_convolution(const T* arg0,
      const T* arg1,
      T* out,
-     const Shape& arg0_shape,
-     const Shape& arg1_shape,
-     const Shape& out_shape,
-     const Strides& window_movement_strides,
-     const Strides& window_dilation_strides,
-     const CoordinateDiff& padding_below,
-     const CoordinateDiff& padding_above,
-     const Strides& data_dilation_strides,
+     const Shape arg0_shape,
+     const Shape arg1_shape,
+     const Shape out_shape,
+     const Strides window_movement_strides,
+     const Strides window_dilation_strides,
+     const CoordinateDiff padding_below,
+     const CoordinateDiff padding_above,
+     const Strides data_dilation_strides,
      size_t batch_axis_data,
      size_t input_channel_axis_data,
      size_t input_channel_axis_filters,
@@ -712,7 +577,7 @@ arg1_shape, filter_transform_start, filter_transform_end);
         while (input_it != input_batch_transform.end() &&
    filter_it != filter_transform.end())
         {
-const Coordinate& input_batch_coord = *input_it;
+const Coordinate input_batch_coord = *input_it;
 Coordinate filter_coord = *filter_it;
 
 if (rotate_filter)
@@ -739,20 +604,21 @@ result += v * arg1[filter_transform.index(filter_coord)];
 
         out[output_transform.index(out_coord)] = result;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_dequantize, R"(template <typename QUANT, typename REAL>
 void cpu_reference_dequantize(const QUANT* input,
     const REAL* scale,
     const QUANT* offset,
     REAL* output,
-    const Shape& input_shape,
-    const Shape& scale_offset_shape,
-    const AxisSet& axes)
+    const Shape input_shape,
+    const Shape scale_offset_shape,
+    const AxisSet axes)
 {
     CoordinateTransform input_transform(input_shape);
     CoordinateTransform scale_offset_transform(scale_offset_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate scale_offset_coord = project(input_coord, axes);
 
@@ -762,24 +628,25 @@ static_cast<REAL>(
      offset[scale_offset_transform.index(scale_offset_coord)])) *
 scale[scale_offset_transform.index(scale_offset_coord)];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_select_and_scatter, R"(template <typename T>
 void cpu_reference_select_and_scatter(const T* arg_selectee,
 const T* arg_source,
 const T* arg_init,
 T* out,
-const Shape& arg_selectee_shape,
-const Shape& arg_source_shape,
-const Shape& out_shape,
+const Shape arg_selectee_shape,
+const Shape arg_source_shape,
+const Shape out_shape,
 std::function<char(T, T)> selection_function,
 std::function<T(T, T)> scatter_function,
-const Shape& window_shape,
-const Strides& window_movement_strides)
+const Shape window_shape,
+const Strides window_movement_strides)
 {
     // First write every element of the output with the supplied initial value.
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& out_coord : output_transform)
+    for (const Coordinate out_coord : output_transform)
     {
         out[output_transform.index(out_coord)] = *arg_init;
     }
@@ -825,7 +692,7 @@ arg_selectee_shape, window_start_coord, window_transform_end);
         // for sure that winner_val is initialized.
         T winner_val = 0;
 
-        for (const Coordinate& challenger_coord : window_transform)
+        for (const Coordinate challenger_coord : window_transform)
         {
 T challenger_val = arg_selectee[window_transform.index(challenger_coord)];
 
@@ -847,7 +714,8 @@ if (first_val || selection_function(challenger_val, winner_val))
 
         ++source_it;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_convert, R"(template <typename TI, typename TO>
 void cpu_reference_convert(const TI* arg, TO* out, size_t count)
 {
@@ -855,21 +723,22 @@ void cpu_reference_convert(const TI* arg, TO* out, size_t count)
     {
         out[i] = static_cast<TO>(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_quantize, R"(template <typename REAL, typename QUANT>
 void cpu_reference_quantize(const REAL* input,
   const REAL* scale,
   const QUANT* offset,
   QUANT* output,
-  const Shape& input_shape,
-  const Shape& scale_offset_shape,
-  const AxisSet& axes,
+  const Shape input_shape,
+  const Shape scale_offset_shape,
+  const AxisSet axes,
   op::Quantize::RoundMode round_mode)
 {
     CoordinateTransform input_transform(input_shape);
     CoordinateTransform scale_offset_transform(scale_offset_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate scale_offset_coord = project(input_coord, axes);
 
@@ -939,26 +808,19 @@ qvalue = std::floor(qvalue);
         // cast
         output[input_transform.index(input_coord)] = static_cast<QUANT>(qvalue);
     }
-}\n)");
-LU_DEFINE(cpu_reference_allreduce, R"(template <typename T>
-void cpu_reference_allreduce(const T* arg, T* out, const element::Type element_type, int count)
+}
+)");
+
+// <todo:wenxh> allreduce need MPI
+LU_DEFINE(cpu_reference_allreduce,
+          R"(void cpu_reference_allreduce_float(const float* arg, float* out, int count)
 {
-    auto data_type = MPI_FLOAT;
-
-    if (element_type == element::f32)
-    {
-        data_type = MPI_FLOAT;
-    }
-    else if (element_type == element::f64)
-    {
-        data_type = MPI_DOUBLE;
-    }
-
-    MPI_Allreduce(arg, out, count, data_type, MPI_SUM, MPI_COMM_WORLD);
-}\n)");
+    MPI_Allreduce(arg, out, count, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+}
+)");
 LU_DEFINE(cpu_reference_argmax, R"(template <typename T, typename U>
 void cpu_reference_argmax(
-    const T* arg, U* out, const Shape& in_shape, const Shape& out_shape, size_t axis)
+    const T* arg, U* out, const Shape in_shape, const Shape out_shape, size_t axis)
 {
     // take the first elements (i.e. 0 indices) in out_shape - axis as maximums
     memset(out, 0, shape_size(out_shape) * sizeof(U));
@@ -966,7 +828,7 @@ void cpu_reference_argmax(
     AxisVector av{axis};
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = reduce(input_coord, av);
         CoordinateTransform output_transform(out_shape);
@@ -981,7 +843,8 @@ out[output_transform.index(output_coord)] =
     static_cast<U>(input_coord[axis]);
         }
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_and, R"(template <typename T>
 void logical_cpu_reference_and(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -989,10 +852,11 @@ void logical_cpu_reference_and(const T* arg0, const T* arg1, T* out, size_t coun
     {
         out[i] = static_cast<T>(arg0[i] && arg1[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_argmin, R"(template <typename T, typename U>
 void cpu_reference_argmin(
-    const T* arg, U* out, const Shape& in_shape, const Shape& out_shape, size_t axis)
+    const T* arg, U* out, const Shape in_shape, const Shape out_shape, size_t axis)
 {
     // take the first elements (i.e. 0 indices) in out_shape - axis as minimums
     memset(out, 0, shape_size(out_shape) * sizeof(U));
@@ -1000,7 +864,7 @@ void cpu_reference_argmin(
     AxisVector av{axis};
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = reduce(input_coord, av);
         CoordinateTransform output_transform(out_shape);
@@ -1015,7 +879,8 @@ out[output_transform.index(output_coord)] =
     static_cast<U>(input_coord[axis]);
         }
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_copy, R"(template <typename T>
 void cpu_reference_copy(const T* arg, T* out, size_t count)
 {
@@ -1023,26 +888,27 @@ void cpu_reference_copy(const T* arg, T* out, size_t count)
     {
         out[i] = arg[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_reduce, R"(template <typename T>
 void cpu_reference_reduce(const T* arg0,
 const T* arg1, // TODO: really we should just pass a T here.
 T* out,
-const Shape& in_shape,
-const Shape& out_shape,
-const AxisSet& reduction_axes,
+const Shape in_shape,
+const Shape out_shape,
+const AxisSet reduction_axes,
 std::function<T(T, T)> reduction_function)
 {
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         out[output_transform.index(output_coord)] = *arg1;
     }
 
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = cpu_reference_reduce(input_coord, reduction_axes);
         size_t input_index = input_transform.index(input_coord);
@@ -1050,7 +916,8 @@ std::function<T(T, T)> reduction_function)
 
         out[output_index] = reduction_function(out[output_index], arg0[input_index]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_less_eq, R"(template <typename T>
 void cpu_reference_less_eq(const T* arg0,
  const T* arg1,
@@ -1061,7 +928,8 @@ void cpu_reference_less_eq(const T* arg0,
     {
         out[i] = arg0[i] <= arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_multiply, R"(template <typename T>
 void cpu_reference_multiply(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -1069,7 +937,8 @@ void cpu_reference_multiply(const T* arg0, const T* arg1, T* out, size_t count)
     {
         out[i] = arg0[i] * arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_sigmoid, R"(template <typename T>
 void cpu_reference_sigmoid(const T* arg, T* out, size_t count)
 {
@@ -1092,7 +961,8 @@ void sigmoid_backprop(const T* arg, T* delta_arg, T* out, size_t count)
         func_x = 1 / (1 + exp_value);
         out[i] = delta_arg[i] * func_x * (1 - func_x);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_sign, R"(template <typename T>
 void cpu_reference_sign(const T* arg, T* out, size_t count)
 {
@@ -1100,13 +970,14 @@ void cpu_reference_sign(const T* arg, T* out, size_t count)
     {
         out[i] = (arg[i] < 0 ? -1 : (arg[i] > 0 ? 1 : 0));
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_topk, R"(template <typename T, typename U>
 void cpu_reference_topk(const T* arg,
           U* out_indices,
           T* out_values,
-          const Shape& in_shape,
-          const Shape& out_shape,
+          const Shape in_shape,
+          const Shape out_shape,
           size_t axis,
           size_t k,
           bool compute_max)
@@ -1133,7 +1004,7 @@ void cpu_reference_topk(const T* arg,
     vector<size_t> out_strides = ngraph::row_major_strides(out_shape);
     auto in_axis_stride = in_strides[axis];
     auto out_axis_stride = out_strides[axis];
-    for (const Coordinate& coord : input_transform)
+    for (const Coordinate coord : input_transform)
     {
         auto arg_index = input_transform.index(coord);
         auto out_index = output_transform.index(coord);
@@ -1162,7 +1033,8 @@ out_indices[out_index] = get<1>(entry);
 out_index += out_axis_stride;
         }
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_asin, R"(template <typename T>
 void cpu_reference_asin(const T* arg, T* out, size_t count)
 {
@@ -1170,27 +1042,28 @@ void cpu_reference_asin(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_asin(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_min, R"(template <typename T>
 void cpu_reference_min(const T* arg,
          T* out,
-         const Shape& in_shape,
-         const Shape& out_shape,
-         const AxisSet& reduction_axes)
+         const Shape in_shape,
+         const Shape out_shape,
+         const AxisSet reduction_axes)
 {
     T minval = std::numeric_limits<T>::has_infinity ? std::numeric_limits<T>::infinity()
     : std::numeric_limits<T>::max();
 
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         out[output_transform.index(output_coord)] = minval;
     }
 
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         Coordinate output_coord = reduce(input_coord, reduction_axes);
 
@@ -1201,21 +1074,22 @@ void cpu_reference_min(const T* arg,
 out[output_transform.index(output_coord)] = x;
         }
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_reduce_window, R"(template <typename T>
 void cpu_reference_reduce_window(const T* arg_reductee,
        const T* arg_init,
        T* out,
-       const Shape& arg_reductee_shape,
-       const Shape& out_shape,
+       const Shape arg_reductee_shape,
+       const Shape out_shape,
        std::function<T(T, T)> reduction_function,
-       const Shape& window_shape,
-       const Strides& window_movement_strides)
+       const Shape window_shape,
+       const Strides window_movement_strides)
 {
     // At the outermost level we will walk over every output coordinate O.
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& out_coord : output_transform)
+    for (const Coordinate out_coord : output_transform)
     {
         // Our output coordinate O will have the form:
         //
@@ -1255,7 +1129,7 @@ arg_reductee_shape, reductee_transform_start, reductee_transform_end);
 
         T result = *arg_init;
 
-        for (const Coordinate& reductee_coord : reductee_transform)
+        for (const Coordinate reductee_coord : reductee_transform)
         {
 result = reduction_function(
     result, arg_reductee[reductee_transform.index(reductee_coord)]);
@@ -1263,7 +1137,8 @@ result = reduction_function(
 
         out[output_transform.index(out_coord)] = result;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_less, R"(template <typename T>
 void cpu_reference_less(const T* arg0,
           const T* arg1,
@@ -1274,7 +1149,8 @@ void cpu_reference_less(const T* arg0,
     {
         out[i] = arg0[i] < arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_add, R"(template <typename T>
 void cpu_reference_add(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -1282,7 +1158,8 @@ void cpu_reference_add(const T* arg0, const T* arg1, T* out, size_t count)
     {
         out[i] = arg0[i] + arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_floor, R"(template <typename T>
 void cpu_reference_floor(const T* arg, T* out, size_t count)
 {
@@ -1290,13 +1167,14 @@ void cpu_reference_floor(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_floor(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_reshape, R"(template <typename T>
 void cpu_reference_reshape(const T* arg,
  T* out,
- const Shape& in_shape,
- const AxisVector& in_axis_order,
- const Shape& out_shape)
+ const Shape in_shape,
+ const AxisVector in_axis_order,
+ const Shape out_shape)
 {
     // Unfortunately we don't yet have a constructor for CoordinateTransform that lets us pass only source_space_shape
     // and source_axis_order so we have to construct the defaults here.
@@ -1312,16 +1190,17 @@ void cpu_reference_reshape(const T* arg,
 
     CoordinateTransform::Iterator output_it = output_transform.begin();
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
-        const Coordinate& output_coord = *output_it;
+        const Coordinate output_coord = *output_it;
 
         out[output_transform.index(output_coord)] =
 arg[input_transform.index(input_coord)];
 
         ++output_it;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_tan, R"(template <typename T>
 void cpu_reference_tan(const T* arg, T* out, size_t count)
 {
@@ -1329,7 +1208,8 @@ void cpu_reference_tan(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_tan(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_abs, R"(template <typename T>
 void cpu_reference_abs(const T* arg, T* out, size_t count)
 {
@@ -1338,7 +1218,8 @@ void cpu_reference_abs(const T* arg, T* out, size_t count)
         // TODO: generic "abs" doesn't work here for some reason.
         out[i] = (arg[i] < 0 ? -arg[i] : arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_not, R"(template <typename T>
 void logical_cpu_reference_not(const T* arg, T* out, size_t count)
 {
@@ -1346,7 +1227,8 @@ void logical_cpu_reference_not(const T* arg, T* out, size_t count)
     {
         out[i] = static_cast<T>(!(arg[i]));
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_sinh, R"(template <typename T>
 void cpu_reference_sinh(const T* arg, T* out, size_t count)
 {
@@ -1354,7 +1236,8 @@ void cpu_reference_sinh(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_sinh(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_not_equal, R"(template <typename T>
 void cpu_reference_not_equal(const T* arg0,
    const T* arg1,
@@ -1365,17 +1248,18 @@ void cpu_reference_not_equal(const T* arg0,
     {
         out[i] = arg0[i] != arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_reverse_sequence, R"(template <typename T, typename U>
 void cpu_reference_reverse_sequence(const T* arg,
           T* out,
-          const Shape& arg_shape,
+          const Shape arg_shape,
           size_t batch_axis,
           size_t sequence_axis,
           U* sequence_lengths)
 {
     CoordinateTransform input_transform(arg_shape);
-    for (const Coordinate& in_coord : input_transform)
+    for (const Coordinate in_coord : input_transform)
     {
         size_t batch_index = in_coord[batch_axis];
         auto orig_seq_index = static_cast<size_t>(sequence_lengths[batch_index]);
@@ -1401,28 +1285,29 @@ orig_seq_index = 1;
         out_coord[sequence_axis] = sequence_index;
         out[input_transform.index(out_coord)] = arg[input_transform.index(in_coord)];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_max_pool, R"(template <typename T>
 void max_pool_backprop(const T* arg_forward,
            const T* delta,
            T* out,
-           const Shape& delta_shape,
-           const Shape& out_shape, // same as arg_forward_shape
-           const Shape& window_shape,
-           const Strides& window_movement_strides,
-           const Shape& padding_below,
-           const Shape& padding_above)
+           const Shape delta_shape,
+           const Shape out_shape, // same as arg_forward_shape
+           const Shape window_shape,
+           const Strides window_movement_strides,
+           const Shape padding_below,
+           const Shape padding_above)
 {
     CoordinateTransform out_transform(out_shape);
 
-    for (const Coordinate& out_coord : out_transform)
+    for (const Coordinate out_coord : out_transform)
     {
         out[out_transform.index(out_coord)] = 0;
     }
 
     CoordinateTransform delta_transform(delta_shape);
 
-    for (const Coordinate& delta_coord : delta_transform)
+    for (const Coordinate delta_coord : delta_transform)
     {
         size_t img_index = delta_coord[0];
         size_t channel = delta_coord[1];
@@ -1472,7 +1357,7 @@ source_window_transform_padding_above);
         bool argmax_coord_valid = false;
         T max_val = 0; // just initializing to keep compiler happy, this 0 is ignored
 
-        for (const Coordinate& source_window_coord : source_window_transform)
+        for (const Coordinate source_window_coord : source_window_transform)
         {
 if (source_window_transform.has_source_coordinate(source_window_coord))
 {
@@ -1499,17 +1384,17 @@ out[source_window_transform.index(argmax_coord)] +=
 template <typename T>
 void cpu_reference_max_pool(const T* arg,
   T* out,
-  const Shape& arg_shape,
-  const Shape& out_shape,
-  const Shape& window_shape,
-  const Strides& window_movement_strides,
-  const Shape& padding_below,
-  const Shape& padding_above)
+  const Shape arg_shape,
+  const Shape out_shape,
+  const Shape window_shape,
+  const Strides window_movement_strides,
+  const Shape padding_below,
+  const Shape padding_above)
 {
     // At the outermost level we will walk over every output coordinate O.
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& out_coord : output_transform)
+    for (const Coordinate out_coord : output_transform)
     {
         // Our output coordinate O will have the form:
         //
@@ -1582,7 +1467,7 @@ input_batch_transform_padding_above);
 
         T result = std::numeric_limits<T>::lowest();
 
-        for (const Coordinate& input_batch_coord : input_batch_transform)
+        for (const Coordinate input_batch_coord : input_batch_transform)
         {
 if (input_batch_transform.has_source_coordinate(input_batch_coord))
 {
@@ -1593,13 +1478,14 @@ if (input_batch_transform.has_source_coordinate(input_batch_coord))
 
         out[output_transform.index(out_coord)] = result;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_reverse, R"(template <typename T>
 void cpu_reference_reverse(const T* arg,
  T* out,
- const Shape& arg_shape,
- const Shape& out_shape,
- const AxisSet& reversed_axes)
+ const Shape arg_shape,
+ const Shape out_shape,
+ const AxisSet reversed_axes)
 {
     // In fact arg_shape == out_shape, but we'll use both for stylistic consistency with other kernels.
     CoordinateTransform arg_transform(arg_shape);
@@ -1619,7 +1505,8 @@ if (reversed_axes.count(i) != 0)
 
         out[output_transform.index(out_coord)] = arg[arg_transform.index(arg_coord)];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_acos, R"(template <typename T>
 void cpu_reference_acos(const T* arg, T* out, size_t count)
 {
@@ -1627,7 +1514,8 @@ void cpu_reference_acos(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_acos(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_exp, R"(template <typename T>
 void cpu_reference_exp(const T* arg, T* out, size_t count)
 {
@@ -1635,7 +1523,8 @@ void cpu_reference_exp(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_exp(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_generate_mask, R"(template <typename T>
 void cpu_reference_generate_mask(T* out, size_t count, ngraph::RNGState* rng_state, bool training)
 {
@@ -1646,14 +1535,15 @@ void cpu_reference_generate_mask(T* out, size_t count, ngraph::RNGState* rng_sta
     {
         out[i] = training ? static_cast<T>(bd(gen)) : static_cast<T>(1);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_dot, R"(template <typename T>
 void cpu_reference_dot(const T* arg0,
          const T* arg1,
          T* out,
-         const Shape& arg0_shape,
-         const Shape& arg1_shape,
-         const Shape& out_shape,
+         const Shape arg0_shape,
+         const Shape arg1_shape,
+         const Shape out_shape,
          size_t reduction_axes_count)
 {
     // Get the sizes of the dot axes. It's easiest to pull them from arg1 because they're
@@ -1688,9 +1578,9 @@ void cpu_reference_dot(const T* arg0,
     // for the dotted axes.
     CoordinateTransform dot_axes_transform(dot_axis_sizes);
 
-    for (const Coordinate& arg0_projected_coord : arg0_projected_transform)
+    for (const Coordinate arg0_projected_coord : arg0_projected_transform)
     {
-        for (const Coordinate& arg1_projected_coord : arg1_projected_transform)
+        for (const Coordinate arg1_projected_coord : arg1_projected_transform)
         {
 // The output coordinate is just the concatenation of the projected coordinates.
 Coordinate out_coord(arg0_projected_coord.size() +
@@ -1713,7 +1603,7 @@ Coordinate arg1_coord(arg1_shape.size());
 auto arg0_it = std::copy(arg0_projected_coord.begin(),
  arg0_projected_coord.end(),
  arg0_coord.begin());
-for (const Coordinate& dot_axis_positions : dot_axes_transform)
+for (const Coordinate dot_axis_positions : dot_axes_transform)
 {
     // In order to find the points to multiply together, we need to inject our current
     // positions along the dotted axes back into the projected arg0 and arg1 coordinates.
@@ -1735,7 +1625,8 @@ for (const Coordinate& dot_axis_positions : dot_axes_transform)
 out[out_index] = sum;
         }
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_maximum, R"(template <typename T>
 void cpu_reference_maximum(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -1743,7 +1634,8 @@ void cpu_reference_maximum(const T* arg0, const T* arg1, T* out, size_t count)
     {
         out[i] = arg0[i] > arg1[i] ? arg0[i] : arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_minimum, R"(template <typename T>
 void cpu_reference_minimum(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -1751,7 +1643,8 @@ void cpu_reference_minimum(const T* arg0, const T* arg1, T* out, size_t count)
     {
         out[i] = arg0[i] < arg1[i] ? arg0[i] : arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_greater_eq, R"(template <typename T>
 void cpu_reference_greater_eq(const T* arg0,
     const T* arg1,
@@ -1762,28 +1655,29 @@ void cpu_reference_greater_eq(const T* arg0,
     {
         out[i] = arg0[i] >= arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_avg_pool, R"(template <typename T>
 void avg_pool_backprop(const T* delta,
            T* out,
-           const Shape& delta_shape,
-           const Shape& out_shape,
-           const Shape& window_shape,
-           const Strides& window_movement_strides,
-           const Shape& padding_below,
-           const Shape& padding_above,
+           const Shape delta_shape,
+           const Shape out_shape,
+           const Shape window_shape,
+           const Strides window_movement_strides,
+           const Shape padding_below,
+           const Shape padding_above,
            bool include_padding_in_avg_computation)
 {
     CoordinateTransform out_transform(out_shape);
 
-    for (const Coordinate& out_coord : out_transform)
+    for (const Coordinate out_coord : out_transform)
     {
         out[out_transform.index(out_coord)] = 0;
     }
 
     CoordinateTransform delta_transform(delta_shape);
 
-    for (const Coordinate& delta_coord : delta_transform)
+    for (const Coordinate delta_coord : delta_transform)
     {
         size_t img_index = delta_coord[0];
         size_t channel = delta_coord[1];
@@ -1831,7 +1725,7 @@ source_window_transform_padding_above);
 
         size_t num_elements_in_window = 0;
 
-        for (const Coordinate& source_window_coord : source_window_transform)
+        for (const Coordinate source_window_coord : source_window_transform)
         {
 if (source_window_transform.has_source_coordinate(source_window_coord) ||
     include_padding_in_avg_computation)
@@ -1840,7 +1734,7 @@ if (source_window_transform.has_source_coordinate(source_window_coord) ||
 }
         }
 
-        for (const Coordinate& source_window_coord : source_window_transform)
+        for (const Coordinate source_window_coord : source_window_transform)
         {
 if (source_window_transform.has_source_coordinate(source_window_coord))
 {
@@ -1855,18 +1749,18 @@ if (source_window_transform.has_source_coordinate(source_window_coord))
 template <typename T>
 void cpu_reference_avg_pool(const T* arg,
   T* out,
-  const Shape& arg_shape,
-  const Shape& out_shape,
-  const Shape& window_shape,
-  const Strides& window_movement_strides,
-  const Shape& padding_below,
-  const Shape& padding_above,
+  const Shape arg_shape,
+  const Shape out_shape,
+  const Shape window_shape,
+  const Strides window_movement_strides,
+  const Shape padding_below,
+  const Shape padding_above,
   bool include_padding_in_avg_computation)
 {
     // At the outermost level we will walk over every output coordinate O.
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& out_coord : output_transform)
+    for (const Coordinate out_coord : output_transform)
     {
         // Our output coordinate O will have the form:
         //
@@ -1944,7 +1838,7 @@ input_batch_transform_padding_above);
         T result = 0;
         size_t n_elements = 0;
 
-        for (const Coordinate& input_batch_coord : input_batch_transform)
+        for (const Coordinate input_batch_coord : input_batch_transform)
         {
 bool in_bounds =
     input_batch_transform.has_source_coordinate(input_batch_coord);
@@ -1965,9 +1859,10 @@ throw std::runtime_error("AvgPool elements == 0, must be non-zero");
 
         out[output_transform.index(out_coord)] = result / n_elements;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_softmax, R"(template <typename T>
-void cpu_reference_softmax(const T* arg, T* out, const Shape& shape, const AxisSet& axes)
+void cpu_reference_softmax(const T* arg, T* out, const Shape shape, const AxisSet axes)
 {
     auto temp_shape = reduce(shape, axes);
     auto temp_elements = std::accumulate(
@@ -1978,7 +1873,7 @@ void cpu_reference_softmax(const T* arg, T* out, const Shape& shape, const AxisS
 
     CoordinateTransform transform(shape);
     CoordinateTransform temp_transform(temp_shape);
-    for (const Coordinate& coord : transform)
+    for (const Coordinate coord : transform)
     {
         Coordinate temp_coord = reduce(coord, axes);
         out[transform.index(coord)] = std::exp(
@@ -1987,14 +1882,15 @@ arg[transform.index(coord)] - temp_ptr[temp_transform.index(temp_coord)]);
 
     sum(out, temp_ptr, shape, temp_shape, axes);
 
-    for (const Coordinate& coord : transform)
+    for (const Coordinate coord : transform)
     {
         Coordinate temp_coord = reduce(coord, axes);
         out[transform.index(coord)] /= temp_ptr[temp_transform.index(temp_coord)];
     }
 
     delete[] temp_ptr;
-}\n)");
+}
+)");
 LU_DEFINE(
     cpu_reference_divide,
     R"(// NOTE: Execution throws `std::domain_error` if either a non-integral value or an out-of-bounds
@@ -2026,7 +1922,8 @@ typename std::enable_if<std::is_floating_point<T>::value>::type
         // if arg1[i] == 0. Is that the right thing to do? Jury's still out.
         out[i] = arg0[i] / arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_negate, R"(template <typename T>
 void cpu_reference_negate(const T* arg, T* out, size_t count)
 {
@@ -2034,7 +1931,8 @@ void cpu_reference_negate(const T* arg, T* out, size_t count)
     {
         out[i] = -arg[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_select, R"(template <typename T>
 void cpu_reference_select(const char* arg0,
 const T* arg1,
@@ -2046,7 +1944,8 @@ size_t count) // TODO: using char for bool, is this right?
     {
         out[i] = arg0[i] ? arg1[i] : arg2[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_sqrt, R"(template <typename T>
 void cpu_reference_sqrt(const T* arg, T* out, size_t count)
 {
@@ -2054,7 +1953,8 @@ void cpu_reference_sqrt(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_sqrt(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_atan, R"(template <typename T>
 void cpu_reference_atan(const T* arg, T* out, size_t count)
 {
@@ -2062,7 +1962,8 @@ void cpu_reference_atan(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_atan(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_tanh, R"(template <typename T>
 void cpu_reference_tanh(const T* arg, T* out, size_t count)
 {
@@ -2070,7 +1971,8 @@ void cpu_reference_tanh(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_tanh(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_sin, R"(template <typename T>
 void cpu_reference_sin(const T* arg, T* out, size_t count)
 {
@@ -2078,7 +1980,8 @@ void cpu_reference_sin(const T* arg, T* out, size_t count)
     {
         out[i] = std::cpu_reference_sin(arg[i]);
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_subtract, R"(template <typename T>
 void cpu_reference_subtract(const T* arg0, const T* arg1, T* out, size_t count)
 {
@@ -2086,15 +1989,16 @@ void cpu_reference_subtract(const T* arg0, const T* arg1, T* out, size_t count)
     {
         out[i] = arg0[i] - arg1[i];
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_slice, R"(template <typename T>
 void cpu_reference_slice(const T* arg,
            T* out,
-           const Shape& arg_shape,
-           const Coordinate& lower_bounds,
-           const Coordinate& upper_bounds,
-           const Strides& strides,
-           const Shape& out_shape)
+           const Shape arg_shape,
+           const Coordinate lower_bounds,
+           const Coordinate upper_bounds,
+           const Strides strides,
+           const Shape out_shape)
 {
     CoordinateTransform input_transform(arg_shape, lower_bounds, upper_bounds, strides);
     CoordinateTransform output_transform(out_shape);
@@ -2104,24 +2008,25 @@ void cpu_reference_slice(const T* arg,
     NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
       shape_size(output_transform.get_target_shape()));
 
-    for (const Coordinate& in_coord : input_transform)
+    for (const Coordinate in_coord : input_transform)
     {
-        const Coordinate& out_coord = *output_it;
+        const Coordinate out_coord = *output_it;
 
         out[output_transform.index(out_coord)] = arg[input_transform.index(in_coord)];
 
         ++output_it;
     }
-}\n)");
+}
+)");
 LU_DEFINE(cpu_reference_replace_slice, R"(template <typename T>
 void cpu_reference_replace_slice(const T* arg0, // replacement context
        const T* arg1, // replacement value
        T* out,
-       const Shape& arg1_shape,
-       const Coordinate& lower_bounds,
-       const Coordinate& upper_bounds,
-       const Strides& strides,
-       const Shape& out_shape)
+       const Shape arg1_shape,
+       const Coordinate lower_bounds,
+       const Coordinate upper_bounds,
+       const Strides strides,
+       const Shape out_shape)
 {
     // Step 1: Copy the entire replacement context to the output.
     CoordinateTransform copy_transform(out_shape);
@@ -2141,16 +2046,17 @@ void cpu_reference_replace_slice(const T* arg0, // replacement context
 
     CoordinateTransform::Iterator output_it = output_transform.begin();
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
-        const Coordinate& output_coord = *output_it;
+        const Coordinate output_coord = *output_it;
 
         out[output_transform.index(output_coord)] =
 arg1[input_transform.index(input_coord)];
 
         ++output_it;
     }
-}\n)");
+}
+)");
 LU_DEFINE(
     cpu_reference_one_hot,
     R"(// NOTE: Execution throws `std::range_error` if either a non-integral value or an out-of-bounds
@@ -2158,14 +2064,14 @@ LU_DEFINE(
 template <typename T>
 void cpu_reference_one_hot(const T* arg,
  T* out,
- const Shape& in_shape,
- const Shape& out_shape,
+ const Shape in_shape,
+ const Shape out_shape,
  size_t one_hot_axis)
 {
     // Step 1: Zero out the output.
     CoordinateTransform output_transform(out_shape);
 
-    for (const Coordinate& output_coord : output_transform)
+    for (const Coordinate output_coord : output_transform)
     {
         out[output_transform.index(output_coord)] = 0;
     }
@@ -2174,7 +2080,7 @@ void cpu_reference_one_hot(const T* arg,
     // are encountered.
     CoordinateTransform input_transform(in_shape);
 
-    for (const Coordinate& input_coord : input_transform)
+    for (const Coordinate input_coord : input_transform)
     {
         T val = arg[input_transform.index(input_coord)];
 
@@ -2194,7 +2100,8 @@ throw(std::range_error("One-hot: value is out of category range"));
 
         out[output_transform.index(one_hot_coord)] = 1;
     }
-}\n)");
+}
+)");
 
 //Classes
 namespace nnfusion
@@ -2207,7 +2114,7 @@ namespace nnfusion
             {
             public:
                 AbsRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Abs>(ctx->node);
                 }
@@ -2223,7 +2130,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_abs");
+                    lu.require(cpu_reference_abs);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2241,7 +2148,7 @@ namespace nnfusion
             {
             public:
                 AcosRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Acos>(ctx->node);
                 }
@@ -2257,7 +2164,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_acos");
+                    lu.require(cpu_reference_acos);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2275,7 +2182,7 @@ namespace nnfusion
             {
             public:
                 AddRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Add>(ctx->node);
                 }
@@ -2291,7 +2198,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_add");
+                    lu.require(cpu_reference_add);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2305,11 +2212,46 @@ namespace nnfusion
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 AddRef)                                                        // constructor
 
+            class AllReduceRef : public KernelEmitter
+            {
+            public:
+                AllReduceRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::AllReduce>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_allreduce_float(input0,output0,static_cast<int>("
+                       << m_context->inputs[0].get_size() << "));";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_allreduce);
+                    lu.require(header_mpi);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::AllReduce> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "AllReduce",                                                   // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                AllReduceRef)                                                  // constructor
+
             class AsinRef : public KernelEmitter
             {
             public:
                 AsinRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Asin>(ctx->node);
                 }
@@ -2325,7 +2267,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_asin");
+                    lu.require(cpu_reference_asin);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2343,7 +2285,7 @@ namespace nnfusion
             {
             public:
                 AtanRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Atan>(ctx->node);
                 }
@@ -2359,7 +2301,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_atan");
+                    lu.require(cpu_reference_atan);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2377,7 +2319,7 @@ namespace nnfusion
             {
             public:
                 BroadcastRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Broadcast>(ctx->node);
                 }
@@ -2395,7 +2337,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_broadcast");
+                    lu.require(cpu_reference_broadcast);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2413,7 +2355,7 @@ namespace nnfusion
             {
             public:
                 CeilingRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Ceiling>(ctx->node);
                 }
@@ -2429,7 +2371,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_ceiling");
+                    lu.require(cpu_reference_ceiling);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2443,11 +2385,124 @@ namespace nnfusion
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 CeilingRef)                                                    // constructor
 
+            class ConcatRef : public KernelEmitter
+            {
+            public:
+                ConcatRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Concat>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "std::vector<const float*> in_args;";
+                    lu << "std::vector<Shape> in_shapes;";
+                    for (size_t t = 0; t < m_context->inputs.size(); t++)
+                    {
+                        lu << "in_args.push_back( input" << t << ");";
+                        lu << "in_shapes.push_back(Shape(" << join(m_context->inputs[0].get_shape())
+                           << ");";
+                    }
+                    lu << "cpu_reference_concat<float>(in_args,output0, in_shapes,Shape("
+                       << join(m_context->outputs[0].get_shape()) << "), "
+                       << op->get_concatenation_axis() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_concat);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Concat> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Concat",                                                      // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                ConcatRef)                                                     // constructor
+
+            class ConstantRef : public KernelEmitter
+            {
+            public:
+                ConstantRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Constant>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    // lu<<"cpu_reference_constant<float>(OP->get_data_ptr<float>(),output0,"<<m_context->outputs[0].get_size()<<");";
+                    lu << "//<todo> left blank by purpose.";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_constant);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Constant> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Constant",                                                    // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                ConstantRef)                                                   // constructor
+
+            class ConvertRef : public KernelEmitter
+            {
+            public:
+                ConvertRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Convert>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    auto in_type = m_context->inputs[0].get_type();
+                    auto out_type = op->get_element_type();
+                    lu << "cpu_reference_convert<" << in_type << ", " << out_type
+                       << ">(input0, output0," << m_context->outputs[0].get_size() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_convert);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Convert> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Convert",                                                     // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                ConvertRef)                                                    // constructor
+
             class ConvolutionRef : public KernelEmitter
             {
             public:
                 ConvolutionRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Convolution>(ctx->node);
                 }
@@ -2470,7 +2525,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_convolution");
+                    lu.require(cpu_reference_convolution);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2488,7 +2543,7 @@ namespace nnfusion
             {
             public:
                 CosRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Cos>(ctx->node);
                 }
@@ -2504,7 +2559,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_cos");
+                    lu.require(cpu_reference_cos);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2522,7 +2577,7 @@ namespace nnfusion
             {
             public:
                 CoshRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Cosh>(ctx->node);
                 }
@@ -2538,7 +2593,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_cosh");
+                    lu.require(cpu_reference_cosh);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2556,7 +2611,7 @@ namespace nnfusion
             {
             public:
                 DivideRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Divide>(ctx->node);
                 }
@@ -2572,7 +2627,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_divide");
+                    lu.require(cpu_reference_divide);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2586,11 +2641,45 @@ namespace nnfusion
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 DivideRef)                                                     // constructor
 
+            class EqualRef : public KernelEmitter
+            {
+            public:
+                EqualRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Equal>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_equal<float>(input0,input1,(char*)output0,"
+                       << m_context->outputs[0].get_size() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_equal);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Equal> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Equal",                                                       // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                EqualRef)                                                      // constructor
+
             class ExpRef : public KernelEmitter
             {
             public:
                 ExpRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Exp>(ctx->node);
                 }
@@ -2606,7 +2695,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_exp");
+                    lu.require(cpu_reference_exp);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2624,7 +2713,7 @@ namespace nnfusion
             {
             public:
                 FloorRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Floor>(ctx->node);
                 }
@@ -2640,7 +2729,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_floor");
+                    lu.require(cpu_reference_floor);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2654,11 +2743,79 @@ namespace nnfusion
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 FloorRef)                                                      // constructor
 
+            class GreaterRef : public KernelEmitter
+            {
+            public:
+                GreaterRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Greater>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_greater<float>(input0,input1,(char*)output0,"
+                       << m_context->outputs[0].get_size() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_greater);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Greater> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Greater",                                                     // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                GreaterRef)                                                    // constructor
+
+            class LessRef : public KernelEmitter
+            {
+            public:
+                LessRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Less>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_less<float>(input0,input1,(char*)output0,"
+                       << m_context->outputs[0].get_size() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_less);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Less> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Less",                                                        // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                LessRef)                                                       // constructor
+
             class LogRef : public KernelEmitter
             {
             public:
                 LogRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Log>(ctx->node);
                 }
@@ -2674,7 +2831,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_log");
+                    lu.require(cpu_reference_log);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2692,7 +2849,7 @@ namespace nnfusion
             {
             public:
                 LRNRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::LRN>(ctx->node);
                 }
@@ -2710,7 +2867,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_lrn");
+                    lu.require(cpu_reference_lrn);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2728,7 +2885,7 @@ namespace nnfusion
             {
             public:
                 MaxRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Max>(ctx->node);
                 }
@@ -2746,7 +2903,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_max");
+                    lu.require(cpu_reference_max);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2764,7 +2921,7 @@ namespace nnfusion
             {
             public:
                 MaximumRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Maximum>(ctx->node);
                 }
@@ -2780,7 +2937,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_maximum");
+                    lu.require(cpu_reference_maximum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2798,7 +2955,7 @@ namespace nnfusion
             {
             public:
                 MinRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Min>(ctx->node);
                 }
@@ -2816,7 +2973,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_min");
+                    lu.require(cpu_reference_min);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2834,7 +2991,7 @@ namespace nnfusion
             {
             public:
                 MinimumRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Minimum>(ctx->node);
                 }
@@ -2850,7 +3007,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_minimum");
+                    lu.require(cpu_reference_minimum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2868,7 +3025,7 @@ namespace nnfusion
             {
             public:
                 MultiplyRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Multiply>(ctx->node);
                 }
@@ -2884,7 +3041,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_multiply");
+                    lu.require(cpu_reference_multiply);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2902,7 +3059,7 @@ namespace nnfusion
             {
             public:
                 PowerRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Power>(ctx->node);
                 }
@@ -2918,7 +3075,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_power");
+                    lu.require(cpu_reference_power);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2936,7 +3093,7 @@ namespace nnfusion
             {
             public:
                 ProductRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Product>(ctx->node);
                 }
@@ -2954,7 +3111,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_product");
+                    lu.require(cpu_reference_product);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2972,7 +3129,7 @@ namespace nnfusion
             {
             public:
                 ReluRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Relu>(ctx->node);
                 }
@@ -2988,7 +3145,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_relu");
+                    lu.require(cpu_reference_relu);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3006,7 +3163,7 @@ namespace nnfusion
             {
             public:
                 SelectRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Select>(ctx->node);
                 }
@@ -3023,7 +3180,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_select");
+                    lu.require(cpu_reference_select);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3041,7 +3198,7 @@ namespace nnfusion
             {
             public:
                 SigmoidRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sigmoid>(ctx->node);
                 }
@@ -3057,7 +3214,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_sigmoid");
+                    lu.require(cpu_reference_sigmoid);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3075,7 +3232,7 @@ namespace nnfusion
             {
             public:
                 SignRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sign>(ctx->node);
                 }
@@ -3091,7 +3248,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_sign");
+                    lu.require(cpu_reference_sign);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3109,7 +3266,7 @@ namespace nnfusion
             {
             public:
                 SinRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sin>(ctx->node);
                 }
@@ -3125,7 +3282,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_sin");
+                    lu.require(cpu_reference_sin);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3143,7 +3300,7 @@ namespace nnfusion
             {
             public:
                 SinhRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sinh>(ctx->node);
                 }
@@ -3159,7 +3316,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_sinh");
+                    lu.require(cpu_reference_sinh);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3177,7 +3334,7 @@ namespace nnfusion
             {
             public:
                 SliceRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Slice>(ctx->node);
                 }
@@ -3196,7 +3353,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_slice");
+                    lu.require(cpu_reference_slice);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3214,7 +3371,7 @@ namespace nnfusion
             {
             public:
                 SoftmaxRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Softmax>(ctx->node);
                 }
@@ -3230,7 +3387,11 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_softmax");
+                    lu.require(cpu_reference_softmax);
+                    //<todo> migerate those into definition
+                    cpu_reference_softmax->require(cpu_reference_reduce);
+                    cpu_reference_softmax->require(cpu_reference_max);
+                    cpu_reference_softmax->require(cpu_reference_sum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3248,7 +3409,7 @@ namespace nnfusion
             {
             public:
                 SqrtRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sqrt>(ctx->node);
                 }
@@ -3264,7 +3425,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_sqrt");
+                    lu.require(cpu_reference_sqrt);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3282,7 +3443,7 @@ namespace nnfusion
             {
             public:
                 SubtractRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Subtract>(ctx->node);
                 }
@@ -3298,7 +3459,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_subtract");
+                    lu.require(cpu_reference_subtract);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3316,7 +3477,7 @@ namespace nnfusion
             {
             public:
                 SumRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sum>(ctx->node);
                 }
@@ -3334,7 +3495,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_sum");
+                    lu.require(cpu_reference_sum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3352,7 +3513,7 @@ namespace nnfusion
             {
             public:
                 TanRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Tan>(ctx->node);
                 }
@@ -3368,7 +3529,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_tan");
+                    lu.require(cpu_reference_tan);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3386,7 +3547,7 @@ namespace nnfusion
             {
             public:
                 TanhRef(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx)
+                    : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Tanh>(ctx->node);
                 }
@@ -3402,7 +3563,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require("cpu_reference_tanh");
+                    lu.require(cpu_reference_tanh);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3416,8 +3577,335 @@ namespace nnfusion
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 TanhRef)                                                       // constructor
 
+            class BatchNormRef : public KernelEmitter
+            {
+            public:
+                BatchNormRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::BatchNormInference>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_batch_norm<float>(" << op->get_eps_value() << ","
+                       << "input0, input1, input2, input3, input4, output0, "
+                       << "Shape(" << join(m_context->inputs[2].get_shape()) << "));";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_batch_norm);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::BatchNormInference> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "BatchNormInference",                                          // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                BatchNormRef)
+
+            class AvgPoolRef : public KernelEmitter
+            {
+            public:
+                AvgPoolRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::AvgPool>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_avg_pool<float>(input0,output0,"
+                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
+                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
+                       << "Shape(" << join(op->get_window_shape()) << "),"
+                       << "Strides(" << join(op->get_window_movement_strides()) << "),"
+                       << "Shape(" << join(op->get_padding_below()) << "),"
+                       << "Shape(" << join(op->get_padding_above()) << "),"
+                       << op->get_include_padding_in_avg_computation() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_avg_pool);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::AvgPool> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "AvgPool",                                                     // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                AvgPoolRef)
+
+            class DotRef : public KernelEmitter
+            {
+            public:
+                DotRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Dot>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_dot<float>(input0,intput1,output0,"
+                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
+                       << "Shape(" << join(m_context->inputs[1].get_shape()) << "),"
+                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
+                       << op->get_reduction_axes_count() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_dot);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Dot> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Dot",                                                         // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                DotRef)
+
+            class MaxPoolRef : public KernelEmitter
+            {
+            public:
+                MaxPoolRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::MaxPool>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_max_pool<float>(input0,output0,"
+                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
+                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
+                       << "Shape(" << join(op->get_window_shape()) << "),"
+                       << "Strides(" << join(op->get_window_movement_strides()) << "),"
+                       << "Shape(" << join(op->get_padding_below()) << "),"
+                       << "Shape(" << join(op->get_padding_above()) << "));";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_dot);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::MaxPool> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "MaxPool",                                                     // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                MaxPoolRef)
+
+            class PadRef : public KernelEmitter
+            {
+            public:
+                PadRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Pad>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_pad<float>(input0, input1, output0,"
+                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
+                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
+                       << "Shape(" << join(op->get_padding_below()) << "),"
+                       << "Shape(" << join(op->get_padding_above()) << "),"
+                       << "Shape(" << join(op->get_padding_interior()) << "));";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_dot);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Pad> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Pad",                                                         // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                PadRef)
+
+            class ReshapeRef : public KernelEmitter
+            {
+            public:
+                ReshapeRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Reshape>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_reshape<float>(input0, output0,"
+                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
+                       << "AxisVector(" << join(op->get_input_order()) << "),"
+                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "));";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_dot);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Reshape> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Reshape",                                                     // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                ReshapeRef)
+
+            class ResultRef : public KernelEmitter
+            {
+            public:
+                ResultRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Result>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_result<float>(input0, output0,"
+                       << shape_size(op->get_shape()) << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_result);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Result> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Result",                                                      // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                ResultRef)
+
+            class LessEqRef : public KernelEmitter
+            {
+            public:
+                LessEqRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::LessEq>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_less_eq<float>(input0,input1,(char*)output0,"
+                       << m_context->outputs[0].get_size() << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_less_eq);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::LessEq> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "LessEq",                                                      // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                LessEqRef)
+
+            class ReverseRef : public KernelEmitter
+            {
+            public:
+                ReverseRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Reverse>(ctx->node);
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_reverse<float>(input0,output0,"
+                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
+                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
+                       << "AxisSet(" << join(op->get_reversed_axes()) << "));";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_reverse);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Reverse> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Reverse",                                                     // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                ReverseRef)
+
         } // namespace cpu
     }     // namespace kernels
 } // namespace nnfusion
-
-//Registers
