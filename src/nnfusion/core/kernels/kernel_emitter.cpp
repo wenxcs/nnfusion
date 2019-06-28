@@ -8,6 +8,7 @@ using namespace nnfusion::kernels;
 
 KernelContext::KernelContext(shared_ptr<Node> node)
     : node(node)
+    , gpu_num_sm(20)
 {
     // extract input tensors
     for (const descriptor::Input& input : node->get_inputs())
