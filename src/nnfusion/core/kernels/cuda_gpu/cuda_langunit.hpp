@@ -33,6 +33,7 @@ namespace nnfusion
             LU_DECLARE(global_cublas_handle);
             LU_DECLARE(global_cudnn_handle);
             LU_DECLARE(num_SMs);
+            LU_DECLARE(cuda_reduce_primitive);
         }
     } // namespace kernels
 } // namespace nnfusion

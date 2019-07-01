@@ -201,3 +201,87 @@ __device__ __forceinline__ int64_t  load(const int64_t*  __restrict__ in, int i=
     return v;
 }
 )");
+
+LU_DEFINE(declaration::cuda_reduce_primitive,
+          R"(
+#if CUDA_VERSION < 9000
+#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
+#else
+#define FULL_WARP_MASK 0xFFFFFFFF
+#define CREATE_SHFL_MASK(mask, predicate) \
+  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
+#endif
+
+__forceinline__ __device__ float CudaShuffleDownSync(unsigned mask, float val,
+                                                     int delta,
+                                                     int width = 32) {
+#if CUDA_VERSION < 9000
+  return __shfl_down(val, delta, width);
+#else
+  return __shfl_down_sync(mask, val, delta, width);
+#endif
+}
+
+__device__ float reduceMax(float val, int tid, int blockSize, float* shm) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, tid < blockSize);
+
+  val = max(val, CudaShuffleDownSync(mask, val, 16));
+  val = max(val, CudaShuffleDownSync(mask, val, 8));
+  val = max(val, CudaShuffleDownSync(mask, val, 4));
+  val = max(val, CudaShuffleDownSync(mask, val, 2));
+  val = max(val, CudaShuffleDownSync(mask, val, 1));
+
+  if (tid < warpSize) shm[tid] = 0.;
+  __syncthreads();
+
+  if (tid % warpSize == 0) shm[tid / warpSize] = val;
+  __syncthreads();
+
+  CREATE_SHFL_MASK(mask, tid < warpSize);
+
+  if (tid < warpSize) {
+    val = shm[tid];
+
+    val = max(val, CudaShuffleDownSync(mask, val, 16));
+    val = max(val, CudaShuffleDownSync(mask, val, 8));
+    val = max(val, CudaShuffleDownSync(mask, val, 4));
+    val = max(val, CudaShuffleDownSync(mask, val, 2));
+    val = max(val, CudaShuffleDownSync(mask, val, 1));
+  }
+
+  return val;
+}
+
+__device__ float reduceSum(float val, int tid, int blockSize, float* shm) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, tid < blockSize);
+
+  val += CudaShuffleDownSync(mask, val, 16);
+  val += CudaShuffleDownSync(mask, val, 8);
+  val += CudaShuffleDownSync(mask, val, 4);
+  val += CudaShuffleDownSync(mask, val, 2);
+  val += CudaShuffleDownSync(mask, val, 1);
+
+  if (tid < warpSize) shm[tid] = 0.;
+  __syncthreads();
+
+  if (tid % warpSize == 0) shm[tid / warpSize] = val;
+
+  __syncthreads();
+
+  CREATE_SHFL_MASK(mask, tid < warpSize);
+
+  if (tid < warpSize) {
+    val = shm[tid];
+
+    val += CudaShuffleDownSync(mask, val, 16);
+    val += CudaShuffleDownSync(mask, val, 8);
+    val += CudaShuffleDownSync(mask, val, 4);
+    val += CudaShuffleDownSync(mask, val, 2);
+    val += CudaShuffleDownSync(mask, val, 1);
+  }
+
+  return val;
+}
+)");
