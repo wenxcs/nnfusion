@@ -133,8 +133,8 @@ cuda::Reshape2D::Reshape2D(shared_ptr<KernelContext> ctx)
     }
 
     std::stringstream tag;
-    tag << "cuda_reshape_2D" << "_i_" << join(arg_shape, "_")
-                << "_o_" << join(input_order, "_");
+    tag << "cuda_reshape_2D"
+        << "_i_" << join(arg_shape, "_") << "_o_" << join(input_order, "_");
     custom_tag = tag.str();
 }
 
@@ -224,7 +224,7 @@ cuda::Reshape3D::Reshape3D(shared_ptr<KernelContext> ctx)
     // TODO: currently we set it to 16, will add tuning method later
     block_size_x = 16;
     block_size[0] = block_size_x;                                       //x
-    block_size[2] = (input_order[2] == 0) ? block_size_x : 1;       //z
+    block_size[2] = (input_order[2] == 0) ? block_size_x : 1;           //z
     block_size[1] = (block_size[2] == block_size_x) ? 1 : block_size_x; //y
     input_strides = ngraph::row_major_strides(arg_shape);
     output_strides = ngraph::NVShape(arg_rank);
@@ -241,8 +241,8 @@ cuda::Reshape3D::Reshape3D(shared_ptr<KernelContext> ctx)
     }
 
     std::stringstream tag;
-    tag << "cuda_reshape_3D" << "_i_" << join(arg_shape, "_")
-                << "_o_" << join(input_order, "_");
+    tag << "cuda_reshape_3D"
+        << "_i_" << join(arg_shape, "_") << "_o_" << join(input_order, "_");
     custom_tag = tag.str();
 }
 
@@ -260,7 +260,7 @@ LanguageUnit_p cuda::Reshape3D::emit_function_body()
     // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[2]* output0)
     //lu.block_begin();
     {
-               // Common data area starts
+        // Common data area starts
         auto expand_vector_uint32 = [](string name, vector<uint32_t>& d) {
             stringstream ss;
             for (int i = 0; i < d.size(); i++)
@@ -363,8 +363,8 @@ cuda::ReshapehD::ReshapehD(shared_ptr<KernelContext> ctx)
     }
 
     std::stringstream tag;
-    tag << "cuda_reshape_D" << "_i_" << join(arg_shape, "_")
-                << "_o_" << join(input_order, "_");
+    tag << "cuda_reshape_D"
+        << "_i_" << join(arg_shape, "_") << "_o_" << join(input_order, "_");
     custom_tag = tag.str();
 }
 
@@ -433,8 +433,8 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     : Reshape(ctx)
 {
     std::stringstream tag;
-    tag << "cuda_reshape_Memcpy" << "_i_" << join(arg_shape, "_")
-                << "_o_" << join(input_order, "_");
+    tag << "cuda_reshape_Memcpy"
+        << "_i_" << join(arg_shape, "_") << "_o_" << join(input_order, "_");
     custom_tag = tag.str();
 }
 
@@ -459,18 +459,18 @@ void cuda::ReshapeMemcpy::set_launch_config()
 
 // Register Reshape kernel emitter
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                        // op_name
+REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Reshape2D)                                                   // constructor
+                        cuda::Reshape2D)                                              // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                        // op_name
+REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Reshape3D)                                                   // constructor
+                        cuda::Reshape3D)                                              // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                        // op_name
+REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::ReshapehD)                                                   // constructor
+                        cuda::ReshapehD)                                              // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                        // op_name
+REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::ReshapeMemcpy)                                                   // constructor
+                        cuda::ReshapeMemcpy)                                          // constructor
