@@ -16,7 +16,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     if (ctx->outputs[0].get_name() == ctx->inputs[0].get_name())
     {
         is_noop = true;
-        LOG_INFO << "Same input and output tensor." << endl;
+        // LOG_INFO << "Same input and output tensor." << endl;
         return;
     }
 
@@ -32,7 +32,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
         is_sorted(input_order.begin(), input_order.end()))
     {
         is_memcpy = true;
-        LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
+        // LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
         return;
     }
 
@@ -252,7 +252,6 @@ LanguageUnit_p cuda::Reshape3D::emit_function_body()
     {
         return nullptr;
     }
-
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
     auto& data_type = m_context->dtypes[1];
@@ -329,7 +328,7 @@ LanguageUnit_p cuda::Reshape3D::emit_function_body()
         }
         lu.block_end();
     }
-    lu.block_end();
+    //lu.block_end();
 
     return _lu;
 }

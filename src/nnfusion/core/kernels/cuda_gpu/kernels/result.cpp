@@ -22,7 +22,7 @@ LanguageUnit_p cuda::Result::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    emit_memcpyDtD(lu, kernel_ctx->outputs[0], kernel_ctx->inputs[0]);
+    emit_memcpyDtD(lu, m_context->outputs[0], m_context->inputs[0]);
 
     return _lu;
 }
