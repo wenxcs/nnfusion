@@ -146,7 +146,7 @@ string KernelEmitter::emit_comments()
 LanguageUnit_p KernelEmitter::emit_source()
 {
     enforce(m_is_emitted == false) << "Code only generated once.";
-    enforce_not_nullptr(this->dep_unit = emit_dependency());
+
     if (this->m_function_name.empty())
     {
         get_function_name();
@@ -157,26 +157,26 @@ LanguageUnit_p KernelEmitter::emit_source()
     }
     else
     {
-        enforce_not_nullptr(this->body_unit = emit_function_body());
+        this->body_unit = this->emit_function_body();
+        if (!this->body_unit)
+        {
+            return nullptr;
+        }
     }
+    enforce_not_nullptr(this->dep_unit = emit_dependency());
     enforce_not_nullptr(this->call_unit = emit_function_call());
     enforce_not_nullptr(this->signature_unit = emit_function_signature());
-    //enforce_not_nullptr(this->m_test = emit_test());
     // Pass other to dep_unit
     for (auto& it : call_unit->local_symbol)
         dep_unit->require(it.second);
     for (auto& it : body_unit->local_symbol)
         dep_unit->require(it.second);
-    // for (auto& it : test_unit->local_symbol)
-    //     dep_unit->require(it.second);
     call_unit->clean_require();
     body_unit->clean_require();
-    //test_unit->clean_require();
 
     // orgnize dep
     this->body_unit->require(this->dep_unit);
     enforce(this->call_unit->require(this->body_unit));
-    //enforce(this->test_unit->require(this->body_unit));
 
     m_is_emitted = true;
     return this->call_unit;

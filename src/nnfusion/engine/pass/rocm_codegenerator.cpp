@@ -132,24 +132,36 @@ bool RocmCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *iterator)
         {
             string op_name = ins->operatorDef()->description();
+            shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
-            auto kernel_reg =
-                KernelRegistry::Global()->FindKernelRegistration(op_name, ROCM_GPU, DT_FLOAT);
-            if (!kernel_reg)
+            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+                KernelRegistry::Global()->FindKernelRegistrations(op_name, ROCM_GPU, DT_FLOAT);
+
+            shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+            bool has_valid_kernel = false;
+            if (kernel_regs.size() > 0)
             {
-                kernel_reg =
-                    KernelRegistry::Global()->FindKernelRegistration(op_name, CUDA_GPU, DT_FLOAT);
+                for (auto kernel_reg : kernel_regs)
+                {
+                    auto kernel = kernel_reg->m_factory(ctx);
+                    if (kernel->emit_source())
+                    {
+                        kernels.push_back(kernel);
+                        has_valid_kernel = true;
+                        break;
+                    }
+                }
             }
-            if (!kernel_reg)
+
+            if (kernel_regs.size() == 0 || !has_valid_kernel)
             {
                 kernel_reg =
                     KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
                 enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                auto kernel = kernel_reg->m_factory(ctx);
+                kernel->emit_source();
+                kernels.push_back(kernel);
             }
-            shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
-            auto kernel = kernel_reg->m_factory(ctx);
-            kernel->emit_source();
-            kernels.push_back(kernel);
         }
     }
 
