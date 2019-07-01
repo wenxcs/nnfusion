@@ -40,7 +40,8 @@ LanguageUnit_p cuda::Slice::emit_function_body()
     lu << "uint32_t slice_strides[] = {" << join(slice_strides) << "};\n";
 
     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
-    lu << "if (tid < n)\n";
+    uint32_t nthreads = static_cast<uint32_t>(shape_size(output_shape));
+    lu << "if (tid < " << nthreads << ")\n";
     lu.block_begin();
     {
         lu << "uint32_t input_idx = 0;\n";
@@ -58,7 +59,7 @@ LanguageUnit_p cuda::Slice::emit_function_body()
            << "]) + "
               "lower_bounds["
            << i << "]) * input_strides[" << i << "];\n";
-        lu << "out[tid] = in[input_idx];\n";
+        lu << "output0[tid] = input0[input_idx];\n";
     }
 
     lu.block_end();

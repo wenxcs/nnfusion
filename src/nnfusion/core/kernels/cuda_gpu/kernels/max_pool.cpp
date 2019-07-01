@@ -174,14 +174,14 @@ LanguageUnit_p cuda::MaxPoolmD::emit_function_body()
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
 
-    lu << "CUDNN_SAFE_CALL(cudnnPoolingForward(cudnn_handle,"
+    lu << "CUDNN_SAFE_CALL(cudnnPoolingForward(global_cudnn_handle,"
        << " desc,"
        << " &alpha,"
        << " input_desc,"
-       << " in,"
+       << " input0,"
        << " &beta,"
        << " output_desc,"
-       << " out));\n";
+       << " output0));\n";
 
     lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(input_desc));\n";
     lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(output_desc));\n";

@@ -7,7 +7,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::Result::Result(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : CudaLibEmitter(ctx)
 {
     enforce(ctx->inputs.size() == 1) << "Input size mismatches.";
     enforce(ctx->outputs.size() == 1) << "Output size mismatches.";
@@ -21,14 +21,14 @@ LanguageUnit_p cuda::Result::emit_function_body()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
+    auto dst = m_context->outputs[0];
+    auto src = m_context->inputs[0];
+    lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
+    lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
 
-    emit_memcpyDtD(lu, m_context->outputs[0], m_context->inputs[0]);
+    emit_memcpyDtD(lu, dst, src);
 
     return _lu;
-}
-
-void cuda::Result::set_launch_config()
-{
 }
 
 LanguageUnit_p cuda::Result::emit_dependency()
@@ -41,6 +41,6 @@ LanguageUnit_p cuda::Result::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Result",                                                     // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Result)                                                 // constructor
+REGISTER_KERNEL_EMITTER("Result",                                                  // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::Result)                                              // constructor

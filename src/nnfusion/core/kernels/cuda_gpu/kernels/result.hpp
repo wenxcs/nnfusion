@@ -9,14 +9,13 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Result : public CudaEmitter
+            class Result : public CudaLibEmitter
             {
             public:
                 Result(shared_ptr<KernelContext> ctx);
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
-                void set_launch_config() override;
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;

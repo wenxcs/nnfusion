@@ -223,9 +223,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     global_required.insert(it.second->symbol);
                 }
             }
-            def << kernel->emit_comments();
+
             if (declared.count(kernel->body_unit->symbol) == 0)
             {
+                def << kernel->emit_comments();
                 def << kernel->signature_unit->get_code() << "\n";
                 def.block_begin();
                 def << kernel->body_unit->get_code() << "\n";
@@ -234,7 +235,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
             else
             {
-                def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
+                //def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
             }
         }
 

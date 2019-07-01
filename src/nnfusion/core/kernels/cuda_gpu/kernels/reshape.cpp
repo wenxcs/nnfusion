@@ -183,7 +183,7 @@ LanguageUnit_p cuda::Reshape2D::emit_function_body()
             {
                 lu << "input_idx += input_strides" << i << "* idx" << i << ";\n";
             }
-            lu << "tile[tid0][tid1] = in[input_idx];\n";
+            lu << "tile[tid0][tid1] = input0[input_idx];\n";
         }
         lu.block_end();
 
@@ -199,11 +199,11 @@ LanguageUnit_p cuda::Reshape2D::emit_function_body()
             {
                 lu << "output_idx += trans_strides" << i << "* idx" << i << ";\n";
             }
-            lu << "out[output_idx] = tile[tid1][tid0];\n";
+            lu << "output0[output_idx] = tile[tid1][tid0];\n";
         }
         lu.block_end();
     }
-    lu.block_end();
+    //lu.block_end();
 
     return _lu;
 }
@@ -297,7 +297,7 @@ LanguageUnit_p cuda::Reshape3D::emit_function_body()
             {
                 lu << "input_idx += input_strides" << i << "* idx" << i << ";\n";
             }
-            lu << "tile[tid0][tid1][tid2] = in[input_idx];\n";
+            lu << "tile[tid0][tid1][tid2] = input0[input_idx];\n";
         }
         lu.block_end();
 
@@ -324,7 +324,7 @@ LanguageUnit_p cuda::Reshape3D::emit_function_body()
             {
                 lu << "output_idx += trans_strides" << i << "* idx" << i << ";\n";
             }
-            lu << "out[output_idx] = tile[otid0][otid1][otid2];\n";
+            lu << "output0[output_idx] = tile[otid0][otid1][otid2];\n";
         }
         lu.block_end();
     }
@@ -410,11 +410,11 @@ LanguageUnit_p cuda::ReshapehD::emit_function_body()
             }
             lu << "output_idx += (input_idx / input_strides" << i << ") * trans_strides" << i
                << ";\n";
-            lu << "out[output_idx] = in[tid];\n";
+            lu << "output0[output_idx] = input0[tid];\n";
         }
         lu.block_end();
     }
-    lu.block_end();
+    //lu.block_end();
 
     return _lu;
 }
