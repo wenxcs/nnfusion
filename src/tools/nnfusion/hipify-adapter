@@ -377,7 +377,8 @@ inline cudnnStatus_t cudnnGetTensor4dDescriptor(const cudnnTensorDescriptor_t te
 #define cudnnPoolingBackward(h, p, a, y, d_y, dy, d_dy, x, d_x, b, dx, d_dx) \
     __cudnnPoolingBackward(h, p, a, y, d_y, dy, d_dy, x, d_x, b, dx, d_dx)
 #define cudnnPoolingForward(h, p, a, x, d_x, b, y, d_y) \
-    __cudnnPoolingForward(h, p, a, x, d_x, b, y, d_y)
+    miopenPoolingForward(h, p, a, x, d_x, b, y, d_y, false, 0, 0)
+    // __cudnnPoolingForward(h, p, a, x, d_x, b, y, d_y)
 #define cudnnSetFilter4dDescriptor(desc, type, fmt, k, c, h, w) \
     cudnnSetTensor4dDescriptor(desc, fmt, type, k, c, h, w)
 

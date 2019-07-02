@@ -136,6 +136,11 @@ bool RocmCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
             std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
                 KernelRegistry::Global()->FindKernelRegistrations(op_name, ROCM_GPU, DT_FLOAT);
+            if (!kernel_regs.size())
+            {
+                kernel_regs =
+                    KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
+            }
 
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
             bool has_valid_kernel = false;
@@ -685,10 +690,13 @@ bool RocmCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             exepath[i] = 0;
             break;
         }
-    assert(0 == system((std::string(exepath) +
-                        "/hipify-nnfusion nnfusion_rt.cu | grep -v 'include.*cublas_v2' | grep -v "
-                        "'include.*cuda.h' > nnfusion_rt.cpp && rm nnfusion_rt.cu")
-                           .c_str()));
+    assert(
+        0 ==
+        system(
+            (std::string(exepath) +
+             "/hipify-nnfusion nnfusion_rt.cu | grep -v 'include.*cublas_v2' | grep -v "
+             "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm nnfusion_rt.cu")
+                .c_str()));
     assert(0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
                        "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
     assert(0 ==
