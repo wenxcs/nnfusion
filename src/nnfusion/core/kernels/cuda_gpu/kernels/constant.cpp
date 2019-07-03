@@ -49,7 +49,7 @@ namespace nnfusion
                     op = static_pointer_cast<ngraph::op::Constant>(ctx->node);
                     enforce_not_nullptr(op) << "Node type is not Constant.";
 
-                    folder = "nnfusion_rt/Constant/";
+                    folder = "./Constant/";
                     create_dir(folder);
                     const_name = ctx->outputs[0].get_name();
                     ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
@@ -65,7 +65,7 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& writer = *_lu;
-                    writer << "std::ifstream bin_file(\"../" << folder + const_name
+                    writer << "std::ifstream bin_file(\"" << folder + const_name
                            << ".bin\" , std::ios::in | std::ios::binary);\n"
                            // << "cudaMalloc((void**)out, " << op->get_data_size() << ");\n"
                            << "char* tmp_mem = new char[" << op->get_data_size() << "];\n"
