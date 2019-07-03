@@ -56,17 +56,17 @@ bool pass::Liveness::run_on_function(shared_ptr<ngraph::Function> function)
             output_tensors.insert(&tensor);
         }
     }
-    for (const shared_ptr<Node>& node : ops)
-    {
-        if (auto constant_node = dynamic_pointer_cast<op::Constant>(node))
-        {
-            for (size_t i = 0; i < constant_node->get_output_size(); ++i)
-            {
-                descriptor::Tensor& tensor = constant_node->get_output_tensor(i);
-                persistent_tensors.insert(&tensor);
-            }
-        }
-    }
+    // for (const shared_ptr<Node>& node : ops)
+    // {
+    //     if (auto constant_node = dynamic_pointer_cast<op::Constant>(node))
+    //     {
+    //         for (size_t i = 0; i < constant_node->get_output_size(); ++i)
+    //         {
+    //             descriptor::Tensor& tensor = constant_node->get_output_tensor(i);
+    //             persistent_tensors.insert(&tensor);
+    //         }
+    //     }
+    // }
 
     unordered_set<descriptor::Tensor*> currently_live;
     for (auto it = ops.rbegin(); it != ops.rend(); it++)
