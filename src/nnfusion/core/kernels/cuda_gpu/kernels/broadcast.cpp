@@ -103,7 +103,7 @@ namespace nnfusion
                                                                    "coordinate",
                                                                    rank,
                                                                    true);
-                        writer << "out[tid] = load(in, " << reduced_idx << ");\n";
+                        writer << "output0[tid] = load(input0, " << reduced_idx << ");\n";
                     }
                     writer.block_end();
                     return _lu;
