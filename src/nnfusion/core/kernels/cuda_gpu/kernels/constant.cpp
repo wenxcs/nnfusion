@@ -44,7 +44,7 @@ namespace nnfusion
             {
             public:
                 Constant(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx, "cuda_sp")
+                    : KernelEmitter(ctx, "cuda")
                 {
                     op = static_pointer_cast<ngraph::op::Constant>(ctx->node);
                     enforce_not_nullptr(op) << "Node type is not Constant.";
@@ -57,7 +57,7 @@ namespace nnfusion
                     bin_file.close();
 
                     std::stringstream tag;
-                    tag << "_" << const_name;
+                    tag << "load_" << const_name;
                     custom_tag = tag.str();
                 }
 
