@@ -8,5 +8,12 @@ using namespace nnfusion::graph::pass;
 
 bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
+    // DFS
     
+    // is folderable
+
+    // execute
+
+    // new graph
+    return true;
 }

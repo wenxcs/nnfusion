@@ -24,8 +24,6 @@ namespace nnfusion
                 
                 bool run_passes(std::shared_ptr<Graph> graph);
 
-                bool run(std::shared_ptr<Graph> graph);
-
             private:
                 std::vector<std::string> m_pass_names;
                 std::vector<std::shared_ptr<GraphPassBase>> m_pass_list;                 

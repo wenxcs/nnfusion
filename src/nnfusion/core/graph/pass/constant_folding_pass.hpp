@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "nnfusion/core/graph/graph.hpp"
 #include "graph_pass_base.hpp"
 
 namespace nnfusion

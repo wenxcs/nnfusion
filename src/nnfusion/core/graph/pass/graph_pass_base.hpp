@@ -14,6 +14,7 @@ namespace nnfusion
             {
             public:
                 virtual ~GraphPassBase() {}
+
                 virtual bool run_on_graph(std::shared_ptr<Graph>& graph) = 0;
             };
 

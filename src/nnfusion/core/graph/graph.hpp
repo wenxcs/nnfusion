@@ -76,6 +76,11 @@ namespace nnfusion
             // not yet been re-used). *this owns the returned instance.
             // REQUIRES: 0 <= id < num_node_ids().
             const std::shared_ptr<Edge> FindEdgeId(size_t id) const { return m_edges[id]; }
+
+            // TODO: to be discussed
+            std::vector<std::shared_ptr<Node>> get_output_nodes() const {return m_output_nodes; }
+            bool set_output_nodes(const std::shared_ptr<Node> nodes);
+            
         private:
             // Map from node ids to allocated nodes.  nodes_[id] may be nullptr if
             // the node with that id was removed from the graph.
@@ -94,6 +99,9 @@ namespace nnfusion
             // Allocated but free nodes and edges.
             std::vector<std::shared_ptr<Node>> m_free_nodes;
             std::vector<std::shared_ptr<Edge>> m_free_edges;
+
+            // TODO: Output nodes of this graph
+            std::vector<std::shared_ptr<Node>> m_output_nodes;
         };
 
         inline bool Edge::IsControlEdge() const
