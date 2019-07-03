@@ -11,7 +11,7 @@ namespace nnfusion
             LU_DECLARE(cuda);
             LU_DECLARE(cublas);
             LU_DECLARE(cudnn);
-        }
+        } // namespace header
 
         namespace macro
         {
@@ -22,11 +22,12 @@ namespace nnfusion
             LU_DECLARE(CUBLAS_SAFE_CALL_NO_THROW);
             LU_DECLARE(CUBLAS_SAFE_CALL);
             LU_DECLARE(CUDA_SAFE_LAUNCH);
-        }
+        } // namespace macro
 
         namespace declaration
         {
             LU_DECLARE(division_by_invariant_multiplication);
+            LU_DECLARE(rocm_division_by_invariant_multiplication);
             LU_DECLARE(load);
             LU_DECLARE(mad16);
             LU_DECLARE(mod16);
@@ -34,6 +35,6 @@ namespace nnfusion
             LU_DECLARE(global_cudnn_handle);
             LU_DECLARE(num_SMs);
             LU_DECLARE(cuda_reduce_primitive);
-        }
-    } // namespace kernels
+        } // namespace declaration
+    }     // namespace kernels
 } // namespace nnfusion

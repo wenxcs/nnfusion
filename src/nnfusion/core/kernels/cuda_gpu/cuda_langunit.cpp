@@ -153,6 +153,20 @@ LU_DEFINE(
 }
 )");
 
+LU_DEFINE(
+    declaration::rocm_division_by_invariant_multiplication,
+    R"(__device__ __forceinline__ int division_by_invariant_multiplication(int value, int magic, int shift)
+{
+    long long res64 = ((long long)value) * ((long long)magic);
+    int lo32 = res64 & (-1);
+    int hi32 = res64 >> 32;
+    if(magic == 1)
+        hi32 = value;
+    int result = hi32 >> shift;
+    return result;
+}
+)");
+
 LU_DEFINE(declaration::mod16,
           R"(__device__ __forceinline__ int mod16(int numerator, int div, int maxdiv)
 {

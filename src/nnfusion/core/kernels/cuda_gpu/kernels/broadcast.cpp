@@ -109,12 +109,17 @@ namespace nnfusion
                     return _lu;
                 }
 
+                virtual LanguageUnit_p get_division_by_invariant_multiplication()
+                {
+                    return declaration::division_by_invariant_multiplication;
+                }
+
                 LanguageUnit_p emit_dependency() override
 
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
-                    _lu->require(declaration::division_by_invariant_multiplication);
+                    _lu->require(get_division_by_invariant_multiplication());
                     _lu->require(declaration::load);
                     return _lu;
                 }
@@ -146,6 +151,21 @@ namespace nnfusion
                 AxisSet axes;
                 bool isMemcpy = false;
             };
+
+            class RocmBroadcast : public Broadcast
+            {
+            public:
+                RocmBroadcast(shared_ptr<KernelContext> ctx)
+                    : Broadcast(ctx)
+                {
+                }
+
+                virtual LanguageUnit_p get_division_by_invariant_multiplication() override
+                {
+                    return declaration::rocm_division_by_invariant_multiplication;
+                }
+            };
+
         } // namespace cuda
     }     // namespace kernels
 } // namespace nnfusion
@@ -157,3 +177,7 @@ using namespace nnfusion::kernels;
 REGISTER_KERNEL_EMITTER("Broadcast",                               //op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT), //attrs
                         cuda::Broadcast)                           // constructor
+
+REGISTER_KERNEL_EMITTER("Broadcast",                               //op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT), //attrs
+                        cuda::RocmBroadcast)                       // constructor
