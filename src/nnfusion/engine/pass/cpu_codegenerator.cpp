@@ -7,6 +7,8 @@
 #include "cpu_codegenerator.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+// For reference kernels
+#include "nnfusion/core/kernels/cpu/reference/reference_common.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -137,6 +139,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(header::assert);
         re.require(header::stdexcept);
         re.require(header::sstream);
+        re.require(header::fstream);
         re.require(header::thread);
         re.require(declaration::typedef_int);
 
@@ -190,6 +193,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("header::") != string::npos)
                 lu << it.second->get_code();
+        lu << "#include<cstring>\n";
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("macro::") != string::npos)
@@ -199,6 +203,24 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
+        /*
+        {
+            //hard coded order
+            if(re.local_symbol.find("cpu_reference_sum") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_product") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_max") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_min") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_softmax") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_broadcast") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_argmax") != re.local_symbol.end() ||
+            re.local_symbol.find("cpu_reference_argmin") != re.local_symbol.end()
+            )
+            {
+                re.local_symbol.erase("cpu_reference_reduce");
+                //
+            }
+        }
+        */
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("cpu_reference_") != string::npos)
                 lu << it.second->get_code();
@@ -206,6 +228,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
         //Write Code
         lu << def.collect_code() << "\n";
+
+        if (re.local_symbol.find("header::reference_common") != re.local_symbol.end())
+        {
+            save_file(reference_common_header);
+        }
     }
 
     // Generate caller function body

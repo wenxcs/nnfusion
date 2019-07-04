@@ -15,23 +15,12 @@ using namespace std;
 //LanguageUnits
 LU_DEFINE_N(header_mpi, "header::mpi", "#include \"mpi.h\"\n");
 
-LU_DEFINE(cpu_reference_common, R"(
-class Shape : public std::vector<size_t>
-{
-};
-
-class AxisSet : public std::set<size_t>
-{
-};
-
-class Strides : public std::vector<size_t>
-{
-};
+LU_DEFINE_N(cpu_reference_common, "header::reference_common", R"(
+#include "reference_common.h"
+using namespace reference_common;
 )");
 
 // Two standalone head file
-LU_DEFINE(header_coordinate_transform, "");
-LU_DEFINE(header_coordinate_diff, "");
 
 LU_DEFINE(cpu_reference_constant, R"(template <typename T>
 void cpu_reference_constant(const T* arg0, T* out, size_t count)
@@ -47,7 +36,7 @@ void cpu_reference_log(const T* arg, T* out, size_t count)
 {
     for (size_t i = 0; i < count; i++)
     {
-        out[i] = std::cpu_reference_log(arg[i]);
+        out[i] = std::log(arg[i]);
     }
 }
 )");
@@ -197,7 +186,7 @@ void cpu_reference_pad(const T* arg0,
 
     CoordinateTransform::Iterator output_it = output_transform.begin();
 
-    NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
+    assert(shape_size(input_transform.get_target_shape()) ==
       shape_size(output_transform.get_target_shape()));
 
     for (const Coordinate in_coord : input_transform)
@@ -329,7 +318,7 @@ concatenation_pos + in_shapes[i][concatenation_axis];
         CoordinateTransform output_chunk_transform(
 out_shape, out_start_coord, out_end_coord);
 
-        NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
+        assert(shape_size(input_transform.get_target_shape()) ==
           shape_size(output_chunk_transform.get_target_shape()));
 
         CoordinateTransform::Iterator output_chunk_it = output_chunk_transform.begin();
@@ -910,7 +899,7 @@ std::function<T(T, T)> reduction_function)
 
     for (const Coordinate input_coord : input_transform)
     {
-        Coordinate output_coord = cpu_reference_reduce(input_coord, reduction_axes);
+        Coordinate output_coord = reduce(input_coord, reduction_axes);
         size_t input_index = input_transform.index(input_coord);
         size_t output_index = output_transform.index(output_coord);
 
@@ -1185,7 +1174,7 @@ void cpu_reference_reshape(const T* arg,
         in_shape, in_start_corner, in_shape, in_strides, in_axis_order);
     CoordinateTransform output_transform(out_shape);
 
-    NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
+    assert(shape_size(input_transform.get_target_shape()) ==
       shape_size(output_transform.get_target_shape()));
 
     CoordinateTransform::Iterator output_it = output_transform.begin();
@@ -1869,7 +1858,7 @@ void cpu_reference_softmax(const T* arg, T* out, const Shape shape, const AxisSe
         temp_shape.begin(), temp_shape.end(), 1, std::multiplies<size_t>());
     auto temp_ptr = new T[temp_elements];
 
-    max(arg, temp_ptr, shape, temp_shape, axes);
+    cpu_reference_max(arg, temp_ptr, shape, temp_shape, axes);
 
     CoordinateTransform transform(shape);
     CoordinateTransform temp_transform(temp_shape);
@@ -1880,7 +1869,7 @@ void cpu_reference_softmax(const T* arg, T* out, const Shape shape, const AxisSe
 arg[transform.index(coord)] - temp_ptr[temp_transform.index(temp_coord)]);
     }
 
-    sum(out, temp_ptr, shape, temp_shape, axes);
+    cpu_reference_sum(out, temp_ptr, shape, temp_shape, axes);
 
     for (const Coordinate coord : transform)
     {
@@ -2005,7 +1994,7 @@ void cpu_reference_slice(const T* arg,
 
     CoordinateTransform::Iterator output_it = output_transform.begin();
 
-    NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
+    assert(shape_size(input_transform.get_target_shape()) ==
       shape_size(output_transform.get_target_shape()));
 
     for (const Coordinate in_coord : input_transform)
@@ -2041,7 +2030,7 @@ void cpu_reference_replace_slice(const T* arg0, // replacement context
     CoordinateTransform output_transform(
         out_shape, lower_bounds, upper_bounds, strides);
 
-    NGRAPH_ASSERT(shape_size(input_transform.get_target_shape()) ==
+    assert(shape_size(input_transform.get_target_shape()) ==
       shape_size(output_transform.get_target_shape()));
 
     CoordinateTransform::Iterator output_it = output_transform.begin();
@@ -2117,6 +2106,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Abs>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2130,6 +2122,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_abs);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2151,6 +2144,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Acos>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2164,6 +2160,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_acos);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2185,6 +2182,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Add>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2198,6 +2198,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_add);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2219,6 +2220,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::AllReduce>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2232,6 +2236,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_allreduce);
                     lu.require(header_mpi);
                     return std::make_shared<LanguageUnit>(std::move(lu));
@@ -2254,6 +2259,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Asin>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2267,6 +2275,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_asin);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2288,6 +2297,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Atan>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2301,6 +2313,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_atan);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2322,21 +2335,25 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Broadcast>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_broadcast<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),AxisSet("
-                       << join(op->get_broadcast_axes()) << "));";
+                    lu << "cpu_reference_broadcast<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(op->get_broadcast_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_broadcast);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2358,6 +2375,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Ceiling>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2371,6 +2391,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_ceiling);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2392,6 +2413,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Concat>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2402,11 +2426,11 @@ namespace nnfusion
                     for (size_t t = 0; t < m_context->inputs.size(); t++)
                     {
                         lu << "in_args.push_back( input" << t << ");";
-                        lu << "in_shapes.push_back(Shape(" << join(m_context->inputs[0].get_shape())
-                           << ");";
+                        lu << "in_shapes.push_back(Shape({"
+                           << join(m_context->inputs[0].get_shape()) << "});";
                     }
-                    lu << "cpu_reference_concat<float>(in_args,output0, in_shapes,Shape("
-                       << join(m_context->outputs[0].get_shape()) << "), "
+                    lu << "cpu_reference_concat<float>(in_args,output0, in_shapes,Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}), "
                        << op->get_concatenation_axis() << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2414,6 +2438,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_concat);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2428,13 +2453,14 @@ namespace nnfusion
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 ConcatRef)                                                     // constructor
 
+            /*
             class ConstantRef : public KernelEmitter
             {
             public:
                 ConstantRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Constant>(ctx->node);
+                    op = static_pointer_cast<op::Constant>(ctx->node); std::stringstream tag; tag << op->get_name(); custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2448,6 +2474,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_constant);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2461,6 +2488,7 @@ namespace nnfusion
                 "Constant",                                                    // op_name
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 ConstantRef)                                                   // constructor
+            */
 
             class ConvertRef : public KernelEmitter
             {
@@ -2469,6 +2497,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Convert>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2484,6 +2515,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_convert);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2505,26 +2537,30 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Convolution>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_convolution<float>(input0,input1,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Shape("
-                       << join(m_context->inputs[1].get_shape()) << "),Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),Strides("
-                       << join(op->get_window_movement_strides()) << "),Strides("
-                       << join(op->get_window_dilation_strides()) << "),CoordinateDiff("
-                       << join(op->get_padding_below()) << "),CoordinateDiff("
-                       << join(op->get_padding_above()) << "),Strides("
-                       << join(op->get_data_dilation_strides()) << "),0,1,1,0,0,1,false);";
+                    lu << "cpu_reference_convolution<float>(input0,input1,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
+                       << join(m_context->inputs[1].get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}),Strides({"
+                       << join(op->get_window_movement_strides()) << "}),Strides({"
+                       << join(op->get_window_dilation_strides()) << "}),CoordinateDiff({"
+                       << join(op->get_padding_below()) << "}),CoordinateDiff({"
+                       << join(op->get_padding_above()) << "}),Strides({"
+                       << join(op->get_data_dilation_strides()) << "}),0,1,1,0,0,1,false);";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_convolution);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2546,6 +2582,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Cos>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2559,6 +2598,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_cos);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2580,6 +2620,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Cosh>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2593,6 +2636,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_cosh);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2614,6 +2658,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Divide>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2627,6 +2674,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_divide);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2648,6 +2696,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Equal>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2661,6 +2712,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_equal);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2682,6 +2734,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Exp>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2695,6 +2750,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_exp);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2716,6 +2772,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Floor>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2729,6 +2788,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_floor);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2750,6 +2810,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Greater>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2763,6 +2826,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_greater);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2784,6 +2848,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Less>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2797,6 +2864,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_less);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2818,6 +2886,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Log>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2831,6 +2902,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_log);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2852,21 +2924,25 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::LRN>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_lrn<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << ")," << (op->get_alpha()) << ","
-                       << (op->get_beta()) << "," << (op->get_bias()) << "," << (op->get_nsize())
-                       << ");";
+                    lu << "cpu_reference_lrn<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "})," << (op->get_alpha())
+                       << "," << (op->get_beta()) << "," << (op->get_bias()) << ","
+                       << (op->get_nsize()) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_lrn);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2888,13 +2964,16 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Max>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_max<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Shape("
+                    lu << "cpu_reference_max<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Shape("
                        << join(m_context->outputs[0].get_shape()) << "),AxisSet("
                        << join(op->get_reduction_axes()) << "));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
@@ -2903,6 +2982,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_max);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2924,6 +3004,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Maximum>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2937,6 +3020,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_maximum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2958,21 +3042,25 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Min>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_min<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),AxisSet("
-                       << join(op->get_reduction_axes()) << "));";
+                    lu << "cpu_reference_min<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_min);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2994,6 +3082,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Minimum>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3007,6 +3098,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_minimum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3028,6 +3120,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Multiply>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3041,6 +3136,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_multiply);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3062,6 +3158,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Power>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3075,6 +3174,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_power);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3096,21 +3196,25 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Product>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_product<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),AxisSet("
-                       << join(op->get_reduction_axes()) << "));";
+                    lu << "cpu_reference_product<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_product);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3132,6 +3236,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Relu>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3145,6 +3252,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_relu);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3166,6 +3274,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Select>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3180,6 +3291,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_select);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3201,6 +3313,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sigmoid>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3214,6 +3329,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_sigmoid);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3235,6 +3351,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sign>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3248,6 +3367,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_sign);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3269,6 +3389,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sin>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3282,6 +3405,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_sin);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3303,6 +3427,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sinh>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3316,6 +3443,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_sinh);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3337,22 +3465,26 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Slice>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_slice<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Coordinate("
-                       << join(op->get_lower_bounds()) << "),Coordinate("
-                       << join(op->get_upper_bounds()) << "),Strides(" << join(op->get_strides())
-                       << "),Shape(" << join(m_context->outputs[0].get_shape()) << "));";
+                    lu << "cpu_reference_slice<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Coordinate({"
+                       << join(op->get_lower_bounds()) << "}),Coordinate({"
+                       << join(op->get_upper_bounds()) << "}),Strides({" << join(op->get_strides())
+                       << "}),Shape({" << join(m_context->outputs[0].get_shape()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_slice);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3374,24 +3506,30 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Softmax>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_softmax<float>(input0,output0,Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),OP->get_axes());";
+                    lu << "cpu_reference_softmax<float>(input0,output0,Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}), AxisSet({"
+                       << join(op->get_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
+                    lu.require(cpu_reference_max);
+                    lu.require(cpu_reference_sum);
                     lu.require(cpu_reference_softmax);
                     //<todo> migerate those into definition
-                    cpu_reference_softmax->require(cpu_reference_reduce);
-                    cpu_reference_softmax->require(cpu_reference_max);
-                    cpu_reference_softmax->require(cpu_reference_sum);
+                    // cpu_reference_softmax->require(cpu_reference_max);
+                    // cpu_reference_softmax->require(cpu_reference_sum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3412,6 +3550,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sqrt>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3425,6 +3566,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_sqrt);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3446,6 +3588,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Subtract>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3459,6 +3604,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_subtract);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3480,21 +3626,25 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Sum>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_sum<float>(input0,output0,Shape("
-                       << join(m_context->inputs[0].get_shape()) << "),Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),AxisSet("
-                       << join(op->get_reduction_axes()) << "));";
+                    lu << "cpu_reference_sum<float>(input0,output0,Shape({"
+                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_sum);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3516,6 +3666,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Tan>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3529,6 +3682,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_tan);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3550,6 +3704,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Tanh>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3563,6 +3720,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_tanh);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3584,6 +3742,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::BatchNormInference>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3591,13 +3752,14 @@ namespace nnfusion
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_batch_norm<float>(" << op->get_eps_value() << ","
                        << "input0, input1, input2, input3, input4, output0, "
-                       << "Shape(" << join(m_context->inputs[2].get_shape()) << "));";
+                       << "Shape({" << join(m_context->inputs[2].get_shape()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_batch_norm);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3619,18 +3781,21 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::AvgPool>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_avg_pool<float>(input0,output0,"
-                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
-                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
-                       << "Shape(" << join(op->get_window_shape()) << "),"
-                       << "Strides(" << join(op->get_window_movement_strides()) << "),"
-                       << "Shape(" << join(op->get_padding_below()) << "),"
-                       << "Shape(" << join(op->get_padding_above()) << "),"
+                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(op->get_window_shape()) << "}),"
+                       << "Strides({" << join(op->get_window_movement_strides()) << "}),"
+                       << "Shape({" << join(op->get_padding_below()) << "}),"
+                       << "Shape({" << join(op->get_padding_above()) << "}),"
                        << op->get_include_padding_in_avg_computation() << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3638,6 +3803,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_avg_pool);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3659,15 +3825,18 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Dot>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_dot<float>(input0,intput1,output0,"
-                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
-                       << "Shape(" << join(m_context->inputs[1].get_shape()) << "),"
-                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
+                    lu << "cpu_reference_dot<float>(input0,input1,output0,"
+                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[1].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
                        << op->get_reduction_axes_count() << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3675,6 +3844,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_dot);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3696,25 +3866,29 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::MaxPool>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_max_pool<float>(input0,output0,"
-                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
-                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
-                       << "Shape(" << join(op->get_window_shape()) << "),"
-                       << "Strides(" << join(op->get_window_movement_strides()) << "),"
-                       << "Shape(" << join(op->get_padding_below()) << "),"
-                       << "Shape(" << join(op->get_padding_above()) << "));";
+                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(op->get_window_shape()) << "}),"
+                       << "Strides({" << join(op->get_window_movement_strides()) << "}),"
+                       << "Shape({" << join(op->get_padding_below()) << "}),"
+                       << "Shape({" << join(op->get_padding_above()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require(cpu_reference_dot);
+                    lu.require(cpu_reference_common);
+                    lu.require(cpu_reference_max_pool);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3735,24 +3909,28 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Pad>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_pad<float>(input0, input1, output0,"
-                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
-                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
-                       << "Shape(" << join(op->get_padding_below()) << "),"
-                       << "Shape(" << join(op->get_padding_above()) << "),"
-                       << "Shape(" << join(op->get_padding_interior()) << "));";
+                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(op->get_padding_below()) << "}),"
+                       << "Shape({" << join(op->get_padding_above()) << "}),"
+                       << "Shape({" << join(op->get_padding_interior()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require(cpu_reference_dot);
+                    lu.require(cpu_reference_common);
+                    lu.require(cpu_reference_pad);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3773,22 +3951,26 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Reshape>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_reshape<float>(input0, output0,"
-                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
-                       << "AxisVector(" << join(op->get_input_order()) << "),"
-                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "));";
+                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "AxisVector({" << join(op->get_input_order()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
-                    lu.require(cpu_reference_dot);
+                    lu.require(cpu_reference_common);
+                    lu.require(cpu_reference_reshape);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3809,6 +3991,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Result>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3822,6 +4007,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_result);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3843,6 +4029,9 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::LessEq>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -3856,6 +4045,7 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_less_eq);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3877,21 +4067,25 @@ namespace nnfusion
                     : KernelEmitter(ctx, "reference")
                 {
                     op = static_pointer_cast<op::Reverse>(ctx->node);
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_reverse<float>(input0,output0,"
-                       << "Shape(" << join(m_context->inputs[0].get_shape()) << "),"
-                       << "Shape(" << join(m_context->outputs[0].get_shape()) << "),"
-                       << "AxisSet(" << join(op->get_reversed_axes()) << "));";
+                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "AxisSet({" << join(op->get_reversed_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
                     lu.require(cpu_reference_reverse);
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
