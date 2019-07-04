@@ -28,8 +28,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
 
     //Result OP
     //for a zero-size tensor, or change from 1^m shape to 1^n shape, just do a copy
-    if (!reshape->get_is_transpose() || result_shape_product < 2 ||
-        is_sorted(input_order.begin(), input_order.end()))
+    if (!reshape->get_is_transpose() || result_shape_product < 2)
     {
         is_memcpy = true;
         // LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
@@ -429,8 +428,31 @@ void cuda::ReshapehD::set_launch_config()
 }
 
 cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
-    : Reshape(ctx)
+    : CudaLibEmitter(ctx)
 {
+    enforce(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
+    reshape = static_pointer_cast<ngraph::op::Reshape>(ctx->node);
+    is_memcpy = false;
+    is_noop = false;
+    //Noop
+    if (ctx->outputs[0].get_name() == ctx->inputs[0].get_name())
+    {
+        is_noop = true;
+    }
+
+    arg_shape = ctx->inputs[0].get_shape();
+    arg_rank = arg_shape.size();
+    result_shape = ctx->outputs[0].get_shape();
+    size_t result_shape_product = shape_size(result_shape);
+
+    //Result OP
+    //for a zero-size tensor, or change from 1^m shape to 1^n shape, just do a copy
+    if (!reshape->get_is_transpose() || result_shape_product < 2)
+    {
+        is_memcpy = true;
+        // LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
+    }
+
     std::stringstream tag;
     tag << "cuda_reshape_Memcpy"
         << "_i_" << join(arg_shape, "_") << "_o_" << join(input_order, "_");
@@ -439,7 +461,7 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cuda::ReshapeMemcpy::emit_function_body()
 {
-    if (!is_memcpy)
+    if (!is_memcpy && !is_noop)
     {
         return nullptr;
     }
@@ -447,13 +469,26 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    lu << "// No codegen for Result since it's memcpy().\n";
+    if (is_memcpy)
+    {
+        lu << "if (input0 != output0) {\n"
+           << "   cudaMemcpy(output0, input0, " << static_cast<uint32_t>(shape_size(arg_shape))
+           << ", cudaMemcpyDeviceToDevice);\n"
+           << "}\n";
+    }
+    else
+    {
+        lu << "// noop as input0 == output0.\n";
+    }
 
     return _lu;
 }
 
-void cuda::ReshapeMemcpy::set_launch_config()
+LanguageUnit_p cuda::ReshapeMemcpy::emit_dependency()
 {
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+    _lu->require(header::cuda);
+    return _lu;
 }
 
 // Register Reshape kernel emitter
@@ -470,6 +505,6 @@ REGISTER_KERNEL_EMITTER("Reshape",                                              
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
                         cuda::ReshapehD)                                              // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::ReshapeMemcpy)                                          // constructor
+REGISTER_KERNEL_EMITTER("Reshape",                                                 // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::ReshapeMemcpy)                                       // constructor

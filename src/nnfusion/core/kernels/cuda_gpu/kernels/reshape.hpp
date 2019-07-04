@@ -72,13 +72,22 @@ namespace nnfusion
                 NVShape trans_strides;
             };
 
-            class ReshapeMemcpy : public Reshape
+            class ReshapeMemcpy : public CudaLibEmitter
             {
             public:
                 ReshapeMemcpy(shared_ptr<KernelContext> ctx);
 
                 LanguageUnit_p emit_function_body() override;
-                void set_launch_config() override;
+                LanguageUnit_p emit_dependency() override;
+
+            private:
+                ngraph::Shape arg_shape;
+                size_t arg_rank;
+                ngraph::Shape result_shape;
+                ngraph::AxisVector input_order;
+                shared_ptr<ngraph::op::Reshape> reshape;
+                bool is_memcpy;
+                bool is_noop;
             };
 
         } // namespace cuda
