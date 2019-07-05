@@ -11,7 +11,44 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-std::string generate_cmakelists(void)
+namespace
+{
+    bool create_dir(std::string tar_path)
+    {
+        bool flag;
+        int mkdir_status;
+        struct stat s;
+        int err = stat(tar_path.c_str(), &s);
+        if (-1 == err)
+        {
+            mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+            if (-1 == mkdir_status)
+            {
+                printf("Error creating directory: %s", (tar_path).c_str());
+                flag = false;
+            }
+            else
+                flag = true;
+        }
+        else
+        {
+            printf("Directory %s already exists\n", tar_path.c_str());
+            flag = true;
+        }
+        return flag;
+    }
+
+    bool save_file(LanguageUnit_p lu)
+    {
+        std::ofstream out(lu->symbol);
+        out << lu->get_code();
+        out.close();
+        return true;
+    }
+
+} // namespace
+
+std::string CudaCodeGenerator::get_generate_cmakelists(void)
 {
     LanguageUnit lu;
     lu << R"(project(main_test)
@@ -49,43 +86,19 @@ target_link_libraries(main_test nnfusion_naive_rt cudnn culibos cublas))";
     return lu.get_code();
 }
 
-bool create_dir(std::string tar_path)
+void CudaCodeGenerator::post_projgen()
 {
-    bool flag;
-    int mkdir_status;
-    struct stat s;
-    int err = stat(tar_path.c_str(), &s);
-    if (-1 == err)
-    {
-        mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        if (-1 == mkdir_status)
-        {
-            printf("Error creating directory: %s", (tar_path).c_str());
-            flag = false;
-        }
-        else
-            flag = true;
-    }
-    else
-    {
-        printf("Directory %s already exists\n", tar_path.c_str());
-        flag = true;
-    }
-    return flag;
 }
 
-bool save_file(LanguageUnit_p lu)
+std::string CudaCodeGenerator::get_target_name()
 {
-    std::ofstream out(lu->symbol);
-    out << lu->get_code();
-    out.close();
-    return true;
+    return "cuda_codegen";
 }
 
 bool CudaCodeGenerator::setpwd()
 {
     std::string working_dir = "./nnfusion_rt";
-    std::string tar_path = working_dir + "/cuda_codegen/";
+    std::string tar_path = working_dir + "/" + get_target_name() + "/";
     create_dir(working_dir);
     create_dir(tar_path);
     int status = chdir(tar_path.c_str());
@@ -114,6 +127,12 @@ bool CudaCodeGenerator::projgen()
 //     }
 //     return true;
 // }
+
+std::vector<shared_ptr<const KernelRegistration>>
+    CudaCodeGenerator::find_backend_kernels(const std::string& op_name)
+{
+    return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
+}
 
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
@@ -149,7 +168,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
             std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-                KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
+                find_backend_kernels(op_name);
 
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
             bool has_valid_kernel = false;
@@ -607,7 +626,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "//kernel call\n";
 
             lu_main << "int steps = 10;\n";
-            lu_main << "for(int i_=0; i_<steps; i_++)\n";
+            lu_main << "for (int i_=0; i_<steps; i_++)\n";
             lu_main.block_begin();
 
             // kernel launch
@@ -686,9 +705,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     //generate CMakeList.txt
     LanguageUnit& lu_cmake = *this->lu_cmakefile;
-    lu_cmake << generate_cmakelists();
+    lu_cmake << get_generate_cmakelists();
 
     projgen();
+
+    post_projgen();
 
     // change to working directory
     int status = chdir("../../");

@@ -7,15 +7,5 @@
 
 namespace nnfusion
 {
-    class RocmCodeGenerator : public IInterpreterPass
-    {
-    public:
-        bool run(std::shared_ptr<InterpreterContext> ctx,
-                 std::shared_ptr<TranslationUnit> tu) override;
-
-    private:
-        virtual bool projgen();
-        virtual bool setpwd();
-        LanguageUnit_p lu_cmakefile, lu_nnfusion_rt, lu_header, lu_main;
-    };
+    std::shared_ptr<IInterpreterPass> make_rocm_codegenerator();
 } // namespace nnfusion
