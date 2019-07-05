@@ -441,6 +441,7 @@ namespace reference_common
         {
         public:
             Iterator(const Shape& target_shape, bool is_end = false)
+                : m_target_shape(target_shape)
             {
                 // Initial coordinate is (0,...,0) in the target space.
                 m_coordinate = Coordinate(target_shape.size(), 0);
