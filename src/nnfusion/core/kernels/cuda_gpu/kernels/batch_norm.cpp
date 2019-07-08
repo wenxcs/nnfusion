@@ -41,15 +41,15 @@ LanguageUnit_p cuda::BatchNorm::emit_function_body()
        << " &alpha,"
        << " &beta,"
        << " tensor_desc,"
-       << " in,"
+       << " input0,"
        << " tensor_desc,"
-       << " out,"
+       << " output0,"
        << " derived_param_desc,"
-       << " gain,"     // gain
-       << " bias,"     // bias
-       << " mean,"     // mean
-       << " variance," // variance
-       << " eps));\n";
+       << " input1," // gain
+       << " input2," // bias
+       << " input3," // mean
+       << " input4," // variance
+       << epsilon << "));\n";
 
     lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc));\n";
     lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(derived_param_desc));\n";
@@ -71,6 +71,6 @@ LanguageUnit_p cuda::BatchNorm::emit_dependency()
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("BatchNorm",                                            // op_name
+REGISTER_KERNEL_EMITTER("BatchNormInference",                                   // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn"), // attrs
                         cuda::BatchNorm)                                        // constructor
