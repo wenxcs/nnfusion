@@ -41,12 +41,12 @@ LanguageUnit_p cuda::BatchNorm::emit_function_body()
        << " &alpha,"
        << " &beta,"
        << " tensor_desc,"
-       << " input0,"
+       << " input2,"
        << " tensor_desc,"
        << " output0,"
        << " derived_param_desc,"
-       << " input1," // gain
-       << " input2," // bias
+       << " input0," // gain
+       << " input1," // bias
        << " input3," // mean
        << " input4," // variance
        << epsilon << "));\n";
