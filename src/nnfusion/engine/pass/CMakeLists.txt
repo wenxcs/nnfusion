@@ -5,7 +5,9 @@ add_subdirectory(op)
 set(SRC
     extract_function_signature.cpp
     ngraph_function_pass.cpp
+    cpu_codegenerator.cpp
     cuda_codegenerator.cpp
+    rocm_codegenerator.cpp
     device_dispatcher.cpp
 )
 add_library(nnfusion_engine_pass STATIC ${SRC})

@@ -39,6 +39,7 @@ bool pass::Liveness::run_on_function(shared_ptr<ngraph::Function> function)
 
     unordered_set<descriptor::Tensor*> persistent_tensors;
     unordered_set<descriptor::Tensor*> output_tensors;
+    unordered_set<descriptor::Tensor*> constant_tensors;
     for (const shared_ptr<op::Parameter>& node : function->get_parameters())
     {
         for (size_t i = 0; i < node->get_output_size(); ++i)
@@ -63,7 +64,7 @@ bool pass::Liveness::run_on_function(shared_ptr<ngraph::Function> function)
             for (size_t i = 0; i < constant_node->get_output_size(); ++i)
             {
                 descriptor::Tensor& tensor = constant_node->get_output_tensor(i);
-                persistent_tensors.insert(&tensor);
+                constant_tensors.insert(&tensor);
             }
         }
     }
@@ -106,9 +107,10 @@ bool pass::Liveness::run_on_function(shared_ptr<ngraph::Function> function)
                 // this is the last node that value is seen in
                 // delete it at the end of the op
                 currently_live.insert(tensor_decl);
-                if (output_tensors.find(tensor_decl) == output_tensors.end())
+                if (output_tensors.find(tensor_decl) == output_tensors.end() &&
+                    constant_tensors.find(tensor_decl) == constant_tensors.end())
                 {
-                    // Don't free output tensors
+                    // Don't free output tensors and constant tensors
                     free_tensor_decls.insert(tensor_decl);
                 }
             }

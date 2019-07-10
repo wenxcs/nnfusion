@@ -63,6 +63,7 @@ endif()
 target_link_libraries(unit-test PRIVATE ngraph_test_util)
 target_link_libraries(unit-test PRIVATE ngraph libgtest libjson Threads::Threads)
 target_link_libraries(unit-test PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(unit-test PRIVATE op_registration)
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
     target_compile_options(unit-test PRIVATE -Wno-undef -Wno-reserved-id-macro)

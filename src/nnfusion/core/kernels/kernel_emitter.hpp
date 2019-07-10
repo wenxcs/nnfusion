@@ -32,6 +32,9 @@ namespace nnfusion
 
             // The list of input and output data types
             vector<string> dtypes;
+
+            // The number of gpu streaming multiprocessor
+            uint32_t gpu_num_sm;
         };
 
         // OpKernel defines the interfaces of generating a specific computation kernel
@@ -50,7 +53,7 @@ namespace nnfusion
             string get_function_name();
 
             // Emit entire source code
-            LanguageUnit_p emit_source();
+            virtual LanguageUnit_p emit_source();
 
             // Emit comments
             string emit_comments();

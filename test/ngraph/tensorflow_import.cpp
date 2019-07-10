@@ -538,6 +538,168 @@ TEST(tensorflow_import, slice_op)
     }
 }
 
+TEST(tensorflow_import, batch_matmul_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_batch_matmul.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+
+    std::vector<std::vector<int>> expected_outputs{{1}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, transpose_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_transpose_graph.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+
+    std::vector<std::vector<int>> expected_outputs{test::NDArray<int, 4>{
+        {{{1, 9, 0, 9, 5},
+          {0, 1, 1, 4, 8},
+          {6, 5, 1, 7, 1},
+          {9, 3, 2, 7, 4},
+          {7, 2, 3, 3, 4},
+          {7, 4, 0, 3, 0},
+          {0, 5, 2, 1, 5}},
+
+         {{2, 0, 1, 7, 5},
+          {0, 3, 8, 3, 4},
+          {2, 7, 2, 8, 7},
+          {3, 1, 6, 0, 8},
+          {6, 0, 7, 6, 3},
+          {5, 7, 7, 0, 1},
+          {2, 8, 1, 3, 8}},
+
+         {{9, 7, 7, 4, 4},
+          {4, 5, 7, 1, 5},
+          {9, 3, 4, 1, 8},
+          {9, 4, 1, 3, 9},
+          {1, 4, 0, 9, 6},
+          {8, 4, 5, 2, 8},
+          {6, 6, 6, 3, 7}},
+
+         {{8, 9, 3, 2, 6},
+          {3, 9, 6, 1, 7},
+          {6, 4, 4, 0, 2},
+          {8, 0, 8, 8, 8},
+          {9, 7, 0, 0, 3},
+          {7, 3, 8, 0, 4},
+          {2, 6, 8, 2, 4}}},
+
+        {{{7, 5, 6, 0, 3},
+          {3, 9, 9, 4, 6},
+          {6, 8, 0, 3, 0},
+          {9, 9, 2, 7, 9},
+          {8, 3, 7, 0, 0},
+          {5, 3, 8, 1, 9},
+          {0, 1, 1, 8, 3}},
+
+         {{8, 3, 3, 8, 8},
+          {0, 0, 6, 4, 9},
+          {4, 4, 5, 4, 1},
+          {0, 7, 7, 8, 1},
+          {5, 8, 9, 4, 4},
+          {2, 6, 4, 1, 3},
+          {0, 5, 1, 4, 3}},
+
+         {{7, 6, 9, 7, 5},
+          {8, 3, 3, 1, 7},
+          {5, 4, 9, 5, 5},
+          {4, 9, 4, 3, 6},
+          {6, 8, 7, 6, 4},
+          {6, 3, 8, 2, 0},
+          {6, 2, 2, 6, 5}},
+
+         {{4, 3, 9, 3, 4},
+          {1, 4, 9, 5, 9},
+          {7, 7, 9, 7, 1},
+          {2, 0, 8, 8, 0},
+          {8, 3, 6, 1, 7},
+          {2, 0, 1, 3, 9},
+          {2, 2, 1, 7, 7}}},
+
+        {{{6, 4, 6, 9, 3},
+          {0, 8, 2, 7, 9},
+          {6, 1, 8, 8, 0},
+          {8, 1, 8, 3, 5},
+          {4, 2, 2, 3, 8},
+          {5, 5, 0, 5, 1},
+          {0, 5, 1, 9, 2}},
+
+         {{4, 9, 6, 9, 6},
+          {1, 6, 3, 4, 4},
+          {6, 9, 2, 6, 3},
+          {2, 4, 4, 8, 4},
+          {8, 1, 4, 0, 5},
+          {2, 5, 9, 8, 8},
+          {8, 4, 4, 5, 6}},
+
+         {{9, 7, 6, 7, 3},
+          {0, 4, 0, 4, 4},
+          {5, 9, 7, 8, 9},
+          {8, 7, 2, 4, 4},
+          {2, 9, 3, 9, 8},
+          {5, 3, 8, 2, 2},
+          {6, 2, 5, 1, 5}},
+
+         {{9, 4, 9, 0, 0},
+          {6, 8, 0, 0, 7},
+          {5, 3, 1, 0, 1},
+          {4, 8, 9, 2, 1},
+          {4, 3, 9, 6, 6},
+          {2, 7, 7, 3, 8},
+          {5, 9, 4, 9, 3}}}}.get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, one_hot_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_one_hot.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+
+    std::vector<std::vector<int>> expected_outputs{{1}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
+TEST(tensorflow_import, bert_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_bert_large.pb"));
+
+    std::vector<std::vector<int>> inputs{};
+
+    std::vector<std::vector<int>> expected_outputs{{1}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        std::vector<std::vector<int>> outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
 //TEST(onnx, model_add_abc_initializers)
 // {
 //     auto function = onnx_import::import_onnx_function(

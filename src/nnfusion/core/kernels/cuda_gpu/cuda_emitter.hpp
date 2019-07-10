@@ -38,6 +38,8 @@ namespace nnfusion
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
 
+                LanguageUnit_p emit_source() override;
+
                 LanguageUnit_p emit_function_call() override;
 
                 LanguageUnit_p emit_function_signature() override;

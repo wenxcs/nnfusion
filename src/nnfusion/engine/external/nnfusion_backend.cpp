@@ -1,5 +1,5 @@
 // Microsoft (c) 2019, Wenxiang Hu
-#include "nnfusion_cudacodegen.hpp"
+#include "nnfusion_backend.hpp"
 
 extern "C" const char* get_ngraph_version_string()
 {
@@ -10,6 +10,21 @@ extern "C" runtime::Backend* new_backend(const char* configuration_string)
 {
     runtime::Backend* backend = nullptr;
     string type(configuration_string);
+
+    auto colon = type.find(":");
+    if (colon != type.npos)
+    {
+        string config = type.substr(colon + 1, type.length() - colon);
+        if (config == "generic_cpu")
+            default_device = nnfusion::GENERIC_CPU;
+        else if (config == "rocm_gpu")
+            default_device = nnfusion::ROCM_GPU;
+        else
+            default_device = nnfusion::CUDA_GPU;
+    }
+    else
+        default_device = nnfusion::CUDA_GPU;
+
     backend = new cuda_codegen();
     return backend;
 }

@@ -375,12 +375,12 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
     // for the same graph.
     std::vector<std::pair<NodeAndOutput, std::shared_ptr<Node>>> tensors_to_fetch_sorted(
         tensors_to_fetch.begin(), tensors_to_fetch.end());
-    std::sort(
-        tensors_to_fetch_sorted.begin(),
-        tensors_to_fetch_sorted.end(),
-        [](const std::pair<NodeAndOutput, std::shared_ptr<Node>>& n1, const std::pair<NodeAndOutput, std::shared_ptr<Node>>& n2) {
-            return n1.first.first->get_name() < n2.first.first->get_name();
-        });
+    std::sort(tensors_to_fetch_sorted.begin(),
+              tensors_to_fetch_sorted.end(),
+              [](const std::pair<NodeAndOutput, std::shared_ptr<Node>>& n1,
+                 const std::pair<NodeAndOutput, std::shared_ptr<Node>>& n2) {
+                  return n1.first.first->get_name() < n2.first.first->get_name();
+              });
     for (auto n : tensors_to_fetch_sorted)
     {
         tensors_to_fetch_names.push_back(n.first.first->get_name() + ":" +

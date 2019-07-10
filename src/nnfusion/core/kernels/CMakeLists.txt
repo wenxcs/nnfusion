@@ -16,6 +16,7 @@
 set(SRC
     kernel_emitter.cpp
     kernel_registration.cpp
+    common_langunit.cpp
 )
 add_library(kernels_registration STATIC ${SRC})
 target_include_directories(kernels_registration SYSTEM PUBLIC
@@ -27,6 +28,7 @@ target_link_libraries(kernels_registration PRIVATE
 target_compile_options(kernels_registration PRIVATE "-fPIC")
 
 add_subdirectory(cuda_gpu)
+add_subdirectory(cpu)
 
 #-------kernel_test----------
 set(TEST

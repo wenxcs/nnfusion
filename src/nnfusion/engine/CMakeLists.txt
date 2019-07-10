@@ -9,7 +9,7 @@ if (NNFUSION_ENABLE)
     set(ENGINE
         interpreter.cpp
         op.cpp 
-        external/nnfusion_cudacodegen.cpp
+        external/nnfusion_backend.cpp
     )
 
     add_library(nnfusion_backend SHARED
@@ -26,6 +26,7 @@ if (NNFUSION_ENABLE)
         kernels_registration
         -Wl,--whole-archive 
         kernels_cuda 
+        kernels_cpu
         -Wl,--no-whole-archive
     )
 

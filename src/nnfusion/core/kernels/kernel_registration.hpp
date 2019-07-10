@@ -71,6 +71,8 @@ namespace nnfusion
             bool RegisterKernel(const string op_name, shared_ptr<KernelRegistration> registration);
             shared_ptr<const KernelRegistration> FindKernelRegistration(
                 const string op_name, const DeviceType& device_type, const DataType data_type);
+            std::vector<shared_ptr<const KernelRegistration>> FindKernelRegistrations(
+                const string op_name, const DeviceType& device_type, const DataType data_type);
             shared_ptr<const KernelRegistration>
                 KernelSelect(std::vector<shared_ptr<const KernelRegistration>>& matched_regs);
 

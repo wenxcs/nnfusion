@@ -4,6 +4,12 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
+LanguageUnit_p cuda::CudaEmitter::emit_source()
+{
+    set_launch_config();
+    return KernelEmitter::emit_source();
+}
+
 LanguageUnit_p cuda::CudaEmitter::emit_function_call()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_call"));

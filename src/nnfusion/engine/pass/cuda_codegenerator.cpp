@@ -84,7 +84,9 @@ bool save_file(LanguageUnit_p lu)
 
 bool CudaCodeGenerator::setpwd()
 {
-    std::string tar_path = "./cuda_codegen/";
+    std::string working_dir = "./nnfusion_rt";
+    std::string tar_path = working_dir + "/cuda_codegen/";
+    create_dir(working_dir);
     create_dir(tar_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
@@ -140,19 +142,40 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *iterator)
         {
             string op_name = ins->operatorDef()->description();
+            if (op_name == "Parameter")
+            {
+                continue;
+            }
+            shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
-            auto kernel_reg =
-                KernelRegistry::Global()->FindKernelRegistration(op_name, CUDA_GPU, DT_FLOAT);
-            if (!kernel_reg)
+            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+                KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
+
+            shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+            bool has_valid_kernel = false;
+            if (kernel_regs.size() > 0)
+            {
+                for (auto kernel_reg : kernel_regs)
+                {
+                    auto kernel = kernel_reg->m_factory(ctx);
+                    if (kernel->emit_source())
+                    {
+                        kernels.push_back(kernel);
+                        has_valid_kernel = true;
+                        break;
+                    }
+                }
+            }
+
+            if (kernel_regs.size() == 0 || !has_valid_kernel)
             {
                 kernel_reg =
                     KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
                 enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                auto kernel = kernel_reg->m_factory(ctx);
+                kernel->emit_source();
+                kernels.push_back(kernel);
             }
-            shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
-            auto kernel = kernel_reg->m_factory(ctx);
-            kernel->emit_source();
-            kernels.push_back(kernel);
         }
     }
 
@@ -165,11 +188,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     unordered_set<string> global_required;
     LanguageUnit re("REQUIREMENT");
     {
-        re.require(cuda::header::assert);
-        re.require(cuda::header::stdexcept);
-        re.require(cuda::header::sstream);
-        re.require(cuda::macro::CUDA_SAFE_CALL);
-        re.require(cuda::declaration::typedef_int);
+        re.require(header::assert);
+        re.require(header::stdexcept);
+        re.require(header::sstream);
+        re.require(macro::CUDA_SAFE_CALL);
+        re.require(declaration::typedef_int);
 
         for (auto kernel : kernels)
         {
@@ -204,9 +227,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     global_required.insert(it.second->symbol);
                 }
             }
-            def << kernel->emit_comments();
+
             if (declared.count(kernel->body_unit->symbol) == 0)
             {
+                def << kernel->emit_comments();
                 def << kernel->signature_unit->get_code() << "\n";
                 def.block_begin();
                 def << kernel->body_unit->get_code() << "\n";
@@ -215,7 +239,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
             else
             {
-                def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
+                //def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
             }
         }
 
@@ -239,7 +263,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // Generate caller function body
     {
         unordered_set<string> allocated;
-        lu << "extern \"C\" int naive_entry(";
         lu_kernel_entry << "extern \"C\" int kernel_entry(";
         // Add param
         {
@@ -264,11 +287,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 params.push_back(ss.str());
             }
 
-            lu << join(params, ", ");
             lu_kernel_entry << join(params, ", ");
         }
-        lu << ")\n";
-        lu.block_begin();
         lu_kernel_entry << ")";
         lu_kernel_entry_header << lu_kernel_entry.get_code();
         lu_kernel_entry << "\n";
@@ -279,8 +299,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             // enforce(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu_main_init << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, "
                          << tu->memory_pool_size << "));\n";
-            lu << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, " << tu->memory_pool_size
-               << "));\n";
 
             for (auto kernel : kernels)
             {
@@ -288,8 +306,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     if (allocated.count(it.get_name()) > 0)
                         continue;
-                    lu << it.get_type() << "* " << it.get_name() << " = (" << it.get_type()
-                       << "*)(_memory_pool+" << it.get_offset() << ");\n";
                     allocated.insert(it.get_name());
 
                     lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
@@ -301,8 +317,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     if (allocated.count(it.get_name()) > 0)
                         continue;
-                    lu << it.get_type() << "* " << it.get_name() << " = (" << it.get_type()
-                       << "*)(_memory_pool+" << it.get_offset() << ");\n";
                     allocated.insert(it.get_name());
 
                     lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
@@ -316,27 +330,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             if (global_required.count("declaration::global_cublas_handle") > 0)
             {
-                lu << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
                 lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
             }
             if (global_required.count("declaration::global_cudnn_handle") > 0)
             {
-                lu << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
                 lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
             }
             if (global_required.count("declaration::num_SMs") > 0)
             {
-                lu << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
-                      "cudaDevAttrMultiProcessorCount, 0));\n";
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
             for (auto kernel : kernels)
             {
-                lu << kernel->call_unit->get_code();
-                // lu << "assert(cudaSuccess == cudaGetLastError());\n";
                 std::string read_const = kernel->call_unit->get_code();
-                if (read_const.compare(0, 10, "read_const") == 0)
+                if (read_const.compare(0, 9, "Constant_") == 0)
                 {
                     lu_main_init << kernel->call_unit->get_code();
                 }
@@ -347,21 +355,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
             if (global_required.count("declaration::global_cublas_handle") > 0)
             {
-                lu << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
                 lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
             }
             if (global_required.count("declaration::global_cudnn_handle") > 0)
             {
-                lu << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
                 lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
             }
         }
 
-        lu << "CUDA_SAFE_CALL(cudaFree(_memory_pool));\n";
-        lu << "return 0;\n";
-
         lu_main_free << "CUDA_SAFE_CALL(cudaFree(_memory_pool));\n";
-        lu.block_end();
 
         lu_kernel_entry << "return 0;\n";
         lu_kernel_entry.block_end();
@@ -388,134 +390,134 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu << "\n";
     lu << lu_kernel_entry.get_code() << "\n\n";
 
-    // Test function
-    {
-        lu << "extern \"C\" int naive_test(";
-        // Add param
-        {
-            vector<string> params;
-            for (int i = 0; i < tu->arg.size(); i++)
-            {
-                auto tv = tu->arg[i];
-                string type = tv->get_element_type().c_type_string();
-                stringstream ss;
-                ss << type << "* " << tv->get_name() << "_host";
-                params.push_back(ss.str());
-            }
+    // // Test function
+    // {
+    //     lu << "extern \"C\" int naive_test(";
+    //     // Add param
+    //     {
+    //         vector<string> params;
+    //         for (int i = 0; i < tu->arg.size(); i++)
+    //         {
+    //             auto tv = tu->arg[i];
+    //             string type = tv->get_element_type().c_type_string();
+    //             stringstream ss;
+    //             ss << type << "* " << tv->get_name() << "_host";
+    //             params.push_back(ss.str());
+    //         }
 
-            for (int i = 0; i < tu->out.size(); i++)
-            {
-                auto tv = tu->out[i];
-                string type = tv->get_element_type().c_type_string();
-                stringstream ss;
-                ss << type << "* " << tv->get_name() << "_host";
-                params.push_back(ss.str());
-            }
+    //         for (int i = 0; i < tu->out.size(); i++)
+    //         {
+    //             auto tv = tu->out[i];
+    //             string type = tv->get_element_type().c_type_string();
+    //             stringstream ss;
+    //             ss << type << "* " << tv->get_name() << "_host";
+    //             params.push_back(ss.str());
+    //         }
 
-            lu << join(params, ", ");
-        }
-        lu << ")\n";
-        lu.block_begin();
-        {
-            for (size_t i = 0; i < tu->arg.size(); i++)
-            {
-                auto& tensor = *tu->arg[i];
-                lu << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                   << ";\n"
-                   << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
-                   << tensor.get_tensor_layout()->get_size() << " * "
-                   << tensor.get_element_type().size() << "));\n";
+    //         lu << join(params, ", ");
+    //     }
+    //     lu << ")\n";
+    //     lu.block_begin();
+    //     {
+    //         for (size_t i = 0; i < tu->arg.size(); i++)
+    //         {
+    //             auto& tensor = *tu->arg[i];
+    //             lu << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
+    //                << ";\n"
+    //                << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
+    //                << tensor.get_tensor_layout()->get_size() << " * "
+    //                << tensor.get_element_type().size() << "));\n";
 
-                lu << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", " << tensor.get_name()
-                   << "_host, " << tensor.get_tensor_layout()->get_size() << " * "
-                   << tensor.get_element_type().size() << ", "
-                   << "cudaMemcpyHostToDevice));\n";
-            }
+    //             lu << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", " << tensor.get_name()
+    //                << "_host, " << tensor.get_tensor_layout()->get_size() << " * "
+    //                << tensor.get_element_type().size() << ", "
+    //                << "cudaMemcpyHostToDevice));\n";
+    //         }
 
-            lu << "//output arguments\n";
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                   << ";\n"
-                   << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
-                   << tensor.get_tensor_layout()->get_size() << " * "
-                   << tensor.get_element_type().size() << "));\n";
-            }
+    //         lu << "//output arguments\n";
+    //         for (size_t i = 0; i < tu->out.size(); i++)
+    //         {
+    //             auto& tensor = *tu->out[i];
+    //             lu << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
+    //                << ";\n"
+    //                << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
+    //                << tensor.get_tensor_layout()->get_size() << " * "
+    //                << tensor.get_element_type().size() << "));\n";
+    //         }
 
-            vector<string> params;
-            for (int i = 0; i < tu->arg.size(); i++)
-            {
-                auto& tv = tu->arg[i];
-                params.push_back(tv->get_name());
-            }
+    //         vector<string> params;
+    //         for (int i = 0; i < tu->arg.size(); i++)
+    //         {
+    //             auto& tv = tu->arg[i];
+    //             params.push_back(tv->get_name());
+    //         }
 
-            for (int i = 0; i < tu->out.size(); i++)
-            {
-                auto& tv = tu->out[i];
-                params.push_back(tv->get_name());
-            }
+    //         for (int i = 0; i < tu->out.size(); i++)
+    //         {
+    //             auto& tv = tu->out[i];
+    //             params.push_back(tv->get_name());
+    //         }
 
-            lu << "naive_entry(" << join(params, ", ") << ");\n";
+    //         lu << "naive_entry(" << join(params, ", ") << ");\n";
 
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
-                   << tensor.get_name() << ", " << tensor.get_tensor_layout()->get_size() << " * "
-                   << tensor.get_element_type().size() << ", "
-                   << "cudaMemcpyDeviceToHost));\n";
-            }
+    //         for (size_t i = 0; i < tu->out.size(); i++)
+    //         {
+    //             auto& tensor = *tu->out[i];
+    //             lu << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
+    //                << tensor.get_name() << ", " << tensor.get_tensor_layout()->get_size() << " * "
+    //                << tensor.get_element_type().size() << ", "
+    //                << "cudaMemcpyDeviceToHost));\n";
+    //         }
 
-            for (size_t i = 0; i < tu->arg.size(); i++)
-            {
-                auto& tensor = *tu->arg[i];
-                lu << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
-            }
+    //         for (size_t i = 0; i < tu->arg.size(); i++)
+    //         {
+    //             auto& tensor = *tu->arg[i];
+    //             lu << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+    //         }
 
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
-            }
-        }
-        lu << "return 0;\n";
-        lu.block_end();
-    }
+    //         for (size_t i = 0; i < tu->out.size(); i++)
+    //         {
+    //             auto& tensor = *tu->out[i];
+    //             lu << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+    //         }
+    //     }
+    //     lu << "return 0;\n";
+    //     lu.block_end();
+    // }
 
-    lu << "\n";
+    // lu << "\n";
 
-    // Test function 2
-    {
-        lu << "extern \"C\" int naive_test_simple(void** args)\n";
-        // Add param
-        lu.block_begin();
-        {
-            lu << "return naive_test(";
-            vector<string> params;
-            int acc = 0;
-            for (int i = 0; i < tu->arg.size(); i++, acc++)
-            {
-                auto tv = tu->arg[i];
-                string type = tv->get_element_type().c_type_string();
-                stringstream ss;
-                ss << "(" << type << "*)args[" << acc << "]";
-                params.push_back(ss.str());
-            }
+    // // Test function 2
+    // {
+    //     lu << "extern \"C\" int naive_test_simple(void** args)\n";
+    //     // Add param
+    //     lu.block_begin();
+    //     {
+    //         lu << "return naive_test(";
+    //         vector<string> params;
+    //         int acc = 0;
+    //         for (int i = 0; i < tu->arg.size(); i++, acc++)
+    //         {
+    //             auto tv = tu->arg[i];
+    //             string type = tv->get_element_type().c_type_string();
+    //             stringstream ss;
+    //             ss << "(" << type << "*)args[" << acc << "]";
+    //             params.push_back(ss.str());
+    //         }
 
-            for (int i = 0; i < tu->out.size(); i++, acc++)
-            {
-                auto tv = tu->out[i];
-                string type = tv->get_element_type().c_type_string();
-                stringstream ss;
-                ss << "(" << type << "*)args[" << acc << "]";
-                params.push_back(ss.str());
-            }
-            lu << join(params, ", ");
-            lu << ");\n";
-        }
-        lu.block_end();
-    }
+    //         for (int i = 0; i < tu->out.size(); i++, acc++)
+    //         {
+    //             auto tv = tu->out[i];
+    //             string type = tv->get_element_type().c_type_string();
+    //             stringstream ss;
+    //             ss << "(" << type << "*)args[" << acc << "]";
+    //             params.push_back(ss.str());
+    //         }
+    //         lu << join(params, ", ");
+    //         lu << ");\n";
+    //     }
+    //     lu.block_end();
+    // }
 
     // generate main() function
     std::string function_include =
@@ -523,9 +525,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit& lu_main = *this->lu_main;
     {
         lu_main << function_include << "\n";
-        lu_main << cuda::header::stdexcept->get_code();
+        lu_main << header::stdexcept->get_code();
         lu_main << "#include <sstream>\n";
-        lu_main << cuda::macro::CUDA_SAFE_CALL->get_code();
+        lu_main << macro::CUDA_SAFE_CALL->get_code();
         lu_main << "\n";
         lu_main << "int main(void)";
         lu_main.block_begin();
@@ -540,19 +542,22 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                         << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
                         << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << " * "
-                        << tensor.get_element_type().size() << ");\n\n";
+                        << tensor.get_tensor_layout()->get_size() << ");\n";
+
+                lu_main << "for (int i = 0; i < " << tensor.get_tensor_layout()->get_size()
+                        << "; ++i) " << tensor.get_name() << "_host[i] = 1.0f;\n\n";
 
                 //cudaMalloc input arg
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                         << ";\n"
-                        << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
-                        << tensor.get_tensor_layout()->get_size() << " * "
-                        << tensor.get_element_type().size() << "));\n";
+                        << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ", "
+                        << "sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
 
                 lu_main << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", "
-                        << tensor.get_name() << "_host, " << tensor.get_tensor_layout()->get_size()
-                        << " * " << tensor.get_element_type().size() << ", "
+                        << tensor.get_name() << "_host, "
+                        << "sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << ", "
                         << "cudaMemcpyHostToDevice));\n";
             }
 
@@ -563,16 +568,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 //malloc host output arg
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                         << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << " * "
-                        << tensor.get_element_type().size() << ");\n\n";
+                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << ");\n\n";
 
                 //cudaMalloc output args
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                         << ";\n"
                         << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
-                        << tensor.get_tensor_layout()->get_size() << " * "
-                        << tensor.get_element_type().size() << "));\n";
+                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
             }
 
             vector<string> params;
@@ -587,6 +591,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 params.push_back(tv->get_name());
             }
 
+            lu_main << "\n//warm up for 5 iters:\n";
+            lu_main << "for(int i_=0; i_<5; i_++)\n";
+            lu_main.block_begin();
+            lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
+            lu_main.block_end();
+
             lu_main << "\n//GPU time measurement\n";
             lu_main << "cudaEvent_t start, stop;\n";
             lu_main << "cudaEventCreate(&start);\n";
@@ -596,7 +606,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "cudaEventRecord(start);\n\n";
             lu_main << "//kernel call\n";
 
-            lu_main << "int steps = 100;\n";
+            lu_main << "int steps = 10;\n";
             lu_main << "for(int i_=0; i_<steps; i_++)\n";
             lu_main.block_begin();
 
@@ -617,8 +627,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto& tensor = *tu->out[i];
                 lu_main << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
-                        << tensor.get_name() << ", " << tensor.get_tensor_layout()->get_size()
-                        << " * " << tensor.get_element_type().size() << ", "
+                        << tensor.get_name() << ", "
+                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << ", "
                         << "cudaMemcpyDeviceToHost));\n";
             }
 
@@ -634,7 +645,20 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
             }
             lu_main << "cuda_free();\n\n";
+
+            lu_main << "CUDA_SAFE_CALL(cudaDeviceSynchronize()); \n";
+
+            for (size_t i = 0; i < tu->out.size(); i++)
+            {
+                auto& tensor = *tu->out[i];
+                lu_main << "printf(\"%s \\n\", \"" << tensor.get_name() << ":\");\n"
+                        << "for (int i = 0; i < "
+                        << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
+                        << "; ++i) printf(\"%f \", " << tensor.get_name() << "_host[i]); "
+                        << "printf(\"\\n\");\n";
+            }
         }
+
         //free host input args
         for (size_t i = 0; i < tu->arg.size(); i++)
         {
@@ -655,16 +679,18 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     //generate include header file
     lu_include << "// Microsoft (c) 2019\n";
     lu_include << "#pragma once\n";
-    lu_include << "extern \"C\" int naive_test_simple(void** args);\n";
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cuda_init();\n";
     lu_include << "extern \"C\" void cuda_free();\n";
-    lu_include << cuda::header::cuda->get_code();
+    lu_include << header::cuda->get_code();
 
     //generate CMakeList.txt
     LanguageUnit& lu_cmake = *this->lu_cmakefile;
     lu_cmake << generate_cmakelists();
 
     projgen();
+
+    // change to working directory
+    int status = chdir("../../");
     return rc;
 }

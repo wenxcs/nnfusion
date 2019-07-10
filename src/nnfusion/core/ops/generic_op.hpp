@@ -1,6 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
 
+#include <iomanip>
+#include <limits>
 #include "nnfusion/common/common.hpp"
 
 #define REGISTER_OP(op_x)                                                                          \
@@ -116,6 +118,14 @@ namespace ngraph
                         value = it.value();
                     else if (it.value().is_null())
                         value = "NULL";
+                    else if (it.value().is_number_float())
+                    {
+                        std::stringstream ss;
+                        ss.flags(std::ios_base::scientific);
+                        ss << std::setprecision(std::numeric_limits<double>::digits)
+                           << (double)it.value();
+                        value = ss.str();
+                    }
                     else
                     {
                         std::stringstream ss;
@@ -192,6 +202,6 @@ namespace ngraph
                     target_op.set_output_type(
                         0, target_op.get_input_element_type(i), target_op.get_input_shape(i));
             }
-        }
-    }
-}
+        } // namespace infershape
+    }     // namespace op
+} // namespace ngraph

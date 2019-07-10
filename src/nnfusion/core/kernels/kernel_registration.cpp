@@ -45,7 +45,7 @@ bool KernelRegistry::RegisterKernel(const string op_name,
                                     shared_ptr<KernelRegistration> registration)
 {
     m_kernel_registry.insert(std::make_pair(op_name, registration));
-    LOG_INFO << "Registered kernel for Opeartor: " << op_name << std::endl;
+    LOG_INFO << "Registered kernel for Opeartor: " << op_name << ", tag: " << registration->m_tag;
 
     return true;
 }
@@ -82,4 +82,21 @@ shared_ptr<const KernelRegistration> KernelRegistry::FindKernelRegistration(
     {
         return nullptr;
     }
+}
+
+std::vector<shared_ptr<const KernelRegistration>> KernelRegistry::FindKernelRegistrations(
+    const string op_name, const DeviceType& device_type, const DataType data_type)
+{
+    std::vector<shared_ptr<const KernelRegistration>> matched_regs;
+    auto regs = m_kernel_registry.equal_range(op_name);
+    for (auto iter = regs.first; iter != regs.second; ++iter)
+    {
+        shared_ptr<const KernelRegistration> reg = iter->second;
+        if (device_type == reg->m_device_type && data_type == reg->m_data_type)
+        {
+            matched_regs.push_back(reg);
+        }
+    }
+
+    return matched_regs;
 }

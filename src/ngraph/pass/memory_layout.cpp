@@ -20,6 +20,7 @@
 #include "ngraph/log.hpp"
 #include "ngraph/log.hpp"
 #include "ngraph/op/concat.hpp"
+#include "ngraph/op/constant.hpp"
 #include "ngraph/pass/liveness.hpp"
 #include "ngraph/pass/manager.hpp"
 #include "ngraph/pass/memory_layout.hpp"
@@ -55,6 +56,10 @@ bool pass::MemoryLayout::run_on_function(shared_ptr<ngraph::Function> function)
                         auto input = &node->get_inputs().at(oi_pair.input).get_tensor();
                         auto input_node =
                             node->get_inputs().at(oi_pair.input).get_output().get_node();
+
+                        // should not overwrite constant tensor
+                        if (std::dynamic_pointer_cast<op::Constant>(input_node))
+                            continue;
 
                         // For destructive kernel, this should be the last use
                         // Non-destructive kernels can pass through if memory sharing is disabled
