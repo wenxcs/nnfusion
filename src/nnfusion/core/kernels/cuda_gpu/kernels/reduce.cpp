@@ -12,3 +12,7 @@ using namespace nnfusion::kernels;
 
 REGISTER_GPU_KERNEL(Max)
 REGISTER_GPU_KERNEL(Min)
+
+REGISTER_KERNEL_EMITTER("Sum",
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        cuda::Reduce<ngraph::op::Add>)

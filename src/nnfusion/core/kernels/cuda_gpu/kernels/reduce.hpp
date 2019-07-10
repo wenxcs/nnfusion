@@ -16,11 +16,22 @@ namespace nnfusion
                 Reduce(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
                 {
-                    auto reduce = static_pointer_cast<ngraph::op::Reduce>(ctx->node);
+                    if (auto reduce = dynamic_pointer_cast<ngraph::op::Reduce>(ctx->node))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else if (auto reduce = dynamic_pointer_cast<ngraph::op::Sum>(ctx->node))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else
+                    {
+                        enforce(false) << "incorrect kernel for reduce";
+                    }
 
-                    reduce_axis = reduce->get_reduction_axes();
                     reduce_rank = reduce_axis.size();
                     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
+                    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
                     data_bytes = ctx->inputs[0].get_element_type().size();
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
@@ -85,7 +96,7 @@ namespace nnfusion
                         else
                         {
                             non_reduce_strides.push_back(input_strides[i]);
-                            output_shape.push_back(input_shape[i]);
+                            //output_shape.push_back(input_shape[i]);
                         }
                     }
                     NVShape output_strides = row_major_strides(output_shape);
@@ -107,7 +118,7 @@ namespace nnfusion
                     lu << expand_vector_uint32("reduce_strides", reduce_strides);
 
                     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x; \n";
-                    lu << "if (tid < nthreads)\n";
+                    lu << "if (tid < " << nthreads << ")\n";
                     lu.block_begin();
                     {
                         if (out_rank > 0)
@@ -148,7 +159,7 @@ namespace nnfusion
                             {
                                 for (int k = 0; k < unroll_num; k++)
                                 {
-                                    lu << "r = " << reduce_op << "(r , in[reduce_idx]);\n";
+                                    lu << "r = " << reduce_op << "(r , input0[reduce_idx]);\n";
                                     lu << "reduce_idx += step;\n";
                                 }
                             }
@@ -158,7 +169,7 @@ namespace nnfusion
                                << "; idx" << last_r_idx << "++)\n";
                             lu.block_begin();
                             {
-                                lu << "r = " << reduce_op << "(r , in[reduce_idx]);\n";
+                                lu << "r = " << reduce_op << "(r , input0[reduce_idx]);\n";
                                 lu << "reduce_idx += step;\n";
                             }
                             lu.block_end();
@@ -167,7 +178,7 @@ namespace nnfusion
                         {
                             lu.block_end();
                         }
-                        lu << "out[tid] = r;\n";
+                        lu << "output0[tid] = r;\n";
                     }
                     lu.block_end();
 
@@ -195,27 +206,28 @@ namespace nnfusion
                     lu << "sdata[tid] = 0;\n";
                     lu << "uint32_t in_idx = tid;\n";
                     lu << output_type << " r = 0;\n";
-                    lu << "if(in_idx < nthreads)\n";
+                    lu << "if(in_idx < " << nthreads << ")\n";
                     lu.block_begin();
-                    lu << "r = in[in_idx];\n";
+                    lu << "r = input0[in_idx];\n";
                     lu << "in_idx += step;\n";
                     lu.block_end();
                     // Accumulate reduction to blockDim.x threads.
                     uint32_t unroll_num = 8;
-                    lu << "while(in_idx + (step * " << unroll_num - 1 << ") < nthreads)\n";
+                    lu << "while(in_idx + (step * " << unroll_num - 1 << ") < " << nthreads
+                       << ")\n";
                     lu.block_begin();
                     {
                         for (int i = 0; i < unroll_num; i++)
                         {
-                            lu << "r = " << reduce_op << "(r , in[in_idx]);\n";
+                            lu << "r = " << reduce_op << "(r , input0[in_idx]);\n";
                             lu << "in_idx += step;\n";
                         }
                     }
                     lu.block_end();
-                    lu << "while(in_idx < nthreads)\n";
+                    lu << "while(in_idx < " << nthreads << ")\n";
                     lu.block_begin();
                     {
-                        lu << "r = " << reduce_op << "(r , in[in_idx]);\n";
+                        lu << "r = " << reduce_op << "(r , input0[in_idx]);\n";
                         lu << "in_idx += step;\n";
                     }
                     lu.block_end();
@@ -264,7 +276,7 @@ namespace nnfusion
                     lu << "if(tid == 0)\n";
                     lu.block_begin();
                     {
-                        lu << "out[0] = r;\n";
+                        lu << "output0[0] = r;\n";
                     }
                     lu.block_end();
 
