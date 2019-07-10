@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "nnfusion/core/graph/graph.hpp"
 #include "graph_pass_base.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 
 namespace nnfusion
 {
@@ -21,13 +21,13 @@ namespace nnfusion
 
                 template <typename T, class... Args>
                 void register_pass(Args&&... args);
-                
+
                 bool run_passes(std::shared_ptr<Graph> graph);
 
             private:
                 std::vector<std::string> m_pass_names;
-                std::vector<std::shared_ptr<GraphPassBase>> m_pass_list;                 
+                std::vector<std::shared_ptr<GraphPassBase>> m_pass_list;
             };
         } //namespace pass
-    } // namespace graph 
+    }     // namespace graph
 } // namespace nnfusion

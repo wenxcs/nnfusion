@@ -43,24 +43,24 @@ namespace nnfusion
         class Edge;
 
         void replace_node_users_arguments(std::shared_ptr<Node> target,
-                                        std::shared_ptr<Node> replacement);
+                                          std::shared_ptr<Node> replacement);
 
         std::pair<std::shared_ptr<ngraph::op::Result>, std::shared_ptr<ngraph::op::Parameter>>
             insert_result_parameter_split(const std::shared_ptr<Node>& src_node,
-                                        const std::shared_ptr<Node>& dst_node);
+                                          const std::shared_ptr<Node>& dst_node);
 
         void insert_new_node_between(const std::shared_ptr<Node>& src_node,
-                                    const std::shared_ptr<Node>& dst_node,
-                                    const std::shared_ptr<Node>& new_node);
+                                     const std::shared_ptr<Node>& dst_node,
+                                     const std::shared_ptr<Node>& new_node);
 
         std::string node_validation_assertion_string(const Node* node);
 
         const std::shared_ptr<Node>& check_single_output_arg(const std::shared_ptr<Node>& node,
-                                                            size_t i);
+                                                             size_t i);
         const NodeVector& check_single_output_args(const NodeVector& args);
 
         const std::shared_ptr<Node>& check_single_output_arg(const std::shared_ptr<Node>& node,
-                                                            size_t i);
+                                                             size_t i);
         const NodeVector& check_single_output_args(const NodeVector& args);
 
         /// Nodes are the backbone of the graph of Value dataflow. Every node has
@@ -72,10 +72,11 @@ namespace nnfusion
             friend class ngraph::autodiff::Adjoints;
             friend class ngraph::descriptor::Input;
             friend void replace_node_users_arguments(std::shared_ptr<Node> target,
-                                                    std::shared_ptr<Node> replacement);
-            friend std::pair<std::shared_ptr<ngraph::op::Result>, std::shared_ptr<ngraph::op::Parameter>>
+                                                     std::shared_ptr<Node> replacement);
+            friend std::pair<std::shared_ptr<ngraph::op::Result>,
+                             std::shared_ptr<ngraph::op::Parameter>>
                 insert_result_parameter_split(const std::shared_ptr<Node>& src_node,
-                                            const std::shared_ptr<Node>& dst_node);
+                                              const std::shared_ptr<Node>& dst_node);
             friend void insert_new_node_between(const std::shared_ptr<Node>& src_node,
                                                 const std::shared_ptr<Node>& dst_node,
                                                 const std::shared_ptr<Node>& new_node);
@@ -89,7 +90,8 @@ namespace nnfusion
             // Called in constructors during transition
             void constructor_validate_and_infer_types();
 
-            std::tuple<ngraph::element::Type, ngraph::PartialShape> validate_and_infer_elementwise_args();
+            std::tuple<ngraph::element::Type, ngraph::PartialShape>
+                validate_and_infer_elementwise_args();
             void validate_and_infer_elementwise_arithmetic();
             void validate_and_infer_elementwise_logical();
 
@@ -106,7 +108,11 @@ namespace nnfusion
 
             Node(const std::string& node_type, const NodeVector& arguments, size_t output_size = 1);
 
-            virtual void generate_adjoints(ngraph::autodiff::Adjoints& adjoints, const NodeVector& deltas) {}
+            virtual void generate_adjoints(ngraph::autodiff::Adjoints& adjoints,
+                                           const NodeVector& deltas)
+            {
+            }
+
         public:
             virtual ~Node();
             void revalidate_and_infer_types() { validate_and_infer_types(); }
@@ -128,8 +134,8 @@ namespace nnfusion
             }
 
             void set_output_type(size_t i,
-                                const ngraph::element::Type& element_type,
-                                const ngraph::PartialShape& pshape);
+                                 const ngraph::element::Type& element_type,
+                                 const ngraph::PartialShape& pshape);
 
             bool is_parameter() const;
             virtual bool is_output() const;
@@ -295,11 +301,12 @@ namespace nnfusion
             {
             }
 
-            friend std::ostream& operator<<(std::ostream& out, const NodeDescription node_description)
+            friend std::ostream& operator<<(std::ostream& out,
+                                            const NodeDescription node_description)
             {
                 return node_description.m_is_short
-                        ? node_description.m_node.write_short_description(out)
-                        : node_description.m_node.write_long_description(out);
+                           ? node_description.m_node.write_short_description(out)
+                           : node_description.m_node.write_long_description(out);
             }
             const Node& m_node;
             bool m_is_short;
@@ -310,8 +317,9 @@ namespace nnfusion
 }
 
 #define NODE_VALIDATION_ASSERT(node, cond)                                                         \
-    NGRAPH_ASSERT_STREAM_WITH_LOC(                                                                 \
-        ::nnfusion::graph::NodeValidationError, cond, ::nnfusion::graph::node_validation_assertion_string(node))
+    NGRAPH_ASSERT_STREAM_WITH_LOC(::nnfusion::graph::NodeValidationError,                          \
+                                  cond,                                                            \
+                                  ::nnfusion::graph::node_validation_assertion_string(node))
 #define NODE_VALIDATION_FAIL(node)                                                                 \
-    NGRAPH_FAIL_STREAM_WITH_LOC(::nnfusion::graph::NodeValidationError,                                     \
+    NGRAPH_FAIL_STREAM_WITH_LOC(::nnfusion::graph::NodeValidationError,                            \
                                 ::nnfusion::graph::node_validation_assertion_string(node))

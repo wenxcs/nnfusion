@@ -26,7 +26,7 @@ namespace ngraph
         class Result;
     }
 }
-    
+
 namespace nnfusion
 {
     namespace graph

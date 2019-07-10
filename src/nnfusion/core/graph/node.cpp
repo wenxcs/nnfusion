@@ -77,8 +77,10 @@ void Node::set_output_size(size_t n)
     NGRAPH_ASSERT(n >= m_outputs.size()) << "shrinking " << m_outputs.size() << " to " << n;
     for (size_t i = m_outputs.size(); i < n; ++i)
     {
-        auto tensor_descriptor = make_shared<ngraph::descriptor::Tensor>(
-            ngraph::element::dynamic, ngraph::PartialShape::dynamic(), get_name() + "_" + to_string(i));
+        auto tensor_descriptor =
+            make_shared<ngraph::descriptor::Tensor>(ngraph::element::dynamic,
+                                                    ngraph::PartialShape::dynamic(),
+                                                    get_name() + "_" + to_string(i));
         //TODO
         //m_outputs.emplace_back(this, i, tensor_descriptor);
     }
@@ -88,7 +90,9 @@ void Node::validate_and_infer_types()
 {
 }
 
-void Node::set_output_type(size_t i, const ngraph::element::Type& element_type, const ngraph::PartialShape& pshape)
+void Node::set_output_type(size_t i,
+                           const ngraph::element::Type& element_type,
+                           const ngraph::PartialShape& pshape)
 {
     m_outputs.at(i).get_tensor_ptr()->set_tensor_type(element_type, pshape);
 }
@@ -167,7 +171,6 @@ std::shared_ptr<Node> Node::get_argument(size_t index) const
     return m_inputs.at(index).get_output().get_node();
 }
  */
-
 
 Node::~Node()
 {
@@ -289,7 +292,8 @@ const ngraph::element::Type& Node::get_element_type() const
 {
     if (get_output_size() != 1)
     {
-        throw ngraph::ngraph_error("get_element_type() must be called on a node with exactly one output.");
+        throw ngraph::ngraph_error(
+            "get_element_type() must be called on a node with exactly one output.");
     }
     return get_output_element_type(0);
 }
@@ -345,7 +349,8 @@ ngraph::descriptor::Tensor& Node::get_output_tensor() const
 {
     if (get_output_size() != 1)
     {
-        throw ngraph::ngraph_error("get_output_tensor() must be called on a node with exactly one output.");
+        throw ngraph::ngraph_error(
+            "get_output_tensor() must be called on a node with exactly one output.");
     }
     return get_output_tensor(0);
 }
@@ -429,7 +434,6 @@ NodeVector Node::get_users() const
 }
  */
 
-
 std::string nnfusion::graph::node_validation_assertion_string(const Node* node)
 {
     std::stringstream ss;
@@ -444,8 +448,8 @@ void nnfusion::graph::check_new_args_count(const Node* node, const NodeVector& n
         << (node->get_arguments().size() == 1 ? "" : "s") << " but got " << new_args.size();
 }
 
-const std::shared_ptr<Node>& nnfusion::graph::check_single_output_arg(const std::shared_ptr<Node>& node,
-                                                             size_t i)
+const std::shared_ptr<Node>&
+    nnfusion::graph::check_single_output_arg(const std::shared_ptr<Node>& node, size_t i)
 {
     NGRAPH_ASSERT(node->get_output_size() == 1) << "Argument " << i << node
                                                 << " must produce exactly one value.";
@@ -471,11 +475,12 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape> Node::validate_and_infer
         for (size_t i = 1; i < get_input_size(); ++i)
         {
             NODE_VALIDATION_ASSERT(
-                this, ngraph::element::Type::merge(element_type, element_type, get_input_element_type(i)))
+                this,
+                ngraph::element::Type::merge(element_type, element_type, get_input_element_type(i)))
                 << "Argument element types are inconsistent.";
 
-            NODE_VALIDATION_ASSERT(this,
-                                   ngraph::PartialShape::merge_into(pshape, get_input_partial_shape(i)))
+            NODE_VALIDATION_ASSERT(
+                this, ngraph::PartialShape::merge_into(pshape, get_input_partial_shape(i)))
                 << "Argument shapes are inconsistent.";
         }
     }

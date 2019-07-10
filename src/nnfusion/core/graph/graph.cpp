@@ -18,7 +18,7 @@ Graph::~Graph()
     // TODO: release node
 }
 
-void Graph::AddNode(std::shared_ptr<Node> node)
+void Graph::add_node(std::shared_ptr<Node> node)
 {
     const size_t id = m_nodes.size();
     node->set_id(id);
@@ -26,7 +26,16 @@ void Graph::AddNode(std::shared_ptr<Node> node)
     ++m_num_nodes;
 }
 
-void Graph::RemoveNode(std::shared_ptr<Node> node)
+std::shared_ptr<Node> Graph::copy_node(const std::shared_ptr<Node> node)
+{
+    std::shared_ptr<Node> copy = node->copy_with_new_args(node->get_arguments());
+
+    // todo: how to copy a node????
+
+    return copy;
+}
+
+void Graph::remove_node(std::shared_ptr<Node> node)
 {
     //TF_DCHECK_OK(IsValidNode(node)) << node->DebugString();
     //DCHECK(!node->IsSource());
@@ -35,11 +44,11 @@ void Graph::RemoveNode(std::shared_ptr<Node> node)
     // Remove any edges involving this node.
     while (!node->get_in_edges().empty())
     {
-        RemoveEdge(*node->get_in_edges().begin());
+        remove_edge(*node->get_in_edges().begin());
     }
     while (!node->get_out_edges().empty())
     {
-        RemoveEdge(*node->get_out_edges().begin());
+        remove_edge(*node->get_out_edges().begin());
     }
     m_nodes[node->get_id()] = nullptr;
     --m_num_nodes;
@@ -47,7 +56,7 @@ void Graph::RemoveNode(std::shared_ptr<Node> node)
 }
 
 const std::shared_ptr<Edge>
-    Graph::AddEdge(std::shared_ptr<Node> source, int x, std::shared_ptr<Node> dest, int y)
+    Graph::add_edge(std::shared_ptr<Node> source, int x, std::shared_ptr<Node> dest, int y)
 {
     //TF_DCHECK_OK(IsValidNode(source)) << source->DebugString();
     //TF_DCHECK_OK(IsValidNode(dest)) << dest->DebugString();
@@ -84,7 +93,7 @@ const std::shared_ptr<Edge>
     return e;
 }
 
-void Graph::RemoveEdge(std::shared_ptr<Edge> e)
+void Graph::remove_edge(std::shared_ptr<Edge> e)
 {
     //TF_DCHECK_OK(IsValidNode(e->src_)) << e->src_->DebugString();
     //TF_DCHECK_OK(IsValidNode(e->dst_)) << e->dst_->DebugString();
@@ -102,4 +111,16 @@ void Graph::RemoveEdge(std::shared_ptr<Edge> e)
     e->m_dst_input = kControlSlot - 1;
     m_free_edges.push_back(e);
     --m_num_edges;
+}
+
+void Graph::set_default_output_nodes()
+{
+    m_output_nodes.clear();
+    for (auto node : m_nodes)
+    {
+        if (node != nullptr && node->get_output_size() == 0)
+        {
+            m_output_nodes.push_back(node);
+        }
+    }
 }

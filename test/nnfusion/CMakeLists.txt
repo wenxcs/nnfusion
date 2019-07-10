@@ -20,6 +20,7 @@ set(NNFUSION_TESTS
     nnfusion/op/softmax.cpp
     #core
     nnfusion/core/interpreter.cpp
+    nnfusion/core/graph_pass.cpp
     #cuda_op
     nnfusion/cuda_op/avg_pool.cpp
     nnfusion/cuda_op/concat.cpp

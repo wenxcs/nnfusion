@@ -26,7 +26,7 @@ namespace nnfusion
             int get_dst_input() const { return m_dst_input; }
             // Return true iff this is an edge that indicates a control-flow
             // (as opposed to a data-flow) dependency.
-            bool IsControlEdge() const;
+            bool is_control_edge() const;
 
             std::string DebugString() const;
 
