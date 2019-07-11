@@ -431,8 +431,23 @@ inline cudnnStatus_t cudnnGetTensor4dDescriptor(const cudnnTensorDescriptor_t te
 #define cudnnGetConvolutionBackwardDataAlgorithm(h, w, dy, conv, dx, pref, mlimit, algo) (*(algo) = miopenConvolutionBwdDataAlgoGEMM, miopenStatusSuccess)
 #define cudnnGetConvolutionBackwardFilterAlgorithm(h, x, dy, conv, dw, pref, mlimit, algo) (*(algo) = miopenConvolutionBwdWeightsAlgoGEMM, miopenStatusSuccess )
 
-#define cudnnConvolutionForward(h, a, x, d_x, w, d_w, c, algo, ws, size, b, y, d_y) \
-	miopenConvolutionForward(h, a, x, d_x, w, d_w, c, miopenConvolutionFwdAlgoGEMM, b, y, d_y, ws, size)
+inline cudnnStatus_t cudnnConvolutionForward(cudnnHandle_t handle,
+                        const void *alpha,
+                        const cudnnTensorDescriptor_t xDesc,
+                        const void *x,
+                        const cudnnFilterDescriptor_t wDesc,
+                        const void *w,
+                        const cudnnConvolutionDescriptor_t convDesc,
+                        cudnnConvolutionFwdAlgo_t algo,
+                        void *workSpace,
+                        size_t workSpaceSizeInBytes,
+                        const void *beta,
+                        const cudnnTensorDescriptor_t yDesc,
+                        void *y) {
+  return miopenConvolutionForward(handle, alpha, xDesc, x, wDesc, w, convDesc, algo, beta, yDesc, y, workSpace, workSpaceSizeInBytes);
+}
+
+
 #define cudnnConvolutionBackwardData(hd, a, w, d_w, dy, d_dy, conv, algo, d_ws, wsize, b, dx, d_dx) \
   miopenConvolutionBackwardData(hd, a, dy, d_dy, w, d_w, conv, algo, b, dx, d_dx, d_ws, wsize)
 #define cudnnConvolutionBackwardFilter(h, a, x, d_x, dy, d_dy, conv, algo, d_ws, wsize, b, dw, d_dw) \
@@ -493,20 +508,7 @@ inline cudnnStatus_t cudnnGetConvolutionForwardWorkspaceSize(
     const   cudnnTensorDescriptor_t         yDesc,
     cudnnConvolutionFwdAlgo_t               algo,
     size_t                                 *sizeInBytes) {
-
-  if (algo != miopenConvolutionFwdAlgoGEMM)
-    return miopenStatusNotImplemented;
-
-  int stride[4], wshape[4], xshape[4], yshape[4];
-  miopenDataType_t dtype;
-  ensure_cmd(miopenStatusSuccess == cudnnGetTensor4dDescriptor(wDesc, &dtype, wshape + 0, wshape + 1, wshape + 2, wshape + 3, stride + 0, stride + 1, stride + 2, stride + 3) && dtype == miopenFloat);
-  ensure_cmd(miopenStatusSuccess == cudnnGetTensor4dDescriptor(xDesc, &dtype, xshape + 0, xshape + 1, xshape + 2, xshape + 3, stride + 0, stride + 1, stride + 2, stride + 3) && dtype == miopenFloat);
-  ensure_cmd(miopenStatusSuccess == cudnnGetTensor4dDescriptor(yDesc, &dtype, yshape + 0, yshape + 1, yshape + 2, yshape + 3, stride + 0, stride + 1, stride + 2, stride + 3) && dtype == miopenFloat);
-
-  *sizeInBytes = wshape[1] * wshape[2] * wshape[3] * yshape[2] * yshape[3] * sizeof(float) * WS_BOUND;
-  // size_t w2 = 0; miopenConvolutionForwardGetWorkSpaceSize(handle, wDesc, xDesc, convDesc, yDesc, &w2); printf("%zd v.s. %zd\n", *sizeInBytes, w2);
-
-  return CUDNN_STATUS_SUCCESS;
+  return miopenConvolutionForwardGetWorkSpaceSize(handle, wDesc, xDesc, convDesc, yDesc, sizeInBytes);
 }
 
 inline cudnnStatus_t cudnnGetConvolutionBackwardDataWorkspaceSize(

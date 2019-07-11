@@ -11,10 +11,12 @@ set(SRC
 set(UTIL 
     util/gpu_util.cpp)
 
-file(GLOB wild_kernels kernels/*.cpp)
+file(GLOB wild_cuda_kernels kernels/*.cpp)
+file(GLOB wild_rocm_kernels kernels/rocm/*.cpp)
 
 set(KERNELS
-    ${wild_kernels}
+    ${wild_cuda_kernels}
+    ${wild_rocm_kernels}
 )
 
 add_library(kernels_cuda STATIC ${SRC} ${UTIL} ${KERNELS})
