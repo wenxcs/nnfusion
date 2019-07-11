@@ -54,8 +54,18 @@ std::string CudaCodeGenerator::get_generate_cmakelists(void)
     lu << R"(project(main_test)
 cmake_minimum_required(VERSION 3.5)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 find_package(CUDA)
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=compute_60,code=sm_60)
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O3")
+
 link_directories(/usr/local/cuda/lib64)
 
 find_path(CUDNN_INCLUDE_DIR cudnn.h
@@ -282,6 +292,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // Generate caller function body
     {
         unordered_set<string> allocated;
+
         lu_kernel_entry << "extern \"C\" int kernel_entry(";
         // Add param
         {
@@ -370,6 +381,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 else
                 {
                     lu_kernel_entry << kernel->call_unit->get_code();
+                    // for (auto out_name : kernel->m_context->output_names)
+                    //     lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name << ");\n";
                 }
             }
             if (global_required.count("declaration::global_cublas_handle") > 0)
@@ -407,6 +420,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu.block_end();
     }
     lu << "\n";
+
+    //     lu << R"(
+    // void Debug(std::string name, float* tensor_ptr, size_t debug_size = 10, size_t offset=0)
+    // {
+    //     float* host_tensor = (float*)malloc(sizeof(float) * debug_size);
+    //     CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    //     CUDA_SAFE_CALL(cudaMemcpy(host_tensor, tensor_ptr + offset,  sizeof(float) * debug_size, cudaMemcpyDeviceToHost));
+    //     CUDA_SAFE_CALL(cudaDeviceSynchronize());
+    //     printf("%s: ", name.c_str());
+    //     for (int i = 0; i < debug_size; ++i) printf("%f ", host_tensor[i]);
+    //     printf("\n");
+    // }
+    //         )";
     lu << lu_kernel_entry.get_code() << "\n\n";
 
     // // Test function
@@ -546,6 +572,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_main << function_include << "\n";
         lu_main << header::stdexcept->get_code();
         lu_main << "#include <sstream>\n";
+        lu_main << "#include <cuda_profiler_api.h>\n";
         lu_main << macro::CUDA_SAFE_CALL->get_code();
         lu_main << "\n";
         lu_main << "int main(void)";
@@ -625,7 +652,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "cudaEventRecord(start);\n\n";
             lu_main << "//kernel call\n";
 
-            lu_main << "int steps = 10;\n";
+            lu_main << "int steps = 100;\n";
+            lu_main << "cudaProfilerStart();\n";
             lu_main << "for (int i_=0; i_<steps; i_++)\n";
             lu_main.block_begin();
 
@@ -633,6 +661,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
 
             lu_main.block_end();
+            lu_main << "cudaProfilerStop();\n";
 
             lu_main << "//time measurement\n";
             lu_main << "\ncudaEventRecord(stop);\n";
