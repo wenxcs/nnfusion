@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <vector>
-#include "node.hpp"
+#include "gnode.hpp"
 
 namespace nnfusion
 {
@@ -13,8 +13,8 @@ namespace nnfusion
         class Edge
         {
         public:
-            std::shared_ptr<Node> get_src() const { return m_src; }
-            std::shared_ptr<Node> get_dst() const { return m_dst; }
+            std::shared_ptr<GNode> get_src() const { return m_src; }
+            std::shared_ptr<GNode> get_dst() const { return m_dst; }
             size_t get_id() const { return m_id; }
             // Return the index of the source output that produces the data
             // carried by this edge.  The special value kControlSlot is used
@@ -32,8 +32,8 @@ namespace nnfusion
 
         private:
             friend class Graph;
-            std::shared_ptr<Node> m_src;
-            std::shared_ptr<Node> m_dst;
+            std::shared_ptr<GNode> m_src;
+            std::shared_ptr<GNode> m_dst;
             size_t m_id;
             int m_src_output;
             int m_dst_input;

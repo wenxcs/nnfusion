@@ -4,25 +4,20 @@
 
 #include "constant_folding_pass.hpp"
 #include "../graph.hpp"
-#include "../node.hpp"
+#include "../gnode.hpp"
 #include "ngraph/runtime/interpreter/int_backend.hpp"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::graph::pass;
 
-// This generator type is used to generate a name for the newly folded node
-// based on the node's old name.
-using ConstantFoldNameGenerator =
-    std::function<std::string(std::shared_ptr<Graph>, std::string old_name)>;
-
 // Comparator for two nodes. This is used in order to get a stable ording.
 using NodeComparator =
-    std::function<bool(const std::shared_ptr<Node>, const std::shared_ptr<Node>)>;
+    std::function<bool(const std::shared_ptr<GNode>, const std::shared_ptr<GNode>)>;
 
 // Compares two node based on their ids.
 struct NodeComparatorID
 {
-    bool operator()(const std::shared_ptr<Node> n1, const std::shared_ptr<Node> n2) const
+    bool operator()(const std::shared_ptr<GNode> n1, const std::shared_ptr<GNode> n2) const
     {
         return n1->get_id() < n2->get_id();
     }
@@ -31,31 +26,25 @@ struct NodeComparatorID
 // Compare two nodes based on their names.
 struct NodeComparatorName
 {
-    bool operator()(const std::shared_ptr<Node> n1, const std::shared_ptr<Node> n2) const
+    bool operator()(const std::shared_ptr<GNode> n1, const std::shared_ptr<GNode> n2) const
     {
         return n1->get_name() < n2->get_name();
     }
 };
 
-long long UniqueConstantId()
-{
-    static std::atomic_int_fast64_t unique_constant_id;
-    return unique_constant_id.fetch_add(1);
-}
-
-typedef std::pair<std::shared_ptr<Node>, int> NodeAndOutput;
+typedef std::pair<std::shared_ptr<GNode>, int> NodeAndOutput;
 
 void ReverseDFS(const std::shared_ptr<Graph>& graph,
-                const std::vector<std::shared_ptr<Node>>& start,
-                const std::function<void(std::shared_ptr<Node>)>& enter,
-                const std::function<void(std::shared_ptr<Node>)>& leave,
+                const std::vector<std::shared_ptr<GNode>>& start,
+                const std::function<void(std::shared_ptr<GNode>)>& enter,
+                const std::function<void(std::shared_ptr<GNode>)>& leave,
                 const NodeComparator& stable_comparator)
 {
     // Stack of work to do.
     struct Work
     {
-        std::shared_ptr<Node> node;
-        bool leave; // Are we entering or leaving n?
+        std::shared_ptr<GNode> node;
+        bool leave; // Are we entering or leaving node?
     };
     std::vector<Work> stack(start.size());
     for (int i = 0; i < start.size(); ++i)
@@ -63,59 +52,59 @@ void ReverseDFS(const std::shared_ptr<Graph>& graph,
         stack[i] = Work{start[i], false};
     }
 
-    std::vector<bool> visited(graph->num_node_ids(), false);
+    std::vector<bool> visited(graph->get_max_node_id(), false);
     while (!stack.empty())
     {
         Work w = stack.back();
         stack.pop_back();
 
-        std::shared_ptr<Node> n = w.node;
+        std::shared_ptr<GNode> node = w.node;
         if (w.leave)
         {
-            leave(n);
+            leave(node);
             continue;
         }
 
-        if (visited[n->get_id()])
+        if (visited[node->get_id()])
         {
             continue;
         }
-        visited[n->get_id()] = true;
+        visited[node->get_id()] = true;
         if (enter)
         {
-            enter(n);
+            enter(node);
         }
 
-        // Arrange to call leave(n) when all done with descendants.
+        // Arrange to call leave(node) when all done with descendants.
         if (leave)
         {
-            stack.push_back(Work{n, true});
+            stack.push_back(Work{node, true});
         }
 
-        auto add_work = [&visited, &stack](std::shared_ptr<Node> out) {
-            if (!visited[out->get_id()])
+        auto add_work = [&visited, &stack](std::shared_ptr<GNode> in_node) {
+            if (!visited[in_node->get_id()])
             {
                 // Note; we must not mark as visited until we actually process it.
-                stack.push_back(Work{out, false});
+                stack.push_back(Work{in_node, false});
             }
         };
 
         if (stable_comparator)
         {
-            std::vector<std::shared_ptr<Node>> nodes_sorted;
-            for (auto in_edge : n->get_in_edges())
+            std::vector<std::shared_ptr<GNode>> in_nodes_sorted;
+            for (auto in_edge : node->get_in_edges())
             {
-                nodes_sorted.emplace_back(in_edge->get_src());
+                in_nodes_sorted.emplace_back(in_edge->get_src());
             }
-            std::sort(nodes_sorted.begin(), nodes_sorted.end(), stable_comparator);
-            for (auto in : nodes_sorted)
+            std::sort(in_nodes_sorted.begin(), in_nodes_sorted.end(), stable_comparator);
+            for (auto in_node : in_nodes_sorted)
             {
-                add_work(in);
+                add_work(in_node);
             }
         }
         else
         {
-            for (auto in_edge : n->get_in_edges())
+            for (auto in_edge : node->get_in_edges())
             {
                 add_work(in_edge->get_src());
             }
@@ -124,7 +113,7 @@ void ReverseDFS(const std::shared_ptr<Graph>& graph,
 }
 
 // Returns true if n can be evaluated as constant.
-bool IsConstantFoldable(const std::shared_ptr<Node> node)
+bool IsConstantFoldable(const std::shared_ptr<GNode> node)
 {
     if (node->is_constant())
     {
@@ -168,22 +157,20 @@ bool IsConstantFoldable(const std::shared_ptr<Node> node)
     return true;
 }
 
-// If n is eligible for constant-folding, adds it to nodes, and places its
+// If node is eligible for constant-folding, adds it to constant_foldable_nodes, and places its
 // control dependencies and those transitively of its constant-foldable inputs
-// into constant_control_deps. If n is a constant-foldable shape node (Shape,
-// ShapeN, Rank, or Size), also puts its outputs into shape_replacement_map.
+// into constant_control_deps. 
 void ConsiderConstantFoldableNode(
-    std::shared_ptr<Node> node,
-    std::vector<std::shared_ptr<Node>>* constant_foldable_nodes,
-    std::unordered_map<std::shared_ptr<Node>, std::set<std::shared_ptr<Node>>>*
+    std::shared_ptr<GNode> node,
+    std::vector<std::shared_ptr<GNode>>* constant_foldable_nodes,
+    std::unordered_map<std::shared_ptr<GNode>, std::set<std::shared_ptr<GNode>>>*
         constant_control_deps,
     bool* internal_node_inserted)
 {
     if (IsConstantFoldable(node))
     {
         // A node is constant provided all of its non-control incoming Tensors come
-        // from constant nodes, or it's a shape Op with statically known inputs in
-        // which case it is placed in shape_replacement_map.
+        // from constant nodes.
         //
         // We allow control dependencies from non-constant nodes to constant nodes,
         // but to preserve the graph structure we must transfer the control
@@ -202,18 +189,15 @@ void ConsiderConstantFoldableNode(
         }
         if (all_parents_constant)
         {
-            std::set<std::shared_ptr<Node>>& control_deps = (*constant_control_deps)[node];
+            // unordered_map [] will insert an entry with a default-constructed value
+            std::set<std::shared_ptr<GNode>>& control_deps = (*constant_control_deps)[node];
             for (auto in_edge : node->get_in_edges())
             {
                 if (constant_control_deps->count(in_edge->get_src()) == 0)
                 {
                     // This branch is taken if the incoming edge is a control dependency,
                     // in which case we want to add it to the dependencies being
-                    // accumulated for this node, or the incoming edge is not
-                    // constant. The latter may happen when n is a shape node and the
-                    // source has known shape. In that case add a control dependency from
-                    // the source node, since there was previously a data dependency and
-                    // we want to preserve sequencing constraints.
+                    // accumulated for this node.
 
                     //TDOO
                     //if (!in_edge->get_src()->IsSource())
@@ -225,7 +209,7 @@ void ConsiderConstantFoldableNode(
                 {
                     // If the parent has been accumulating control dependencies, add all
                     // of its transitive control deps.
-                    std::set<std::shared_ptr<Node>>& parent_deps =
+                    std::set<std::shared_ptr<GNode>>& parent_deps =
                         (*constant_control_deps)[in_edge->get_src()];
                     control_deps.insert(parent_deps.begin(), parent_deps.end());
                 }
@@ -243,11 +227,11 @@ void ConsiderConstantFoldableNode(
 // constant propagation. node_map is the mapping of nodes in the original graph
 // to nodes in the constant graph.
 void AddNodeToConstantGraph(
-    std::shared_ptr<Node> node,
-    std::unordered_map<std::shared_ptr<Node>, std::shared_ptr<Node>>* node_map,
+    std::shared_ptr<GNode> node,
+    std::unordered_map<std::shared_ptr<GNode>, std::shared_ptr<GNode>>* node_map,
     std::shared_ptr<Graph> constant_graph)
 {
-    std::shared_ptr<Node>& new_node = (*node_map)[node];
+    std::shared_ptr<GNode>& new_node = (*node_map)[node];
     // todo: copy node is not implemented yet
     new_node = constant_graph->copy_node(node);
     for (const auto in_edge : node->get_in_edges())
@@ -259,7 +243,7 @@ void AddNodeToConstantGraph(
             auto it = node_map->find(src_node);
             if (it == node_map->end())
             {
-                std::cerr << node->get_friendly_name() << " <-" << src_node->get_friendly_name();
+                std::cerr << node->get_name() << " <-" << src_node->get_name();
                 return;
             }
 
@@ -276,16 +260,15 @@ void AddNodeToConstantGraph(
 // corresponding copy of 'n' and the edge number in 'g' to 'n'.
 std::shared_ptr<Graph>
     GetConstantGraph(const std::shared_ptr<Graph>& orig_graph,
-                     const std::vector<std::shared_ptr<Node>>& nodes,
-                     std::map<NodeAndOutput, std::shared_ptr<Node>>* tensors_to_fetch,
-                     const ConstantFoldNameGenerator& generate_new_name)
+                     const std::vector<std::shared_ptr<GNode>>& nodes,
+                     std::map<NodeAndOutput, std::shared_ptr<GNode>>* tensors_to_fetch)
 {
     std::shared_ptr<Graph> constant_graph = std::make_shared<Graph>();
-    std::unordered_map<std::shared_ptr<Node>, std::shared_ptr<Node>> node_map;
+    std::unordered_map<std::shared_ptr<GNode>, std::shared_ptr<GNode>> node_map;
 
-    for (auto n : nodes)
+    for (auto node : nodes)
     {
-        AddNodeToConstantGraph(n, &node_map, constant_graph);
+        AddNodeToConstantGraph(node, &node_map, constant_graph);
     }
 
     for (auto const& added_nodes : node_map)
@@ -316,8 +299,8 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
 
     auto outputs = graph->get_output_nodes();
 
-    std::vector<std::shared_ptr<Node>> constant_foldable_nodes;
-    std::unordered_map<std::shared_ptr<Node>, std::set<std::shared_ptr<Node>>>
+    std::vector<std::shared_ptr<GNode>> constant_foldable_nodes;
+    std::unordered_map<std::shared_ptr<GNode>, std::set<std::shared_ptr<GNode>>>
         constant_control_deps;
     bool internal_node_inserted = false;
 
@@ -325,7 +308,7 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                outputs,
                nullptr,
                [&constant_foldable_nodes, &constant_control_deps, &internal_node_inserted](
-                   std::shared_ptr<Node> node) {
+                   std::shared_ptr<GNode> node) {
                    ConsiderConstantFoldableNode(node,
                                                 &constant_foldable_nodes,
                                                 &constant_control_deps,
@@ -348,17 +331,10 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
         return true;
     }
 
-    // generate constant graph
-    ConstantFoldNameGenerator generate_new_name = [](std::shared_ptr<Graph> graph,
-                                                     std::string old_name) {
-        return graph->new_name(old_name).append("__cf__").append(
-            std::to_string(UniqueConstantId()));
-    };
-
-    std::map<NodeAndOutput, std::shared_ptr<Node>> tensors_to_fetch;
+    std::map<NodeAndOutput, std::shared_ptr<GNode>> tensors_to_fetch;
     // todo: unique_ptr<Graph> ??
     auto constant_graph =
-        GetConstantGraph(graph, constant_foldable_nodes, &tensors_to_fetch, generate_new_name);
+        GetConstantGraph(graph, constant_foldable_nodes, &tensors_to_fetch);
 
     if (tensors_to_fetch.empty())
     {
@@ -373,12 +349,12 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
     std::vector<NodeAndOutput> tensors_to_replace;
     // Sorting the nodes based on the name gives us a stable ordering between runs
     // for the same graph.
-    std::vector<std::pair<NodeAndOutput, std::shared_ptr<Node>>> tensors_to_fetch_sorted(
+    std::vector<std::pair<NodeAndOutput, std::shared_ptr<GNode>>> tensors_to_fetch_sorted(
         tensors_to_fetch.begin(), tensors_to_fetch.end());
     std::sort(tensors_to_fetch_sorted.begin(),
               tensors_to_fetch_sorted.end(),
-              [](const std::pair<NodeAndOutput, std::shared_ptr<Node>>& n1,
-                 const std::pair<NodeAndOutput, std::shared_ptr<Node>>& n2) {
+              [](const std::pair<NodeAndOutput, std::shared_ptr<GNode>>& n1,
+                 const std::pair<NodeAndOutput, std::shared_ptr<GNode>>& n2) {
                   return n1.first.first->get_name() < n2.first.first->get_name();
               });
     for (auto n : tensors_to_fetch_sorted)
@@ -389,6 +365,10 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
     }
 
     // execute
+
+    //get output tensor
+
+    // ReplaceTensorWithConstant
     /*
         Shape shape{4};
     auto A = make_shared<op::Parameter>(element::f32, shape);
