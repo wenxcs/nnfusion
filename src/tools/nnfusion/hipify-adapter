@@ -9,9 +9,9 @@
 #include <hip/hip_runtime.h>
 #include <hip/hcc_detail/hip_fp16.h>
 #include <rocblas.h>
-#include <hipsparse.h>
-#include <hiprand/hiprand.h>
-#include <hiprand_kernel.h>
+// #include <hipsparse.h>
+// #include <hiprand/hiprand.h>
+// #include <hiprand_kernel.h>
 #include <miopen/miopen.h>
 #include <miopen/version.h>
 #include <hip/hip_complex.h>

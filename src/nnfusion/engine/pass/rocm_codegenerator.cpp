@@ -60,6 +60,9 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
                         "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
                         "nnfusion_rt.cu")
                            .c_str()));
+            assert(0 ==
+                   system("sed -i 's/^.*include.*cuda_profiler_api.*$//g' main_test.cpp && sed -i "
+                          "'s/cudaProfiler.*\\(.*\\)//g' main_test.cpp"));
             assert(0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
                                "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
             assert(0 == system((std::string("cp ") + exepath + "/hipify-adapter ./rocm_adapter.h")
