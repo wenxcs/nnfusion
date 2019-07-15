@@ -10,8 +10,9 @@
 #include <vector>
 
 #include "../tensorflow_base.hpp"
-#include "ngraph/graph.hpp"
 #include "ngraph/op/parameter_vector.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 #include "util.hpp"
 
 namespace ngraph
@@ -58,7 +59,7 @@ namespace ngraph
                 std::set<std::string> is_input;
                 std::set<std::string> is_output;
                 NodeMap m_ng_node;
-                std::shared_ptr<ngraph::Graph> m_ngraph;
+                std::shared_ptr<nnfusion::graph::Graph> m_ngraph;
 
                 std::queue<uint32_t> topology_;
                 std::unordered_map<std::string, uint32_t> tensorflow_name2nodeIdx_map_;

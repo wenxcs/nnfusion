@@ -6,11 +6,124 @@
 
 using namespace nnfusion::graph;
 
-// Graph
+std::atomic<size_t> Graph::m_next_instance_id(0);
 
-Graph::Graph()
+Graph::Graph(const std::string& name)
+    : m_instance_id(m_next_instance_id.fetch_add(1))
+    , m_name(name)
+    , m_unique_name("Graph_" + std::to_string(m_instance_id))
 {
     // TODO: need add source to sink control edge??
+}
+
+Graph::Graph(const ngraph::op::ParameterVector& parameters,
+             const std::vector<std::shared_ptr<GNode>>& outputs,
+             const std::string& name)
+    : m_instance_id(m_next_instance_id.fetch_add(1))
+    , m_name(name)
+    , m_unique_name("Graph_" + std::to_string(m_instance_id))
+{
+    // TODO: need add source to sink control edge??
+}
+
+// Graph
+void construct_graph_from_io_nodes(Graph* graph,
+                                   const std::vector<std::shared_ptr<ngraph::Node>>& io_nodes,
+                                   bool include_control_deps)
+{
+    // Stack of work to do.
+    struct Work
+    {
+        std::shared_ptr<ngraph::Node> node;
+        bool leave; // Are we entering or leaving node?
+    };
+
+    std::vector<Work> stack(io_nodes.size());
+
+    for (int i = 0; i < io_nodes.size(); ++i)
+    {
+        stack[i] = Work{io_nodes[i], false};
+    }
+
+    std::unordered_set<std::shared_ptr<ngraph::Node>> visited;
+    std::unordered_map<std::shared_ptr<ngraph::Node>, std::shared_ptr<GNode>> node_convert;
+    while (!stack.empty())
+    {
+        Work w = stack.back();
+        stack.pop_back();
+
+        auto node = w.node;
+
+        if (w.leave)
+        {
+            // TODO: add edge
+            int dst_output = 0;
+            for (auto arg : node->get_arguments())
+            {
+                graph->add_edge(node_convert[arg], 0, node_convert[node], dst_output);
+                dst_output++;
+            }
+
+            if (include_control_deps)
+            {
+                for (auto cdep : node->get_control_dependencies())
+                {
+                    graph->add_edge(node_convert[cdep], -1, node_convert[node], -1);
+                }
+            }
+            continue;
+        }
+
+        if (visited.count(node) > 0)
+        {
+            continue;
+        }
+        visited.insert(node);
+        auto gnode = graph->add_node(node);
+        node_convert[node] = gnode;
+        stack.push_back(Work{node, true});
+
+        auto add_work = [&visited, &stack](std::shared_ptr<ngraph::Node> in_node) {
+            if (visited.count(in_node) == 0)
+            {
+                // Note; we must not mark as visited until we actually process it.
+                stack.push_back(Work{in_node, false});
+            }
+        };
+
+        for (auto arg : node->get_arguments())
+        {
+            add_work(arg);
+        }
+
+        if (include_control_deps)
+        {
+            for (auto cdep : node->get_control_dependencies())
+            {
+                add_work(cdep);
+            }
+        }
+    }
+}
+
+Graph::Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& name)
+    : m_instance_id(m_next_instance_id.fetch_add(1))
+    , m_name(name)
+    , m_unique_name("Graph_" + std::to_string(m_instance_id))
+{
+    std::vector<std::shared_ptr<ngraph::Node>> nodes;
+
+    for (auto r : func->get_results())
+    {
+        nodes.push_back(r);
+    }
+
+    for (auto param : func->get_parameters())
+    {
+        nodes.push_back(param);
+    }
+
+    construct_graph_from_io_nodes(this, nodes, true /*include control dependencies*/);
 }
 
 Graph::~Graph()

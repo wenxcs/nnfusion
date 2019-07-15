@@ -6,6 +6,8 @@
 #include <vector>
 #include "edge.hpp"
 #include "gnode.hpp"
+#include "ngraph/function.hpp"
+#include "ngraph/op/parameter_vector.hpp"
 
 namespace nnfusion
 {
@@ -17,7 +19,14 @@ namespace nnfusion
         public:
             // Constructs a graph with a single SOURCE (always id kSourceId) and a
             // single SINK (always id kSinkId) node, and an edge from SOURCE->SINK.
-            explicit Graph();
+
+            Graph(const std::string& name = "");
+
+            explicit Graph(const ngraph::op::ParameterVector& parameters,
+                           const std::vector<std::shared_ptr<GNode>>& outputs,
+                           const std::string& name = "");
+
+            Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& name = "");
 
             ~Graph();
 
@@ -115,6 +124,11 @@ namespace nnfusion
 
             // For generating unique names.
             int name_counter_ = 0;
+
+            static std::atomic<size_t> m_next_instance_id;
+            size_t m_instance_id;
+            std::string m_name;
+            const std::string m_unique_name;
         };
 
         inline bool Edge::is_control_edge() const

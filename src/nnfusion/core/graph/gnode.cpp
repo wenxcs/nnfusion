@@ -19,8 +19,8 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "graph.hpp"
 #include "gnode.hpp"
+#include "graph.hpp"
 
 using namespace std;
 using namespace nnfusion::graph;
@@ -28,9 +28,11 @@ using namespace nnfusion::graph;
 atomic<size_t> GNode::m_next_instance_id(0);
 
 GNode::GNode()
-    : m_id(-1),
-      m_instance_id(m_next_instance_id.fetch_add(1)),
-      m_unique_name("graph_node_" + to_string(m_instance_id)) {}
+    : m_id(-1)
+    , m_instance_id(m_next_instance_id.fetch_add(1))
+    , m_unique_name("graph_node_" + to_string(m_instance_id))
+{
+}
 
 GNode::GNode(const std::shared_ptr<ngraph::Node> op_ptr)
     : GNode()
@@ -43,7 +45,7 @@ void GNode::initialize(const std::shared_ptr<ngraph::Node> op_ptr)
     m_op_ptr = op_ptr;
     m_op_type = op_ptr->description();
     m_name = op_ptr->get_name();
-    
+
     m_in_edges.clear();
     m_out_edges.clear();
     m_control_dependencies.clear();

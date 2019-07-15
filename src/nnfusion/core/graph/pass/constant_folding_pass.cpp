@@ -3,8 +3,8 @@
 #pragma once
 
 #include "constant_folding_pass.hpp"
-#include "../graph.hpp"
 #include "../gnode.hpp"
+#include "../graph.hpp"
 #include "ngraph/runtime/interpreter/int_backend.hpp"
 
 using namespace nnfusion::graph;
@@ -159,7 +159,7 @@ bool IsConstantFoldable(const std::shared_ptr<GNode> node)
 
 // If node is eligible for constant-folding, adds it to constant_foldable_nodes, and places its
 // control dependencies and those transitively of its constant-foldable inputs
-// into constant_control_deps. 
+// into constant_control_deps.
 void ConsiderConstantFoldableNode(
     std::shared_ptr<GNode> node,
     std::vector<std::shared_ptr<GNode>>* constant_foldable_nodes,
@@ -333,8 +333,7 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
 
     std::map<NodeAndOutput, std::shared_ptr<GNode>> tensors_to_fetch;
     // todo: unique_ptr<Graph> ??
-    auto constant_graph =
-        GetConstantGraph(graph, constant_foldable_nodes, &tensors_to_fetch);
+    auto constant_graph = GetConstantGraph(graph, constant_foldable_nodes, &tensors_to_fetch);
 
     if (tensors_to_fetch.empty())
     {

@@ -28,7 +28,6 @@ namespace nnfusion
         class GNode : public std::enable_shared_from_this<GNode>
         {
         protected:
-
             GNode(const std::shared_ptr<ngraph::Node> op_ptr);
 
         public:
@@ -38,13 +37,12 @@ namespace nnfusion
             size_t get_instance_id() const { return m_instance_id; }
             size_t get_id() const { return m_id; }
             size_t set_id(size_t id) { m_id = id; }
-
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
             const std::string& get_unique_name() const;
             const std::string& get_name() const;
             void set_name(const std::string& name);
-            
+
             /// Get control dependencies registered on the node
             const std::set<std::shared_ptr<GNode>>& get_control_dependencies() const;
 
@@ -67,15 +65,11 @@ namespace nnfusion
             void add_out_edge(std::shared_ptr<Edge> edge);
 
             void remove_out_edge(std::shared_ptr<Edge> edge) { m_out_edges.erase(edge); }
-
-            size_t get_output_size() const { return m_out_edges.size(); }            
-
+            size_t get_output_size() const { return m_out_edges.size(); }
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
-
-            std::shared_ptr<ngraph::Node> get_op_ptr() const {return m_op_ptr; }
-
+            std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
         protected:
@@ -92,7 +86,5 @@ namespace nnfusion
             std::set<std::shared_ptr<Edge>> m_out_edges;
             std::set<std::shared_ptr<GNode>> m_control_dependencies;
         };
-
-        
     }
 }

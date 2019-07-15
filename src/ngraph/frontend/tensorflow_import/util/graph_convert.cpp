@@ -1791,7 +1791,7 @@ namespace ngraph
             struct InputInfo
             {
                 explicit InputInfo(const std::string& node_name,
-                                   std::shared_ptr<ngraph::Node> n,
+                                   std::shared_ptr<nnfusion::graph::GNode> n,
                                    int i)
                     : name(node_name)
                     , node(n)
@@ -1799,7 +1799,7 @@ namespace ngraph
                 {
                 }
                 std::string name;
-                std::shared_ptr<ngraph::Node> node;
+                std::shared_ptr<nnfusion::graph::GNode> node;
                 int index;
             };
 
@@ -1807,8 +1807,9 @@ namespace ngraph
                 : m_graph_proto{&proto}
             {
                 std::cerr << "Converting Tensorflow Graph" << std::endl;
-                m_ngraph = std::make_shared<ngraph::Graph>();
-
+                m_ngraph = std::make_shared<nnfusion::graph::Graph>();
+                std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>
+                    gnode_map;
                 generate_topology();
 
                 uint32_t processed = 0;
@@ -1826,17 +1827,17 @@ namespace ngraph
                     {
                         TensorId input_tensor(ParseTensorName(input));
                         int src_index;
-                        std::shared_ptr<ngraph::Node> src_node;
+                        std::shared_ptr<nnfusion::graph::GNode> src_node;
 
-                        auto iter = m_ng_node.find(input_tensor.first);
-                        if (iter == m_ng_node.end())
+                        auto iter = gnode_map.find(input_tensor.first);
+                        if (iter == gnode_map.end())
                         {
                             std::cerr << "Node " << node_proto.name()
                                       << " has Un-Converted input node: " << input_tensor.first;
                             assert(false);
                         }
                         src_index = input_tensor.second;
-                        if (src_index == Graph::kControlSlot)
+                        if (src_index == nnfusion::graph::Graph::kControlSlot)
                         {
                             // TODO: how to handle control edge
                             continue;
@@ -1849,15 +1850,16 @@ namespace ngraph
                     for (auto& node : ng_nodes)
                     {
                         m_ng_node[node.first].push_back(node.second);
-                        m_ngraph->AddNode(node.second);
+
+                        auto gnode = m_ngraph->add_node(node.second);
+                        gnode_map[node.first].push_back(gnode);
+
                         int input_idx = 0;
 
                         for (auto& input : node_proto.input())
                         {
-                            m_ngraph->AddEdge(inputs[input_idx].node,
-                                              inputs[input_idx].index,
-                                              node.second,
-                                              input_idx);
+                            m_ngraph->add_edge(
+                                inputs[input_idx].node, inputs[input_idx].index, gnode, input_idx);
                             input_idx++;
                             // TODO: ADD CONTROL EDGE;
                         }
@@ -1928,7 +1930,9 @@ namespace ngraph
                 }
 
                 for (const auto& node_proto : m_graph_proto->node())
+                {
                     out_edges_count[node_proto.name()] = 0;
+                }
                 for (const auto& node_proto : m_graph_proto->node())
                 {
                     in_edges_count[node_proto.name()] = node_proto.input_size();
