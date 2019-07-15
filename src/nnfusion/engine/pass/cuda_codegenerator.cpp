@@ -297,9 +297,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_NUM " << tu->out.size() << "\n";
         for (int i = 0; i < tu->arg.size(); i++)
         {
-            lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_DTYPE_" << i << " " << tu->arg[i]->get_element_type().c_type_string() << "\n";
+            lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_DTYPE_" << i << " "
+                            << tu->arg[i]->get_element_type().c_type_string() << "\n";
             lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_SHAPE_" << i << " {";
-            auto &shape = tu->arg[i]->get_shape();
+            auto& shape = tu->arg[i]->get_shape();
             for (int j = 0; j < shape.size(); ++j)
             {
                 if (j > 0)
@@ -310,9 +311,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
         for (int i = 0; i < tu->out.size(); i++)
         {
-            lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_DTYPE_" << i << " " << tu->out[i]->get_element_type().c_type_string() << "\n";
+            lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_DTYPE_" << i << " "
+                            << tu->out[i]->get_element_type().c_type_string() << "\n";
             lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_SHAPE_" << i << " {";
-            auto &shape = tu->out[i]->get_shape();
+            auto& shape = tu->out[i]->get_shape();
             for (int j = 0; j < shape.size(); ++j)
             {
                 if (j > 0)
