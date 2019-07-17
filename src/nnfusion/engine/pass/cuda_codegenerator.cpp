@@ -221,7 +221,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(header::stdexcept);
         re.require(header::sstream);
         re.require(macro::CUDA_SAFE_CALL);
-        re.require(declaration::typedef_int);
+        //re.require(declaration::typedef_int);
 
         for (auto kernel : kernels)
         {
@@ -764,6 +764,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     //generate include header file
     lu_include << "// Microsoft (c) 2019\n";
     lu_include << "#pragma once\n";
+    lu_include << declaration::typedef_int->get_code() << "\n";
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cuda_init();\n";
     lu_include << "extern \"C\" void cuda_free();\n";
