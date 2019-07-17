@@ -69,6 +69,8 @@ namespace nnfusion
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
+            bool is_inplace() const { return m_is_inplace; }
+            void set_is_inplace(bool is_inplace) { m_is_inplace = is_inplace; }
             std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
@@ -85,6 +87,9 @@ namespace nnfusion
             std::set<std::shared_ptr<Edge>> m_in_edges;
             std::set<std::shared_ptr<Edge>> m_out_edges;
             std::set<std::shared_ptr<GNode>> m_control_dependencies;
+
+            // TODO: use tags as IR in the future
+            bool m_is_inplace{false};
         };
     }
 }

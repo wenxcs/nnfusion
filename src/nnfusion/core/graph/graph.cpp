@@ -186,6 +186,19 @@ void Graph::remove_node(std::shared_ptr<GNode> node)
     --m_node_size;
 }
 
+std::vector<std::shared_ptr<GNode>> Graph::get_nodes()
+{
+    std::vector<std::shared_ptr<GNode>> valid_nodes;
+    for (auto node : m_nodes)
+    {
+        if (node != nullptr)
+        {
+            valid_nodes.push_back(node);
+        }
+    }
+    return valid_nodes;
+}
+
 const std::shared_ptr<Edge>
     Graph::add_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y)
 {

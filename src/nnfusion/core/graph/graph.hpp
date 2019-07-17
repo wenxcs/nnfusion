@@ -62,6 +62,9 @@ namespace nnfusion
             // with that id (the node with that id was removed and the id has
             // not yet been re-used). *this owns the returned instance.
             // REQUIRES: 0 <= id < get_max_node_id().
+
+            std::vector<std::shared_ptr<GNode>> get_nodes();
+
             std::shared_ptr<GNode> find_node_id(size_t id) const { return m_nodes[id]; }
             // Adds an edge that connects the xth output of `source` to the yth input of
             // `dest` and returns it. Does not update dest's NodeDef.

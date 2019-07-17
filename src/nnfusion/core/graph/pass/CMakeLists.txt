@@ -2,6 +2,7 @@
 
 set(SRC
     constant_folding_pass.cpp
+    reshape_inplace_pass.cpp
     graph_pass.cpp
     manager.cpp
 )
