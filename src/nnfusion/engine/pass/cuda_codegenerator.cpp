@@ -604,6 +604,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // generate main() function
     std::string function_include =
         "#include \"nnfusion_rt.h\"\n#include <stdlib.h>\n#include <stdio.h>\n";
+    LanguageUnit h2dcopy("h2dcopy");
+    LanguageUnit d2hcopy("d2hcopy");
+    LanguageUnit fillval("fillval");
+
     LanguageUnit& lu_main = *this->lu_main;
     {
         lu_main << function_include << "\n";
@@ -623,21 +627,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 //malloc host input arg
                 lu_main << "//input argument\n";
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << ");\n";
+                        << "_host, *" << tensor.get_name() << ";\n";
 
-                lu_main << "for (int i = 0; i < " << tensor.get_tensor_layout()->get_size()
-                        << "; ++i) " << tensor.get_name() << "_host[i] = 1.0f;\n\n";
-
-                //cudaMalloc input arg
-                lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << ";\n"
-                        << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ", "
+                lu_main << "CUDA_SAFE_CALL(cudaMallocHost((void**)&" << tensor.get_name()
+                        << "_host, sizeof(" << tensor.get_element_type().c_type_string() << ")* "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
+                lu_main << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ", "
                         << "sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << "));\n";
 
-                lu_main << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", "
+                fillval << "for (int i = 0; i < " << tensor.get_tensor_layout()->get_size()
+                        << "; ++i) " << tensor.get_name() << "_host[i] = 1.0f;\n";
+
+                h2dcopy << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", "
                         << tensor.get_name() << "_host, "
                         << "sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << ", "
@@ -650,17 +652,25 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto& tensor = *tu->out[i];
                 //malloc host output arg
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ") * "
-                        << tensor.get_tensor_layout()->get_size() << ");\n\n";
+                        << "_host, *" << tensor.get_name() << ";\n";
 
-                //cudaMalloc output args
-                lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << ";\n"
-                        << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
+                lu_main << "CUDA_SAFE_CALL(cudaMallocHost((void**)&" << tensor.get_name()
+                        << "_host, sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
+                lu_main << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
                         << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << "));\n";
+
+                d2hcopy << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
+                        << tensor.get_name() << ", "
+                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << ", "
+                        << "cudaMemcpyDeviceToHost));\n";
             }
+
+            lu_main << "\n// fill input values\n";
+            lu_main << fillval.get_code() << "\n";
+            lu_main << h2dcopy.get_code() << "\n";
 
             vector<string> params;
             for (int i = 0; i < tu->arg.size(); i++)
@@ -694,8 +704,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "for (int i_=0; i_<steps; i_++)\n";
             lu_main.block_begin();
 
+            lu_main << h2dcopy.get_code();
             // kernel launch
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
+
+            lu_main << d2hcopy.get_code();
 
             lu_main.block_end();
             lu_main << "cudaProfilerStop();\n";
@@ -707,16 +720,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "cudaEventElapsedTime(&milliseconds, start, stop);\n";
             lu_main << "printf(\"function execution time: %f ms\\n\", milliseconds/steps);\n";
             lu_main << "\n//free context\n";
-
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu_main << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
-                        << tensor.get_name() << ", "
-                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
-                        << tensor.get_tensor_layout()->get_size() << ", "
-                        << "cudaMemcpyDeviceToHost));\n";
-            }
 
             for (size_t i = 0; i < tu->arg.size(); i++)
             {
@@ -748,13 +751,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (size_t i = 0; i < tu->arg.size(); i++)
         {
             auto& tensor = *tu->arg[i];
-            lu_main << "free(" << tensor.get_name() << "_host);\n";
+            lu_main << "cudaFreeHost(" << tensor.get_name() << "_host);\n";
         }
         //free host output args
         for (size_t i = 0; i < tu->out.size(); i++)
         {
             auto& tensor = *tu->out[i];
-            lu_main << "free(" << tensor.get_name() << "_host);\n";
+            lu_main << "cudaFreeHost(" << tensor.get_name() << "_host);\n";
         }
 
         lu_main << "return 0;\n";
