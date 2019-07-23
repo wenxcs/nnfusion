@@ -98,6 +98,11 @@ target_link_libraries(main_test nnfusion_naive_rt cudnn culibos cublas))";
 
 void CudaCodeGenerator::post_projgen()
 {
+    // create_image_tests
+    nnfusion::codegen::copy_file_from_templates("image_tests/image_test.cpp",
+                                                "./image_tests/image_test.cpp");
+    nnfusion::codegen::copy_file_from_templates("image_tests/CMakeLists_cuda.txt",
+                                                "./image_tests/CMakeLists.txt");
 }
 
 std::string CudaCodeGenerator::get_target_name()

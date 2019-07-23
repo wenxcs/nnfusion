@@ -44,29 +44,31 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
 
         virtual void post_projgen(void) override
         {
-            // hipify kernel codes
-            char exepath[1024];
-            assert(readlink("/proc/self/exe", exepath, sizeof(exepath)) > 0);
-            for (int i = strlen(exepath) - 1; i >= 0; --i)
-                if (exepath[i] == '/')
-                {
-                    exepath[i] = 0;
-                    break;
-                }
-            assert(
-                0 ==
-                system((std::string(exepath) +
-                        "/hipify-nnfusion nnfusion_rt.cu | grep -v 'include.*cublas_v2' | grep -v "
-                        "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
-                        "nnfusion_rt.cu")
-                           .c_str()));
+            auto hipify_exec =
+                nnfusion::codegen::get_file_from_templates("rocm_adapter/hipify-nnfusion");
+            // update for nnfusion_rt.cu
+            assert(0 ==
+                   system((hipify_exec +
+                           " nnfusion_rt.cu | grep -v 'include.*cublas_v2' | grep -v "
+                           "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
+                           "nnfusion_rt.cu")
+                              .c_str()));
+            // update for main_test.cpp
             assert(0 ==
                    system("sed -i 's/^.*include.*cuda_profiler_api.*$//g' main_test.cpp && sed -i "
                           "'s/cudaProfiler.*\\(.*\\)//g' main_test.cpp"));
+            // update for nnfusion_rt.h
             assert(0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
                                "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
-            assert(0 == system((std::string("cp ") + exepath + "/hipify-adapter ./rocm_adapter.h")
-                                   .c_str()));
+            // update for rocm_adapter.h
+            nnfusion::codegen::copy_file_from_templates("rocm_adapter/rocm_adapter.h",
+                                                        "./rocm_adapter.h");
+
+            // create_image_tests
+            nnfusion::codegen::copy_file_from_templates("image_tests/image_test.cpp",
+                                                        "./image_tests/image_test.cpp");
+            nnfusion::codegen::copy_file_from_templates("image_tests/CMakeLists_rocm.txt",
+                                                        "./image_tests/CMakeLists.txt");
         }
 
         virtual std::string get_target_name(void) override { return "rocm_codegen"; }

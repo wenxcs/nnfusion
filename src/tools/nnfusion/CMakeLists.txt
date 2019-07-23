@@ -52,10 +52,5 @@ install(TARGETS nnfusion RUNTIME DESTINATION ${NGRAPH_INSTALL_BIN})
 
 add_custom_command(
     TARGET nnfusion
-    POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/src/tools/nnfusion/hipify-nnfusion ${CMAKE_BINARY_DIR}/src/tools/nnfusion/
-)
-
-add_custom_command(
-    TARGET nnfusion
-    POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/src/tools/nnfusion/hipify-adapter ${CMAKE_BINARY_DIR}/src/tools/nnfusion/
+    POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/tools/nnfusion/templates ${CMAKE_BINARY_DIR}/src/tools/nnfusion/templates
 )
