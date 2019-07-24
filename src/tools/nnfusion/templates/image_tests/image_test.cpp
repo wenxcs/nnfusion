@@ -1,11 +1,13 @@
-// #pragma once
+// Example: IMAGES=/opt/images/train/ ./image_test
+
+#include <stdio.h>
+#define __IMAGE_TESTS__
 
 #include <assert.h>
 #include <dirent.h>
 #include <jpeglib.h>
 #include <setjmp.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include <functional>
