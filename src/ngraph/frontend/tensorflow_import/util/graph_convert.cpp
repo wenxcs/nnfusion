@@ -168,7 +168,7 @@ namespace ngraph
 
                 auto ng_node = std::make_shared<ngraph::op::GenericOp>(
                     node.name(),
-                    node.op(),
+                    "BatchMatMul", // select which existing kernels to use;
                     std::vector<std::shared_ptr<Node>>({ng_lhs, ng_rhs}),
                     myConfig);
 
@@ -1796,6 +1796,7 @@ namespace ngraph
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
                 {"BatchMatMul", TranslateBatchMatMulOp},
+                {"BatchMatMulV2", TranslateBatchMatMulOp},
                 {"BiasAdd", TranslateBiasAddOp},
                 {"Cast", TranslateCastOp},
                 {"Const", TranslateConstOp},
