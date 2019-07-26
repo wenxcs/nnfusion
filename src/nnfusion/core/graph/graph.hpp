@@ -22,15 +22,15 @@ namespace nnfusion
 
             Graph(const std::string& name = "");
 
-            explicit Graph(const ngraph::op::ParameterVector& parameters,
-                           const std::vector<std::shared_ptr<GNode>>& outputs,
-                           const std::string& name = "");
-
             Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& name = "");
 
             ~Graph();
 
             static const int kControlSlot = -1;
+
+            const std::string& get_friendly_name() const;
+            const std::string& get_name() const;
+            void set_name(const std::string& name);
 
             // Adds a new node to this graph, and returns it. Infers the Op and
             // input/output types for the node. *this owns the returned instance.
@@ -64,7 +64,7 @@ namespace nnfusion
             // REQUIRES: 0 <= id < get_max_node_id().
 
             std::vector<std::shared_ptr<GNode>> get_nodes();
-
+            std::vector<std::shared_ptr<GNode>> get_ordered_ops(bool include_control_deps = true);
             std::shared_ptr<GNode> find_node_id(size_t id) const { return m_nodes[id]; }
             // Adds an edge that connects the xth output of `source` to the yth input of
             // `dest` and returns it. Does not update dest's NodeDef.
@@ -95,13 +95,18 @@ namespace nnfusion
             // not yet been re-used). *this owns the returned instance.
             // REQUIRES: 0 <= id < get_max_node_id().
             const std::shared_ptr<Edge> find_edge_id(size_t id) const { return m_edges[id]; }
-            // TODO: to be discussed
-            std::vector<std::shared_ptr<GNode>> get_output_nodes() const { return m_output_nodes; }
-            void set_output_nodes(const std::vector<std::shared_ptr<GNode>> nodes)
-            {
-                m_output_nodes = nodes;
-            }
-            void set_default_output_nodes();
+            std::vector<std::shared_ptr<GNode>> get_outputs();
+
+            void set_default_outputs();
+            const size_t get_output_size();
+            /// Return the op that generates output i
+            const std::shared_ptr<GNode> get_output_op(size_t i);
+
+            std::vector<std::shared_ptr<GNode>> get_parameters();
+            void set_default_parameters();
+
+            size_t get_temporary_pool_size();
+            void set_temporary_pool_size(size_t);
 
         private:
             // Map from node ids to allocated nodes.  nodes_[id] may be nullptr if
@@ -124,7 +129,7 @@ namespace nnfusion
 
             // TODO: Output nodes of this graph
             std::vector<std::shared_ptr<GNode>> m_output_nodes;
-
+            std::vector<std::shared_ptr<GNode>> m_parameters;
             // For generating unique names.
             int name_counter_ = 0;
 
@@ -132,6 +137,8 @@ namespace nnfusion
             size_t m_instance_id;
             std::string m_name;
             const std::string m_unique_name;
+
+            size_t m_temporary_pool_size;
         };
 
         inline bool Edge::is_control_edge() const

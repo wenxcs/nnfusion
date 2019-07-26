@@ -23,6 +23,8 @@
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"
 
+#include "nnfusion/core/graph/graph.hpp"
+
 namespace ngraph
 {
     namespace runtime
@@ -91,6 +93,7 @@ public:
         return compile(func);
     }
 
+    virtual bool codegen(std::shared_ptr<nnfusion::graph::Graph> graph) { return false; }
     /// \brief Executes a single iteration of a Function. If func is not compiled the call will
     ///     compile it.
     /// \param func The function to execute

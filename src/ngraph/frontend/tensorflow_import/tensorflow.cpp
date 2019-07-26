@@ -25,9 +25,9 @@ namespace ngraph
                           << "]" << std::endl;
             }
 
-            auto graph = tensorflow_import::GraphConvert{tensorflow_graph};
+            auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
 
-            std::vector<std::shared_ptr<Function>> output_functions = graph.get_outputs();
+            std::vector<std::shared_ptr<Function>> output_functions = graph_convert.get_outputs();
             return output_functions;
         }
 
@@ -39,6 +39,36 @@ namespace ngraph
                 throw frontend::error::file_open{path};
             }
             return load_tensorflow_model(ifs);
+        }
+
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(std::istream& sin)
+        {
+            tensorflow::GraphDef tensorflow_graph;
+            if (!tensorflow_graph.ParseFromIstream(&sin))
+            {
+                throw error::stream_parse{sin};
+            }
+            else
+            {
+                std::cerr << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
+                          << "]" << std::endl;
+            }
+
+            auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
+
+            std::shared_ptr<nnfusion::graph::Graph> graph = graph_convert.get_graph();
+            return graph;
+        }
+
+        std::shared_ptr<nnfusion::graph::Graph>
+            load_tensorflow_model_as_graph(const std::string& path)
+        {
+            std::ifstream ifs{path, std::ios::in | std::ios::binary};
+            if (!ifs.is_open())
+            {
+                throw frontend::error::file_open{path};
+            }
+            return load_tensorflow_model_as_graph(ifs);
         }
 
         // void register_operator(const std::string& name,

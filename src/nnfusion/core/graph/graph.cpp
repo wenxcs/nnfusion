@@ -3,28 +3,12 @@
 #include <sstream>
 
 #include "graph.hpp"
+#include "graph_util.hpp"
+#include "nnfusion/util/util.hpp"
 
 using namespace nnfusion::graph;
 
 std::atomic<size_t> Graph::m_next_instance_id(0);
-
-Graph::Graph(const std::string& name)
-    : m_instance_id(m_next_instance_id.fetch_add(1))
-    , m_name(name)
-    , m_unique_name("Graph_" + std::to_string(m_instance_id))
-{
-    // TODO: need add source to sink control edge??
-}
-
-Graph::Graph(const ngraph::op::ParameterVector& parameters,
-             const std::vector<std::shared_ptr<GNode>>& outputs,
-             const std::string& name)
-    : m_instance_id(m_next_instance_id.fetch_add(1))
-    , m_name(name)
-    , m_unique_name("Graph_" + std::to_string(m_instance_id))
-{
-    // TODO: need add source to sink control edge??
-}
 
 // Graph
 void construct_graph_from_io_nodes(Graph* graph,
@@ -106,8 +90,18 @@ void construct_graph_from_io_nodes(Graph* graph,
     }
 }
 
+Graph::Graph(const std::string& name)
+    : m_instance_id(m_next_instance_id.fetch_add(1))
+    , m_temporary_pool_size(0)
+    , m_name(name)
+    , m_unique_name("Graph_" + std::to_string(m_instance_id))
+{
+    // TODO: need add source to sink control edge??
+}
+
 Graph::Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& name)
     : m_instance_id(m_next_instance_id.fetch_add(1))
+    , m_temporary_pool_size(0)
     , m_name(name)
     , m_unique_name("Graph_" + std::to_string(m_instance_id))
 {
@@ -129,6 +123,27 @@ Graph::Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& n
 Graph::~Graph()
 {
     // TODO: release node
+}
+
+const std::string& Graph::get_friendly_name() const
+{
+    if (m_name.empty())
+    {
+        return m_unique_name;
+    }
+    return m_name;
+}
+
+const std::string& Graph::get_name() const
+{
+    return m_unique_name;
+}
+
+void Graph::set_name(const std::string& name)
+{
+    enforce(m_name.empty()) << "Graph name may be set exactly once.";
+
+    m_name = name;
 }
 
 void Graph::add_node(std::shared_ptr<GNode> node)
@@ -199,7 +214,20 @@ std::vector<std::shared_ptr<GNode>> Graph::get_nodes()
     return valid_nodes;
 }
 
-const std::shared_ptr<Edge>
+std::vector<std::shared_ptr<GNode>> Graph::get_ordered_ops(bool include_control_deps)
+{
+    // todo: stored ops instead of calculate each time
+    std::vector<std::shared_ptr<GNode>> nodes;
+    std::shared_ptr<Graph> graph_ptr(this);
+    ReverseDFS(graph_ptr,
+               graph_ptr->get_outputs(),
+               nullptr,
+               [&](std::shared_ptr<GNode> node) { nodes.push_back(node); },
+               NodeComparatorName());
+    return nodes;
+}
+
+const std::shared_ptr<nnfusion::graph::Edge>
     Graph::add_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y)
 {
     //TF_DCHECK_OK(IsValidNode(source)) << source->DebugString();
@@ -257,7 +285,7 @@ void Graph::remove_edge(std::shared_ptr<Edge> edge)
     --m_edge_size;
 }
 
-void Graph::set_default_output_nodes()
+void Graph::set_default_outputs()
 {
     m_output_nodes.clear();
     for (auto node : m_nodes)
@@ -267,4 +295,62 @@ void Graph::set_default_output_nodes()
             m_output_nodes.push_back(node);
         }
     }
+}
+
+std::vector<std::shared_ptr<GNode>> Graph::get_outputs()
+{
+    if (m_output_nodes.empty())
+    {
+        set_default_outputs();
+    }
+    return m_output_nodes;
+}
+
+const size_t Graph::get_output_size()
+{
+    if (m_output_nodes.empty())
+    {
+        set_default_outputs();
+    }
+    return m_output_nodes.size();
+}
+
+const std::shared_ptr<GNode> Graph::get_output_op(size_t i)
+{
+    if (m_output_nodes.empty())
+    {
+        set_default_outputs();
+    }
+    return m_output_nodes.at(i);
+}
+
+void Graph::set_default_parameters()
+{
+    m_parameters.clear();
+    for (auto node : m_nodes)
+    {
+        if (node != nullptr && node->get_op_ptr()->is_parameter())
+        {
+            m_parameters.push_back(node);
+        }
+    }
+}
+
+std::vector<std::shared_ptr<GNode>> Graph::get_parameters()
+{
+    if (m_parameters.empty())
+    {
+        set_default_parameters();
+    }
+    return m_parameters;
+}
+
+size_t Graph::get_temporary_pool_size()
+{
+    return m_temporary_pool_size;
+}
+
+void Graph::set_temporary_pool_size(size_t size)
+{
+    m_temporary_pool_size = size;
 }

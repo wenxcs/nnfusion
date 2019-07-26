@@ -25,7 +25,19 @@ bool ReshapeInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
 
             if (!reshape->get_is_transpose() || result_shape_product < 2)
             {
-                node->set_is_inplace(true);
+                auto op_annotations = reshape->get_op_annotations();
+                if (op_annotations)
+                {
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                }
+                else
+                {
+                    op_annotations = std::make_shared<ngraph::op::util::OpAnnotations>();
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                    reshape->set_op_annotations(op_annotations);
+                }
             }
         }
     }

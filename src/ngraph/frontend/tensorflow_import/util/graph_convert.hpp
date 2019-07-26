@@ -44,6 +44,7 @@ namespace ngraph
 
                 std::vector<std::shared_ptr<ngraph::Function>> get_outputs();
 
+                std::shared_ptr<nnfusion::graph::Graph> get_graph() { return m_ngraph; }
             private:
                 void generate_topology();
 

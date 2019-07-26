@@ -6,6 +6,7 @@ set(SRC
     graph.cpp
     gnode.cpp
     edge.cpp
+    graph_util.cpp
 )
 
 add_library(nnfusion_graph STATIC ${SRC})

@@ -5,112 +5,13 @@
 #include "constant_folding_pass.hpp"
 #include "../gnode.hpp"
 #include "../graph.hpp"
+#include "../graph_util.hpp"
 #include "ngraph/runtime/interpreter/int_backend.hpp"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::graph::pass;
 
-// Comparator for two nodes. This is used in order to get a stable ording.
-using NodeComparator =
-    std::function<bool(const std::shared_ptr<GNode>, const std::shared_ptr<GNode>)>;
-
-// Compares two node based on their ids.
-struct NodeComparatorID
-{
-    bool operator()(const std::shared_ptr<GNode> n1, const std::shared_ptr<GNode> n2) const
-    {
-        return n1->get_id() < n2->get_id();
-    }
-};
-
-// Compare two nodes based on their names.
-struct NodeComparatorName
-{
-    bool operator()(const std::shared_ptr<GNode> n1, const std::shared_ptr<GNode> n2) const
-    {
-        return n1->get_name() < n2->get_name();
-    }
-};
-
 typedef std::pair<std::shared_ptr<GNode>, int> NodeAndOutput;
-
-void ReverseDFS(const std::shared_ptr<Graph>& graph,
-                const std::vector<std::shared_ptr<GNode>>& start,
-                const std::function<void(std::shared_ptr<GNode>)>& enter,
-                const std::function<void(std::shared_ptr<GNode>)>& leave,
-                const NodeComparator& stable_comparator)
-{
-    // Stack of work to do.
-    struct Work
-    {
-        std::shared_ptr<GNode> node;
-        bool leave; // Are we entering or leaving node?
-    };
-    std::vector<Work> stack(start.size());
-    for (int i = 0; i < start.size(); ++i)
-    {
-        stack[i] = Work{start[i], false};
-    }
-
-    std::vector<bool> visited(graph->get_max_node_id(), false);
-    while (!stack.empty())
-    {
-        Work w = stack.back();
-        stack.pop_back();
-
-        std::shared_ptr<GNode> node = w.node;
-        if (w.leave)
-        {
-            leave(node);
-            continue;
-        }
-
-        if (visited[node->get_id()])
-        {
-            continue;
-        }
-        visited[node->get_id()] = true;
-        if (enter)
-        {
-            enter(node);
-        }
-
-        // Arrange to call leave(node) when all done with descendants.
-        if (leave)
-        {
-            stack.push_back(Work{node, true});
-        }
-
-        auto add_work = [&visited, &stack](std::shared_ptr<GNode> in_node) {
-            if (!visited[in_node->get_id()])
-            {
-                // Note; we must not mark as visited until we actually process it.
-                stack.push_back(Work{in_node, false});
-            }
-        };
-
-        if (stable_comparator)
-        {
-            std::vector<std::shared_ptr<GNode>> in_nodes_sorted;
-            for (auto in_edge : node->get_in_edges())
-            {
-                in_nodes_sorted.emplace_back(in_edge->get_src());
-            }
-            std::sort(in_nodes_sorted.begin(), in_nodes_sorted.end(), stable_comparator);
-            for (auto in_node : in_nodes_sorted)
-            {
-                add_work(in_node);
-            }
-        }
-        else
-        {
-            for (auto in_edge : node->get_in_edges())
-            {
-                add_work(in_edge->get_src());
-            }
-        }
-    }
-}
 
 // Returns true if n can be evaluated as constant.
 bool IsConstantFoldable(const std::shared_ptr<GNode> node)
@@ -294,10 +195,7 @@ std::shared_ptr<Graph>
 bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
     // DFS
-    // TODO: to be removed if output_nodes are specifed in graph
-    graph->set_default_output_nodes();
-
-    auto outputs = graph->get_output_nodes();
+    auto outputs = graph->get_outputs();
 
     std::vector<std::shared_ptr<GNode>> constant_foldable_nodes;
     std::unordered_map<std::shared_ptr<GNode>, std::set<std::shared_ptr<GNode>>>

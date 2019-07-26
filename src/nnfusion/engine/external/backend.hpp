@@ -14,5 +14,6 @@ namespace nnfusion
         nnfusion_Backend()
             : Backend(){};
         virtual bool codegen(std::shared_ptr<Function> func) = 0;
+        virtual bool codegen(std::shared_ptr<graph::Graph> graph) = 0;
     };
 }

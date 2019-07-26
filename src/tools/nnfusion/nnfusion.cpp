@@ -17,6 +17,8 @@
 #include "ngraph/serializer.hpp"
 #include "ngraph/util.hpp"
 
+#include "nnfusion/core/graph/graph.hpp"
+
 using namespace std;
 using namespace ngraph;
 
@@ -50,11 +52,12 @@ DESCRIPTION
     Generate optimized code for ngraph json model with given backend.
 
 SYNOPSIS
-        nnfusion <filename> [-f <format>] [-b <backend>] [-s] [-v]
+        nnfusion <filename> [-f <format>] [-b <backend>] [-m <function>] [-s] [-v]
 
 OPTIONS
         -f|--format               Model file format (ngraph(default) or tensorflow)
         -b|--backend              Backend to use (CPU(default), GPU, CUDA_CODEGEN[:naive_graphtest])
+        -m|--model_format         Import tensorflow model as function(default), graph
         -s|--statistics           Display op stastics
         -v|--visualize            Visualize a model (WARNING: requires GraphViz installed)
 )###";
@@ -65,6 +68,7 @@ int main(int argc, char** argv)
     string model;
     string format = "ngraph";
     string backend = "CPU";
+    string model_format = "function";
     bool failed = false;
     bool statistics = false;
     bool visualize = false;
@@ -88,6 +92,10 @@ int main(int argc, char** argv)
         else if (arg == "-b" || arg == "--backend")
         {
             backend = argv[++i];
+        }
+        else if (arg == "-m" || arg == "--model_format")
+        {
+            model_format = argv[++i];
         }
         else if (arg == "-s" || arg == "--statistics")
         {
@@ -122,6 +130,7 @@ int main(int argc, char** argv)
     try
     {
         shared_ptr<Function> f = nullptr;
+        shared_ptr<nnfusion::graph::Graph> graph = nullptr;
         if (format == "ngraph")
         {
             f = deserialize(model);
@@ -133,6 +142,9 @@ int main(int argc, char** argv)
             // TODO(jxue): currently we only use the first output function, need to support compile
             // multiple output functions in the future
             f = functions.front();
+
+            // load tensorlfow model as graph
+            graph = ngraph::frontend::load_tensorflow_model_as_graph(model);
         }
         else if (format == "onnx")
         {
@@ -203,7 +215,14 @@ int main(int argc, char** argv)
         if (!backend.empty())
         {
             auto runtime = runtime::Backend::create(backend);
-            runtime->codegen(f);
+            if (model_format == "function")
+            {
+                runtime->codegen(f);
+            }
+            else if (model_format == "graph")
+            {
+                runtime->codegen(graph);
+            }
         }
     }
     catch (ngraph::unsupported_op& ue)
