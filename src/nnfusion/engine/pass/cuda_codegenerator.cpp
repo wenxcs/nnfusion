@@ -189,6 +189,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             bool has_valid_kernel = false;
             if (kernel_regs.size() > 0)
             {
+                std::sort(kernel_regs.begin(),
+                          kernel_regs.end(),
+                          [&](const shared_ptr<const KernelRegistration>& x,
+                              const shared_ptr<const KernelRegistration>& y) {
+                              return x->m_factory(ctx)->get_kernel_type() <
+                                     y->m_factory(ctx)->get_kernel_type();
+                          });
                 for (auto kernel_reg : kernel_regs)
                 {
                     auto kernel = kernel_reg->m_factory(ctx);

@@ -152,6 +152,13 @@ namespace nnfusion
             return abs_path + rel_path;
         }
 
+        inline std::string get_content_from_templates(const std::string& rel_path)
+        {
+            std::ifstream in(get_file_from_templates(rel_path), std::ios::binary);
+            std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            return str;
+        }
+
         inline bool copy_file_from_templates(const std::string& rel_path,
                                              const std::string& target_name)
         {
