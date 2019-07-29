@@ -56,9 +56,9 @@ cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
     input_type = ctx->inputs[0].get_element_type().c_type_string();
     output_type = ctx->outputs[0].get_element_type().c_type_string();
 
-    enforce(input_shape.size() == 3)
-        << "Input shape size of AvgPool1D is invalid, shape size: " << input_shape.size()
-        << "expected 3";
+    // enforce(input_shape.size() == 3)
+    //     << "Input shape size of AvgPool1D is invalid, shape size: " << input_shape.size()
+    //     << "expected 3";
 
     std::stringstream tag;
     tag << "cuda_avgpool"
@@ -69,6 +69,9 @@ cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cuda::AvgPool1D::emit_function_body()
 {
+    if (input_shape.size() != 3)
+        return nullptr;
+
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
