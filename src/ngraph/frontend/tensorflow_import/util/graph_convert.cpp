@@ -1823,6 +1823,8 @@ namespace ngraph
                     inputs.clear();
                     const auto& node_proto = proto.node(node_idx);
 
+                    // todo: validate control edge at end?
+                    bool in_control_dependence = false;
                     for (auto& input : node_proto.input())
                     {
                         TensorId input_tensor(ParseTensorName(input));
@@ -1839,11 +1841,20 @@ namespace ngraph
                         src_index = input_tensor.second;
                         if (src_index == nnfusion::graph::Graph::kControlSlot)
                         {
-                            // TODO: how to handle control edge
-                            continue;
+                            in_control_dependence = true;
+                            src_node = iter->second.at(0);
+                            inputs.emplace_back(input_tensor.first, src_node, -1);
                         }
-                        src_node = iter->second.at(src_index);
-                        inputs.emplace_back(input_tensor.first, src_node, 0);
+                        else
+                        {
+                            if (in_control_dependence)
+                            {
+                                std::cerr << "Control dependencies must come after regular dependencies.";
+                                assert(false);
+                            }
+                            src_node = iter->second.at(src_index);
+                            inputs.emplace_back(input_tensor.first, src_node, 0);
+                        }
                     }
 
                     auto ng_nodes = convert_node(node_proto);
@@ -1854,14 +1865,27 @@ namespace ngraph
                         auto gnode = m_ngraph->add_node(node.second);
                         gnode_map[node.first].push_back(gnode);
 
-                        int input_idx = 0;
 
-                        for (auto& input : node_proto.input())
+                        for (size_t input_idx = 0; input_idx < inputs.size(); input_idx++)
                         {
-                            m_ngraph->add_edge(
-                                inputs[input_idx].node, inputs[input_idx].index, gnode, input_idx);
-                            input_idx++;
-                            // TODO: ADD CONTROL EDGE;
+                            if (inputs[input_idx].node == nullptr)
+                            {
+                                // todo: back edge
+                                std::cerr << "Back edge is not supported now.";
+                                assert(false);
+                            }
+                            else if(inputs[input_idx].index == nnfusion::graph::Graph::kControlSlot)
+                            {
+                                m_ngraph->add_control_edge(inputs[input_idx].node, gnode);
+                                
+                                // todo:
+                                // node.second->add_control_dependency();
+                            }
+                            else
+                            {
+                                m_ngraph->add_edge(
+                                    inputs[input_idx].node, inputs[input_idx].index, gnode, input_idx);
+                            }
                         }
                     }
 
@@ -1909,7 +1933,6 @@ namespace ngraph
                     int pending_count = node_proto.input_size();
                     for (size_t i = 0; i < node_proto.input_size(); ++i)
                     {
-                        // TODO: "name:num" or "^name"
                         std::string input_name = node_proto.input(i);
                         TensorId input_tensor(ParseTensorName(input_name));
 

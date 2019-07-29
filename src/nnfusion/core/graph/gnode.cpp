@@ -48,7 +48,6 @@ void GNode::initialize(const std::shared_ptr<ngraph::Node> op_ptr)
 
     m_in_edges.clear();
     m_out_edges.clear();
-    m_control_dependencies.clear();
 }
 
 const std::string& GNode::get_name() const
@@ -81,16 +80,6 @@ GNode::~GNode()
 {
 }
 
-const std::set<std::shared_ptr<GNode>>& GNode::get_control_dependencies() const
-{
-    return m_control_dependencies;
-}
-
-void GNode::add_control_dependency(std::shared_ptr<GNode> node)
-{
-    m_control_dependencies.insert(node);
-}
-
 const std::set<std::shared_ptr<Edge>>& GNode::get_in_edges() const
 {
     return m_in_edges;
@@ -115,7 +104,6 @@ void GNode::Clear()
 {
     m_in_edges.clear();
     m_out_edges.clear();
-    m_control_dependencies.clear();
     m_op_ptr = nullptr;
     m_id = -1;
     m_name.clear();

@@ -66,16 +66,18 @@ namespace nnfusion
             std::vector<std::shared_ptr<GNode>> get_nodes();
             std::vector<std::shared_ptr<GNode>> get_ordered_ops(bool include_control_deps = true);
             std::shared_ptr<GNode> find_node_id(size_t id) const { return m_nodes[id]; }
+            
             // Adds an edge that connects the xth output of `source` to the yth input of
             // `dest` and returns it. Does not update dest's NodeDef.
             const std::shared_ptr<Edge>
                 add_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y);
-
+            const std::shared_ptr<Edge>
+                add_control_edge(std::shared_ptr<GNode> source, std::shared_ptr<GNode> dest, bool allow_duplicates = false);
             // Removes edge from the graph. Does not update the destination node's
             // NodeDef.
             // REQUIRES: The edge must exist.
             void remove_edge(const std::shared_ptr<Edge> edge);
-
+            void remove_control_edge(const std::shared_ptr<Edge> edge);
             // Updates the input to a node.  The existing edge to `dst` is removed and an
             // edge from `new_src` to `dst` is created. The NodeDef associated with `dst`
             // is also updated.

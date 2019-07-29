@@ -39,39 +39,29 @@ namespace nnfusion
             size_t set_id(size_t id) { m_id = id; }
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
+            std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }
+
             const std::string& get_unique_name() const;
             const std::string& get_name() const;
             void set_name(const std::string& name);
 
-            /// Get control dependencies registered on the node
-            const std::set<std::shared_ptr<GNode>>& get_control_dependencies() const;
-
-            void add_control_dependency(std::shared_ptr<GNode> node);
-
-            void remove_control_dependency(std::shared_ptr<GNode> node)
-            {
-                m_control_dependencies.erase(node);
-            }
-
             /// Get in edges
             const std::set<std::shared_ptr<Edge>>& get_in_edges() const;
-
             void add_in_edge(std::shared_ptr<Edge> edge);
-
             void remove_in_edge(std::shared_ptr<Edge> edge) { m_in_edges.erase(edge); }
+
             /// Get out edges
             const std::set<std::shared_ptr<Edge>>& get_out_edges() const;
-
             void add_out_edge(std::shared_ptr<Edge> edge);
-
             void remove_out_edge(std::shared_ptr<Edge> edge) { m_out_edges.erase(edge); }
             size_t get_output_size() const { return m_out_edges.size(); }
+            
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
-            std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
+
         protected:
             size_t m_id; // m_id is for graph, the index in graph m_nodes
             size_t m_instance_id;
@@ -84,7 +74,6 @@ namespace nnfusion
 
             std::set<std::shared_ptr<Edge>> m_in_edges;
             std::set<std::shared_ptr<Edge>> m_out_edges;
-            std::set<std::shared_ptr<GNode>> m_control_dependencies;
         };
     }
 }

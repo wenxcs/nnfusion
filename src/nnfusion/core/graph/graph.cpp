@@ -241,7 +241,14 @@ const std::shared_ptr<nnfusion::graph::Edge>
     //DCHECK_EQ(y, kControlSlot) << dest->DebugString();
     //}
 
-    std::shared_ptr<Edge> edge;
+    // control slots must only be linked to control slots
+    if (x == kControlSlot || y == kControlSlot)
+    {
+        enforce(x == kControlSlot);
+        enforce(y == kControlSlot);
+    }
+
+    std::shared_ptr<Edge> edge = nullptr;
 
     if (m_free_edges.empty())
     {
@@ -265,13 +272,31 @@ const std::shared_ptr<nnfusion::graph::Edge>
     return edge;
 }
 
+const std::shared_ptr<nnfusion::graph::Edge> 
+    Graph::add_control_edge(std::shared_ptr<GNode> source, std::shared_ptr<GNode> dest, bool allow_duplicates)
+{
+    if (!allow_duplicates)
+    {
+        for (const auto edge : dest->get_in_edges())
+        {
+            if (edge->is_control_edge() && edge->get_src() == source)
+            {
+                // the requested edge already exist
+                return nullptr;
+            }
+        }
+    }
+
+    return add_edge(source, kControlSlot, dest, kControlSlot);
+}
+
 void Graph::remove_edge(std::shared_ptr<Edge> edge)
 {
     //TF_DCHECK_OK(IsValidNode(e->src_)) << e->src_->DebugString();
     //TF_DCHECK_OK(IsValidNode(e->dst_)) << e->dst_->DebugString();
     edge->get_src()->remove_out_edge(edge);
     edge->get_dst()->remove_in_edge(edge);
-    //CHECK_EQ(e, m_edges[e->m_id]);
+    enforce(edge == m_edges[edge->m_id]);
     //CHECK_GT(m_num_edges, 0);
 
     m_edges[edge->m_id] = nullptr;
@@ -283,6 +308,12 @@ void Graph::remove_edge(std::shared_ptr<Edge> edge)
     edge->m_dst_input = kControlSlot - 1;
     m_free_edges.push_back(edge);
     --m_edge_size;
+}
+
+void Graph::remove_control_edge(std::shared_ptr<Edge> edge)
+{
+    // todo remove ^src from dst's node_def's input
+    remove_edge(edge);
 }
 
 void Graph::set_default_outputs()
