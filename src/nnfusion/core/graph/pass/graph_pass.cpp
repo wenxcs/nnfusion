@@ -13,7 +13,7 @@ using namespace std;
 bool GraphPass::run(std::shared_ptr<Graph> graph)
 {
     GraphPassManager pass_manager;
-    pass_manager.register_pass<ConstantFoldingPass>();
+    //pass_manager.register_pass<ConstantFoldingPass>();
     pass_manager.register_pass<ReshapeInplacePass>();
     pass_manager.run_passes(graph);
 

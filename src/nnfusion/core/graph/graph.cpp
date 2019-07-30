@@ -272,8 +272,9 @@ const std::shared_ptr<nnfusion::graph::Edge>
     return edge;
 }
 
-const std::shared_ptr<nnfusion::graph::Edge> 
-    Graph::add_control_edge(std::shared_ptr<GNode> source, std::shared_ptr<GNode> dest, bool allow_duplicates)
+const std::shared_ptr<nnfusion::graph::Edge> Graph::add_control_edge(std::shared_ptr<GNode> source,
+                                                                     std::shared_ptr<GNode> dest,
+                                                                     bool allow_duplicates)
 {
     if (!allow_duplicates)
     {

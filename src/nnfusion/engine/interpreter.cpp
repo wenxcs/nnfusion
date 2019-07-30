@@ -132,8 +132,8 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
 shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> graph)
 {
     // run graph passes
-    static graph::pass::GraphPass graph_passes;
-    enforce(graph_passes.run(graph));
+    //graph::pass::GraphPass graph_passes;
+    //enforce(graph_passes.run(graph));
     shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
     graph_tu->m_graph = graph;
     // todo: multi graph???

@@ -1849,7 +1849,8 @@ namespace ngraph
                         {
                             if (in_control_dependence)
                             {
-                                std::cerr << "Control dependencies must come after regular dependencies.";
+                                std::cerr
+                                    << "Control dependencies must come after regular dependencies.";
                                 assert(false);
                             }
                             src_node = iter->second.at(src_index);
@@ -1865,7 +1866,6 @@ namespace ngraph
                         auto gnode = m_ngraph->add_node(node.second);
                         gnode_map[node.first].push_back(gnode);
 
-
                         for (size_t input_idx = 0; input_idx < inputs.size(); input_idx++)
                         {
                             if (inputs[input_idx].node == nullptr)
@@ -1874,17 +1874,20 @@ namespace ngraph
                                 std::cerr << "Back edge is not supported now.";
                                 assert(false);
                             }
-                            else if(inputs[input_idx].index == nnfusion::graph::Graph::kControlSlot)
+                            else if (inputs[input_idx].index ==
+                                     nnfusion::graph::Graph::kControlSlot)
                             {
                                 m_ngraph->add_control_edge(inputs[input_idx].node, gnode);
-                                
+
                                 // todo:
                                 // node.second->add_control_dependency();
                             }
                             else
                             {
-                                m_ngraph->add_edge(
-                                    inputs[input_idx].node, inputs[input_idx].index, gnode, input_idx);
+                                m_ngraph->add_edge(inputs[input_idx].node,
+                                                   inputs[input_idx].index,
+                                                   gnode,
+                                                   input_idx);
                             }
                         }
                     }

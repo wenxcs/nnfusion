@@ -40,7 +40,6 @@ namespace nnfusion
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
             std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }
-
             const std::string& get_unique_name() const;
             const std::string& get_name() const;
             void set_name(const std::string& name);
@@ -49,19 +48,16 @@ namespace nnfusion
             const std::set<std::shared_ptr<Edge>>& get_in_edges() const;
             void add_in_edge(std::shared_ptr<Edge> edge);
             void remove_in_edge(std::shared_ptr<Edge> edge) { m_in_edges.erase(edge); }
-
             /// Get out edges
             const std::set<std::shared_ptr<Edge>>& get_out_edges() const;
             void add_out_edge(std::shared_ptr<Edge> edge);
             void remove_out_edge(std::shared_ptr<Edge> edge) { m_out_edges.erase(edge); }
             size_t get_output_size() const { return m_out_edges.size(); }
-            
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
-
         protected:
             size_t m_id; // m_id is for graph, the index in graph m_nodes
             size_t m_instance_id;

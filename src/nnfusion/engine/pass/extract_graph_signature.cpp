@@ -156,6 +156,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
     for (size_t i = 0; i < graph->get_output_size(); ++i)
     {
         shared_ptr<Node> op = graph->get_output_op(i)->get_op_ptr();
+
         enforce_not_nullptr(op);
         shared_ptr<descriptor::Tensor> tv = op->get_output_tensor_ptr();
         enforce_not_nullptr(tv);
@@ -166,13 +167,13 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         stringstream ss;
         ss << "((" << type << "*)(outputs[" << i << "]))";
         ctx->m_variable_name_map[tv->get_name()] = ss.str();
-
-        auto res = dynamic_pointer_cast<ngraph::op::Result>(op);
+        // TODO: add pass to cast output node to op::Result
+        //auto res = dynamic_pointer_cast<ngraph::op::Result>(op);
+        auto res = std::make_shared<op::Result>(op);
         //keep assigning different outputs to a result descriptor
         //op::Result emitter will check if in and out descriptors are the same
         //and skip a copy
         auto input_node = res->get_inputs().at(0).get_output().get_node();
-
         if (!input_node->is_constant() && !input_node->is_parameter())
         {
             shared_ptr<descriptor::Tensor> itv =
