@@ -303,6 +303,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     bool enable_debug =
         getenv("NNFUSION_ENABLE_DEBUG") ? bool(atoi(getenv("NNFUSION_ENABLE_DEBUG"))) : 0;
+    bool enable_timing =
+        getenv("NNFUSION_ENABLE_TIMING") ? bool(atoi(getenv("NNFUSION_ENABLE_TIMING"))) : 0;
 
     // Generate graph configs
     {
@@ -423,6 +425,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
+            if (enable_timing)
+            {
+                lu_kernel_entry << "static cudaEvent_t hEvents[" << kernels.size() << "];\n";
+                lu_kernel_entry << "size_t eventCnt = 0;\n";
+                lu_kernel_entry << "if (!hEvents[eventCnt]) "
+                                   "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                lu_kernel_entry << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+            }
+
+            size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
                 std::string read_const = kernel->call_unit->get_code();
@@ -432,12 +444,20 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
+                    lu_kernel_entry << " // kernel order = " << ++kernel_order << "\n";
                     lu_kernel_entry << kernel->call_unit->get_code();
                     if (enable_debug)
                     {
                         for (auto out_name : kernel->m_context->output_names)
                             lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name
                                             << ");\n";
+                    }
+                    if (enable_timing)
+                    {
+                        lu_kernel_entry << "if (!hEvents[eventCnt]) "
+                                           "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                        lu_kernel_entry
+                            << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
                     }
                 }
             }
@@ -448,6 +468,18 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (global_required.count("declaration::global_cudnn_handle") > 0)
             {
                 lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+            }
+            if (enable_timing)
+            {
+                lu_kernel_entry << "// Output Timing Result:\n";
+                lu_kernel_entry << "CUDA_SAFE_CALL(cudaDeviceSynchronize());\n";
+                lu_kernel_entry << "float total_ms = 0;\n";
+                lu_kernel_entry
+                    << "for (size_t i = 1; i < eventCnt; ++i) { float ms; "
+                       "CUDA_SAFE_CALL(cudaEventElapsedTime(&ms, hEvents[i - 1], hEvents[i])); "
+                       "printf(\"%d: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
+                lu_kernel_entry
+                    << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
         }
 
