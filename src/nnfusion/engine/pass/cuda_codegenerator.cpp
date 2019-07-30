@@ -301,6 +301,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << def.collect_code() << "\n";
     }
 
+    bool enable_debug =
+        getenv("NNFUSION_ENABLE_DEBUG") ? bool(atoi(getenv("NNFUSION_ENABLE_DEBUG"))) : 0;
+
     // Generate graph configs
     {
         lu_kernel_entry << "\n#ifndef __NNFUSION_GRAPH_CONFIG__\n";
@@ -430,8 +433,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 else
                 {
                     lu_kernel_entry << kernel->call_unit->get_code();
-                    // for (auto out_name : kernel->m_context->output_names)
-                    //     lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name << ");\n";
+                    if (enable_debug)
+                    {
+                        for (auto out_name : kernel->m_context->output_names)
+                            lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name
+                                            << ");\n";
+                    }
                 }
             }
             if (global_required.count("declaration::global_cublas_handle") > 0)
@@ -470,18 +477,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     }
     lu << "\n";
 
-    //     lu << R"(
-    // void Debug(std::string name, float* tensor_ptr, size_t debug_size = 10, size_t offset=0)
-    // {
-    //     float* host_tensor = (float*)malloc(sizeof(float) * debug_size);
-    //     CUDA_SAFE_CALL(cudaDeviceSynchronize());
-    //     CUDA_SAFE_CALL(cudaMemcpy(host_tensor, tensor_ptr + offset,  sizeof(float) * debug_size, cudaMemcpyDeviceToHost));
-    //     CUDA_SAFE_CALL(cudaDeviceSynchronize());
-    //     printf("%s: ", name.c_str());
-    //     for (int i = 0; i < debug_size; ++i) printf("%f ", host_tensor[i]);
-    //     printf("\n");
-    // }
-    //         )";
+    if (enable_debug)
+    {
+        lu << R"(
+     inline void Debug(std::string name, float* tensor_ptr, size_t debug_size = 10, size_t offset=0)
+     {
+         float* host_tensor = (float*)malloc(sizeof(float) * debug_size);
+         CUDA_SAFE_CALL(cudaDeviceSynchronize());
+         CUDA_SAFE_CALL(cudaMemcpy(host_tensor, tensor_ptr + offset,  sizeof(float) * debug_size, cudaMemcpyDeviceToHost));
+         CUDA_SAFE_CALL(cudaDeviceSynchronize());
+         printf("%s: ", name.c_str());
+         for (int i = 0; i < debug_size; ++i) printf("%f ", host_tensor[i]);
+         printf("\n");
+     }
+             )";
+    }
     lu << lu_kernel_entry.get_code() << "\n\n";
 
     // // Test function
