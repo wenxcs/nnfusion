@@ -1878,9 +1878,8 @@ namespace ngraph
                                      nnfusion::graph::Graph::kControlSlot)
                             {
                                 m_ngraph->add_control_edge(inputs[input_idx].node, gnode);
-
-                                // todo:
-                                // node.second->add_control_dependency();
+                                node.second->add_control_dependency(
+                                    inputs[input_idx].node->get_op_ptr());
                             }
                             else
                             {
