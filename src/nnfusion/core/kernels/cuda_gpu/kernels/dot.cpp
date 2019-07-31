@@ -203,3 +203,7 @@ LanguageUnit_p cuda::Dot::emit_dependency()
 REGISTER_KERNEL_EMITTER("Dot",                                                   // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cublas"), // attrs
                         cuda::Dot)                                               // constructor
+
+REGISTER_KERNEL_EMITTER("Dot",                                                   // op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cublas"), // attrs
+                        cuda::Dot)                                               // constructor

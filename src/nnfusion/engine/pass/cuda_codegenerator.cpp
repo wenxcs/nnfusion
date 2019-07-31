@@ -477,7 +477,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_kernel_entry
                     << "for (size_t i = 1; i < eventCnt; ++i) { float ms; "
                        "CUDA_SAFE_CALL(cudaEventElapsedTime(&ms, hEvents[i - 1], hEvents[i])); "
-                       "printf(\"%d: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
+                       "printf(\"%zd: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
                 lu_kernel_entry
                     << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
