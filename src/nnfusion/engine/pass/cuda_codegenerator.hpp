@@ -9,6 +9,8 @@
 
 namespace nnfusion
 {
+    using KernelContext = nnfusion::kernels::KernelContext;
+
     class CudaCodeGenerator : public IInterpreterPass
     {
     public:
@@ -19,7 +21,7 @@ namespace nnfusion
         virtual void post_projgen(void);
         virtual std::string get_target_name(void);
         virtual std::vector<shared_ptr<const kernels::KernelRegistration>>
-            find_backend_kernels(const std::string& op_name);
+            find_backend_kernels(const std::string& op_name, const shared_ptr<KernelContext>& ctx);
 
     private:
         virtual bool projgen();

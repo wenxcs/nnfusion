@@ -28,7 +28,7 @@ namespace nnfusion
                     GENERIC_OP_LOGGING();
                     auto& ctx = m_context;
 
-                    auto& input_shape_0 = ctx->inputs[0].get_shape();
+                    auto& input_shape = ctx->inputs[0].get_shape();
                     auto& filter_shape = ctx->inputs[1].get_shape();
                     auto& output_shape = ctx->outputs[0].get_shape();
 
@@ -40,36 +40,60 @@ namespace nnfusion
                     auto& padding_above_diff = conv->get_padding_above();
                     auto& dtype = ctx->outputs[0].get_element_type().c_type_string();
 
-                    // generic_op->validate_and_infer_types();
-                    // auto& cfg = generic_op->localOpConfig.getRoot();
-
-                    if (input_shape_0 != ngraph::Shape({128, 3, 227, 227}))
-                        return nullptr;
-                    if (filter_shape != ngraph::Shape({96, 3, 11, 11}))
-                        return nullptr;
-                    if (output_shape != ngraph::Shape({128, 96, 55, 55}))
-                        return nullptr;
-                    if (window_dilation_strides != ngraph::Strides({1, 1}))
-                        return nullptr;
-                    if (data_dilation_strides != ngraph::Strides({1, 1}))
-                        return nullptr;
-                    if (window_movement_strides != ngraph::Strides({4, 4}))
-                        return nullptr;
-                    if (padding_below_diff != ngraph::CoordinateDiff({0, 0}))
-                        return nullptr;
-                    if (padding_above_diff != ngraph::CoordinateDiff({0, 0}))
-                        return nullptr;
                     if (dtype != "float")
                         return nullptr;
 
-                    auto code = nnfusion::codegen::get_content_from_templates(
-                        "rocm_adapter/fixed_kernels/convfwd/"
-                        "conv2d_fwd_128_3_227_227_96_11_11_4_0_1.h.in");
+                    // generic_op->validate_and_infer_types();
+                    // auto& cfg = generic_op->localOpConfig.getRoot();
+                    auto matching = [&](const ngraph::Shape& _input_shape,
+                                        const ngraph::Shape& _filter_shape,
+                                        const ngraph::Shape& _output_shape,
+                                        const ngraph::Strides& _dilation,
+                                        const ngraph::Strides& _data_dilation,
+                                        const ngraph::Strides& _stride,
+                                        const ngraph::CoordinateDiff& _padding_below_diff,
+                                        const ngraph::CoordinateDiff& _padding_above_diff) -> bool {
+                        if (input_shape != _input_shape)
+                            return false;
+                        if (filter_shape != _filter_shape)
+                            return false;
+                        if (output_shape != _output_shape)
+                            return false;
+                        if (window_dilation_strides != _dilation)
+                            return false;
+                        if (data_dilation_strides != _data_dilation)
+                            return false;
+                        if (window_movement_strides != _stride)
+                            return false;
+                        if (padding_below_diff != _padding_below_diff)
+                            return false;
+                        if (padding_above_diff != _padding_above_diff)
+                            return false;
+                        return true;
+                    };
+                    std::string templ;
+                    if (matching({128, 3, 227, 227},
+                                 {96, 3, 11, 11},
+                                 {128, 96, 55, 55},
+                                 {1, 1},
+                                 {1, 1},
+                                 {4, 4},
+                                 {0, 0},
+                                 {0, 0}))
+                    {
+                        templ =
+                            "rocm_adapter/fixed_kernels/convfwd/"
+                            "conv2d_fwd_128_3_227_227_96_11_11_4_0_1.h.in";
+                        m_gridDim = dim3(1, 55, 128);
+                        m_blockDim = dim3(5, 1, 48);
+                    }
+                    else
+                        return nullptr;
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
                     lu.block_begin();
-                    lu << code << "\n";
+                    lu << nnfusion::codegen::get_content_from_templates(templ) << "\n";
                     lu.block_end();
                     return _lu;
                 }
@@ -83,14 +107,7 @@ namespace nnfusion
                     return _lu;
                 }
 
-                void set_launch_config() override
-                {
-                    GENERIC_OP_LOGGING();
-
-                    // just for conv2d_fwd_128_3_227_227_96_11_11_4_0_1
-                    m_gridDim = dim3(1, 55, 128);
-                    m_blockDim = dim3(5, 1, 48);
-                }
+                void set_launch_config() override { GENERIC_OP_LOGGING(); }
             };
         } // namespace cuda
     }     // namespace kernels

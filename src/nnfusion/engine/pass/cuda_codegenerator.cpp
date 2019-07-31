@@ -144,7 +144,8 @@ bool CudaCodeGenerator::projgen()
 // }
 
 std::vector<shared_ptr<const KernelRegistration>>
-    CudaCodeGenerator::find_backend_kernels(const std::string& op_name)
+    CudaCodeGenerator::find_backend_kernels(const std::string& op_name,
+                                            const shared_ptr<KernelContext>& ctx)
 {
     return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
 }
@@ -182,20 +183,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
-            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-                find_backend_kernels(op_name);
-
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+                find_backend_kernels(op_name, ctx);
+
             bool has_valid_kernel = false;
             if (kernel_regs.size() > 0)
             {
-                std::sort(kernel_regs.begin(),
-                          kernel_regs.end(),
-                          [&](const shared_ptr<const KernelRegistration>& x,
-                              const shared_ptr<const KernelRegistration>& y) {
-                              return x->m_factory(ctx)->get_kernel_type() <
-                                     y->m_factory(ctx)->get_kernel_type();
-                          });
                 for (auto kernel_reg : kernel_regs)
                 {
                     auto kernel = kernel_reg->m_factory(ctx);
@@ -797,7 +791,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         << "for (int i = 0; i < "
                         << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
                         << "; ++i) printf(\"%f \", " << tensor.get_name() << "_host[i]); "
-                        << "printf(\"\\n\");\n";
+                        << "\nprintf(\"\\n\");\n";
             }
         }
 

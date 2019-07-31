@@ -73,13 +73,24 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
 
         virtual std::string get_target_name(void) override { return "rocm_codegen"; }
         virtual std::vector<shared_ptr<const KernelRegistration>>
-            find_backend_kernels(const std::string& op_name) override
+            find_backend_kernels(const std::string& op_name,
+                                 const shared_ptr<KernelContext>& ctx) override
         {
             auto kernel_regs =
                 KernelRegistry::Global()->FindKernelRegistrations(op_name, ROCM_GPU, DT_FLOAT);
             if (!kernel_regs.size())
                 kernel_regs =
                     KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
+            else
+            {
+                std::sort(kernel_regs.begin(),
+                          kernel_regs.end(),
+                          [&](const shared_ptr<const KernelRegistration>& x,
+                              const shared_ptr<const KernelRegistration>& y) {
+                              return x->m_factory(ctx)->get_kernel_type() <
+                                     y->m_factory(ctx)->get_kernel_type();
+                          });
+            }
             return std::move(kernel_regs);
         }
     };
