@@ -3,6 +3,7 @@
 
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/core/IR/instruction.hpp"
+#include "nnfusion/core/graph/pass/graph_pass.hpp"
 #include "op.hpp"
 
 namespace nnfusion

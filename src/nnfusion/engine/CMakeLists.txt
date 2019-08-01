@@ -18,6 +18,7 @@ if (NNFUSION_ENABLE)
 
     set_target_properties(nnfusion_backend PROPERTIES VERSION ${NGRAPH_VERSION})
     target_link_libraries(nnfusion_backend PRIVATE
+        nnfusion_graph_pass
         nnfusion_engine_pass
         nnfusion_common
         nnfusion_util

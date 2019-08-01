@@ -1,6 +1,5 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "interpreter.hpp"
-#include "nnfusion/core/graph/pass/graph_pass.hpp"
 #include "nnfusion/engine/pass/cpu_codegenerator.hpp"
 #include "nnfusion/engine/pass/cuda_codegenerator.hpp"
 #include "nnfusion/engine/pass/device_dispatcher.hpp"
@@ -132,7 +131,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
 shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> graph)
 {
     // run graph passes
-    //graph::pass::GraphPass graph_passes;
+    nnfusion::graph::pass::GraphPass graph_passes;
     //enforce(graph_passes.run(graph));
     shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
     graph_tu->m_graph = graph;

@@ -13,9 +13,6 @@ namespace nnfusion
             class GraphPass
             {
             public:
-                GraphPass();
-                ~GraphPass();
-
                 bool run(std::shared_ptr<Graph> graph);
             };
         } //namespace pass
