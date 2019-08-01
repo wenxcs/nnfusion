@@ -17,7 +17,7 @@ KernelContext::KernelContext(shared_ptr<Node> node)
         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
         enforce_not_nullptr(tv);
         inputs.push_back(TensorWrapper(tv, tv->get_name()));
-        input_names.emplace_back(tv->get_name());
+        input_names.push_back(tv->get_name());
     }
 
     // extract output tensors
@@ -26,7 +26,7 @@ KernelContext::KernelContext(shared_ptr<Node> node)
         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
         enforce_not_nullptr(tv);
         outputs.push_back(TensorWrapper(tv, tv->get_name()));
-        output_names.emplace_back(tv->get_name());
+        output_names.push_back(tv->get_name());
     }
 
     for (auto& arg : inputs)
@@ -101,7 +101,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->inputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->inputs[i].get_element_type().c_type_string() << "* ";
+        ss << m_context->inputs[i].get_type() << "* ";
         ss << "input" << i;
         params.push_back(ss.str());
     }
@@ -109,7 +109,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->inputs[i].get_element_type().c_type_string() << "* ";
+        ss << m_context->outputs[i].get_type() << "* ";
         ss << "output" << i;
         params.push_back(ss.str());
     }

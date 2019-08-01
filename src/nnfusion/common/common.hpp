@@ -1,5 +1,11 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #pragma once
+
+#include <assert.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <functional>
@@ -103,8 +109,71 @@ namespace nnfusion
 {
     namespace codegen
     {
-    }
-}
+        inline bool create_folder(std::string tar_path)
+        {
+            bool flag;
+            int mkdir_status;
+            struct stat s;
+            int err = stat(tar_path.c_str(), &s);
+            if (-1 == err)
+            {
+                mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                if (-1 == mkdir_status)
+                {
+                    printf("Error creating directory: %s", (tar_path).c_str());
+                    flag = false;
+                }
+                else
+                    flag = true;
+            }
+            else
+            {
+                printf("Directory %s already exists\n", tar_path.c_str());
+                flag = true;
+            }
+            return flag;
+        }
+
+        inline std::string get_file_from_templates(const std::string& rel_path)
+        {
+            static std::string abs_path;
+            if (abs_path.size() == 0)
+            {
+                char exepath[1024];
+                assert(readlink("/proc/self/exe", exepath, sizeof(exepath)) > 0);
+                for (int i = strlen(exepath) - 1; i >= 0; --i)
+                    if (exepath[i] == '/')
+                    {
+                        exepath[i] = 0;
+                        break;
+                    }
+                abs_path = std::string(exepath) + "/templates/";
+            }
+            return abs_path + rel_path;
+        }
+
+        inline std::string get_content_from_templates(const std::string& rel_path)
+        {
+            std::ifstream in(get_file_from_templates(rel_path), std::ios::binary);
+            std::string str((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            return str;
+        }
+
+        inline bool copy_file_from_templates(const std::string& rel_path,
+                                             const std::string& target_name)
+        {
+            int at = 1, next;
+            while (next = target_name.find('/', at), next >= 0)
+            {
+                create_folder(target_name.substr(0, next));
+                at = next + 1;
+            }
+            std::ifstream in(get_file_from_templates(rel_path), std::ios::binary);
+            std::ofstream out(target_name, std::ios::binary);
+            out << in.rdbuf();
+        }
+    } // namespace codegen
+} // namespace nnfusion
 
 using namespace std;
 using namespace nnfusion;

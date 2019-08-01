@@ -66,7 +66,7 @@ int block_size = @block_size@;
 const int warp_size = @warp_size@;
 __shared__ float shm[warp_size];
 
-for (int block_idx = blockIdx.x * blockDim.x + blockIdx.y; block_idx < height;
+for (int block_idx = blockIdx.y * blockDim.x + blockIdx.x; block_idx < height;
      block_idx += blockDim.x * blockDim.y) {
     int thread_idx = threadIdx.x;
     int data_idx_offset = block_idx * width;
@@ -107,7 +107,7 @@ for (int block_idx = blockIdx.x * blockDim.x + blockIdx.y; block_idx < height;
         // 4. divideed by sum
         for (int tidx = thread_idx; tidx < width; tidx += block_size) {
             int data_idx = tidx + data_idx_offset;
-            output0[data_idx] /= val;
+            output0[data_idx] /= shm[0];
         }
     } 
 }

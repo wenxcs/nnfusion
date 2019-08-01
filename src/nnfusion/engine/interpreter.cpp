@@ -15,7 +15,7 @@ Interpreter::Interpreter()
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
     m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
     m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
-    m_passes->push_back(make_shared<RocmCodeGenerator>(RocmCodeGenerator()));
+    m_passes->push_back(nnfusion::make_rocm_codegenerator());
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,

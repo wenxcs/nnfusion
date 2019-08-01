@@ -73,13 +73,42 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_body()
                   padding_below, window_movement_strides, window_dilation_strides, "conv_desc")
                   ->get_code();
 
-        // <TODO> Support different cudnnConvolutionFwdAlgo_t
-        lu << "// <TODO> Support different cudnnConvolutionFwdAlgo_t.\n";
-        lu << "cudnnConvolutionFwdAlgo_t conv_fwd_algo = "
-              "CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;\n";
+        lu << R"(
+static bool selected_algo = false;
+static cudnnConvolutionFwdAlgo_t conv_fwd_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+if (!selected_algo) {
+    int num_algos;
+    int max_algos = 0;
+    // cudnnGetConvolutionForwardAlgorithm_v7;
+    CUDNN_SAFE_CALL(
+        cudnnGetConvolutionForwardAlgorithmMaxCount(global_cudnn_handle, &max_algos));
+    std::vector<cudnnConvolutionFwdAlgoPerf_t> results(max_algos);
+    CUDNN_SAFE_CALL(cudnnFindConvolutionForwardAlgorithm(global_cudnn_handle,
+                                            tensor_desc_0,
+                                            filter_desc,
+                                            conv_desc,
+                                            tensor_desc_1,
+                                            static_cast<int>(results.size()),
+                                            &num_algos,
+                                            results.data()));
+    results.resize(num_algos);
+    for (size_t i = 0; i != results.size(); ++i) {
+        cudnnConvolutionFwdAlgoPerf_t const& result = results[i];
+        if (result.status == CUDNN_STATUS_SUCCESS) {
+            conv_fwd_algo = result.algo;
+            break;
+        }
+    }
+    selected_algo = true;
+})";
+        lu << "\n";
         lu << "const float alpha = 1.0;\n";
         lu << "const float beta = 0.0;\n";
-        lu << "size_t workspace_size_in_bytes = 0;\n";
+        lu << "static void *workspace_ptr = NULL;\n"
+           << "static size_t workspace_size_in_bytes = 0;\n";
+        lu << "if (!workspace_ptr)\n";
+        lu.block_begin();
         lu << "CUDNN_SAFE_CALL(cudnnGetConvolutionForwardWorkspaceSize(global_cudnn_handle, "
            << "tensor_desc_0, "
            << "filter_desc, "
@@ -87,8 +116,9 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_body()
            << "tensor_desc_1, "
            << "conv_fwd_algo, "
            << "&workspace_size_in_bytes));\n";
-        lu << "void *workspace_ptr;\n"
-           << "CUDA_SAFE_CALL(cudaMalloc(&workspace_ptr, workspace_size_in_bytes));\n";
+        //lu << "void *workspace_ptr;\n"
+        lu << "CUDA_SAFE_CALL(cudaMalloc(&workspace_ptr, workspace_size_in_bytes));\n";
+        lu.block_end();
         lu << "CUDNN_SAFE_CALL(cudnnConvolutionForward(global_cudnn_handle, "
            << "&alpha, "
            << "tensor_desc_0, "
@@ -102,7 +132,7 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_body()
            << "&beta, "
            << "tensor_desc_1, "
            << "output0));\n";
-        lu << "CUDA_SAFE_CALL(cudaFree(workspace_ptr));\n";
+        //lu << "CUDA_SAFE_CALL(cudaFree(workspace_ptr));\n";
         lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_0));\n";
         lu << "CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_1));\n";
         lu << "CUDNN_SAFE_CALL(cudnnDestroyFilterDescriptor(filter_desc));\n";
@@ -119,6 +149,7 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_dependency()
     _lu->require(header::cudnn);
     _lu->require(declaration::global_cudnn_handle);
     _lu->require(macro::CUDNN_SAFE_CALL);
+    _lu->require(header::vector);
 
     return _lu;
 }

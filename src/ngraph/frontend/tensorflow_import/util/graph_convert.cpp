@@ -168,7 +168,7 @@ namespace ngraph
 
                 auto ng_node = std::make_shared<ngraph::op::GenericOp>(
                     node.name(),
-                    node.op(),
+                    "BatchMatMul", // select which existing kernels to use;
                     std::vector<std::shared_ptr<Node>>({ng_lhs, ng_rhs}),
                     myConfig);
 
@@ -1076,6 +1076,53 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateTransposeToReshapeOp(const tensorflow::NodeDef& node,
+                                                          const NodeMap& all_ng_nodes,
+                                                          ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_permutation_op = GetInputNode(all_ng_nodes, node, 1);
+
+                std::vector<int64> permutation;
+                assert(GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation) == true);
+
+                // Check to make sure that the permutation requested for transpose
+                // is valid for example:
+                // - it should not have duplicates,
+                // - it should have all the dimensions.
+
+                auto ng_input_rank = ng_input->get_shape().size();
+                vector<bool> count(ng_input_rank, false);
+                for (auto p : permutation)
+                {
+                    if (0 <= p && p < ng_input_rank)
+                    {
+                        count[p] = true;
+                    }
+                }
+                for (int i = 0; i < ng_input_rank; i++)
+                {
+                    if (!count[i])
+                    {
+                        std::cerr << i << " is missing from {" << join(permutation) << "}.";
+                        assert(false);
+                    }
+                }
+
+                ngraph::AxisVector ng_axis_order;
+                ng_axis_order.reserve(permutation.size());
+
+                for (auto i : permutation)
+                {
+                    ng_axis_order.push_back(i);
+                }
+
+                auto ng_node = ngraph::builder::numpy_transpose(ng_input, ng_axis_order);
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateOneHotOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
                                               ngraph::op::ParameterVector& parameters)
@@ -1749,6 +1796,7 @@ namespace ngraph
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
                 {"BatchMatMul", TranslateBatchMatMulOp},
+                {"BatchMatMulV2", TranslateBatchMatMulOp},
                 {"BiasAdd", TranslateBiasAddOp},
                 {"Cast", TranslateCastOp},
                 {"Const", TranslateConstOp},
@@ -1786,7 +1834,7 @@ namespace ngraph
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
-                {"Transpose", TranslateTransposeOp}};
+                {"Transpose", TranslateTransposeToReshapeOp}};
 
             struct InputInfo
             {

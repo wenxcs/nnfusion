@@ -20,7 +20,7 @@ namespace nnfusion
 
                     this->axis = op->get_concatenation_axis();
 
-                    input_num = ctx->outputs.size();
+                    input_num = ctx->inputs.size();
                     split_input_size =
                         256; //max num of inputs fit 4KB parameter space: 256 * 8 + 7 * ?
                     residue = input_num % split_input_size;
@@ -66,7 +66,7 @@ namespace nnfusion
                     tag << "_s" << join(ctx->outputs[0].get_shape(), "_") << "_a_" << concat_axis;
                     for (size_t i = 0; i < input_num; i++)
                     {
-                        tag << "_i_" << join(ctx->outputs[i].get_shape(), "_");
+                        tag << "_i_" << join(ctx->inputs[i].get_shape(), "_");
                     }
                     custom_tag = tag.str();
                 }

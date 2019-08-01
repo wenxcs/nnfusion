@@ -19,10 +19,10 @@ namespace nnfusion
             shared_ptr<ngraph::Node> node;
 
             // The input tensor descriptions
-            vector<TensorWrapper> inputs;
+            vector<nnfusion::TensorWrapper> inputs;
 
             // The output tensor descriptions
-            vector<TensorWrapper> outputs;
+            vector<nnfusion::TensorWrapper> outputs;
 
             // The input tensor names
             vector<string> input_names;

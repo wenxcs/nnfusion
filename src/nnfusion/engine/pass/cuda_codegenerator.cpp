@@ -11,14 +11,61 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-std::string generate_cmakelists(void)
+namespace
+{
+    bool create_dir(std::string tar_path)
+    {
+        bool flag;
+        int mkdir_status;
+        struct stat s;
+        int err = stat(tar_path.c_str(), &s);
+        if (-1 == err)
+        {
+            mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+            if (-1 == mkdir_status)
+            {
+                printf("Error creating directory: %s", (tar_path).c_str());
+                flag = false;
+            }
+            else
+                flag = true;
+        }
+        else
+        {
+            printf("Directory %s already exists\n", tar_path.c_str());
+            flag = true;
+        }
+        return flag;
+    }
+
+    bool save_file(LanguageUnit_p lu)
+    {
+        std::ofstream out(lu->symbol);
+        out << lu->get_code();
+        out.close();
+        return true;
+    }
+
+} // namespace
+
+std::string CudaCodeGenerator::get_generate_cmakelists(void)
 {
     LanguageUnit lu;
     lu << R"(project(main_test)
 cmake_minimum_required(VERSION 3.5)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 find_package(CUDA)
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=compute_60,code=sm_60)
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O3")
+
 link_directories(/usr/local/cuda/lib64)
 
 find_path(CUDNN_INCLUDE_DIR cudnn.h
@@ -49,43 +96,24 @@ target_link_libraries(main_test nnfusion_naive_rt cudnn culibos cublas))";
     return lu.get_code();
 }
 
-bool create_dir(std::string tar_path)
+void CudaCodeGenerator::post_projgen()
 {
-    bool flag;
-    int mkdir_status;
-    struct stat s;
-    int err = stat(tar_path.c_str(), &s);
-    if (-1 == err)
-    {
-        mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        if (-1 == mkdir_status)
-        {
-            printf("Error creating directory: %s", (tar_path).c_str());
-            flag = false;
-        }
-        else
-            flag = true;
-    }
-    else
-    {
-        printf("Directory %s already exists\n", tar_path.c_str());
-        flag = true;
-    }
-    return flag;
+    // create_image_tests
+    nnfusion::codegen::copy_file_from_templates("image_tests/image_test.cpp",
+                                                "./image_tests/image_test.cpp");
+    nnfusion::codegen::copy_file_from_templates("image_tests/CMakeLists_cuda.txt",
+                                                "./image_tests/CMakeLists.txt");
 }
 
-bool save_file(LanguageUnit_p lu)
+std::string CudaCodeGenerator::get_target_name()
 {
-    std::ofstream out(lu->symbol);
-    out << lu->get_code();
-    out.close();
-    return true;
+    return "cuda_codegen";
 }
 
 bool CudaCodeGenerator::setpwd()
 {
     std::string working_dir = "./nnfusion_rt";
-    std::string tar_path = working_dir + "/cuda_codegen/";
+    std::string tar_path = working_dir + "/" + get_target_name() + "/";
     create_dir(working_dir);
     create_dir(tar_path);
     int status = chdir(tar_path.c_str());
@@ -114,6 +142,13 @@ bool CudaCodeGenerator::projgen()
 //     }
 //     return true;
 // }
+
+std::vector<shared_ptr<const KernelRegistration>>
+    CudaCodeGenerator::find_backend_kernels(const std::string& op_name,
+                                            const shared_ptr<KernelContext>& ctx)
+{
+    return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
+}
 
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
@@ -148,10 +183,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
-            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-                KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
-
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+                find_backend_kernels(op_name, ctx);
+
             bool has_valid_kernel = false;
             if (kernel_regs.size() > 0)
             {
@@ -192,7 +227,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(header::stdexcept);
         re.require(header::sstream);
         re.require(macro::CUDA_SAFE_CALL);
-        re.require(declaration::typedef_int);
+        //re.require(declaration::typedef_int);
 
         for (auto kernel : kernels)
         {
@@ -260,9 +295,52 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << def.collect_code() << "\n";
     }
 
+    bool enable_debug =
+        getenv("NNFUSION_ENABLE_DEBUG") ? bool(atoi(getenv("NNFUSION_ENABLE_DEBUG"))) : 0;
+    bool enable_timing =
+        getenv("NNFUSION_ENABLE_TIMING") ? bool(atoi(getenv("NNFUSION_ENABLE_TIMING"))) : 0;
+
+    // Generate graph configs
+    {
+        lu_kernel_entry << "\n#ifndef __NNFUSION_GRAPH_CONFIG__\n";
+        lu_kernel_entry << "#define __NNFUSION_GRAPH_CONFIG__\n";
+        lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_NUM " << tu->arg.size() << "\n";
+        lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_NUM " << tu->out.size() << "\n";
+        for (int i = 0; i < tu->arg.size(); i++)
+        {
+            lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_DTYPE_" << i << " "
+                            << tu->arg[i]->get_element_type().c_type_string() << "\n";
+            lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_SHAPE_" << i << " {";
+            auto& shape = tu->arg[i]->get_shape();
+            for (int j = 0; j < shape.size(); ++j)
+            {
+                if (j > 0)
+                    lu_kernel_entry << ", ";
+                lu_kernel_entry << shape[j];
+            }
+            lu_kernel_entry << "}\n";
+        }
+        for (int i = 0; i < tu->out.size(); i++)
+        {
+            lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_DTYPE_" << i << " "
+                            << tu->out[i]->get_element_type().c_type_string() << "\n";
+            lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_SHAPE_" << i << " {";
+            auto& shape = tu->out[i]->get_shape();
+            for (int j = 0; j < shape.size(); ++j)
+            {
+                if (j > 0)
+                    lu_kernel_entry << ", ";
+                lu_kernel_entry << shape[j];
+            }
+            lu_kernel_entry << "}\n";
+        }
+        lu_kernel_entry << "#endif\n\n";
+    }
+
     // Generate caller function body
     {
         unordered_set<string> allocated;
+
         lu_kernel_entry << "extern \"C\" int kernel_entry(";
         // Add param
         {
@@ -341,6 +419,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
+            if (enable_timing)
+            {
+                lu_kernel_entry << "static cudaEvent_t hEvents[" << kernels.size() << "];\n";
+                lu_kernel_entry << "size_t eventCnt = 0;\n";
+                lu_kernel_entry << "if (!hEvents[eventCnt]) "
+                                   "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                lu_kernel_entry << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+            }
+
+            size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
                 std::string read_const = kernel->call_unit->get_code();
@@ -350,7 +438,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
+                    lu_kernel_entry << " // kernel order = " << ++kernel_order << "\n";
                     lu_kernel_entry << kernel->call_unit->get_code();
+                    if (enable_debug)
+                    {
+                        for (auto out_name : kernel->m_context->output_names)
+                            lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name
+                                            << ");\n";
+                    }
+                    if (enable_timing)
+                    {
+                        lu_kernel_entry << "if (!hEvents[eventCnt]) "
+                                           "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                        lu_kernel_entry
+                            << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+                    }
                 }
             }
             if (global_required.count("declaration::global_cublas_handle") > 0)
@@ -360,6 +462,18 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (global_required.count("declaration::global_cudnn_handle") > 0)
             {
                 lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+            }
+            if (enable_timing)
+            {
+                lu_kernel_entry << "// Output Timing Result:\n";
+                lu_kernel_entry << "CUDA_SAFE_CALL(cudaDeviceSynchronize());\n";
+                lu_kernel_entry << "float total_ms = 0;\n";
+                lu_kernel_entry
+                    << "for (size_t i = 1; i < eventCnt; ++i) { float ms; "
+                       "CUDA_SAFE_CALL(cudaEventElapsedTime(&ms, hEvents[i - 1], hEvents[i])); "
+                       "printf(\"%zd: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
+                lu_kernel_entry
+                    << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
         }
 
@@ -388,6 +502,22 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu.block_end();
     }
     lu << "\n";
+
+    if (enable_debug)
+    {
+        lu << R"(
+     inline void Debug(std::string name, float* tensor_ptr, size_t debug_size = 10, size_t offset=0)
+     {
+         float* host_tensor = (float*)malloc(sizeof(float) * debug_size);
+         CUDA_SAFE_CALL(cudaDeviceSynchronize());
+         CUDA_SAFE_CALL(cudaMemcpy(host_tensor, tensor_ptr + offset,  sizeof(float) * debug_size, cudaMemcpyDeviceToHost));
+         CUDA_SAFE_CALL(cudaDeviceSynchronize());
+         printf("%s: ", name.c_str());
+         for (int i = 0; i < debug_size; ++i) printf("%f ", host_tensor[i]);
+         printf("\n");
+     }
+             )";
+    }
     lu << lu_kernel_entry.get_code() << "\n\n";
 
     // // Test function
@@ -522,11 +652,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // generate main() function
     std::string function_include =
         "#include \"nnfusion_rt.h\"\n#include <stdlib.h>\n#include <stdio.h>\n";
+    LanguageUnit h2dcopy("h2dcopy");
+    LanguageUnit d2hcopy("d2hcopy");
+    LanguageUnit fillval("fillval");
+
     LanguageUnit& lu_main = *this->lu_main;
     {
         lu_main << function_include << "\n";
         lu_main << header::stdexcept->get_code();
         lu_main << "#include <sstream>\n";
+        lu_main << "#include <cuda_profiler_api.h>\n";
         lu_main << macro::CUDA_SAFE_CALL->get_code();
         lu_main << "\n";
         lu_main << "int main(void)";
@@ -540,21 +675,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 //malloc host input arg
                 lu_main << "//input argument\n";
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << ");\n";
+                        << "_host, *" << tensor.get_name() << ";\n";
 
-                lu_main << "for (int i = 0; i < " << tensor.get_tensor_layout()->get_size()
-                        << "; ++i) " << tensor.get_name() << "_host[i] = 1.0f;\n\n";
-
-                //cudaMalloc input arg
-                lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << ";\n"
-                        << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ", "
+                lu_main << "CUDA_SAFE_CALL(cudaMallocHost((void**)&" << tensor.get_name()
+                        << "_host, sizeof(" << tensor.get_element_type().c_type_string() << ")* "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
+                lu_main << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ", "
                         << "sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << "));\n";
 
-                lu_main << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", "
+                fillval << "for (int i = 0; i < " << tensor.get_tensor_layout()->get_size()
+                        << "; ++i) " << tensor.get_name() << "_host[i] = 1.0f;\n";
+
+                h2dcopy << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << ", "
                         << tensor.get_name() << "_host, "
                         << "sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << ", "
@@ -567,17 +700,25 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto& tensor = *tu->out[i];
                 //malloc host output arg
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ") * "
-                        << tensor.get_tensor_layout()->get_size() << ");\n\n";
+                        << "_host, *" << tensor.get_name() << ";\n";
 
-                //cudaMalloc output args
-                lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << ";\n"
-                        << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
+                lu_main << "CUDA_SAFE_CALL(cudaMallocHost((void**)&" << tensor.get_name()
+                        << "_host, sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
+                lu_main << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
                         << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << "));\n";
+
+                d2hcopy << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
+                        << tensor.get_name() << ", "
+                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << ", "
+                        << "cudaMemcpyDeviceToHost));\n";
             }
+
+            lu_main << "\n// fill input values\n";
+            lu_main << fillval.get_code() << "\n";
+            lu_main << h2dcopy.get_code() << "\n";
 
             vector<string> params;
             for (int i = 0; i < tu->arg.size(); i++)
@@ -606,14 +747,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "cudaEventRecord(start);\n\n";
             lu_main << "//kernel call\n";
 
-            lu_main << "int steps = 10;\n";
-            lu_main << "for(int i_=0; i_<steps; i_++)\n";
+            lu_main << "int steps = 100;\n";
+            lu_main << "cudaProfilerStart();\n";
+            lu_main << "for (int i_=0; i_<steps; i_++)\n";
             lu_main.block_begin();
 
+            lu_main << h2dcopy.get_code();
             // kernel launch
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
 
+            lu_main << d2hcopy.get_code();
+
             lu_main.block_end();
+            lu_main << "cudaProfilerStop();\n";
 
             lu_main << "//time measurement\n";
             lu_main << "\ncudaEventRecord(stop);\n";
@@ -622,16 +768,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "cudaEventElapsedTime(&milliseconds, start, stop);\n";
             lu_main << "printf(\"function execution time: %f ms\\n\", milliseconds/steps);\n";
             lu_main << "\n//free context\n";
-
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu_main << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
-                        << tensor.get_name() << ", "
-                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
-                        << tensor.get_tensor_layout()->get_size() << ", "
-                        << "cudaMemcpyDeviceToHost));\n";
-            }
 
             for (size_t i = 0; i < tu->arg.size(); i++)
             {
@@ -655,7 +791,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         << "for (int i = 0; i < "
                         << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
                         << "; ++i) printf(\"%f \", " << tensor.get_name() << "_host[i]); "
-                        << "printf(\"\\n\");\n";
+                        << "\nprintf(\"\\n\");\n";
             }
         }
 
@@ -663,13 +799,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (size_t i = 0; i < tu->arg.size(); i++)
         {
             auto& tensor = *tu->arg[i];
-            lu_main << "free(" << tensor.get_name() << "_host);\n";
+            lu_main << "cudaFreeHost(" << tensor.get_name() << "_host);\n";
         }
         //free host output args
         for (size_t i = 0; i < tu->out.size(); i++)
         {
             auto& tensor = *tu->out[i];
-            lu_main << "free(" << tensor.get_name() << "_host);\n";
+            lu_main << "cudaFreeHost(" << tensor.get_name() << "_host);\n";
         }
 
         lu_main << "return 0;\n";
@@ -679,6 +815,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     //generate include header file
     lu_include << "// Microsoft (c) 2019\n";
     lu_include << "#pragma once\n";
+    lu_include << declaration::typedef_int->get_code() << "\n";
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cuda_init();\n";
     lu_include << "extern \"C\" void cuda_free();\n";
@@ -686,9 +823,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     //generate CMakeList.txt
     LanguageUnit& lu_cmake = *this->lu_cmakefile;
-    lu_cmake << generate_cmakelists();
+    lu_cmake << get_generate_cmakelists();
 
     projgen();
+
+    post_projgen();
 
     // change to working directory
     int status = chdir("../../");

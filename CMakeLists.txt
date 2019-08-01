@@ -310,20 +310,6 @@ else()
     endif()
 endif()
 
-if (NGRAPH_USE_PREBUILT_LLVM OR DEFINED LLVM_TARBALL_URL)
-    if(NNFUSION_THIRDPARTY_FOLDER STREQUAL "")
-        include(cmake/external_llvm_prebuilt.cmake)
-    else()
-        include(cmake/thirdparty/llvm_prebuilt.cmake)
-    endif()
-else()
-    if(NNFUSION_THIRDPARTY_FOLDER STREQUAL "")
-        include(cmake/external_llvm.cmake)
-    else()
-        include(cmake/thirdparty/llvm.cmake)
-    endif()
-endif()
-
 if (NGRAPH_HALIDE)
     message(WARNING "Halide build system integration is currently using an older LLVM release \
                      and is not expected to work across most build environments. Consider \
