@@ -3,6 +3,7 @@
 
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/core/IR/instruction.hpp"
+#include "nnfusion/core/graph/pass/graph_pass.hpp"
 #include "op.hpp"
 
 namespace nnfusion
@@ -50,6 +51,7 @@ namespace nnfusion
     public:
         using Pointer = shared_ptr<TranslationUnit>;
         shared_ptr<ngraph::Function> m_function;
+        shared_ptr<graph::Graph> m_graph;
         shared_ptr<vector<ir::Operator_p>> inter_ops;
         shared_ptr<set<string>> input_names;
         shared_ptr<set<string>> output_names;
@@ -69,14 +71,19 @@ namespace nnfusion
     };
 
     using TranslationUnitMap = map<shared_ptr<ngraph::Function>, shared_ptr<TranslationUnit>>;
+    using GraphTranslationUnitMap = map<shared_ptr<graph::Graph>, shared_ptr<TranslationUnit>>;
 
     class InterpreterContext
     {
     public:
         bool m_is_translated;
         shared_ptr<ngraph::Function> m_function;
+        shared_ptr<graph::Graph> m_graph;
+
         // Store the function(model) and its corresponding Nodes.
         unordered_map<shared_ptr<Function>, list<shared_ptr<Node>>> m_function_ordered_ops;
+        // TODO: multi graphs?
+        unordered_set<shared_ptr<graph::Graph>> m_graphs;
         // (?)
         map<string, size_t> m_name_index_map;
         // Store Translated OP's
@@ -100,6 +107,7 @@ namespace nnfusion
         ~Interpreter(){};
 
         shared_ptr<TranslationUnitMap> translate(shared_ptr<ngraph::Function> function);
+        shared_ptr<GraphTranslationUnitMap> translate(shared_ptr<graph::Graph> graph);
 
         bool translate(TranslationUnit::Pointer tu);
 

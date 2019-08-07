@@ -14,6 +14,8 @@ namespace nnfusion
     public:
         cuda_codegen();
         bool codegen(shared_ptr<Function> func);
+        bool codegen(shared_ptr<graph::Graph> graph);
+
         bool compile(shared_ptr<Function> func);
         bool call(shared_ptr<Function> func,
                   const vector<shared_ptr<runtime::Tensor>>& outputs,
@@ -26,6 +28,7 @@ namespace nnfusion
 
     private:
         map<shared_ptr<Function>, TranslationUnit> m_function_map;
+        map<shared_ptr<graph::Graph>, TranslationUnit> m_graph_map;
 
     protected:
         shared_ptr<Interpreter> m_functrans;

@@ -10,6 +10,8 @@
 
 #include "util/graph_convert.hpp"
 
+#include "nnfusion/core/graph/graph.hpp"
+
 namespace ngraph
 {
     namespace frontend
@@ -23,6 +25,12 @@ namespace ngraph
 
         // Convert an TensorFlow model to a vector of nGraph Functions
         std::vector<std::shared_ptr<Function>> load_tensorflow_model(const std::string&);
+
+        // Convert an TensorFlow model to a nnfusion graph (input stream)
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(std::istream&);
+
+        // Convert an TensorFlow model to a nnfusion graph
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(const std::string&);
 
         // // Convert the first output of an TensorFlow model to an nGraph Function (input stream)
         // std::shared_ptr<Function> import_onnx_function(std::istream&);

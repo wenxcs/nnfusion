@@ -44,7 +44,7 @@ endif()
 set_property(TARGET tensorflow_import PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(tensorflow_import PRIVATE ${TFPROTO_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR} ${NGRAPH_INCLUDE_PATH}
     SYSTEM PRIVATE ${Protobuf_INCLUDE_DIR})
-target_link_libraries(tensorflow_import PRIVATE ${Protobuf_LIBRARIES} ${ONNX_PROTO_LIBRARY} op_registration)
+target_link_libraries(tensorflow_import PRIVATE ${Protobuf_LIBRARIES} ${ONNX_PROTO_LIBRARY} op_registration nnfusion_graph)
 
 # target_compile_definitions(onnx_import PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
 

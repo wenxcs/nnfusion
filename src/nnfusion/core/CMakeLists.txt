@@ -3,3 +3,4 @@
 add_subdirectory(kernels)
 add_subdirectory(ops)
 add_subdirectory(IR)
+add_subdirectory(graph)

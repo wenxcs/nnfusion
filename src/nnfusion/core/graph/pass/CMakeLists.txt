@@ -1,0 +1,14 @@
+# Microsoft (c) 2019, NNFusion Team
+
+set(SRC
+    constant_folding_pass.cpp
+    reshape_inplace_pass.cpp
+    graph_pass.cpp
+    manager.cpp
+)
+
+add_library(nnfusion_graph_pass STATIC ${SRC})
+target_include_directories(nnfusion_graph_pass SYSTEM PUBLIC
+    ${NGRAPH_INCLUDE_PATH}
+)
+target_compile_options(nnfusion_graph_pass PRIVATE "-fPIC")
