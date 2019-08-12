@@ -25,6 +25,12 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    bool using_fixed = getenv("NNFUSION_ENABLE_FIXED")
+                                           ? bool(atoi(getenv("NNFUSION_ENABLE_FIXED")))
+                                           : 1;
+                    if (!using_fixed)
+                        return nullptr;
+
                     GENERIC_OP_LOGGING();
                     auto& ctx = m_context;
 
@@ -62,6 +68,21 @@ namespace nnfusion
                         templ =
                             "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_128x4096x4096.h.in";
                         m_gridDim = dim3(128, 4, 1);
+                        m_blockDim = dim3(16, 16, 1);
+                    }
+                    else if (arg0_shape == ngraph::Shape({1, 256}) &&
+                             arg1_shape == ngraph::Shape({256, 256}))
+                    {
+                        templ = "rocm_adapter/fixed_kernels/gemm/manual_NN_1x256x256.h.in";
+                        m_gridDim = dim3(1, 256, 1);
+                        m_blockDim = dim3(64, 1, 1);
+                    }
+                    else if (arg0_shape == ngraph::Shape({64, 25088}) &&
+                             arg1_shape == ngraph::Shape({25088, 4096}))
+                    {
+                        templ =
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_64x25088x4096.h.in";
+                        m_gridDim = dim3(128, 2, 1);
                         m_blockDim = dim3(16, 16, 1);
                     }
                     else

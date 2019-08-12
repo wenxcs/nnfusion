@@ -25,6 +25,12 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    bool using_fixed = getenv("NNFUSION_ENABLE_FIXED")
+                                           ? bool(atoi(getenv("NNFUSION_ENABLE_FIXED")))
+                                           : 1;
+                    if (!using_fixed)
+                        return nullptr;
+
                     GENERIC_OP_LOGGING();
                     auto& ctx = m_context;
 

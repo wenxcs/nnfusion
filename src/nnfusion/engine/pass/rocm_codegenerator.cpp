@@ -25,7 +25,8 @@ namespace nnfusion
             return R"(project(main_test)
 cmake_minimum_required(VERSION 3.5)
 
-SET(CMAKE_CXX_COMPILER /opt/rocm/bin/hipcc)
+set(CMAKE_CXX_COMPILER /opt/rocm/bin/hipcc)
+set(CMAKE_CXX_FLAGS "-O2 -Wno-ignored-attributes")
 
 include_directories(
     /opt/rocm/include
