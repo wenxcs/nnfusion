@@ -29,6 +29,12 @@ namespace nnfusion
                     auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
+                    size_t in_size = 1;
+                    for (auto& it : input_shape)
+                        in_size *= it;
+                    if (in_size == 1)
+                        return nullptr;
+
                     auto node = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
                     auto axes = node->get_broadcast_axes();
 
@@ -78,6 +84,20 @@ namespace nnfusion
                             {"out_2", output_format[2]},
                             {"out_3", output_format[3]},
                         });
+
+                    if (input_format == output_format)
+                    {
+                        size_t num_eles = 1;
+                        for (auto& it : input_format)
+                            num_eles *= it;
+                        code = ngraph::op::create_code_from_template(
+                            R"(
+	CUDA_SAFE_CALL(hipMemcpyDtoD(output0, input0, @num_eles@LU));
+)",
+                            {
+                                {"num_eles", num_eles},
+                            });
+                    }
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
