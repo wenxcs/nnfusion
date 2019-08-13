@@ -84,12 +84,26 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
                     KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
             else
             {
+                auto priority = [](const std::string& tag) -> int {
+                    static char sym_prio[] = "PRIORITY_";
+                    int at = tag.find(sym_prio);
+                    return (at != 0) ? 0 : atoi(tag.substr(sizeof(sym_prio) - 1).c_str());
+                };
+
                 std::sort(kernel_regs.begin(),
                           kernel_regs.end(),
                           [&](const shared_ptr<const KernelRegistration>& x,
                               const shared_ptr<const KernelRegistration>& y) {
-                              return x->m_factory(ctx)->get_kernel_type() <
-                                     y->m_factory(ctx)->get_kernel_type();
+                              auto x_prio = priority(x->m_tag), y_prio = priority(y->m_tag);
+                              if (x_prio != y_prio)
+                                  return x_prio > y_prio;
+
+                              auto x_type = x->m_factory(ctx)->get_kernel_type();
+                              auto y_type = y->m_factory(ctx)->get_kernel_type();
+                              if (x_type != y_type)
+                                  return x_type < y_type;
+
+                              return false;
                           });
             }
             return std::move(kernel_regs);
