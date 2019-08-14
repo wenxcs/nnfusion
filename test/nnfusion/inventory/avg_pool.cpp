@@ -4,8 +4,10 @@
  * \author wenxh
  */
 
-#include "ngraph/runtime/nnfusion/op/avg_pool.hpp"
+#include "ngraph/op/avg_pool.hpp"
 #include "../test_util/common.hpp"
+
+using namespace ngraph;
 
 namespace nnfusion
 {
@@ -121,47 +123,4 @@ namespace nnfusion
             }
         }
     }
-}
-
-// Interpret Fucntion Test
-TEST(nnfusion_ir, avg_pool)
-{
-    // Prepare
-    auto node = nnfusion::inventory::create_object<op::AvgPool>(0);
-    EXPECT_TRUE(node != nullptr);
-
-    // Static Method
-    auto translated = nnfusion::ir::AvgPool::translate(node);
-    EXPECT_TRUE(translated != nullptr);
-
-    // Initialized Normally
-    auto op = static_pointer_cast<nnfusion::ir::AvgPool>(translated);
-    EXPECT_TRUE(op != nullptr);
-
-    // Test member function
-    // Check fields
-    EXPECT_FALSE(op->isTranslated);
-    EXPECT_TRUE(op->node != nullptr);
-    EXPECT_TRUE(op->args.size() != 0);
-    //\todo check tensor
-    EXPECT_TRUE(op->out.size() != 0);
-    //\todo will check tensor descriptor
-    //\todo Check the name generated this pahse
-    // Shape input_shape, result_shape, padding_below, padding_above, window_shape,
-    //            window_stride
-    /*
-    print_vector(op->input_shape, "input_shape");
-    print_vector(op->result_shape, "result_shape");
-    print_vector(op->padding_below, "padding_below");
-    print_vector(op->padding_above, "padding_above");
-    print_vector(op->window_shape, "window_shape");
-    print_vector(op->window_stride, "window_stride");
-    */
-
-    EXPECT_TRUE(compare_vector(op->input_shape, Shape{1, 1, 3, 3}));
-    EXPECT_TRUE(compare_vector(op->result_shape, Shape{1, 1, 4, 4}));
-    EXPECT_TRUE(compare_vector(op->padding_below, Shape{1, 1}));
-    EXPECT_TRUE(compare_vector(op->padding_above, Shape{1, 1}));
-    EXPECT_TRUE(compare_vector(op->window_shape, Shape{2, 2}));
-    EXPECT_TRUE(compare_vector(op->window_stride, Shape{1, 1}));
 }

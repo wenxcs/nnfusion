@@ -96,12 +96,15 @@ if (NGRAPH_GPU_ENABLE)
     target_link_libraries(unit-test PRIVATE gpu_backend)
 endif()
 
+if (NNFUSION_ENABLE)
+    target_link_libraries(unit-test PRIVATE nnfusion_backend nnfusion_engine_profiler)
+endif()
+
 target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_include_directories(unit-test PRIVATE ${TFPROTO_INCLUDE})
     target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_import_proto)
-    target_link_libraries(unit-test PRIVATE cuda_backend)
 endif()
 
 if (NGRAPH_ONNXIFI_ENABLE)

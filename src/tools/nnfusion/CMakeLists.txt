@@ -45,7 +45,7 @@ if (NGRAPH_PLAIDML_ENABLE)
     target_link_libraries(nnfusion plaidml_backend)
 endif()
 if (NNFUSION_ENABLE)
-    target_link_libraries(nnfusion cuda_backend rocm_backend nnfusion_backend)
+    target_link_libraries(nnfusion nnfusion_backend)
 endif()
 
 install(TARGETS nnfusion RUNTIME DESTINATION ${NGRAPH_INSTALL_BIN})

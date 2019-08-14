@@ -4,8 +4,11 @@
  * \author wenxh
  */
 
-#include "ngraph/runtime/nnfusion/op/concat.hpp"
+#include "ngraph/op/concat.hpp"
 #include "../test_util/common.hpp"
+#include "ngraph/node_vector.hpp"
+
+using namespace ngraph;
 
 namespace nnfusion
 {
@@ -65,41 +68,4 @@ namespace nnfusion
             }
         }
     }
-}
-
-// Interpret Fucntion Test
-TEST(nnfusion_ir, concat)
-{
-    // Prepare
-    auto node = nnfusion::inventory::create_object<op::Concat>(0);
-    EXPECT_TRUE(node != nullptr);
-
-    // Static Method
-    auto translated = nnfusion::ir::Concat::translate(node);
-    EXPECT_TRUE(translated != nullptr);
-
-    // Initialized Normally
-    auto op = static_pointer_cast<nnfusion::ir::Concat>(translated);
-    EXPECT_TRUE(op != nullptr);
-
-    // Test member function
-    // Check fields
-    EXPECT_FALSE(op->isTranslated);
-    EXPECT_TRUE(op->node != nullptr);
-    EXPECT_TRUE(op->args.size() != 0);
-    EXPECT_TRUE(op->out.size() != 0);
-
-    /*
-     size_t axis;
-            vector<NVShape> input_shapes;
-            string dtype;
-            Shape output_shape;
-
-    */
-    EXPECT_TRUE(op->axis == 1);
-    EXPECT_TRUE(op->dtype == "float");
-    EXPECT_TRUE(compare_vector(op->input_shapes[0], vector<int>{2, 2}));
-    EXPECT_TRUE(compare_vector(op->input_shapes[1], vector<int>{2, 3}));
-    EXPECT_TRUE(compare_vector(op->input_shapes[2], vector<int>{2, 3}));
-    EXPECT_TRUE(compare_vector(op->output_shape, vector<int>{2, 8}));
 }

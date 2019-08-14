@@ -33,8 +33,9 @@ if (NGRAPH_GPU_ENABLE)
     add_subdirectory(gpu)
 endif()
 
-if (NNFUSION_ENABLE)
-    add_subdirectory(nnfusion)
-endif()
+# Disable NNFUSION by purpose;
+# if (NNFUSION_ENABLE)
+#    add_subdirectory(nnfusion)
+# endif()
 
 add_subdirectory(plaidml)

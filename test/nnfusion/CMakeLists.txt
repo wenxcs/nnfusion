@@ -1,38 +1,7 @@
 # Microsoft (c) 2019, Wenxiang Hu
 set(NNFUSION_TESTS
-    #test
-    nnfusion/test_util/library.cpp
     #op
-    nnfusion/op/avg_pool.cpp
-    nnfusion/op/noop.cpp
-    nnfusion/op/anyop.cpp
-    nnfusion/op/broadcast.cpp
-    nnfusion/op/batchnorm.cpp
-    nnfusion/op/convolution.cpp
-    nnfusion/op/constant.cpp
-    nnfusion/op/pad.cpp
-    nnfusion/op/concat.cpp
-    nnfusion/op/slice.cpp
-    nnfusion/op/sum.cpp
-    nnfusion/op/max_pool.cpp
-    nnfusion/op/result.cpp
-    nnfusion/op/reshape.cpp
-    nnfusion/op/softmax.cpp
-    #core
-    nnfusion/core/interpreter.cpp
-    nnfusion/core/graph_pass.cpp
-    #cuda_op
-    nnfusion/cuda_op/avg_pool.cpp
-    nnfusion/cuda_op/concat.cpp
-    nnfusion/cuda_op/pad.cpp
-    nnfusion/cuda_op/convolution.cpp
-    nnfusion/cuda_op/batchnorm.cpp
-    nnfusion/cuda_op/slice.cpp
-    nnfusion/cuda_op/sum.cpp
-    nnfusion/cuda_op/max_pool.cpp
-    nnfusion/cuda_op/broadcast.cpp
-    nnfusion/cuda_op/result.cpp
-    nnfusion/cuda_op/constant_navie.cpp
-    nnfusion/cuda_op/reshape.cpp
-    nnfusion/cuda_op/softmax.cpp
+    nnfusion/inventory/pad.cpp
+    #kernels
+    nnfusion/kernels/sample.cpp
     PARENT_SCOPE)

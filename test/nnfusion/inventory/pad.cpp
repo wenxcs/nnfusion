@@ -4,8 +4,11 @@
  * \author wenxh
  */
 
-#include "ngraph/runtime/nnfusion/op/pad.hpp"
+#include "ngraph/op/pad.hpp"
 #include "../test_util/common.hpp"
+#include "ngraph/op/parameter.hpp"
+
+using namespace ngraph;
 
 namespace nnfusion
 {
@@ -65,17 +68,4 @@ namespace nnfusion
             }
         }
     }
-}
-
-// Interpret Fucntion Test
-TEST(nnfusion_ir, Pad)
-{
-    // Prepare
-    auto node = nnfusion::inventory::create_object<op::Pad>();
-    EXPECT_TRUE(node != nullptr);
-
-    // Static Method
-    auto translated = nnfusion::ir::Pad::translate(node);
-    EXPECT_TRUE(translated != nullptr);
-    EXPECT_POINTER_TYPE(translated, nnfusion::ir::Pad, op);
 }

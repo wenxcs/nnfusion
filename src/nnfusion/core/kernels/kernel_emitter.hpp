@@ -13,6 +13,8 @@ namespace nnfusion
         class KernelContext
         {
         public:
+            using Pointer = shared_ptr<KernelContext>;
+
             KernelContext(shared_ptr<ngraph::Node> node);
 
             // The node this OpKernel corresponds to
@@ -42,6 +44,8 @@ namespace nnfusion
         class KernelEmitter
         {
         public:
+            using Pointer = shared_ptr<KernelEmitter>;
+
             KernelEmitter(shared_ptr<KernelContext> ctx);
 
             KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type);

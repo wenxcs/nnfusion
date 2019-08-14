@@ -4,7 +4,10 @@
  * \author wenxh
  */
 #pragma once
-#include "ngraph/runtime/nnfusion/core/common.hpp"
+
+#include <memory>
+#include <vector>
+using namespace std;
 
 namespace nnfusion
 {
