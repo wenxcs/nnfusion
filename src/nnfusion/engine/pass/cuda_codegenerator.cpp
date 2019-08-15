@@ -489,6 +489,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << "\nextern \"C\" void cuda_init()";
         lu.block_begin();
         {
+            lu << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
+            lu << "CUDA_SAFE_CALL(cudaSetDevice(0));\n";
             lu << lu_main_init.get_code();
         }
         lu.block_end();
