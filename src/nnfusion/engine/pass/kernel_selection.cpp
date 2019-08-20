@@ -10,6 +10,11 @@ using namespace nnfusion::profiler;
 bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                                        std::shared_ptr<TranslationUnit> tu)
 {
+    bool enable_tuning =
+        getenv("NNFUSION_ENABLE_TUNING") ? bool(atoi(getenv("NNFUSION_ENABLE_TUNING"))) : true;
+    if (!enable_tuning)
+        return true;
+
     // Currently *ONLY* has BroadCast Selection
     auto& p = tu->program;
     for (auto iterator = p.entry; iterator != nullptr; iterator = iterator->next)
