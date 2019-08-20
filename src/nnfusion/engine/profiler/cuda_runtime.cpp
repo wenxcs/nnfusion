@@ -21,6 +21,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     re->require(header::assert);
     re->require(header::stdexcept);
     re->require(header::sstream);
+    re->require(header::cuda);
     re->require(macro::CUDA_SAFE_CALL);
     re->require(declaration::typedef_int);
 

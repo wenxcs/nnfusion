@@ -181,6 +181,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 continue;
             }
+            if (ins->Tag().hasAttribute("KernelCandidate"))
+            {
+                auto k = ins->Tag().Get<KernelEmitter::Pointer>("KernelCandidate");
+                auto d = ins->Tag().Get<DeviceType>("KernelCandidateDevice");
+                if (k != nullptr && d == device_type())
+                {
+                    kernels.push_back(k);
+                    continue;
+                }
+            }
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));

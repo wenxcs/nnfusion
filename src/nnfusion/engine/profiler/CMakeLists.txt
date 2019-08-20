@@ -3,6 +3,7 @@
 set(ENGINE_PROFILER
     profiler.cpp
     cuda_runtime.cpp
+    rocm_runtime.cpp
     cpu_runtime.cpp
     profiling_runtime.cpp
     binary_utils.cpp

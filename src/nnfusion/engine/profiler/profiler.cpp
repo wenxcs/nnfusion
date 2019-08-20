@@ -35,16 +35,22 @@ double Profiler::execute(void** input, void** output)
         double device_time_span = rt->execute(this->pctx, input, output);
         high_resolution_clock::time_point t2 = high_resolution_clock::now();
         duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+        if (device_time_span < 0)
+        {
+            LOG_WARN << "Kernel launch failed.";
+            continue;
+        }
         pctx->result.record_host_duration(time_span.count());
         pctx->result.record_device_duration(device_time_span);
     }
+    pctx->result.set_ready();
     return pctx->result.get_device_avg();
 }
 
 bool Profiler::execute()
 {
     auto& kernel_mem = pctx->kernel_memory;
-    bool ret = execute(kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs());
+    bool ret = execute(kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) >= 0;
     return ret;
 }
 

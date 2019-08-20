@@ -42,9 +42,11 @@ namespace nnfusion
         private:
             vector<double> device_duration;
             vector<double> host_duration;
-            bool ready = false; // True / False
+            bool ready = false;
 
         public:
+            bool is_ready() const { return ready; }
+            void set_ready() { ready = true; }
             //Get average time cost of host.
             double get_host_avg()
             {
@@ -64,14 +66,12 @@ namespace nnfusion
 
             const vector<double>& get_device_durations() { return device_duration; }
             const vector<double>& get_host_durations() { return host_duration; }
-            void prepare()
+            void reset()
             {
                 device_duration.clear();
                 host_duration.clear();
-                ready = false;
             }
 
-            void finish() { ready = true; }
             void record_device_duration(double du) { device_duration.push_back(du); }
             void record_host_duration(double du) { host_duration.push_back(du); }
             using Pointer = shared_ptr<ProfilingResult>;
@@ -296,7 +296,7 @@ namespace nnfusion
             {
                 source_code = nullptr;
                 entry_point = nullptr;
-                result.prepare();
+                result.reset();
                 // kernel_memory.release();
             }
         };

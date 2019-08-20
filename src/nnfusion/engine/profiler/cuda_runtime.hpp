@@ -22,10 +22,10 @@ namespace nnfusion
             double
                 execute(const ProfilingContext::Pointer& ke, void** input, void** output) override;
 
-        private:
+        protected:
             // Tiny codegen function for runtime
-            bool codegen(const ProfilingContext::Pointer& ke);
-            bool compile(const ProfilingContext::Pointer& ke);
+            virtual bool codegen(const ProfilingContext::Pointer& ke);
+            virtual bool compile(const ProfilingContext::Pointer& ke);
         };
     }
 }

@@ -34,39 +34,62 @@ TEST(nnfusion_core_kernels, sample)
             has_valid_kernel = true;
 
             LOG_INFO << "Now on Kernel Emitter:\t" << kernel->get_function_name();
-            // Now we use the tool to profile and test the kernel;
-            nnfusion::profiler::ProfilingContext::Pointer pctx =
-                make_shared<nnfusion::profiler::ProfilingContext>(kernel);
 
-            nnfusion::profiler::Profiler prof(nnfusion::profiler::CudaDefaultRuntime::Runtime(),
-                                              pctx);
-            prof.execute();
-            LOG_INFO << "Avg Host duration:" << pctx->result.get_host_avg();
-            LOG_INFO << "Avg Device duration:" << pctx->result.get_device_avg();
-
+            // Data
             auto input = nnfusion::inventory::generate_input<op::Pad, float>(0);
             auto output = nnfusion::inventory::generate_output<op::Pad, float>(0);
-
             vector<vector<float>> inputs;
             inputs.push_back(vector<float>{/*a*/ 1, 2, 3, 4, 5, 6});
             inputs.push_back(vector<float>{/*b*/ 9});
             vector<vector<float>> outputs;
             outputs.push_back(output);
-
-            auto res = prof.execute(inputs);
-
-            for (int i = 0; i < res.size(); i++)
-                EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
-
-            pctx->reset();
-            res[0][0] = 0;
-            nnfusion::profiler::Profiler ref_prof(nnfusion::profiler::ReferenceRuntime::Runtime(),
+            // Context
+            nnfusion::profiler::ProfilingContext::Pointer pctx =
+                make_shared<nnfusion::profiler::ProfilingContext>(kernel);
+            auto rocm_runtime = nnfusion::profiler::RocmDefaultRuntime::Runtime();
+            // Rocm
+            if (rocm_runtime->check_env())
+            {
+                LOG_INFO << "Test ROCM runtime of Pad operator:";
+                nnfusion::profiler::Profiler prof(rocm_runtime, pctx);
+                prof.execute();
+                LOG_INFO << "Avg Host duration:" << pctx->result.get_host_avg();
+                LOG_INFO << "Avg Device duration:" << pctx->result.get_device_avg();
+                auto res = prof.execute(inputs);
+                EXPECT_EQ(res.size(), outputs.size());
+                for (int i = 0; i < res.size(); i++)
+                    EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+            }
+            // Cuda
+            if (true /*Check Cuda Runtime*/)
+            {
+                // Now we use the tool to profile and test the kernel;
+                pctx->reset();
+                LOG_INFO << "Test Cuda runtime of Pad operator:";
+                nnfusion::profiler::Profiler prof(nnfusion::profiler::CudaDefaultRuntime::Runtime(),
                                                   pctx);
-            res = ref_prof.execute(inputs);
-            LOG_INFO << "CPU";
+                prof.execute();
+                LOG_INFO << "Avg Host duration:" << pctx->result.get_host_avg();
+                LOG_INFO << "Avg Device duration:" << pctx->result.get_device_avg();
 
-            for (int i = 0; i < res.size(); i++)
-                EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+                auto res = prof.execute(inputs);
+                EXPECT_EQ(res.size(), outputs.size());
+                for (int i = 0; i < res.size(); i++)
+                    EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+            }
+
+            // Cpu Reference
+            if (true /*Must support*/)
+            {
+                pctx->reset();
+                LOG_INFO << "Test CPU Reference runtime of Pad operator:";
+                nnfusion::profiler::Profiler ref_prof(
+                    nnfusion::profiler::ReferenceRuntime::Runtime(), pctx);
+                auto res = ref_prof.execute(inputs);
+                EXPECT_EQ(res.size(), outputs.size());
+                for (int i = 0; i < res.size(); i++)
+                    EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+            }
         }
     }
 

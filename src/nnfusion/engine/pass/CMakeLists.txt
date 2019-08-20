@@ -10,6 +10,7 @@ set(SRC
     cuda_codegenerator.cpp
     rocm_codegenerator.cpp
     device_dispatcher.cpp
+    kernel_selection.cpp
 )
 add_library(nnfusion_engine_pass STATIC ${SRC})
 target_include_directories(nnfusion_engine_pass SYSTEM PUBLIC

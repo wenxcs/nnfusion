@@ -20,6 +20,7 @@ namespace nnfusion
     class RocmCodeGenerator : public CudaCodeGenerator
     {
     public:
+        DeviceType device_type() override { return DeviceType::ROCM_GPU; }
         virtual std::string get_generate_cmakelists(void) override
         {
             return R"(project(main_test)

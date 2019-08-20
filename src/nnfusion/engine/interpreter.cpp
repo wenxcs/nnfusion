@@ -5,6 +5,7 @@
 #include "nnfusion/engine/pass/device_dispatcher.hpp"
 #include "nnfusion/engine/pass/extract_function_signature.hpp"
 #include "nnfusion/engine/pass/extract_graph_signature.hpp"
+#include "nnfusion/engine/pass/kernel_selection.hpp"
 #include "nnfusion/engine/pass/ngraph_function_pass.hpp"
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
@@ -13,6 +14,7 @@ Interpreter::Interpreter()
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
+    m_passes->push_back(make_shared<ProfilingBasedKernelSelector>(ProfilingBasedKernelSelector()));
     m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
     m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
     m_passes->push_back(nnfusion::make_rocm_codegenerator());

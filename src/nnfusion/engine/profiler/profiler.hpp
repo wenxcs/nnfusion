@@ -15,6 +15,7 @@
 #include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "profiling_runtime.hpp"
+#include "rocm_runtime.hpp"
 
 //Support Linux for now.
 #include <dlfcn.h>

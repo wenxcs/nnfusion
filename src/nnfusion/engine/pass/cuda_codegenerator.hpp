@@ -22,7 +22,7 @@ namespace nnfusion
         virtual std::string get_target_name(void);
         virtual std::vector<shared_ptr<const kernels::KernelRegistration>>
             find_backend_kernels(const std::string& op_name, const shared_ptr<KernelContext>& ctx);
-
+        virtual DeviceType device_type() { return DeviceType::CUDA_GPU; }
     private:
         virtual bool projgen();
         virtual bool setpwd();
