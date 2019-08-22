@@ -2011,7 +2011,9 @@ namespace ngraph
                     in_edges_count[node_proto.name()] = node_proto.input_size();
                     for (auto& input : node_proto.input())
                     {
-                        ++out_edges_count[input];
+                        // count edge by the real name of tensor: remove ":0";
+                        TensorId input_tensor(ParseTensorName(input));
+                        ++out_edges_count[input_tensor.node()];
                     }
                 }
 
@@ -2045,6 +2047,10 @@ namespace ngraph
                     output_functions.emplace_back(
                         std::make_shared<ngraph::Function>(output, m_parameters));
                 }
+                if (output_functions.size() > 1)
+                    LOG_WARN << "Please note that NNFusion current only support single"
+                             << " output graph. If your graph has more than one outputs, we "
+                             << "ONLY generate the source code for the first one.";
                 return output_functions;
             }
         } // namespace tensorflow_import
