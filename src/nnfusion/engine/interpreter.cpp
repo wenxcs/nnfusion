@@ -90,7 +90,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
                         out.push_back(TensorWrapper(tv, tv->get_name()));
                     }
 
-                    attr.ts_("INPUT", std::move(in))->ts_("OUTPUT", std::move(out));
+                    // attr.ts_("INPUT", std::move(in))->ts_("OUTPUT", std::move(out));
                 }
 
                 // Tag example
@@ -198,7 +198,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
                         out.push_back(TensorWrapper(tv, tv->get_name()));
                     }
 
-                    attr.ts_("INPUT", std::move(in))->ts_("OUTPUT", std::move(out));
+                    //attr.ts_("INPUT", std::move(in))->ts_("OUTPUT", std::move(out));
                 }
 
                 // Tag example

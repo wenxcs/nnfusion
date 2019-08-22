@@ -6,7 +6,7 @@
 
 using namespace nnfusion::graph;
 
-std::string Edge::DebugString() const
+std::string nnfusion::graph::Edge::DebugString() const
 {
     std::stringstream ss;
     ss << "[id=" << m_id << " " << m_src->get_name().c_str() << ":" << m_src_output << " -> "

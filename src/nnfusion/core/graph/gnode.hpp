@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "ngraph/node.hpp"
+#include "nnfusion/core/IR/attribute.hpp"
 
 namespace nnfusion
 {
@@ -25,7 +26,7 @@ namespace nnfusion
         /// Nodes are the backbone of the graph of Value dataflow. Every node has
         /// zero or more nodes as arguments and one value, which is either a tensor
         /// view or a (possibly empty) tuple of values.
-        class GNode : public std::enable_shared_from_this<GNode>
+        class GNode : public std::enable_shared_from_this<GNode>, public nnfusion::ir::Tagable
         {
         protected:
             GNode(const std::shared_ptr<ngraph::Node> op_ptr);
@@ -45,13 +46,19 @@ namespace nnfusion
             void set_name(const std::string& name);
 
             /// Get in edges
-            const std::set<std::shared_ptr<Edge>>& get_in_edges() const;
-            void add_in_edge(std::shared_ptr<Edge> edge);
-            void remove_in_edge(std::shared_ptr<Edge> edge) { m_in_edges.erase(edge); }
+            const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_in_edges() const;
+            void add_in_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
+            void remove_in_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
+            {
+                m_in_edges.erase(edge);
+            }
             /// Get out edges
-            const std::set<std::shared_ptr<Edge>>& get_out_edges() const;
-            void add_out_edge(std::shared_ptr<Edge> edge);
-            void remove_out_edge(std::shared_ptr<Edge> edge) { m_out_edges.erase(edge); }
+            const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_out_edges() const;
+            void add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
+            void remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
+            {
+                m_out_edges.erase(edge);
+            }
             size_t get_output_size() const { return m_out_edges.size(); }
             void Clear();
 

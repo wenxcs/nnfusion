@@ -22,6 +22,7 @@ if (NNFUSION_ENABLE)
         nnfusion_graph_pass
         nnfusion_engine_pass
         nnfusion_common
+        nnfusion_ir
         nnfusion_util
         codegen
         # kernels

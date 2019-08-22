@@ -6,18 +6,19 @@
 #pragma once
 
 #include "attribute.hpp"
-#include "dependency.hpp"
-#include "tag.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
 
 namespace nnfusion
 {
     namespace ir
     {
-        class Instruction
+        class Instruction : public Tagable
         {
         public:
             Instruction() {}
             using Pointer = std::shared_ptr<Instruction>;
+
+            Instruction(const nnfusion::graph::GNode& gnode);
 
         private:
             bool has_name_;
@@ -27,8 +28,8 @@ namespace nnfusion
 
             Attributes _attr;
             Tags _tag;
-            std::vector<ngraph::descriptor::Tensor*> inputs_;
-            std::vector<ngraph::descriptor::Tensor*> outputs_;
+            //std::vector<ngraph::descriptor::Tensor*> inputs_;
+            //std::vector<ngraph::descriptor::Tensor*> outputs_;
             std::shared_ptr<ngraph::Node> op_def;
 
         public:
@@ -50,7 +51,7 @@ namespace nnfusion
             void setOperatorDef(std::shared_ptr<ngraph::Node> op_def) { this->op_def = op_def; }
             std::shared_ptr<ngraph::Node> operatorDef() { return op_def; }
             Attributes& Attr() { return _attr; }
-            Tags& Tag() { return _tag; }
+            Tags& Tag() { return *this; }
         };
     }
 }

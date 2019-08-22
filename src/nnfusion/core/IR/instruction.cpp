@@ -3,16 +3,13 @@
 // This IR is based on ONNIX::ir's interface, but
 // Instructions has attribute, namespace, and tag
 
-#pragma once
-
 #include "instruction.hpp"
 
-namespace nnfusion
+using namespace nnfusion;
+using namespace nnfusion::ir;
+using namespace nnfusion::graph;
+
+Instruction::Instruction(const nnfusion::graph::GNode& gnode)
 {
-    namespace ir
-    {
-        class Scope : public Instruction
-        {
-        };
-    }
+    this->copy_tags_from(gnode);
 }

@@ -1,10 +1,12 @@
-# Microsoft (c) 2019, Wenxiang Hu
+# Microsoft (c) 2019, NNFusion Team
 
 set(SRC
-    ir.cpp
+    attribute.cpp
+    instruction.cpp
 )
-add_library(nnfusion_core STATIC ${SRC})
-target_include_directories(nnfusion_core SYSTEM PUBLIC
+
+add_library(nnfusion_ir STATIC ${SRC})
+target_include_directories(nnfusion_ir SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}
 )
-target_compile_options(nnfusion_core PRIVATE "-fPIC")
+target_compile_options(nnfusion_ir PRIVATE "-fPIC")

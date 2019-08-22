@@ -5,13 +5,24 @@
 
 #pragma once
 
-#include "dependency.hpp"
-#include "nnfusion/common/tensorwrapper.hpp"
+#include <algorithm>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+//#include "nnfusion/common/common.hpp"
+//#include "nnfusion/common/tensorwrapper.hpp"
+#include "ngraph/node.hpp"
+#include "nnfusion/util/util.hpp"
 
 namespace nnfusion
 {
     namespace ir
     {
+        using Symbol = std::string;
+
         struct AttributeValue
         {
             AttributeValue(Symbol name)
@@ -71,8 +82,8 @@ namespace nnfusion
         using IntsAttr = VectorAttributeValue<int64_t>;
         using StringAttr = ScalarAttributeValue<std::string>;
         using StringsAttr = VectorAttributeValue<std::string>;
-        using TensorAttr = ScalarAttributeValue<nnfusion::TensorWrapper>;
-        using TensorsAttr = VectorAttributeValue<nnfusion::TensorWrapper>;
+        //using TensorAttr = ScalarAttributeValue<nnfusion::TensorWrapper>;
+        //using TensorsAttr = VectorAttributeValue<nnfusion::TensorWrapper>;
 
         class Attributes
         {
@@ -104,6 +115,7 @@ namespace nnfusion
                     names.push_back(a->name);
                 return names;
             }
+
 #define CREATE_ACCESSOR(Kind, method)                                                              \
     Attributes* method##_(Symbol name, Kind##Attr::ConstructorType v)                              \
     {                                                                                              \
@@ -116,8 +128,8 @@ namespace nnfusion
             CREATE_ACCESSOR(Strings, ss)
             CREATE_ACCESSOR(Int, i)
             CREATE_ACCESSOR(Ints, is)
-            CREATE_ACCESSOR(Tensor, t)
-            CREATE_ACCESSOR(Tensors, ts)
+//CREATE_ACCESSOR(Tensor, t)
+//CREATE_ACCESSOR(Tensors, ts)
 
 #undef CREATE_ACCESSOR
 
@@ -168,6 +180,82 @@ namespace nnfusion
                                                           << name;
                 return it;
             }
+        };
+
+        class TagProxy;
+
+        class Tagable : public Attributes
+        {
+        public:
+            using Pointer = std::shared_ptr<Tagable>;
+            template <typename T>
+            Tagable* Set(Symbol name, T&& v)
+            {
+                set<ScalarAttributeValue<T>>(name, v);
+                return this;
+            }
+
+            template <typename T>
+            T& Get(Symbol name) const
+            {
+                return get<ScalarAttributeValue<T>>(name);
+            }
+
+            void copy_tags_from(const Tagable& attr)
+            {
+                for (auto& it : attr.values_)
+                {
+                    if (find(it->name, false) == values_.end())
+                    {
+                        // The value's uniq_ptr;
+                        values_.push_back(it->clone());
+                    }
+                }
+            }
+
+            TagProxy&& operator[](Symbol sym);
+        };
+
+        using Tags = Tagable;
+
+        class TagProxy
+        {
+        public:
+            TagProxy(Tagable* tags, Symbol sym)
+                : _tags(tags)
+                , _sym(sym)
+            {
+            }
+
+            bool is_valid() { return _tags->hasAttribute(_sym); };
+            template <typename T>
+            const Tagable::Pointer& set(T val)
+            {
+                _tags->set<ScalarAttributeValue<T>>(_sym, val);
+                return _tags;
+            }
+
+            template <typename T>
+            void set_rval(T&& val)
+            {
+                _tags->set<ScalarAttributeValue<T>>(_sym, val);
+            }
+
+            // This will give the reference;
+            template <typename T>
+            T& get()
+            {
+                if (!is_valid())
+                {
+                    LOG_WARN << "Cannot found this value in the Tags";
+                    return T();
+                }
+                return _tags->get<ScalarAttributeValue<T>>(_sym);
+            }
+
+        private:
+            const Tagable* _tags;
+            Symbol _sym;
         };
     }
 }
