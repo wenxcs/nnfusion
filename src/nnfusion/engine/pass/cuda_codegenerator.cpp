@@ -150,6 +150,14 @@ std::vector<shared_ptr<const KernelRegistration>>
     return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
 }
 
+string specialize_signature(string sig, string func_name)
+{
+    size_t pos = sig.find("(");
+    enforce(pos > 0 && pos < sig.size());
+    sig.insert(pos, func_name);
+    return sig;
+}
+
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
 {
@@ -258,9 +266,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu << "#include \"nnfusion_rt.h\"\n\n";
     lu << "char* _memory_pool;\n\n";
 
+    unordered_map<string, LanguageUnit_p> decleard_function_LU;
     // Collect Function Definition
     {
-        unordered_set<string> declared;
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
@@ -273,14 +281,23 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
 
-            if (declared.count(kernel->body_unit->symbol) == 0)
+            //if (declared.count(kernel->body_unit->symbol) == 0)
+            string func_key = kernel->signature_unit->get_code() + kernel->body_unit->get_code();
+            if (kernel->is_static_function() ||
+                decleard_function_LU.find(func_key) == decleard_function_LU.end())
             {
-                def << kernel->emit_comments();
-                def << kernel->signature_unit->get_code() << "\n";
+                def << "\n";
+                def << kernel->comment_unit->get_code();
+                def << specialize_signature(kernel->signature_unit->get_code(),
+                                            kernel->name_unit->get_code())
+                    << "\n";
                 def.block_begin();
                 def << kernel->body_unit->get_code() << "\n";
                 def.block_end();
-                declared.insert(kernel->body_unit->symbol);
+                if (!kernel->is_static_function())
+                {
+                    decleard_function_LU[func_key] = kernel->name_unit;
+                }
             }
             else
             {
@@ -441,15 +458,27 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
-                std::string read_const = kernel->call_unit->get_code();
-                if (read_const.compare(0, 9, "Constant_") == 0)
+                std::string func_name;
+                if (kernel->is_static_function())
                 {
-                    lu_main_init << kernel->call_unit->get_code();
+                    func_name = kernel->name_unit->get_code();
+                }
+                else
+                {
+                    string func_key =
+                        kernel->signature_unit->get_code() + kernel->body_unit->get_code();
+                    enforce(decleard_function_LU.find(func_key) != decleard_function_LU.end());
+                    func_name = decleard_function_LU[func_key]->get_code();
+                }
+
+                if (func_name.compare(0, 9, "Constant_") == 0)
+                {
+                    lu_main_init << func_name << kernel->call_unit->get_code();
                 }
                 else
                 {
                     lu_kernel_entry << " // kernel order = " << ++kernel_order << "\n";
-                    lu_kernel_entry << kernel->call_unit->get_code();
+                    lu_kernel_entry << func_name << kernel->call_unit->get_code();
                     if (enable_debug)
                     {
                         for (auto out_name : kernel->m_context->output_names)

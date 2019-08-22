@@ -54,15 +54,23 @@ namespace nnfusion
             // Generate function name for this kernel, the default name is:
             // "op_name + args_shapes + data_type + device + custom_tag"
             // Note that it's kernel developer's responsibility to avoid confilit
-            string get_function_name();
+            LanguageUnit_p emit_function_name();
+            string get_function_name()
+            {
+                enforce_not_nullptr(this->name_unit);
+                return this->name_unit->get_code();
+            }
 
             // Emit entire source code
             virtual LanguageUnit_p emit_source();
 
             // Emit comments
-            string emit_comments();
+            LanguageUnit_p emit_comments();
 
             bool is_emitted() { return m_is_emitted; }
+            // function declaration will be deduplicated only if the kernel function is
+            // not static, default config is static for safety
+            virtual bool is_static_function() { return false; }
             // Interfaces for generating the kernel code of an operator
 
             // Emit the function body of a specific kernel for this operator
@@ -78,10 +86,13 @@ namespace nnfusion
 
         public:
             // Emitted code units
-            LanguageUnit_p dep_unit;
-            LanguageUnit_p body_unit;
-            LanguageUnit_p call_unit;
+            LanguageUnit_p name_unit;
             LanguageUnit_p signature_unit;
+            LanguageUnit_p body_unit;
+            LanguageUnit_p dep_unit;
+            LanguageUnit_p call_unit;
+            LanguageUnit_p comment_unit;
+
             LanguageUnit_p test_unit;
             LanguageUnit_p test_call_unit;
             LanguageUnit_p source_unit;
@@ -110,9 +121,6 @@ namespace nnfusion
 
             // Reserved for simplified representation
             nlohmann::json attr;
-
-            // Emitted code units
-            string m_function_name;
         };
     } // namespace kernels
 } // namespace nnfusion

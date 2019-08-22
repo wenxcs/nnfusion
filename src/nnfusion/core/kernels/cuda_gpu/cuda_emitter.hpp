@@ -38,6 +38,7 @@ namespace nnfusion
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
 
+                virtual bool is_static_function() { return false; }
                 LanguageUnit_p emit_source() override;
 
                 LanguageUnit_p emit_function_call() override;

@@ -43,10 +43,12 @@ KernelContext::KernelContext(shared_ptr<Node> node)
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx)
     : m_context(ctx)
     , m_is_emitted(false)
+    , name_unit(nullptr)
     , dep_unit(nullptr)
     , body_unit(nullptr)
     , call_unit(nullptr)
     , signature_unit(nullptr)
+    , comment_unit(nullptr)
     , test_unit(nullptr)
     , test_call_unit(nullptr)
     , source_unit(nullptr)
@@ -56,10 +58,12 @@ KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx)
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type)
     : m_context(ctx)
     , m_is_emitted(false)
+    , name_unit(nullptr)
     , dep_unit(nullptr)
     , body_unit(nullptr)
     , call_unit(nullptr)
     , signature_unit(nullptr)
+    , comment_unit(nullptr)
     , test_unit(nullptr)
     , test_call_unit(nullptr)
     , source_unit(nullptr)
@@ -67,34 +71,21 @@ KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type)
 {
 }
 
-string KernelEmitter::get_function_name()
+LanguageUnit_p KernelEmitter::emit_function_name()
 {
-    if (m_function_name.empty())
-    {
-        std::stringstream func_name;
-        func_name << m_context->node->description() << "_" << join(m_context->dtypes, "_") << "_"
-                  << m_kernel_type << "_" << m_context->node->get_name(); //<< custom_tag;
-        m_function_name = func_name.str();
-    }
-
-    return m_function_name;
-}
-
-LanguageUnit_p KernelEmitter::emit_function_call()
-{
-    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_call"));
+    LanguageUnit_p _lu(new LanguageUnit("function_name"));
     auto& lu = *_lu;
-    vector<string> names;
-    names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
-    names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
-    lu << get_function_name() << "(" << join(names, ", ") << ");\n";
+
+    lu << m_context->node->description() << "_" << join(m_context->dtypes, "_") << "_"
+       << m_kernel_type << "_" << m_context->node->get_name(); //<< custom_tag;
 
     return _lu;
 }
 
 LanguageUnit_p KernelEmitter::emit_function_signature()
 {
-    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_sig"));
+    enforce_not_nullptr(this->name_unit);
+    LanguageUnit_p _lu(new LanguageUnit(this->name_unit->get_code() + "_sig"));
     auto& lu = *_lu;
 
     vector<string> params;
@@ -114,13 +105,28 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
         params.push_back(ss.str());
     }
 
-    lu << "void " << get_function_name() << "(" << join(params, ", ") << ")";
+    lu << "void "
+       << "(" << join(params, ", ") << ")";
     return _lu;
 }
 
-string KernelEmitter::emit_comments()
+LanguageUnit_p KernelEmitter::emit_function_call()
 {
-    LanguageUnit lu;
+    enforce_not_nullptr(this->name_unit);
+    LanguageUnit_p _lu(new LanguageUnit(this->name_unit->get_code() + "_call"));
+    auto& lu = *_lu;
+    vector<string> names;
+    names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
+    names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
+    lu << "(" << join(names, ", ") << ");\n";
+
+    return _lu;
+}
+
+LanguageUnit_p KernelEmitter::emit_comments()
+{
+    LanguageUnit_p _lu(new LanguageUnit("comments"));
+    auto& lu = *_lu;
     lu << "// Node name:\t" << m_context->node->get_name() << "\n";
     lu << "// Description:\t" << m_context->node->description() << "\n";
     lu << "// Input:\n";
@@ -140,20 +146,20 @@ string KernelEmitter::emit_comments()
         lu << "\tshape: " << out.get_shape();
         lu << "\n";
     }
-    return lu.get_code();
+    return _lu;
 }
 
 LanguageUnit_p KernelEmitter::emit_source()
 {
     enforce(m_is_emitted == false) << "Code only generated once.";
 
-    if (this->m_function_name.empty())
+    if (!this->name_unit)
     {
-        get_function_name();
+        this->name_unit = emit_function_name();
     }
-    if (kernel_definitions.find(this->m_function_name) != kernel_definitions.end())
+    if (kernel_definitions.find(this->name_unit->get_code()) != kernel_definitions.end())
     {
-        enforce_not_nullptr(this->body_unit = kernel_definitions[this->m_function_name]);
+        enforce_not_nullptr(this->body_unit = kernel_definitions[this->name_unit->get_code()]);
     }
     else
     {
@@ -166,6 +172,7 @@ LanguageUnit_p KernelEmitter::emit_source()
     enforce_not_nullptr(this->dep_unit = emit_dependency());
     enforce_not_nullptr(this->call_unit = emit_function_call());
     enforce_not_nullptr(this->signature_unit = emit_function_signature());
+    enforce_not_nullptr(this->comment_unit = emit_comments());
     // Pass other to dep_unit
     for (auto& it : call_unit->local_symbol)
         dep_unit->require(it.second);
