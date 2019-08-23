@@ -86,9 +86,9 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
             for (auto& rule : white_list)
                 if (opname.find(rule) < opname.size())
                 {
-                    (*ins)["Enable_Kernel_Selection"].set(true);
+                    (*ins)["Enable_Kernel_Selection"] = true;
                     if (!all_device)
-                        (*ins)["Kernel_Selection_Device"].set(the_device);
+                        (*ins)["Kernel_Selection_Device"] = the_device;
                 }
         }
     }
@@ -98,11 +98,11 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *iterator)
         {
             if ((*ins)["Enable_Kernel_Selection"].is_valid() &&
-                (*ins)["Enable_Kernel_Selection"].get<bool>())
+                (*ins)["Enable_Kernel_Selection"].as<bool>())
             {
                 vector<pair<DeviceType, KernelEmitter::Pointer>> res;
                 if (!(*ins)["Kernel_Selection_Device"].is_valid() ||
-                    ((*ins)["Kernel_Selection_Device"].get<DeviceType>() == CUDA_GPU))
+                    ((*ins)["Kernel_Selection_Device"].as<DeviceType>() == CUDA_GPU))
                 {
                     auto rt =
                         dynamic_pointer_cast<IProfilingRuntime>(CudaDefaultRuntime::Runtime());
@@ -112,7 +112,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                 }
 
                 if (!(*ins)["Kernel_Selection_Device"].is_valid() ||
-                    ((*ins)["Kernel_Selection_Device"].get<DeviceType>() == ROCM_GPU))
+                    ((*ins)["Kernel_Selection_Device"].as<DeviceType>() == ROCM_GPU))
                 {
                     if (RocmDefaultRuntime::Runtime()->check_env())
                     {
@@ -127,7 +127,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                 }
 
                 if (!(*ins)["Kernel_Selection_Device"].is_valid() ||
-                    ((*ins)["Kernel_Selection_Device"].get<DeviceType>() == GENERIC_CPU))
+                    ((*ins)["Kernel_Selection_Device"].as<DeviceType>() == GENERIC_CPU))
                 {
                     if (false)
                     {
@@ -141,7 +141,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                         LOG_WARN << "CPU runtime is not available.";
                 }
 
-                (*ins)["Kernel_Selection_Result"].set(res);
+                (*ins)["Kernel_Selection_Result"] = move(res);
             }
         }
     }

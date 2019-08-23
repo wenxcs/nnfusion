@@ -185,7 +185,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if ((*ins)["Kernel_Selection_Result"].is_valid())
             {
                 auto res = (*ins)["Kernel_Selection_Result"]
-                               .get<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                               .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
                 bool kernel_selected = false;
                 for (auto& k : res)
                 {

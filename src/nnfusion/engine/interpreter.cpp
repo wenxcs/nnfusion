@@ -93,7 +93,8 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
                 // Tag example
                 {
                     auto& INS = *ir;
-                    INS["DEBUG"].set<int>(1);
+                    INS["DEBUG"] = 1;
+                    auto res = INS["DEBUG"].as<int>();
                 }
                 ir->setName(node->get_name());
                 bb_main->push_back(ir);
@@ -198,7 +199,8 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
                 // Tag example
                 {
                     auto& INS = *ir;
-                    INS["DEBUG"].set<int>(1);
+                    INS["DEBUG"] = 1;
+                    auto res = INS["DEBUG"].as<int>();
                 }
                 ir->setName(node->get_name());
                 bb_main->push_back(ir);

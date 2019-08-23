@@ -246,22 +246,29 @@ namespace nnfusion
             const Tagable* set_rval(T&& val)
             {
                 enforce_not_nullptr(_tags);
-                _tags->Set<T>(_sym, std::move(val));
+                _tags->Set<T>(_sym, val);
                 return _tags;
             }
 
-            // This will give the reference;
-            // \todo(wenxh) Need check the datatype, which should be stored at
+            template <typename T>
+            void operator=(T val)
+            {
+                set(val);
+            }
+
+            //\brief This will give the reference;
+            //\todo(wenxh) Need check the datatype, which should be stored at
             // ScalarAttributeValue.
             template <typename T>
-            T& get()
+            T& as()
             {
                 enforce(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
                 return _tags->Get<T>(_sym);
             }
 
+            //\brief This is not deep copy.
             template <typename T>
-            T get_copy()
+            T clone()
             {
                 enforce(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
                 return _tags->Get<T>(_sym);

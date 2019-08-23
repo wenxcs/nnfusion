@@ -18,18 +18,18 @@ TEST(nnfusion_core_ir, tagable)
 {
     // Check Tag-able interface for instruction;
     nnfusion::ir::Instruction ins;
-    ins["Example"].set<std::string>("Yes");
+    ins["Example"] = std::string("Yes");
     EXPECT_TRUE(ins["Example"].is_valid());
-    EXPECT_TRUE(ins["Example"].get<std::string>() == std::string("Yes"));
+    EXPECT_TRUE(ins["Example"].as<std::string>() == std::string("Yes"));
 
     // Check Tag-able interface for GNode;
     nnfusion::graph::GNode gnode;
-    gnode["Example"].set<std::string>("Yes");
+    gnode["Example"] = std::string("Yes");
     EXPECT_TRUE(gnode["Example"].is_valid());
-    EXPECT_TRUE(gnode["Example"].get<std::string>() == std::string("Yes"));
+    EXPECT_TRUE(gnode["Example"].as<std::string>() == std::string("Yes"));
 
     // How to copy tags;
-    gnode["Grouped"].set<bool>(true);
+    gnode["Grouped"] = true;
     ins.copy_tags_from(gnode);
-    EXPECT_TRUE(ins["Grouped"].is_valid() && ins["Grouped"].get<bool>());
+    EXPECT_TRUE(ins["Grouped"].is_valid() && ins["Grouped"].as<bool>());
 }
