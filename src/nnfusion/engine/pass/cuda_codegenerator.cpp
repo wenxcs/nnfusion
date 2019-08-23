@@ -172,7 +172,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     std::vector<shared_ptr<KernelEmitter>> kernels;
     auto& prog = tu->program;
-    for (auto iterator = prog.entry; iterator != nullptr; iterator = iterator->next)
+    for (auto iterator : prog)
     {
         for (auto ins : *iterator)
         {

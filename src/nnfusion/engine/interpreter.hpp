@@ -2,7 +2,7 @@
 #pragma once
 
 #include "nnfusion/common/common.hpp"
-#include "nnfusion/core/IR/instruction.hpp"
+#include "nnfusion/core/IR/IR.hpp"
 #include "nnfusion/core/graph/pass/graph_pass.hpp"
 #include "op.hpp"
 
@@ -31,21 +31,6 @@ namespace nnfusion
         }
     };
 
-    class BasicBlock : public std::vector<ir::Instruction::Pointer>
-    {
-    public:
-        using pointer = std::shared_ptr<BasicBlock>;
-        using pointers = std::shared_ptr<vector<BasicBlock>>;
-        pointer next, prior;
-    };
-
-    class Program : BasicBlock
-    {
-    public:
-        using pointer = std::shared_ptr<Program>;
-        BasicBlock::pointer entry, exit;
-    };
-
     class TranslationUnit
     {
     public:
@@ -58,7 +43,7 @@ namespace nnfusion
         shared_ptr<set<shared_ptr<ngraph::descriptor::Tensor>>> constants;
         vector<shared_ptr<ngraph::descriptor::Tensor>> arg;
         vector<shared_ptr<ngraph::descriptor::Tensor>> out;
-        Program program;
+        nnfusion::ir::Program program;
         bool m_is_translated;
         size_t memory_pool_size;
         TranslationUnit()

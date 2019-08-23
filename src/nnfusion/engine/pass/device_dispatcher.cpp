@@ -21,7 +21,7 @@ bool DefaultDeviceDispatcher::run(std::shared_ptr<InterpreterContext> ctx,
         LOG_INFO << "CUDA_GPU";
     }
     */
-    for (auto iterator = p.entry; iterator != nullptr; iterator = iterator->next)
+    for (auto iterator : p)
     {
         for (auto ins : *iterator)
         {

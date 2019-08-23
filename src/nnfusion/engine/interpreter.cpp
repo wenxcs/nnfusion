@@ -52,12 +52,9 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
         _tus->emplace(p.first, _tu);
         LOG_INFO << "Translating function:\t" << current_function->get_name() << endl;
 
-        BasicBlock::pointer bb_main(new BasicBlock);
-        bb_main->prior = nullptr;
-        bb_main->next = nullptr;
-        _tu->program.entry = bb_main;
-        _tu->program.exit = bb_main;
+        _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_function = current_function;
+        auto bb_main = _tu->program.get_entry();
 
         enforce(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 
@@ -159,12 +156,9 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
         _tus->emplace(current_graph, _tu);
         LOG_INFO << "Translating graph:\t" << current_graph->get_name() << endl;
 
-        BasicBlock::pointer bb_main(new BasicBlock);
-        bb_main->prior = nullptr;
-        bb_main->next = nullptr;
-        _tu->program.entry = bb_main;
-        _tu->program.exit = bb_main;
+        _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_graph = current_graph;
+        auto bb_main = _tu->program.get_entry();
 
         enforce(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 

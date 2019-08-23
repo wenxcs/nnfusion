@@ -17,7 +17,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
 
     // Currently *ONLY* has BroadCast Selection
     auto& p = tu->program;
-    for (auto iterator = p.entry; iterator != nullptr; iterator = iterator->next)
+    for (auto iterator : p)
     {
         for (auto ins : *iterator)
         {
@@ -29,7 +29,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
         }
     }
 
-    for (auto iterator = p.entry; iterator != nullptr; iterator = iterator->next)
+    for (auto iterator : p)
     {
         for (auto ins : *iterator)
         {

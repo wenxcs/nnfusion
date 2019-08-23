@@ -3,6 +3,7 @@
 set(SRC
     attribute.cpp
     instruction.cpp
+    IR.cpp
 )
 
 add_library(nnfusion_ir STATIC ${SRC})
