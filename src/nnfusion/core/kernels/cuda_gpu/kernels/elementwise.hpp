@@ -47,20 +47,25 @@ namespace nnfusion
                     enforce(num_inputs > 0)
                         << "At least one input and one output tesnor for elementwise-op.";
 
+                    int grids, blocks, bound;
+                    compute_best_config(grids, blocks, bound);
+
                     {
-                        lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x; \n";
-                        lu << "uint32_t step = gridDim.x * blockDim.x; \n";
-                        lu << "for ( ;tid < " << nthreads << "; tid += step)\n";
-                        lu.block_begin();
+                        std::string tid =
+                            "blockIdx.x * " + std::to_string(blocks) + " + threadIdx.x";
+                        if (grids == 1)
+                            tid = "threadIdx.x";
+                        if (bound)
+                            lu << "if (" << tid << " >= " << bound << ") return;";
+
                         {
-                            lu << "output0[tid] = " << op << "(";
+                            lu << "output0[" << tid << "] = " << op << "(";
                             for (size_t i = 0; i < num_inputs - 1; i++)
                             {
-                                lu << "input" << i << "[tid], ";
+                                lu << "input" << i << "[" << tid << "], ";
                             }
-                            lu << "input" << num_inputs - 1 << "[tid]);\n";
+                            lu << "input" << num_inputs - 1 << "[" << tid << "]);\n";
                         }
-                        lu.block_end();
                     }
                     return lu_;
                 }
@@ -76,16 +81,40 @@ namespace nnfusion
 
                 void set_launch_config() override
                 {
-                    uint32_t nthreads = static_cast<uint32_t>(
-                        ngraph::shape_size(m_context->outputs[0].get_shape()));
-                    // TODO: currently we set it to 512, will add tuning method later
-                    uint32_t block_size_x = 512;
+                    int grids, blocks, bound;
+                    compute_best_config(grids, blocks, bound);
 
-                    m_gridDim = dim3(align_to_block_size(nthreads, block_size_x), 1, 1);
-                    m_blockDim = dim3(block_size_x, 1, 1);
+                    m_gridDim = dim3(grids, 1, 1);
+                    m_blockDim = dim3(blocks, 1, 1);
                 }
 
             private:
+                void compute_best_config(int& grids, int& blocks, int& bound)
+                {
+                    uint32_t num_ele = static_cast<uint32_t>(
+                        ngraph::shape_size(m_context->outputs[0].get_shape()));
+                    for (int i = 1024; i >= 64; i >>= 1)
+                    {
+                        if (num_ele % i == 0)
+                        {
+                            grids = num_ele / i, blocks = i, bound = 0;
+                            return;
+                        }
+                    }
+                    for (int i = 1024; i >= 32; i--)
+                    {
+                        if (num_ele % i == 0)
+                        {
+                            grids = num_ele / i, blocks = i, bound = 0;
+                            return;
+                        }
+                    }
+                    if (num_ele < 32)
+                        grids = 1, blocks = num_ele, bound = 0;
+                    else
+                        grids = (num_ele + 255) / 256, blocks = 256, bound = 1;
+                }
+
                 shared_ptr<KernelContext> kernel_ctx;
                 vector<string> data_types;
             };
