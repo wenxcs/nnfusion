@@ -14,7 +14,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 {
     if (ke->source_code != nullptr)
         return true;
-    FunctionUnit_p fu = ke->kernel->emit_source();
+    FunctionUnit_p fu = ke->kernel->get_or_emit_source();
     LanguageUnit writer(fu->name_unit->get_code() + ".cu");
     writer << "// Microsoft (c) 2019, NNFusion\n";
 
@@ -227,8 +227,8 @@ bool CudaDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     if (!file_exsits(objname))
         return false;
     auto obj = get_library_handle(objname);
-    auto entry =
-        get_funcion_pointer(ke->kernel->get_function_unit()->name_unit->get_code() + "_entry", obj);
+    auto entry = get_funcion_pointer(
+        ke->kernel->get_or_emit_source()->name_unit->get_code() + "_entry", obj);
     if (entry == nullptr)
         return false;
     ke->entry_point = (double (*)(void**, void**))entry;

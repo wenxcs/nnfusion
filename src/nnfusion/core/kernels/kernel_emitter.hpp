@@ -51,10 +51,9 @@ namespace nnfusion
             KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type);
 
             // Emit entire source code
-            virtual FunctionUnit_p emit_source();
+            virtual FunctionUnit_p get_or_emit_source();
 
             string get_kernel_type() { return m_kernel_type; }
-            FunctionUnit_p get_function_unit() { return m_function_unit; }
             string get_function_name() { return this->m_kernel_name; }
             bool is_emitted() { return m_is_emitted; }
             // function declaration will be deduplicated only if the kernel function is

@@ -29,7 +29,7 @@ TEST(nnfusion_core_kernels, sample)
     for (auto kernel_reg : kernel_regs)
     {
         auto kernel = kernel_reg->m_factory(ctx);
-        if (kernel->emit_source())
+        if (kernel->get_or_emit_source())
         {
             has_valid_kernel = true;
 

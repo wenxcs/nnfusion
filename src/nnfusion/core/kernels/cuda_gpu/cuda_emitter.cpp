@@ -4,10 +4,10 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-FunctionUnit_p cuda::CudaEmitter::emit_source()
+FunctionUnit_p cuda::CudaEmitter::get_or_emit_source()
 {
     set_launch_config();
-    return KernelEmitter::emit_source();
+    return KernelEmitter::get_or_emit_source();
 }
 
 LanguageUnit_p cuda::CudaEmitter::emit_function_call()

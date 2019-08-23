@@ -35,7 +35,7 @@ namespace nnfusion
                 {
                 }
 
-                FunctionUnit_p emit_source() override;
+                FunctionUnit_p get_or_emit_source() override;
 
                 virtual bool is_static_function() override { return false; }
             protected:

@@ -60,7 +60,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                 for (auto kernel_reg : kernel_regs)
                 {
                     auto kernel = kernel_reg->m_factory(ctx);
-                    if (kernel->emit_source())
+                    if (kernel->get_or_emit_source())
                     {
                         has_valid_kernel = true;
                         auto pctx = make_shared<nnfusion::profiler::ProfilingContext>(kernel);

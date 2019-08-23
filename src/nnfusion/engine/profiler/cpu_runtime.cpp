@@ -16,7 +16,7 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
 {
     if (ke->source_code != nullptr)
         return true;
-    FunctionUnit_p fu = ke->kernel->emit_source();
+    FunctionUnit_p fu = ke->kernel->get_or_emit_source();
     LanguageUnit writer(fu->name_unit->get_code() + ".cpp");
     writer << "// Microsoft (c) 2019, NNFusion\n";
 
@@ -164,8 +164,8 @@ bool ReferenceRuntime::compile(const ProfilingContext::Pointer& ke)
     if (!file_exsits(objname))
         return false;
     auto obj = get_library_handle(objname);
-    auto entry =
-        get_funcion_pointer(ke->kernel->get_function_unit()->name_unit->get_code() + "_entry", obj);
+    auto entry = get_funcion_pointer(
+        ke->kernel->get_or_emit_source()->name_unit->get_code() + "_entry", obj);
     if (entry == nullptr)
         return false;
     ke->entry_point = (double (*)(void**, void**))entry;
@@ -187,7 +187,7 @@ double ReferenceRuntime::execute(const ProfilingContext::Pointer& ke, void** inp
         if (kernel_reg->m_tag != "reference")
             continue;
         auto kernel = kernel_reg->m_factory(ctx);
-        if (kernel->emit_source())
+        if (kernel->get_or_emit_source())
         {
             has_valid_kernel = true;
             LOG_INFO << "Replacing with reference kenel.";

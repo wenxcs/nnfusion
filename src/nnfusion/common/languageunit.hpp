@@ -50,7 +50,7 @@ namespace nnfusion
 
     using LanguageUnit_p = shared_ptr<LanguageUnit>;
 
-    struct FunctionUnit
+    struct FunctionUnit : public LanguageUnit
     {
         // Language units to represent a function
         LanguageUnit_p name_unit;
@@ -59,6 +59,11 @@ namespace nnfusion
         LanguageUnit_p dep_unit;
         LanguageUnit_p call_unit; // (tensor1, tensor2, tensor3)
         LanguageUnit_p comment_unit;
+
+        FunctionUnit()
+            : LanguageUnit()
+        {
+        }
 
         string get_specialized_signature(string func_name = "")
         {

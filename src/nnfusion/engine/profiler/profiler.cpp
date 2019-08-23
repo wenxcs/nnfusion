@@ -77,7 +77,7 @@ void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
         if (kernel_reg->m_tag != "reference")
             continue;
         auto kernel = kernel_reg->m_factory(ctx);
-        if (kernel->emit_source())
+        if (kernel->get_or_emit_source())
         {
             // Replacing the kernel;
             auto pctx = make_shared<ProfilingContext>(kernel);

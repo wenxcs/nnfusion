@@ -129,9 +129,12 @@ LanguageUnit_p KernelEmitter::emit_comments()
     return _lu;
 }
 
-FunctionUnit_p KernelEmitter::emit_source()
+FunctionUnit_p KernelEmitter::get_or_emit_source()
 {
-    enforce(m_is_emitted == false) << "Code only generated once.";
+    if (m_is_emitted)
+    {
+        return m_function_unit;
+    }
 
     FunctionUnit_p fu(new FunctionUnit());
 

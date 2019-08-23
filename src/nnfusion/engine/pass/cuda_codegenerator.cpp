@@ -203,7 +203,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 for (auto kernel_reg : kernel_regs)
                 {
                     auto kernel = kernel_reg->m_factory(ctx);
-                    if (kernel->emit_source())
+                    if (kernel->get_or_emit_source())
                     {
                         kernels.push_back(kernel);
                         has_valid_kernel = true;
@@ -218,7 +218,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
                 enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
                 auto kernel = kernel_reg->m_factory(ctx);
-                kernel->emit_source();
+                kernel->get_or_emit_source();
                 kernels.push_back(kernel);
             }
         }
@@ -246,7 +246,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 return false;
             }
 
-            for (auto& it : kernel->get_function_unit()->dep_unit->local_symbol)
+            for (auto& it : kernel->get_or_emit_source()->dep_unit->local_symbol)
             {
                 re.require(it.second);
                 global_required.insert(it.second->symbol);
@@ -263,7 +263,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
-            FunctionUnit_p fu = kernel->get_function_unit();
+            FunctionUnit_p fu = kernel->get_or_emit_source();
             for (auto& it : fu->body_unit->local_symbol)
             {
                 if (it.second != fu->dep_unit)
@@ -447,7 +447,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
-                FunctionUnit_p fu = kernel->get_function_unit();
+                FunctionUnit_p fu = kernel->get_or_emit_source();
                 std::string func_name;
                 if (kernel->is_static_function())
                 {
