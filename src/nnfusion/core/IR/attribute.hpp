@@ -210,16 +210,22 @@ namespace nnfusion
                         // The value's uniq_ptr;
                         values_.push_back(it->clone());
                     }
+                    else
+                    {
+                        LOG_WARN << "Tagable interface will not copy existed item with same name.";
+                    }
                 }
             }
 
-            TagProxy&& operator[](Symbol sym);
+            TagProxy operator[](Symbol sym);
         };
 
         using Tags = Tagable;
 
         class TagProxy
         {
+        private:
+            TagProxy() {}
         public:
             TagProxy(Tagable* tags, Symbol sym)
                 : _tags(tags)
@@ -229,32 +235,40 @@ namespace nnfusion
 
             bool is_valid() { return _tags->hasAttribute(_sym); };
             template <typename T>
-            const Tagable::Pointer& set(T val)
+            const Tagable* set(T val)
             {
-                _tags->set<ScalarAttributeValue<T>>(_sym, val);
+                enforce_not_nullptr(_tags);
+                _tags->Set<T>(_sym, std::move(val));
                 return _tags;
             }
 
             template <typename T>
-            void set_rval(T&& val)
+            const Tagable* set_rval(T&& val)
             {
-                _tags->set<ScalarAttributeValue<T>>(_sym, val);
+                enforce_not_nullptr(_tags);
+                _tags->Set<T>(_sym, std::move(val));
+                return _tags;
             }
 
             // This will give the reference;
+            // \todo(wenxh) Need check the datatype, which should be stored at
+            // ScalarAttributeValue.
             template <typename T>
             T& get()
             {
-                if (!is_valid())
-                {
-                    LOG_WARN << "Cannot found this value in the Tags";
-                    return T();
-                }
-                return _tags->get<ScalarAttributeValue<T>>(_sym);
+                enforce(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
+                return _tags->Get<T>(_sym);
+            }
+
+            template <typename T>
+            T get_copy()
+            {
+                enforce(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
+                return _tags->Get<T>(_sym);
             }
 
         private:
-            const Tagable* _tags;
+            Tagable* _tags = nullptr;
             Symbol _sym;
         };
     }

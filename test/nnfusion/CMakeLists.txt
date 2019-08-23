@@ -4,4 +4,5 @@ set(NNFUSION_TESTS
     nnfusion/inventory/pad.cpp
     #kernels
     nnfusion/kernels/sample.cpp
+    nnfusion/core/tagable.cpp
     PARENT_SCOPE)
