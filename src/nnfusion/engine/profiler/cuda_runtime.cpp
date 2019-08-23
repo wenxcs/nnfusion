@@ -14,10 +14,11 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 {
     if (ke->source_code != nullptr)
         return true;
-    LanguageUnit writer(ke->kernel->get_function_name() + ".cu");
+    FunctionUnit_p fu = ke->kernel->emit_source();
+    LanguageUnit writer(fu->name_unit->get_code() + ".cu");
     writer << "// Microsoft (c) 2019, NNFusion\n";
 
-    auto re = ke->kernel->emit_dependency();
+    auto re = fu->dep_unit;
     re->require(header::assert);
     re->require(header::stdexcept);
     re->require(header::sstream);
@@ -41,10 +42,10 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     writer << "\n";
 
     // Write function definition
-    writer << ke->kernel->emit_comments();
-    writer << ke->kernel->signature_unit->get_code() << "\n";
+    writer << fu->comment_unit->get_code();
+    writer << fu->get_specialized_signature() << "\n";
     writer.block_begin();
-    writer << ke->kernel->body_unit->get_code() << "\n";
+    writer << fu->body_unit->get_code() << "\n";
     writer.block_end();
 
     // Write Test Calls
@@ -56,7 +57,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     auto& arg = ke->kernel->m_context->inputs;
     auto& out = ke->kernel->m_context->outputs;
 
-    writer << "extern \"C\" double " << ke->kernel->get_function_name() << "_host(";
+    writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
     for (size_t i = 0; i + 1 < arg.size(); i++)
     {
         writer << arg[i].get_type() << "* " << arg[i].get_name() << "_host, ";
@@ -123,7 +124,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         writer.block_begin();
         {
             writer << "if(i == " << ke->warmup_times << ") cudaEventRecord(start);\n";
-            writer << ke->kernel->call_unit->get_code();
+            writer << fu->name_unit->get_code() << fu->call_unit->get_code();
         }
         writer.block_end();
 
@@ -167,12 +168,12 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
     writer << "\n";
 
-    writer << "extern \"C\" double " << ke->kernel->get_function_name()
+    writer << "extern \"C\" double " << fu->name_unit->get_code()
            << "_entry(void** args, void** outputs)";
 
     writer.block_begin();
     {
-        writer << "return " << ke->kernel->get_function_name() << "_host(";
+        writer << "return " << fu->name_unit->get_code() << "_host(";
         for (size_t i = 0; i + 1 < arg.size() + out.size(); i++)
         {
             string type = i < arg.size()
@@ -226,7 +227,8 @@ bool CudaDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     if (!file_exsits(objname))
         return false;
     auto obj = get_library_handle(objname);
-    auto entry = get_funcion_pointer(ke->kernel->get_function_name() + "_entry", obj);
+    auto entry =
+        get_funcion_pointer(ke->kernel->get_function_unit()->name_unit->get_code() + "_entry", obj);
     if (entry == nullptr)
         return false;
     ke->entry_point = (double (*)(void**, void**))entry;

@@ -150,14 +150,6 @@ std::vector<shared_ptr<const KernelRegistration>>
     return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
 }
 
-string specialize_signature(string sig, string func_name)
-{
-    size_t pos = sig.find("(");
-    enforce(pos > 0 && pos < sig.size());
-    sig.insert(pos, func_name);
-    return sig;
-}
-
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
 {
@@ -254,13 +246,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 return false;
             }
 
-            for (auto& it : kernel->dep_unit->local_symbol)
+            for (auto& it : kernel->get_function_unit()->dep_unit->local_symbol)
             {
                 re.require(it.second);
                 global_required.insert(it.second->symbol);
             }
         }
-        // lu << re.collect_required_code();
     }
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
@@ -272,31 +263,29 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
-            for (auto& it : kernel->body_unit->local_symbol)
+            FunctionUnit_p fu = kernel->get_function_unit();
+            for (auto& it : fu->body_unit->local_symbol)
             {
-                if (it.second != kernel->dep_unit)
+                if (it.second != fu->dep_unit)
                 {
                     re.require(it.second);
                     global_required.insert(it.second->symbol);
                 }
             }
 
-            //if (declared.count(kernel->body_unit->symbol) == 0)
-            string func_key = kernel->signature_unit->get_code() + kernel->body_unit->get_code();
+            string func_key = fu->signature_unit->get_code() + fu->body_unit->get_code();
             if (kernel->is_static_function() ||
                 decleard_function_LU.find(func_key) == decleard_function_LU.end())
             {
                 def << "\n";
-                def << kernel->comment_unit->get_code();
-                def << specialize_signature(kernel->signature_unit->get_code(),
-                                            kernel->name_unit->get_code())
-                    << "\n";
+                def << fu->comment_unit->get_code();
+                def << fu->get_specialized_signature() << "\n";
                 def.block_begin();
-                def << kernel->body_unit->get_code() << "\n";
+                def << fu->body_unit->get_code() << "\n";
                 def.block_end();
                 if (!kernel->is_static_function())
                 {
-                    decleard_function_LU[func_key] = kernel->name_unit;
+                    decleard_function_LU[func_key] = fu->name_unit;
                 }
             }
             else
@@ -458,27 +447,27 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
+                FunctionUnit_p fu = kernel->get_function_unit();
                 std::string func_name;
                 if (kernel->is_static_function())
                 {
-                    func_name = kernel->name_unit->get_code();
+                    func_name = fu->name_unit->get_code();
                 }
                 else
                 {
-                    string func_key =
-                        kernel->signature_unit->get_code() + kernel->body_unit->get_code();
+                    string func_key = fu->signature_unit->get_code() + fu->body_unit->get_code();
                     enforce(decleard_function_LU.find(func_key) != decleard_function_LU.end());
                     func_name = decleard_function_LU[func_key]->get_code();
                 }
 
                 if (func_name.compare(0, 9, "Constant_") == 0)
                 {
-                    lu_main_init << func_name << kernel->call_unit->get_code();
+                    lu_main_init << func_name << fu->call_unit->get_code();
                 }
                 else
                 {
                     lu_kernel_entry << " // kernel order = " << ++kernel_order << "\n";
-                    lu_kernel_entry << func_name << kernel->call_unit->get_code();
+                    lu_kernel_entry << func_name << fu->call_unit->get_code();
                     if (enable_debug)
                     {
                         for (auto out_name : kernel->m_context->output_names)

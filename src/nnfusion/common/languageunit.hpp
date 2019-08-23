@@ -49,4 +49,29 @@ namespace nnfusion
     };
 
     using LanguageUnit_p = shared_ptr<LanguageUnit>;
+
+    struct FunctionUnit
+    {
+        // Language units to represent a function
+        LanguageUnit_p name_unit;
+        LanguageUnit_p signature_unit; // void (float* input0, float* input1, float* output0)
+        LanguageUnit_p body_unit;
+        LanguageUnit_p dep_unit;
+        LanguageUnit_p call_unit; // (tensor1, tensor2, tensor3)
+        LanguageUnit_p comment_unit;
+
+        string get_specialized_signature(string func_name = "")
+        {
+            enforce_not_nullptr(this->name_unit);
+            enforce_not_nullptr(this->signature_unit);
+            string fname = func_name == "" ? this->name_unit->get_code() : func_name;
+            string sig = this->signature_unit->get_code();
+            size_t pos = sig.find("(");
+            enforce(pos > 0 && pos < sig.size());
+            sig.insert(pos, fname);
+            return sig;
+        }
+    };
+
+    using FunctionUnit_p = shared_ptr<FunctionUnit>;
 }

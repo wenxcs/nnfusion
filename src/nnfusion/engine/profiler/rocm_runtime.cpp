@@ -34,7 +34,8 @@ bool RocmDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     if (!file_exsits(objname))
         return false;
     auto obj = get_library_handle(objname);
-    auto entry = get_funcion_pointer(ke->kernel->get_function_name() + "_entry", obj);
+    auto entry =
+        get_funcion_pointer(ke->kernel->get_function_unit()->name_unit->get_code() + "_entry", obj);
     if (entry == nullptr)
         return false;
     ke->entry_point = (double (*)(void**, void**))entry;

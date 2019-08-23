@@ -35,17 +35,16 @@ namespace nnfusion
                 {
                 }
 
+                FunctionUnit_p emit_source() override;
+
+                virtual bool is_static_function() override { return false; }
+            protected:
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
 
-                virtual bool is_static_function() { return false; }
-                LanguageUnit_p emit_source() override;
-
                 LanguageUnit_p emit_function_call() override;
-
                 LanguageUnit_p emit_function_signature() override;
 
-            protected:
                 dim3 m_blockDim;
                 dim3 m_gridDim;
             };
@@ -58,23 +57,6 @@ namespace nnfusion
                 {
                 }
             };
-
-            // class ElementwiseKernel : public CudaEmitter
-            // {
-            // public:
-            //     ElementwiseKernel(shared_ptr<KernelContext> ctx)
-            //         : KernelEmitter(ctx),
-            //         m_kernel_type("cuda_elementwise")
-            //     {
-            //     }
-            //     ~ElementwiseKernel();
-
-            //     // e.g., tanhf, sigmoidf, +, -, etc.
-            //     virtual string operator_func() = 0;
-
-            //     virtual void set_launch_config() override;
-            //     virtual LanguageUnit_p emit_function_body() override;
-            // };
 
         } // namespace cuda
     }     // namespace kernels

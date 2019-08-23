@@ -50,28 +50,23 @@ namespace nnfusion
 
             KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type);
 
-            string get_kernel_type() { return m_kernel_type; }
-            // Generate function name for this kernel, the default name is:
-            // "op_name + args_shapes + data_type + device + custom_tag"
-            // Note that it's kernel developer's responsibility to avoid confilit
-            LanguageUnit_p emit_function_name();
-            string get_function_name()
-            {
-                enforce_not_nullptr(this->name_unit);
-                return this->name_unit->get_code();
-            }
-
             // Emit entire source code
-            virtual LanguageUnit_p emit_source();
+            virtual FunctionUnit_p emit_source();
 
-            // Emit comments
-            LanguageUnit_p emit_comments();
-
+            string get_kernel_type() { return m_kernel_type; }
+            FunctionUnit_p get_function_unit() { return m_function_unit; }
+            string get_function_name() { return this->m_kernel_name; }
             bool is_emitted() { return m_is_emitted; }
             // function declaration will be deduplicated only if the kernel function is
-            // not static, default config is static for safety
+            // not static
             virtual bool is_static_function() { return false; }
-            // Interfaces for generating the kernel code of an operator
+            // The context for this kernel
+            shared_ptr<KernelContext> m_context;
+
+        protected:
+            // Generate function name for this kernel, the default name is:
+            // "op_name + args_shapes + data_type + device + custom_tag"
+            LanguageUnit_p emit_function_name();
 
             // Emit the function body of a specific kernel for this operator
             // the order of function args is following the order of inputs/outputs
@@ -79,33 +74,19 @@ namespace nnfusion
             // void fname(dtypes[0]* input0, dtypes[1]* input1, …, dtypes[k] *output0, …)
             virtual LanguageUnit_p emit_function_body() = 0;
 
+            // Emit function signature
+            virtual LanguageUnit_p emit_function_signature();
+
             // Emit the dependency of this kernel code
             // e.g., the cudnn convolution kernel depends on the cudnn lib,
             // thus it needs to add a header of "#include <cudnn>
             virtual LanguageUnit_p emit_dependency() = 0;
 
-        public:
-            // Emitted code units
-            LanguageUnit_p name_unit;
-            LanguageUnit_p signature_unit;
-            LanguageUnit_p body_unit;
-            LanguageUnit_p dep_unit;
-            LanguageUnit_p call_unit;
-            LanguageUnit_p comment_unit;
-
-            LanguageUnit_p test_unit;
-            LanguageUnit_p test_call_unit;
-            LanguageUnit_p source_unit;
-
-            // The context for this kernel
-            shared_ptr<KernelContext> m_context;
-
-        protected:
             // Emit function call
             virtual LanguageUnit_p emit_function_call();
 
-            // Emit function signature
-            virtual LanguageUnit_p emit_function_signature();
+            // Emit comments
+            virtual LanguageUnit_p emit_comments();
 
             // A kernel only emits kernel code once
             bool m_is_emitted;
@@ -113,14 +94,20 @@ namespace nnfusion
             // kernel type: e.g., CUDA, CUDNN, ROCM, CPU, etc.
             const string m_kernel_type;
 
+            // kernel name.
+            string m_kernel_name;
+
             // custom kernel tag
             string custom_tag;
 
             // mapping: kernel name -> kernel definition
-            unordered_map<string, LanguageUnit_p> kernel_definitions;
+            unordered_map<string, shared_ptr<FunctionUnit>> kernel_definitions;
 
             // Reserved for simplified representation
             nlohmann::json attr;
+
+            // emitted function unit
+            FunctionUnit_p m_function_unit;
         };
     } // namespace kernels
 } // namespace nnfusion

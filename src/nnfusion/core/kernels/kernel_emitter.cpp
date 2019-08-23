@@ -43,30 +43,12 @@ KernelContext::KernelContext(shared_ptr<Node> node)
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx)
     : m_context(ctx)
     , m_is_emitted(false)
-    , name_unit(nullptr)
-    , dep_unit(nullptr)
-    , body_unit(nullptr)
-    , call_unit(nullptr)
-    , signature_unit(nullptr)
-    , comment_unit(nullptr)
-    , test_unit(nullptr)
-    , test_call_unit(nullptr)
-    , source_unit(nullptr)
 {
 }
 
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type)
     : m_context(ctx)
     , m_is_emitted(false)
-    , name_unit(nullptr)
-    , dep_unit(nullptr)
-    , body_unit(nullptr)
-    , call_unit(nullptr)
-    , signature_unit(nullptr)
-    , comment_unit(nullptr)
-    , test_unit(nullptr)
-    , test_call_unit(nullptr)
-    , source_unit(nullptr)
     , m_kernel_type(kernel_type)
 {
 }
@@ -84,8 +66,7 @@ LanguageUnit_p KernelEmitter::emit_function_name()
 
 LanguageUnit_p KernelEmitter::emit_function_signature()
 {
-    enforce_not_nullptr(this->name_unit);
-    LanguageUnit_p _lu(new LanguageUnit(this->name_unit->get_code() + "_sig"));
+    LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_sig"));
     auto& lu = *_lu;
 
     vector<string> params;
@@ -112,8 +93,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
 
 LanguageUnit_p KernelEmitter::emit_function_call()
 {
-    enforce_not_nullptr(this->name_unit);
-    LanguageUnit_p _lu(new LanguageUnit(this->name_unit->get_code() + "_call"));
+    LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_call"));
     auto& lu = *_lu;
     vector<string> names;
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
@@ -125,7 +105,7 @@ LanguageUnit_p KernelEmitter::emit_function_call()
 
 LanguageUnit_p KernelEmitter::emit_comments()
 {
-    LanguageUnit_p _lu(new LanguageUnit("comments"));
+    LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_comments"));
     auto& lu = *_lu;
     lu << "// Node name:\t" << m_context->node->get_name() << "\n";
     lu << "// Description:\t" << m_context->node->description() << "\n";
@@ -149,42 +129,49 @@ LanguageUnit_p KernelEmitter::emit_comments()
     return _lu;
 }
 
-LanguageUnit_p KernelEmitter::emit_source()
+FunctionUnit_p KernelEmitter::emit_source()
 {
     enforce(m_is_emitted == false) << "Code only generated once.";
 
-    if (!this->name_unit)
+    FunctionUnit_p fu(new FunctionUnit());
+
+    if (this->m_kernel_name.empty())
     {
-        this->name_unit = emit_function_name();
+        fu->name_unit = emit_function_name();
+        this->m_kernel_name = fu->name_unit->get_code();
     }
-    if (kernel_definitions.find(this->name_unit->get_code()) != kernel_definitions.end())
+
+    if (kernel_definitions.find(this->m_kernel_name) != kernel_definitions.end())
     {
-        enforce_not_nullptr(this->body_unit = kernel_definitions[this->name_unit->get_code()]);
+        enforce_not_nullptr(fu = kernel_definitions[this->m_kernel_name]);
+        return fu;
     }
-    else
+
+    // emit function units
+    enforce_not_nullptr(fu->signature_unit = emit_function_signature());
+    fu->body_unit = emit_function_body();
+    if (!fu->body_unit)
     {
-        this->body_unit = this->emit_function_body();
-        if (!this->body_unit)
-        {
-            return nullptr;
-        }
+        return nullptr;
     }
-    enforce_not_nullptr(this->dep_unit = emit_dependency());
-    enforce_not_nullptr(this->call_unit = emit_function_call());
-    enforce_not_nullptr(this->signature_unit = emit_function_signature());
-    enforce_not_nullptr(this->comment_unit = emit_comments());
+    enforce_not_nullptr(fu->call_unit = emit_function_call());
+    enforce_not_nullptr(fu->dep_unit = emit_dependency());
+    enforce_not_nullptr(fu->comment_unit = emit_comments());
+
     // Pass other to dep_unit
-    for (auto& it : call_unit->local_symbol)
-        dep_unit->require(it.second);
-    for (auto& it : body_unit->local_symbol)
-        dep_unit->require(it.second);
-    call_unit->clean_require();
-    body_unit->clean_require();
+    for (auto& it : fu->call_unit->local_symbol)
+        fu->dep_unit->require(it.second);
+    for (auto& it : fu->body_unit->local_symbol)
+        fu->dep_unit->require(it.second);
+    fu->call_unit->clean_require();
+    fu->body_unit->clean_require();
 
     // orgnize dep
-    this->body_unit->require(this->dep_unit);
-    enforce(this->call_unit->require(this->body_unit));
+    enforce(fu->body_unit->require(fu->dep_unit));
+    enforce(fu->call_unit->require(fu->body_unit));
 
+    m_function_unit = fu;
     m_is_emitted = true;
-    return this->call_unit;
+
+    return fu;
 }

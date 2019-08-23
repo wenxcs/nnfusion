@@ -150,7 +150,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 return false;
             }
 
-            for (auto& it : kernel->dep_unit->local_symbol)
+            for (auto& it : kernel->get_function_unit()->dep_unit->local_symbol)
             {
                 re.require(it.second);
                 global_required.insert(it.second->symbol);
@@ -166,26 +166,27 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
-            for (auto& it : kernel->body_unit->local_symbol)
+            FunctionUnit_p fu = kernel->get_function_unit();
+            for (auto& it : fu->body_unit->local_symbol)
             {
-                if (it.second != kernel->dep_unit)
+                if (it.second != fu->dep_unit)
                 {
                     re.require(it.second);
                     global_required.insert(it.second->symbol);
                 }
             }
-            def << kernel->emit_comments();
-            if (declared.count(kernel->body_unit->symbol) == 0)
+            def << fu->comment_unit->get_code();
+            if (declared.count(fu->body_unit->symbol) == 0)
             {
-                def << kernel->signature_unit->get_code() << "\n";
+                def << fu->get_specialized_signature() << "\n";
                 def.block_begin();
-                def << kernel->body_unit->get_code() << "\n";
+                def << fu->body_unit->get_code() << "\n";
                 def.block_end();
-                declared.insert(kernel->body_unit->symbol);
+                declared.insert(fu->body_unit->symbol);
             }
             else
             {
-                def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
+                def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
             }
         }
 
@@ -318,15 +319,15 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
             for (auto kernel : kernels)
             {
-                // lu << kernel->call_unit->get_code();
-                std::string read_const = kernel->call_unit->get_code();
+                FunctionUnit_p fu = kernel->get_function_unit();
+                std::string read_const = fu->call_unit->get_code();
                 if (read_const.compare(0, 10, "read_const") == 0)
                 {
-                    lu_main_init << kernel->call_unit->get_code();
+                    lu_main_init << fu->call_unit->get_code();
                 }
                 else
                 {
-                    lu_kernel_entry << kernel->call_unit->get_code();
+                    lu_kernel_entry << fu->call_unit->get_code();
                 }
             }
         }
