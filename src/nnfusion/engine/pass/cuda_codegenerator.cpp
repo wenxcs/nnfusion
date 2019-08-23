@@ -181,16 +181,28 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 continue;
             }
-            if (ins->Tag().hasAttribute("KernelCandidate"))
+
+            if ((*ins)["Kernel_Selection_Result"].is_valid())
             {
-                auto k = ins->Tag().Get<KernelEmitter::Pointer>("KernelCandidate");
-                auto d = ins->Tag().Get<DeviceType>("KernelCandidateDevice");
-                if (k != nullptr && d == device_type())
+                auto res = (*ins)["Kernel_Selection_Result"]
+                               .get<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                bool kernel_selected = false;
+                for (auto& k : res)
                 {
-                    kernels.push_back(k);
-                    continue;
+                    if (k.second != nullptr && k.first == device_type())
+                    {
+                        if (kernel_selected)
+                            LOG_WARN << "More than one candidates.";
+                        else
+                            kernels.push_back(k.second);
+
+                        kernel_selected = true;
+                    }
                 }
+                if (kernel_selected)
+                    continue;
             }
+
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
             shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
