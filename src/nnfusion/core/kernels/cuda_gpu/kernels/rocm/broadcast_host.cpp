@@ -29,14 +29,21 @@ namespace nnfusion
                     auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
+                    auto node = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
+                    auto axes = node->get_broadcast_axes();
+
                     size_t in_size = 1;
                     for (auto& it : input_shape)
                         in_size *= it;
                     if (in_size == 1)
                         return nullptr;
-
-                    auto node = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
-                    auto axes = node->get_broadcast_axes();
+                    // only handle (1, C, 1, 1) to (N, C, H, W)
+                    if (input_shape.size() != 1 || output_shape.size() != 4 || axes.size() != 3)
+                        return nullptr;
+                    if (!axes.count(0) || !axes.count(2) || !axes.count(3))
+                        return nullptr;
+                    if (input_shape[0] != output_shape[1])
+                        return nullptr;
 
                     std::vector<size_t> input_format, output_format = output_shape;
                     assert(output_format.size() <= 4);
