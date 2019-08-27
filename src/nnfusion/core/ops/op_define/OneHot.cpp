@@ -1,8 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
-#pragma once
 
 #include "ngraph/serializer.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
+
 REGISTER_OP(OneHot)
     .attr<int>("axis", -1)
     .attr<int>("depth")

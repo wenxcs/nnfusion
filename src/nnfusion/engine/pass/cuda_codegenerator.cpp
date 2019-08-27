@@ -60,11 +60,12 @@ endif()
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 find_package(CUDA)
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_61,code=sm_61")
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O3")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O2")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -cudart shared")
 
 link_directories(/usr/local/cuda/lib64)
 
@@ -79,7 +80,7 @@ find_library(CUDNN_LIBRARY cudnn
     PATH_SUFFIXES lib lib64 cuda/lib cuda/lib64 lib/x64)
 
 find_library(CUDA_cuda_LIBRARY cuda /usr/local/cuda/lib64/stubs)
-find_library(CUDA_cudart_LIBRARY libcudart_static.a /usr/local/cuda/lib64)
+find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
 
 cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)
 
