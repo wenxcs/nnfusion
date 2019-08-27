@@ -1,10 +1,10 @@
-PROJECT_NAME     = "Intel® nGraph™ library"
-PROJECT_BRIEF    = "Intel® nGraph™ library"
+PROJECT_NAME     = "NNFUSION"
+PROJECT_BRIEF    = "Powered by MSRA NNFUSION Team."
 
 OUTPUT_DIRECTORY = @CMAKE_CURRENT_BINARY_DIR@
 INPUT            = @CMAKE_SOURCE_DIR@/src
 RECURSIVE        = YES
-EXCLUDE_PATTERNS = json.hpp
+EXCLUDE_PATTERNS = json.hpp nlohmann_json.hpp *.pb.h *.pb.cc
 
 USE_MATHJAX      = YES
 

@@ -284,8 +284,8 @@ namespace nnfusion
                 set(val);
             }
 
-            //\brief This will give the reference;
-            //\todo(wenxh) Need check the datatype, which should be stored at
+            ///\brief This will give the reference;
+            ///\todo(wenxh) Need check the datatype, which should be stored at
             // ScalarAttributeValue.
             template <typename T>
             T& as()
@@ -294,7 +294,7 @@ namespace nnfusion
                 return _tags->Get<T>(_sym);
             }
 
-            //\brief This is not deep copy.
+            ///\brief This is not deep copy.
             template <typename T>
             T clone()
             {

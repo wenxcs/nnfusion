@@ -79,10 +79,10 @@ TEST(nnfusion_ir, broadcast)
     EXPECT_FALSE(op->isTranslated);
     EXPECT_TRUE(op->node != nullptr);
     EXPECT_TRUE(op->args.size() != 0);
-    //\todo check tensor
+    ///\todo check tensor
     EXPECT_TRUE(op->out.size() != 0);
-    //\todo will check tensor descriptor
-    //\todo Check the name generated this pahse
+    ///\todo will check tensor descriptor
+    ///\todo Check the name generated this pahse
 
     /*
     print_vector(op->arg_shape, "arg_shape");
@@ -122,10 +122,10 @@ TEST(nnfusion_ir, broadcast_same_shape)
     EXPECT_FALSE(op->isTranslated);
     EXPECT_TRUE(op->node != nullptr);
     EXPECT_TRUE(op->args.size() != 0);
-    //\todo check tensor
+    ///\todo check tensor
     EXPECT_TRUE(op->out.size() != 0);
-    //\todo will check tensor descriptor
-    //\todo Check the name generated this pahse
+    ///\todo will check tensor descriptor
+    ///\todo Check the name generated this pahse
 
     EXPECT_TRUE(compare_vector(op->out[0].get_shape(), Shape{4}));
     EXPECT_TRUE(compare_vector(op->args[0].get_shape(), Shape{4}));

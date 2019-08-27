@@ -32,9 +32,9 @@ namespace nnfusion
 {
     namespace profiler
     {
-        //\brief Profiler will profile a operator or a subgraph. This Profiler class should be treated as interface for Host.
+        ///\brief Profiler will profile a operator or a subgraph. This Profiler class should be treated as interface for Host.
         //Profiler will use the Runtime to run the subject.
-        //\todo To support a subgraph
+        ///\todo To support a subgraph
         class Profiler
         {
         public:
@@ -44,7 +44,7 @@ namespace nnfusion
             bool execute_all();
             double execute(void** input, void** output);
 
-            //\brief T should be basic date type: int, float, double;
+            ///\brief T should be basic date type: int, float, double;
             template <typename T>
             vector<vector<T>> execute(const vector<vector<T>>& inputs)
             {
@@ -62,7 +62,7 @@ namespace nnfusion
             }
 
             // HOST TENSOR Operations
-            //\brief Allocate spaces for output tensors, but tensors need to be same type.
+            ///\brief Allocate spaces for output tensors, but tensors need to be same type.
             /*
             template <typename T>
             vector<vector<T>> allocate_outputs()
@@ -124,7 +124,7 @@ namespace nnfusion
             IProfilingRuntime::Pointer rt;
         };
 
-        //\brief Evaluation for (sub)graph, the subgraph should have none undetermined input.
+        ///\brief Evaluation for (sub)graph, the subgraph should have none undetermined input.
         class GraphEvaluate
         {
         public:

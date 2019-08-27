@@ -12,7 +12,7 @@ namespace nnfusion
 {
     namespace ir
     {
-        //\brief The Basic Block is to store a block of instructions.
+        ///\brief The Basic Block is to store a block of instructions.
         class BasicBlock : public std::vector<ir::Instruction::Pointer>, public Tagable
         {
         public:
@@ -31,9 +31,9 @@ namespace nnfusion
             Pointer next, prior;
         };
 
-        //\todo multi-i/o BasicBlock;
+        ///\todo multi-i/o BasicBlock;
 
-        //\brief The Program is a set of Basic blocks.
+        ///\brief The Program is a set of Basic blocks.
         class Program : public std::vector<BasicBlock::Pointer>, public Tagable
         {
         public:

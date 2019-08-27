@@ -21,7 +21,7 @@ Profiler::Profiler(IProfilingRuntime::Pointer rt, ProfilingContext::Pointer cont
 {
     this->rt = rt;
     this->pctx = context;
-    //\todo: verify if the runtime is ok
+    ///\todo: verify if the runtime is ok
 }
 
 double Profiler::execute(void** input, void** output)

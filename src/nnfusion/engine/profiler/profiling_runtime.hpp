@@ -36,7 +36,7 @@ namespace nnfusion
     namespace profiler
 
     {
-        //\bief Use this to store the result or other profiling details.
+        ///\bief Use this to store the result or other profiling details.
         struct ProfilingResult
         {
         private:
@@ -77,13 +77,13 @@ namespace nnfusion
             using Pointer = shared_ptr<ProfilingResult>;
         };
 
-        //\brief The cache to store the time cost data, this should be connected
+        ///\brief The cache to store the time cost data, this should be connected
         // to some database tool.
         struct ProfilingCache
         {
         };
 
-        //\brief Use this to manage the memory of kernels.
+        ///\brief Use this to manage the memory of kernels.
         class KernelMemory
         {
         public:
@@ -240,8 +240,8 @@ namespace nnfusion
                 return raw_output[n].get();
             }
 
-            //\brief At last, returned pointer shoule be translated into "T*[]" at runtime.
-            //\todo (wenxh)potential bug here, pointer may be used but deallocated.
+            ///\brief At last, returned pointer shoule be translated into "T*[]" at runtime.
+            ///\todo (wenxh)potential bug here, pointer may be used but deallocated.
             void** unsafe_inputs()
             {
                 raw_inputs.reset(new char*[kctx->inputs.size()]);
@@ -264,7 +264,7 @@ namespace nnfusion
             vector<shared_ptr<char>> raw_input, raw_output;
         };
 
-        //\brief The Context will have some basic info like:
+        ///\brief The Context will have some basic info like:
         // -Input: Zeros, Ones, Randoms or Other Data.
         // -Output(optional): To check the output is right.
         // -Subject: Profile what subject.
@@ -285,10 +285,10 @@ namespace nnfusion
                 this->kernel = kernel;
                 kernel_memory.reset(new KernelMemory(kernel->m_context));
             }
-            //\todo source code and function pointer need moved into cache;
+            ///\todo source code and function pointer need moved into cache;
             LanguageUnit_p source_code = nullptr;
             double (*entry_point)(void**, void**) = nullptr;
-            //\todo To be deprecated in future;
+            ///\todo To be deprecated in future;
             // ProfilingContext(shared_ptr<ngraph::Node> node) { ; }
             KernelMemory::Pointer kernel_memory;
 
@@ -301,14 +301,14 @@ namespace nnfusion
             }
         };
 
-        //\brief Restricted feature: Only support evaluation of result insteading of profiling.
-        //\todo (wenxh) support full-feature profiling, this to be done with new codegen.
+        ///\brief Restricted feature: Only support evaluation of result insteading of profiling.
+        ///\todo (wenxh) support full-feature profiling, this to be done with new codegen.
         struct GraphEvaluationContext
         {
             shared_ptr<Graph> graph = nullptr;
             GraphEvaluationContext(shared_ptr<Graph> pGraph) { graph = pGraph; };
             void reset() { graph = nullptr; }
-            //\brief This function will generate a reference kernel for the GNode
+            ///\brief This function will generate a reference kernel for the GNode
             void set_profiling_context(shared_ptr<GNode> gnode, ProfilingContext::Pointer kctx)
             {
                 // Need to check unique_name wether it works.
@@ -328,16 +328,16 @@ namespace nnfusion
             }
 
         private:
-            //\brief To store the output constant by the kernel.
+            ///\brief To store the output constant by the kernel.
             unordered_map<string, ProfilingContext::Pointer> prof_cache;
         };
 
-        //\brief The inteface for profiler runtime, which is binding to Device type.
+        ///\brief The inteface for profiler runtime, which is binding to Device type.
         // Each device type should have one or more runtime.
         class IProfilingRuntime
         {
         public:
-            //\todo This interface is not safe, may access invlid memory address.
+            ///\todo This interface is not safe, may access invlid memory address.
             bool execute(const ProfilingContext::Pointer& ke);
             virtual double
                 execute(const ProfilingContext::Pointer& ke, void** input, void** output);
@@ -345,7 +345,7 @@ namespace nnfusion
             using Pointer = shared_ptr<IProfilingRuntime>;
 
             /*
-            //\todo To be provided in future, since we cannot use runtime api here.
+            ///\todo To be provided in future, since we cannot use runtime api here.
             // We use Profiler class as Host here.
             virtual void* create_tensor(size_t bytes_size) = 0;
             virtual bool memcpyHtoD(void* host, void* device, size_t bytes_size) = 0;

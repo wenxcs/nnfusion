@@ -54,7 +54,7 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
     {
         auto best = prof_res.top();
         prof_res.pop();
-        //\todo Check if the result is ready.
+        ///\todo Check if the result is ready.
         if (!best->result.is_ready())
             continue;
         LOG_INFO << "Best kernel time cost(ms):" << best->result.get_device_avg();

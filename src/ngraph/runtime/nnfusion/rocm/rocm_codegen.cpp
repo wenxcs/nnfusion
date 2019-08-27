@@ -200,7 +200,7 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen hipblas))";
             remove("main_test.t.cpp");
             remove("nnfusion_rt.t.h");
 
-            //\todo(wenxh) Generate CMakeFileList Here
+            ///\todo(wenxh) Generate CMakeFileList Here
             return true;
         }
     }

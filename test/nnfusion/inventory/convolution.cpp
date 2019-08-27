@@ -128,10 +128,10 @@ TEST(nnfusion_ir, Convolution)
     EXPECT_FALSE(op->isTranslated);
     EXPECT_TRUE(op->node != nullptr);
     EXPECT_TRUE(op->args.size() != 0);
-    //\todo check tensor
+    ///\todo check tensor
     EXPECT_TRUE(op->out.size() != 0);
-    //\todo will check tensor descriptor
-    //\todo Check the name generated this pahse
+    ///\todo will check tensor descriptor
+    ///\todo Check the name generated this pahse
 
     /*
     print_vector(op->input_shape, "input_shape");

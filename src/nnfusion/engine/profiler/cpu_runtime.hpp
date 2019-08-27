@@ -33,7 +33,7 @@ namespace nnfusion
         };
         */
 
-        //\brief Use this class to have a Interpreter runtime.
+        ///\brief Use this class to have a Interpreter runtime.
         // We treated this runtime as golden truth for evaluating operator's
         // result.
         class ReferenceRuntime : public IProfilingRuntime
