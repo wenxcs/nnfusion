@@ -9,6 +9,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <typeinfo>
 #include <unordered_set>
 #include <vector>
 
@@ -27,12 +28,28 @@ namespace nnfusion
         {
             AttributeValue(Symbol name)
                 : name(name)
+                , type_hash(0)
+            {
+            }
+            AttributeValue(Symbol name, size_t type_hash)
+                : name(name)
+                , type_hash(type_hash)
             {
             }
             using Ptr = std::unique_ptr<AttributeValue>;
             Symbol name;
+            size_t type_hash;
             virtual Ptr clone() const = 0;
             virtual ~AttributeValue() = default;
+
+            template <typename T>
+            bool is_a() const
+            {
+                if (type_hash == 0)
+                    LOG_WARN << "Attribute value type hash code was set to zero,"
+                                " this will ignore type check.";
+                return (type_hash == 0) || (typeid(T).hash_code() == type_hash);
+            }
         };
 
         template <typename T>
@@ -44,6 +61,8 @@ namespace nnfusion
                 : AttributeValue(name)
                 , value_(value_)
             {
+                // RTTI binding of type hash code, is there any better solution?
+                type_hash = typeid(T).hash_code();
             }
             ValueType& value() { return value_; }
             virtual Ptr clone() const override
@@ -51,6 +70,7 @@ namespace nnfusion
                 return Ptr(new ScalarAttributeValue(name, value_));
             }
 
+            bool check_type() { return is_a<T>(); }
         private:
             ValueType value_;
         };
@@ -64,6 +84,7 @@ namespace nnfusion
                 : AttributeValue(name)
                 , value_(std::move(value_))
             {
+                type_hash = typeid(T).hash_code();
             }
             ValueType& value() { return value_; }
             virtual std::unique_ptr<AttributeValue> clone() const override
@@ -71,7 +92,7 @@ namespace nnfusion
                 auto copy = value_;
                 return Ptr(new VectorAttributeValue(name, std::move(copy)));
             }
-
+            bool check_type() { return is_a<T>(); }
         private:
             ValueType value_;
         };
@@ -154,6 +175,13 @@ namespace nnfusion
             {
                 auto it = find(name, true);
                 T* child = static_cast<T*>(it->get());
+                using valuetype = typename T::ValueType;
+                if (!child->check_type())
+                {
+                    LOG_ERR << "Try to access the value using invalid data type: "
+                            << typeid(valuetype).name() << ".";
+                    enforce(false);
+                }
                 return child->value();
             }
             using AVPtr = AttributeValue::Ptr;
@@ -167,7 +195,7 @@ namespace nnfusion
                 auto it = std::find_if(values_.begin(), values_.end(), [&](const AVPtr& v) {
                     return v->name == name;
                 });
-                enforce(!required || it != values_.end());
+                enforce(!required || it != values_.end()) << "The attribute is not existed.";
                 return it;
             }
             using const_iterator = std::vector<AVPtr>::const_iterator;
