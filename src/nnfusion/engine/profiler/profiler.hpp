@@ -61,6 +61,32 @@ namespace nnfusion
                 return kernel_mem->save_outputs<T>();
             }
 
+            ///\brief simple interface for execute
+            template <typename T>
+            vector<vector<T>> unsafe_execute(const void* val)
+            {
+                auto& kernel_mem = pctx->kernel_memory;
+
+                size_t offset = 0;
+                auto kctx = pctx->kernel->m_context;
+                for (size_t i = 0; i < kctx->inputs.size(); i++)
+                {
+                    auto& t = kctx->inputs[i];
+                    size_t _size = t.get_size() * t.get_element_type().size();
+                    kernel_mem->load_input_from(i, val + offset, _size);
+                    offset += _size;
+                }
+
+                if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
+                    0)
+                {
+                    LOG_ERR << "Failed execute the kernel.";
+                    return vector<vector<T>>();
+                }
+
+                return kernel_mem->save_outputs<T>();
+            }
+
             // HOST TENSOR Operations
             ///\brief Allocate spaces for output tensors, but tensors need to be same type.
             /*

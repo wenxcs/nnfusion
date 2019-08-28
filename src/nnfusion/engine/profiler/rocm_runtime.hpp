@@ -20,7 +20,7 @@ namespace nnfusion
             static Pointer Runtime();
             double
                 execute(const ProfilingContext::Pointer& ke, void** input, void** output) override;
-            bool check_env();
+            bool check_env() override;
 
         private:
             // Tiny codegen function for runtime

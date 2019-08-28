@@ -7,6 +7,10 @@
 #include <sstream>
 #include <stdexcept>
 
+#ifndef PROJECT_ROOT_DIR
+#define PROJECT_ROOT_DIR "NNFusion"
+#endif
+
 namespace nnfusion
 {
     class ConstString

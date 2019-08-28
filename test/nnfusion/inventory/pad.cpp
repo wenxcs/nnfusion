@@ -15,7 +15,7 @@ namespace nnfusion
     namespace inventory
     {
         template <>
-        shared_ptr<op::Pad> create_object(int option)
+        shared_ptr<op::Pad> create_object<op::Pad, float>(int option)
         {
             switch (option)
             {
@@ -43,6 +43,7 @@ namespace nnfusion
                 Shape padding_interior{0, 0};
                 return make_shared<op::Pad>(A, B, padding_below, padding_above, padding_interior);
             }
+            default: return nullptr;
             }
         }
 
@@ -53,6 +54,7 @@ namespace nnfusion
             {
             case 0: return vector<float>{/*a*/ 1, 2, 3, 4, 5, 6, /*b*/ 9};
             case 1: return vector<float>{/*a*/ /*b*/ 2112};
+            default: return vector<float>();
             };
         }
 
@@ -65,6 +67,7 @@ namespace nnfusion
                 return vector<float>{9, 9, 9, 9, 9, 9, 1, 9, 2, 9, 3, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
                                      9, 9, 9, 4, 9, 5, 9, 6, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9};
             case 1: return vector<float>(25, 2112);
+            default: return vector<float>();
             }
         }
     }

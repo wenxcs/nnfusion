@@ -339,6 +339,7 @@ namespace nnfusion
         public:
             ///\todo This interface is not safe, may access invlid memory address.
             bool execute(const ProfilingContext::Pointer& ke);
+            virtual bool check_env() { return true; }
             virtual double
                 execute(const ProfilingContext::Pointer& ke, void** input, void** output);
             // Get the result of last run;
