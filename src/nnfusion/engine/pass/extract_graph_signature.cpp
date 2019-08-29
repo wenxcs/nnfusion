@@ -168,8 +168,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         ss << "((" << type << "*)(outputs[" << i << "]))";
         ctx->m_variable_name_map[tv->get_name()] = ss.str();
         // TODO: add pass to cast output node to op::Result
-        //auto res = dynamic_pointer_cast<ngraph::op::Result>(op);
-        auto res = std::make_shared<op::Result>(op);
+        auto res = dynamic_pointer_cast<ngraph::op::Result>(op);
         //keep assigning different outputs to a result descriptor
         //op::Result emitter will check if in and out descriptors are the same
         //and skip a copy

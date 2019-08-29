@@ -218,13 +218,27 @@ std::vector<std::shared_ptr<GNode>> Graph::get_ordered_ops(bool include_control_
 {
     // todo: stored ops instead of calculate each time
     std::vector<std::shared_ptr<GNode>> nodes;
-    std::shared_ptr<Graph> graph_ptr(this);
-    ReverseDFS(graph_ptr,
-               graph_ptr->get_outputs(),
+    ReverseDFS(this,
+               get_outputs(),
                nullptr,
                [&](std::shared_ptr<GNode> node) { nodes.push_back(node); },
                NodeComparatorName());
-    return nodes;
+    std::vector<std::shared_ptr<GNode>> update_nodes;
+    for (auto node : nodes)
+    {
+        if (node->get_op_type() == "Constant")
+        {
+            update_nodes.push_back(node);
+        }
+    }
+    for (auto node : nodes)
+    {
+        if (node->get_op_type() != "Constant")
+        {
+            update_nodes.push_back(node);
+        }
+    }
+    return update_nodes;
 }
 
 const std::shared_ptr<nnfusion::graph::Edge>
@@ -270,6 +284,19 @@ const std::shared_ptr<nnfusion::graph::Edge>
 
     ++m_edge_size;
     return edge;
+}
+
+bool Graph::find_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y)
+{
+    for (const auto edge : m_edges)
+    {
+        if (edge->get_src() == source && edge->get_dst() == dest && edge->get_src_output() == x &&
+            edge->get_dst_input() == y)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 const std::shared_ptr<nnfusion::graph::Edge> Graph::add_control_edge(std::shared_ptr<GNode> source,
@@ -328,31 +355,23 @@ void Graph::set_default_outputs()
         }
     }
 }
+void Graph::set_outputs(std::vector<std::shared_ptr<GNode>> outputs)
+{
+    m_output_nodes = outputs;
+}
 
 std::vector<std::shared_ptr<GNode>> Graph::get_outputs()
 {
-    if (m_output_nodes.empty())
-    {
-        set_default_outputs();
-    }
     return m_output_nodes;
 }
 
 const size_t Graph::get_output_size()
 {
-    if (m_output_nodes.empty())
-    {
-        set_default_outputs();
-    }
     return m_output_nodes.size();
 }
 
 const std::shared_ptr<GNode> Graph::get_output_op(size_t i)
 {
-    if (m_output_nodes.empty())
-    {
-        set_default_outputs();
-    }
     return m_output_nodes.at(i);
 }
 

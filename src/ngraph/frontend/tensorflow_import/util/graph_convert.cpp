@@ -1852,26 +1852,24 @@ namespace ngraph
             };
 
             GraphConvert::GraphConvert(const tensorflow::GraphDef& proto)
-                : m_graph_proto{&proto}
+                : tf_graph_proto{&proto}
             {
                 std::cerr << "Converting Tensorflow Graph" << std::endl;
+
                 m_ngraph = std::make_shared<nnfusion::graph::Graph>();
                 std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>
                     gnode_map;
+
                 generate_topology();
 
-                uint32_t processed = 0;
-
                 std::vector<InputInfo> inputs;
-                while (!topology_.empty())
+                while (!tf_topology_.empty())
                 {
-                    uint32_t node_idx = topology_.front();
-                    topology_.pop();
-                    ++processed;
+                    uint32_t node_idx = tf_topology_.front();
+                    tf_topology_.pop();
                     inputs.clear();
                     const auto& node_proto = proto.node(node_idx);
 
-                    // todo: validate control edge at end?
                     bool in_control_dependence = false;
                     for (auto& input : node_proto.input())
                     {
@@ -1910,9 +1908,71 @@ namespace ngraph
                     for (auto& node : ng_nodes)
                     {
                         m_ng_node[node.first].push_back(node.second);
+                        std::shared_ptr<nnfusion::graph::GNode> gnode = nullptr;
+                        if (node2gnode_map.find(node.second) == node2gnode_map.end())
+                        {
+                            gnode = m_ngraph->add_node(node.second);
+                            node2gnode_map[node.second] = gnode;
 
-                        auto gnode = m_ngraph->add_node(node.second);
+                            std::queue<std::shared_ptr<ngraph::Node>> process_queue;
+                            process_queue.push(node.second);
+                            while (!process_queue.empty())
+                            {
+                                auto process_node = process_queue.front();
+                                process_queue.pop();
+                                std::shared_ptr<nnfusion::graph::GNode> process_gnode = nullptr;
+                                if (node2gnode_map.find(process_node) == node2gnode_map.end())
+                                {
+                                    process_gnode = m_ngraph->add_node(process_node);
+                                    node2gnode_map[process_node] = process_gnode;
+                                }
+                                else
+                                {
+                                    process_gnode = node2gnode_map[process_node];
+                                }
+                                for (auto& process_input : process_node->get_inputs())
+                                {
+                                    auto process_input_node = process_input.get_output().get_node();
+
+                                    std::shared_ptr<nnfusion::graph::GNode> process_input_gnode =
+                                        nullptr;
+                                    if (node2gnode_map.find(process_input_node) ==
+                                        node2gnode_map.end())
+                                    {
+                                        process_input_gnode =
+                                            m_ngraph->add_node(process_input_node);
+                                        node2gnode_map[process_input_node] = process_input_gnode;
+                                    }
+                                    else
+                                    {
+                                        process_input_gnode = node2gnode_map[process_input_node];
+                                    }
+
+                                    if (!m_ngraph->find_edge(process_input_gnode,
+                                                             process_input.get_output().get_index(),
+                                                             process_gnode,
+                                                             process_input.get_index()))
+                                    {
+                                        m_ngraph->add_edge(process_input_gnode,
+                                                           process_input.get_output().get_index(),
+                                                           process_gnode,
+                                                           process_input.get_index());
+                                        process_queue.push(process_input_node);
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            gnode = node2gnode_map[node.second];
+                        }
                         gnode_map[node.first].push_back(gnode);
+
+                        if (tf_output_name_.find(node_proto.name()) != tf_output_name_.end())
+                        {
+                            m_outputs.emplace_back(node.second);
+                            m_graph_outputs.emplace_back(gnode);
+                        }
 
                         for (size_t input_idx = 0; input_idx < inputs.size(); input_idx++)
                         {
@@ -1931,98 +1991,69 @@ namespace ngraph
                             }
                             else
                             {
-                                m_ngraph->add_edge(inputs[input_idx].node,
-                                                   inputs[input_idx].index,
-                                                   gnode,
-                                                   input_idx);
+                                // normal edge, do nothing
                             }
                         }
                     }
 
-                    for (size_t i = 0; i < tensorflow_node_outputs_[node_idx].size(); ++i)
+                    for (size_t i = 0; i < tf_node_outputs_[node_idx].size(); ++i)
                     {
-                        const int output = tensorflow_node_outputs_[node_idx][i];
-                        pending_counts_[output]--;
-                        if (pending_counts_[output] == 0)
+                        const int output = tf_node_outputs_[node_idx][i];
+                        tf_pending_counts_[output]--;
+                        if (tf_pending_counts_[output] == 0)
                         {
-                            topology_.push(output);
-                        }
-                    }
-                    if (is_input.find(node_proto.name()) != is_input.end())
-                    {
-                        for (auto& node : ng_nodes)
-                        {
-                            m_inputs.emplace_back(node.second);
-                        }
-                    }
-                    if (is_output.find(node_proto.name()) != is_output.end())
-                    {
-                        for (auto& node : ng_nodes)
-                        {
-                            m_outputs.emplace_back(node.second);
+                            tf_topology_.push(output);
                         }
                     }
                 }
+
+                m_ngraph->set_outputs(m_graph_outputs);
                 std::cout << "convert graph done" << endl;
             }
 
             void GraphConvert::generate_topology()
             {
-                const size_t num_nodes = m_graph_proto->node_size();
-
+                const size_t num_nodes = tf_graph_proto->node_size();
+                std::unordered_map<std::string, uint32_t> tensorflow_name2nodeIdx_map;
                 for (size_t n = 0; n < num_nodes; ++n)
                 {
-                    tensorflow_name2nodeIdx_map_[m_graph_proto->node(n).name()] = n;
+                    tensorflow_name2nodeIdx_map[tf_graph_proto->node(n).name()] = n;
                 }
 
-                pending_counts_.reserve(num_nodes);
-                tensorflow_node_outputs_.resize(num_nodes);
+                tf_pending_counts_.reserve(num_nodes);
+                tf_node_outputs_.resize(num_nodes);
                 for (size_t n = 0; n < num_nodes; ++n)
                 {
-                    const auto& node_proto = m_graph_proto->node(n);
+                    const auto& node_proto = tf_graph_proto->node(n);
                     int pending_count = node_proto.input_size();
                     for (size_t i = 0; i < node_proto.input_size(); ++i)
                     {
                         std::string input_name = node_proto.input(i);
                         TensorId input_tensor(ParseTensorName(input_name));
 
-                        auto iter = tensorflow_name2nodeIdx_map_.find(input_tensor.first);
-                        if (iter == tensorflow_name2nodeIdx_map_.end())
+                        auto iter = tensorflow_name2nodeIdx_map.find(input_tensor.first);
+                        if (iter == tensorflow_name2nodeIdx_map.end())
                         {
                             std::cerr << "Node " << node_proto.name()
                                       << " has Unknown input node: " << input_name;
                             assert(false);
                         }
-                        tensorflow_node_outputs_[iter->second].push_back(n);
+                        tf_node_outputs_[iter->second].push_back(n);
                     }
                     if (pending_count == 0)
                     {
-                        topology_.push(n);
+                        tf_topology_.push(n);
                     }
-                    pending_counts_.push_back(pending_count);
+                    tf_pending_counts_.push_back(pending_count);
                 }
 
-                for (const auto& node_proto : m_graph_proto->node())
+                for (size_t n = 0; n < num_nodes; ++n)
                 {
-                    out_edges_count[node_proto.name()] = 0;
-                }
-                for (const auto& node_proto : m_graph_proto->node())
-                {
-                    in_edges_count[node_proto.name()] = node_proto.input_size();
-                    for (auto& input : node_proto.input())
+                    if (tf_node_outputs_[n].size() == 0)
                     {
-                        // count edge by the real name of tensor: remove ":0";
-                        TensorId input_tensor(ParseTensorName(input));
-                        ++out_edges_count[input_tensor.node()];
+                        tf_output_name_.insert(tf_graph_proto->node(n).name());
                     }
                 }
-
-                for (auto& it : in_edges_count)
-                    if (it.second == 0)
-                        is_input.insert(it.first);
-                for (auto& it : out_edges_count)
-                    if (it.second == 0)
-                        is_output.insert(it.first);
             }
 
             NamedNodeVector GraphConvert::convert_node(const tensorflow::NodeDef& node)
@@ -2039,7 +2070,7 @@ namespace ngraph
                 }
             }
 
-            std::vector<std::shared_ptr<ngraph::Function>> GraphConvert::get_outputs()
+            std::vector<std::shared_ptr<ngraph::Function>> GraphConvert::get_funcs()
             {
                 std::vector<std::shared_ptr<Function>> output_functions;
                 for (const auto& output : m_outputs)

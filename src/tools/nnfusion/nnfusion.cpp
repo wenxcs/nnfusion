@@ -137,14 +137,23 @@ int main(int argc, char** argv)
         }
         else if (format == "tensorflow")
         {
-            std::vector<std::shared_ptr<Function>> functions =
-                ngraph::frontend::load_tensorflow_model(model);
-            // TODO(jxue): currently we only use the first output function, need to support compile
-            // multiple output functions in the future
-            f = functions.front();
-
-            // load tensorlfow model as graph
-            graph = ngraph::frontend::load_tensorflow_model_as_graph(model);
+            if (model_format == "function")
+            {
+                std::vector<std::shared_ptr<Function>> functions =
+                    ngraph::frontend::load_tensorflow_model(model);
+                // TODO(jxue): currently we only use the first output function, need to support compile
+                // multiple output functions in the future
+                f = functions.front();
+            }
+            else if (model_format == "graph")
+            {
+                // load tensorlfow model as graph
+                graph = ngraph::frontend::load_tensorflow_model_as_graph(model);
+            }
+            else
+            {
+                throw ngraph_error("Unsupported model format '" + model_format + "' in NNFusion");
+            }
         }
         else if (format == "onnx")
         {

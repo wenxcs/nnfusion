@@ -202,7 +202,7 @@ bool ConstantFoldingPass::run_on_graph(std::shared_ptr<Graph>& graph)
         constant_control_deps;
     bool internal_node_inserted = false;
 
-    ReverseDFS(graph,
+    ReverseDFS(graph.get(),
                outputs,
                nullptr,
                [&constant_foldable_nodes, &constant_control_deps, &internal_node_inserted](

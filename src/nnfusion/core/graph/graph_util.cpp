@@ -1,6 +1,6 @@
 #include "graph_util.hpp"
 
-void nnfusion::graph::ReverseDFS(const std::shared_ptr<Graph>& graph,
+void nnfusion::graph::ReverseDFS(const Graph* graph,
                                  const std::vector<std::shared_ptr<GNode>>& start,
                                  const std::function<void(std::shared_ptr<GNode>)>& enter,
                                  const std::function<void(std::shared_ptr<GNode>)>& leave,

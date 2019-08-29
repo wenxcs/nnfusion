@@ -132,19 +132,11 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
 {
     // run graph passes
     nnfusion::graph::pass::GraphPass graph_passes;
-    //enforce(graph_passes.run(graph));
+    enforce(graph_passes.run(graph));
     shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
     graph_tu->m_graph = graph;
     // todo: multi graph???
     m_trans_ctx->m_graphs.insert(graph);
-
-    //  TODO: Run original Ngraph Passes
-    /*
-    static interpreter::NgraphFunctionPass ngraph_passes;
-    shared_ptr<TranslationUnit> ngraph_tu(new TranslationUnit());
-    ngraph_tu->m_function = function;
-    enforce(ngraph_passes.run(m_trans_ctx, ngraph_tu));
-    */
 
     // Iterator through all nodes
     static interpreter::ExtractGraphSignature extract_global;

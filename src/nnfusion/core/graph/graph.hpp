@@ -70,6 +70,9 @@ namespace nnfusion
             // `dest` and returns it. Does not update dest's NodeDef.
             const std::shared_ptr<Edge>
                 add_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y);
+
+            bool
+                find_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y);
             const std::shared_ptr<Edge> add_control_edge(std::shared_ptr<GNode> source,
                                                          std::shared_ptr<GNode> dest,
                                                          bool allow_duplicates = false);
@@ -99,6 +102,7 @@ namespace nnfusion
             const std::shared_ptr<Edge> find_edge_id(size_t id) const { return m_edges[id]; }
             std::vector<std::shared_ptr<GNode>> get_outputs();
 
+            void set_outputs(std::vector<std::shared_ptr<GNode>> outputs);
             void set_default_outputs();
             const size_t get_output_size();
             /// Return the op that generates output i
