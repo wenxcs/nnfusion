@@ -1239,6 +1239,33 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateAddNOp(const tensorflow::NodeDef& node,
+                                            const NodeMap& all_ng_nodes,
+                                            ngraph::op::ParameterVector& parameters)
+            {
+                // Use this to get all the inputs of current node.
+                // Use GetInputNode(..., ..., id) to get the input identified by
+                // id.
+                auto inputs = GetAllInputNode(all_ng_nodes, node);
+
+                ngraph::op::OpConfig::any myConfig;
+
+                // Since Ngraph doesn't have AddN, so we use GenericOp to
+                // represent the AddN.
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(), // Node name, looks like "tf_model/add_n";
+                    node.op(),   // Operator name, looks like "AddN";
+                    inputs,      // The inputs of nodes;
+                    myConfig);   // The configuration we generated above;
+
+                ng_node->set_name(node.name()); // Set the node name;
+                // Return the node vecoter, this is one tf-node to one nnfusion-node case,
+                // if your code converts one tf-node into several nnfusion-nodes, you can
+                // refer BiasAdd, which is converted to Broadcast and Add;
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateAllOp(const tensorflow::NodeDef& node,
                                            const NodeMap& all_ng_nodes,
                                            ngraph::op::ParameterVector& parameters)
@@ -1792,6 +1819,7 @@ namespace ngraph
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
+                {"AddN", TranslateAddNOp},
                 {"All", TranslateAllOp},
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
