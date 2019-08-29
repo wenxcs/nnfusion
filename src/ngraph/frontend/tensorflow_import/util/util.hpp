@@ -128,6 +128,10 @@ namespace ngraph
             std::shared_ptr<ngraph::Node> GetInputNode(const NodeMap& all_ng_nodes,
                                                        const tensorflow::NodeDef& node,
                                                        size_t input_idx);
+
+            std::vector<std::shared_ptr<ngraph::Node>>
+                GetAllInputNode(const NodeMap& all_ng_nodes, const tensorflow::NodeDef& node);
+
             TensorId ParseTensorName(const std::string& name);
 
             template <typename T, typename VecT = T>

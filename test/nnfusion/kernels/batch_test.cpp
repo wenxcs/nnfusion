@@ -21,7 +21,7 @@ namespace nnfusion
     namespace test
     {
         ///\todo Maybe a better/general way
-        static IProfilingRuntime::Pointer gen_runtime(DeviceType dev_t)
+        IProfilingRuntime::Pointer gen_runtime(DeviceType dev_t)
         {
             IProfilingRuntime::Pointer ip = nullptr;
             switch (dev_t)
@@ -35,8 +35,54 @@ namespace nnfusion
             return nullptr;
         }
 
+        bool check_kernel(shared_ptr<ngraph::Node> node,
+                          DeviceType dev_t,
+                          const vector<float>& IN,
+                          const vector<float>& OUT)
+        {
+            auto rt = CudaDefaultRuntime::Runtime();
+            std::vector<shared_ptr<const KernelRegistration>> available_kernels =
+                KernelRegistry::Global()->FindKernelRegistrations(
+                    node->description(), CUDA_GPU, DT_FLOAT);
+            shared_ptr<KernelContext> ctx(new KernelContext(node));
+            bool kernel_found = false;
+            for (auto& kernel_reg : available_kernels)
+            {
+                auto kernel = kernel_reg->m_factory(ctx);
+                if (kernel->get_or_emit_source())
+                {
+                    kernel_found = true;
+                    auto pctx = make_shared<ProfilingContext>(kernel);
+                    Profiler prof(rt, pctx);
+
+                    // The execute() will return a vector of vector,
+                    // we only compare the first one with our ground
+                    // truth
+                    auto res = prof.unsafe_execute<float>((void*)IN.data());
+                    if (res.empty())
+                        return false;
+                    auto& res_first = res[0];
+
+                    if (res_first.size() != OUT.size())
+                        return false;
+
+                    if (!ngraph::test::all_close_f(res_first, OUT))
+                        return false;
+
+                    LOG_INFO << "Kernel pass unit-test.";
+                }
+                else
+                {
+                    LOG_WARN << "Kernel is not available.";
+                }
+            }
+            if (!kernel_found)
+                LOG_WARN << "No available found!";
+            return kernel_found;
+        }
+
         template <typename T, typename val_t = float>
-        static bool check_kernels(DeviceType dev_t, DataType data_t)
+        bool check_kernels(DeviceType dev_t, DataType data_t)
         {
             auto rt = gen_runtime(dev_t);
             if (rt == nullptr)

@@ -71,6 +71,17 @@ namespace ngraph
                 return result;
             }
 
+            std::vector<std::shared_ptr<ngraph::Node>>
+                GetAllInputNode(const NodeMap& all_ng_nodes, const tensorflow::NodeDef& node)
+            {
+                std::vector<std::shared_ptr<ngraph::Node>> nodes;
+                for (size_t i = 0; i < node.input_size(); i++)
+                {
+                    nodes.push_back(GetInputNode(all_ng_nodes, node, i));
+                }
+                return nodes;
+            }
+
             TensorId ParseTensorName(const std::string& name)
             {
                 // Parse either a name, ^name, or name:digits.  To do so, we go backwards from

@@ -9,6 +9,9 @@
 #include "inventory.hpp"
 // #include "library.hpp"
 
+#include "ngraph/node.hpp"
+#include "nnfusion/common/common.hpp"
+
 #define EXPECT_POINTER_TYPE(pointer, type, new_pointer)                                            \
     auto new_pointer = static_pointer_cast<type>(pointer);                                         \
     EXPECT_TRUE(new_pointer != nullptr);
@@ -83,5 +86,16 @@ namespace ngraph
                          const std::vector<float>& b,
                          int mantissa_bits = 8,
                          int tolerance_bits = 2);
+    }
+}
+
+namespace nnfusion
+{
+    namespace test
+    {
+        bool check_kernel(shared_ptr<ngraph::Node> node,
+                          DeviceType dev_t,
+                          const vector<float>& IN,
+                          const vector<float>& OUT);
     }
 }

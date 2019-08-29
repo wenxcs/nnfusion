@@ -33,8 +33,16 @@ endforeach()
 list(APPEND SRC ${NGRAPH_TESTS})
 
 if (NNFUSION_ENABLE)
-    add_subdirectory(nnfusion)
-    list(APPEND SRC ${NNFUSION_TESTS})
+    file(GLOB nnfusion_core_files nnfusion/core/*.cpp)
+    file(GLOB nnfusion_engine_files nnfusion/engine/*.cpp)
+    file(GLOB nnfusion_inventory_files nnfusion/inventory/*.cpp)
+    file(GLOB nnfusion_kernels_files nnfusion/kernels/*.cpp)
+    file(GLOB nnfusion_testutil_files nnfusion/testutil/*.cpp)
+    list(APPEND SRC ${nnfusion_core_files}
+        ${nnfusion_engine_files}
+        ${nnfusion_inventory_files}
+        ${nnfusion_kernels_files}
+        ${nnfusion_testutil_files})
 endif()
 
 set_source_files_properties(includes.cpp PROPERTIES COMPILE_DEFINITIONS
