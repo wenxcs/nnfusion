@@ -2,6 +2,7 @@
 #pragma once
 
 #include <assert.h>
+#include <execinfo.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -104,6 +105,22 @@
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"
 #include "ngraph/util.hpp"
+
+#define ktrace()                                                                                   \
+    {                                                                                              \
+        void* array[10];                                                                           \
+        size_t size = backtrace(array, sizeof(array) / sizeof(*array));                            \
+        char** strings = backtrace_symbols(array, size);                                           \
+        if (NULL == strings)                                                                       \
+        {                                                                                          \
+            perror("backtrace_symbols");                                                           \
+            exit(EXIT_FAILURE);                                                                    \
+        }                                                                                          \
+        printf(" - Obtained %zd stack frames.\n", size);                                           \
+        for (int i = 0; i < size; i++)                                                             \
+            printf("    # %s\n", strings[i]);                                                      \
+        free(strings);                                                                             \
+    }
 
 namespace nnfusion
 {

@@ -57,6 +57,9 @@ namespace ngraph
                                                        const tensorflow::NodeDef& node,
                                                        size_t input_idx)
             {
+                if (input_idx >= node.input_size())
+                    return nullptr;
+
                 TensorId input_tensor(ParseTensorName(node.input(input_idx)));
                 std::shared_ptr<ngraph::Node> result = nullptr;
                 try
