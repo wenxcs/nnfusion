@@ -51,13 +51,24 @@ namespace ngraph
                                                 ngraph::op::ParameterVector& parameters)
             {
                 auto input_node = GetInputNode(all_ng_nodes, node, 0);
+                NamedNodeVector ret{{node.name(), input_node}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateNoOp(const tensorflow::NodeDef& node,
+                                          const NodeMap& all_ng_nodes,
+                                          ngraph::op::ParameterVector& parameters)
+            {
                 NamedNodeVector ret;
-                for (int i = 0;; ++i)
+                size_t input_cnt = node.input_size();
+                for (int i = 0; i < input_cnt; i++)
                 {
-                    auto input_node = GetInputNode(all_ng_nodes, node, i);
-                    if (input_node == nullptr)
-                        break;
-                    ret.push_back({node.name(), input_node});
+                    TensorId input_tensor(ParseTensorName(node.input(i)));
+                    if (input_tensor.second >= 0)
+                    {
+                        auto input_node = GetInputNode(all_ng_nodes, node, i);
+                        ret.push_back({node.name(), input_node});
+                    }
                 }
                 return ret;
             }
@@ -1944,7 +1955,7 @@ namespace ngraph
                 {"Identity", TranslateIdentityOp},
                 {"PreventGradient", TranslateIdentityOp},
                 {"StopGradient", TranslateIdentityOp},
-                {"NoOp", TranslateIdentityOp},
+                {"NoOp", TranslateNoOp},
                 {"Identity", TranslateIdentityOp},
                 {"MatMul", TranslateMatMulOp},
                 {"LessEqual", TranslateBinaryOp<ngraph::op::LessEq>},
@@ -2006,12 +2017,12 @@ namespace ngraph
                     tf_topology_.pop();
                     inputs.clear();
                     const auto& node_proto = proto.node(node_idx);
-
                     bool in_control_dependence = false;
                     for (auto& input : node_proto.input())
                     {
                         TensorId input_tensor(ParseTensorName(input));
-                        int src_index;
+                        int src_index = input_tensor.second;
+
                         std::shared_ptr<nnfusion::graph::GNode> src_node;
 
                         auto iter = gnode_map.find(input_tensor.first);
@@ -2021,12 +2032,14 @@ namespace ngraph
                                       << " has Un-Converted input node: " << input_tensor.first;
                             assert(false);
                         }
-                        src_index = input_tensor.second;
                         if (src_index == nnfusion::graph::Graph::kControlSlot)
                         {
                             in_control_dependence = true;
-                            src_node = iter->second.at(0);
-                            inputs.emplace_back(input_tensor.first, src_node, -1);
+                            if (iter->second.size() > 0)
+                            {
+                                src_node = iter->second.at(0);
+                                inputs.emplace_back(input_tensor.first, src_node, -1);
+                            }
                         }
                         else
                         {
@@ -2042,6 +2055,8 @@ namespace ngraph
                     }
 
                     auto ng_nodes = convert_node(node_proto);
+                    gnode_map[node_proto.name()] = {};
+                    m_ng_node[node_proto.name()] = {};
                     for (auto& node : ng_nodes)
                     {
                         m_ng_node[node.first].push_back(node.second);
