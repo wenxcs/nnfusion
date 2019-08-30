@@ -67,7 +67,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                                        std::shared_ptr<TranslationUnit> tu)
 {
     bool enable_tuning =
-        getenv("NNFUSION_ENABLE_TUNING") ? bool(atoi(getenv("NNFUSION_ENABLE_TUNING"))) : true;
+        getenv("NNFUSION_ENABLE_TUNING") ? bool(atoi(getenv("NNFUSION_ENABLE_TUNING"))) : false;
     if (!enable_tuning)
         return true;
 

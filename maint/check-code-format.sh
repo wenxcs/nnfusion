@@ -59,6 +59,7 @@ for ROOT_SUBDIR in src doc/examples test ${PYBIND_WRAPPER}; do
         # mechanism, and this confuses clang-format.
         for SRC_FILE in $(find "${ROOT_SUBDIR}" -type f -and \( -name '*.cpp' -or -name '*.hpp' \) ); do
             if "${CLANG_FORMAT_PROG}" -style=file -output-replacements-xml "${SRC_FILE}" | grep -c "<replacement " >/dev/null; then
+                echo "[ERROR] Require: ${CLANG_FORMAT_PROG}" -style=file -i "${SRC_FILE}"
                 FAILED_FILES+=( "${SRC_FILE}" )
             fi
             NUM_FILES_CHECKED=$((NUM_FILES_CHECKED+1))

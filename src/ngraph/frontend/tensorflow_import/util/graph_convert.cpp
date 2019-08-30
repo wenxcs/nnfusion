@@ -46,6 +46,25 @@ namespace ngraph
     {
         namespace tensorflow_import
         {
+            // Using this policy if no explict tf_import mapping exists
+            NamedNodeVector TranslateGenericNoAttrOp(const tensorflow::NodeDef& node,
+                                                     const NodeMap& all_ng_nodes,
+                                                     ngraph::op::ParameterVector& parameters)
+            {
+                std::vector<std::shared_ptr<Node>> inputs;
+                size_t input_cnt = node.input_size();
+                for (int i = 0; i < input_cnt; i++)
+                    inputs.push_back(GetInputNode(all_ng_nodes, node, i));
+
+                auto out_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    node.op(), // select which existing kernels to use;
+                    inputs,
+                    ngraph::op::OpConfig::any{});
+                NamedNodeVector ret{{node.name(), out_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateIdentityOp(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
                                                 ngraph::op::ParameterVector& parameters)
@@ -2217,8 +2236,9 @@ namespace ngraph
                 }
                 else
                 {
-                    std::cerr << "Unsupport operator: " << node.op() << std::endl;
-                    return NamedNodeVector{};
+                    // std::cerr << "Unsupport operator: " << node.op() << std::endl;
+                    // return NamedNodeVector{};
+                    return TranslateGenericNoAttrOp(node, m_ng_node, m_parameters);
                 }
             }
 

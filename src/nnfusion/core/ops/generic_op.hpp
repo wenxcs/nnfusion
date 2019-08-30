@@ -170,6 +170,9 @@ namespace ngraph
                                                      .c_str());
                 }
 
+                LOG_INFO << "Managing GenericOp for Opeartor: type = " << opname
+                         << ", name = " << name << ", input_len = " << inputs.size();
+
                 localOpConfig.check_constrait();
                 validate_and_infer_types();
             }
