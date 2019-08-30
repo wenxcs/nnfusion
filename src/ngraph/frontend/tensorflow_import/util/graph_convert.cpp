@@ -1845,6 +1845,67 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateSelectOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input1 = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_input2 = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_input3 = GetInputNode(all_ng_nodes, node, 2);
+               
+                if (ng_input2->get_shape() != ng_input3->get_shape()) {
+                    std::cerr << "Input tensors 2 and 3 should have same shape";
+                    assert(false);
+                }
+
+                auto ng_input1_shape = ng_input1->get_shape();
+                auto ng_input2_shape = ng_input2->get_shape();
+
+                auto ng_input1_rank = ng_input1->get_shape().size();
+                auto ng_input2_rank = ng_input2->get_shape().size();
+
+                if (!((ng_input1_shape == ng_input2_shape) ||
+                        ((ng_input1_rank == 1) && (ng_input2_rank > ng_input1_rank) &&
+                        (ng_input2_shape[0] == ng_input1_shape[0])))) {
+                    std::cerr << "Input tensor may have the same shape as condition. If condition is "
+                              << "rank 1, input may have higher rank, but its first dimension must "
+                              << "match the size of condition.";
+                    assert(false);
+                }
+
+                int length = 0;
+                shared_ptr<ngraph::Node> ng_input_new;
+
+                // If input tensor has higher rank than condiiton, length will be > 0.
+                length = ng_input2_rank - ng_input1_rank;
+
+                if (length != 0) {
+                    // Condition tensor will be modified to align the condition tensor
+                    // shape with input tensor shape index and fill the rest of the vector
+                    // with
+                    // 1s
+                    // Eg: condition tensor [7], input tensor [7, 3, 2, 1]
+                    // After Reshape, condition tensor will be [7, 1 ,1 ,1] for auto
+                    // broadcast.
+
+                    std::vector<size_t> tmp_vector((ng_input2_rank), 1);
+                    tmp_vector[0] = ng_input1_shape[0];
+
+                    ng_input_new = std::make_shared<ngraph::op::Reshape>(ng_input1, ngraph::AxisVector{0}, tmp_vector);
+                }
+
+                std::tie(ng_input1, ng_input2) = ngraph::builder::numpy_broadcast(
+                    std::make_pair(length != 0 ? ng_input_new : ng_input1, ng_input2));
+                std::tie(ng_input2, ng_input3) =
+                    ngraph::builder::numpy_broadcast(std::make_pair(ng_input2, ng_input3));
+
+                auto ng_node = std::make_shared<ngraph::op::Select>(ng_input1, ng_input2, ng_input3);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -1885,6 +1946,7 @@ namespace ngraph
                 {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateRsqrtOp},
+                {"Select", TranslateSelectOp},
                 {"Sigmoid", TranslateSigmoidOp},
                 {"Slice", TranslateSliceOp},
                 {"Softmax", TranslateSoftmaxOp},
