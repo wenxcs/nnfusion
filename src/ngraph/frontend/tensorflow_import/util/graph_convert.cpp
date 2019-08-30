@@ -102,6 +102,35 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateSparseSoftmaxCrossEntropyWithLogitsOp(
+                const tensorflow::NodeDef& node,
+                const NodeMap& all_ng_nodes,
+                ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+
+                ngraph::AxisSet ng_axes_softmax{ng_lhs->get_shape().size() - 1};
+                auto ng_softmax = std::make_shared<ngraph::op::Softmax>(ng_lhs, ng_axes_softmax);
+
+                auto loss_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
+                    std::vector<std::shared_ptr<Node>>({ng_softmax, ng_rhs}),
+                    ngraph::op::OpConfig::any{});
+
+                auto bwd_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    "CrossEntropyFwdBwdWithSoftmaxBwd", // select which existing kernels to use;
+                    std::vector<std::shared_ptr<Node>>({ng_softmax, ng_rhs}),
+                    ngraph::op::OpConfig::any{});
+
+                loss_node->set_name(node.name());
+                bwd_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), loss_node}, {node.name(), bwd_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateMatMulOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
                                               ngraph::op::ParameterVector& parameters)
@@ -1830,6 +1859,8 @@ namespace ngraph
                 {"Const", TranslateConstOp},
                 {"Conv2D", TranslateConv2DOp},
                 {"ConcatV2", TranslateConcatV2Op},
+                {"SparseSoftmaxCrossEntropyWithLogits",
+                 TranslateSparseSoftmaxCrossEntropyWithLogitsOp},
                 {"Exp", TranslateUnaryOp<ngraph::op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
                 {"Fill", TranslateFillOp},
