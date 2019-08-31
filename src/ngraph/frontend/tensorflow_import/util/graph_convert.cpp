@@ -37,6 +37,7 @@
 #include "ngraph/op/subtract.hpp"
 #include "ngraph/op/sum.hpp"
 #include "ngraph/op/tanh.hpp"
+#include "util/bcast.hpp"
 
 #include "nnfusion/core/ops/generic_op.hpp"
 
@@ -1949,6 +1950,48 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector
+                TranslateBroadcastGradientArgsOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 ngraph::op::ParameterVector& parameters)
+            {
+                std::vector<BCast::Vec> shapes;
+                for (int i = 0; i < 2; ++i)
+                {
+                    auto ng_input = GetInputNode(all_ng_nodes, node, i);
+                    auto ng_input_shape = ng_input->get_shape();
+                    enforce(ng_input_shape.size() == 1) << "input" << i << "must be a vector";
+                    std::vector<int64> in_value;
+                    enforce(GetValueFromNGraphOp<int64>(ng_input, &in_value));
+
+                    BCast::Vec vec;
+                    for (int64 i = 0; i < shape_size(ng_input_shape); ++i)
+                    {
+                        vec.push_back(in_value[i]);
+                    }
+                    shapes.push_back(vec);
+                }
+
+                BCast bcast(shapes[0], shapes[1]);
+                enforce(bcast.IsValid());
+                // <<
+                // "Incompatible shapes: [" << str_util::Join(shapes[0], ","),
+                // "] vs. [", str_util::Join(shapes[1], ","), "]"));
+                const BCast::Vec& out0 = bcast.grad_x_reduce_idx();
+                const BCast::Vec& out1 = bcast.grad_y_reduce_idx();
+                auto ng_out_node_0 = std::make_shared<ngraph::op::Constant>(
+                    element::i64, ngraph::Shape({out0.size()}), out0);
+                auto ng_out_node_1 = std::make_shared<ngraph::op::Constant>(
+                    element::i64, ngraph::Shape({out1.size()}), out1);
+
+                ng_out_node_0->set_name(node.name() + "x");
+                ng_out_node_1->set_name(node.name() + "y");
+                NamedNodeVector ret{{node.name() + "x", ng_out_node_0},
+                                    {node.name() + "y", ng_out_node_1}};
+
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -2001,7 +2044,8 @@ namespace ngraph
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
-                {"Transpose", TranslateTransposeToReshapeOp}};
+                {"Transpose", TranslateTransposeToReshapeOp},
+                {"BroadcastGradientArgs", TranslateBroadcastGradientArgsOp}};
 
             struct InputInfo
             {
