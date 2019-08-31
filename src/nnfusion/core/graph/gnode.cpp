@@ -19,8 +19,9 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "gnode.hpp"
-#include "graph.hpp"
+#include "nnfusion/core/graph/edge.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 
 using namespace std;
 using namespace nnfusion::graph;
@@ -98,6 +99,37 @@ const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_out_edges() c
 void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
 {
     m_out_edges.insert(edge);
+}
+
+void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& node)
+{
+    // Todo:
+    //	1) update node->get_outputs();
+    // 	2) handle upstream/downstream nodes (includes control dependencies);
+
+    this->m_op_ptr = node;
+    this->m_op_type = node->description();
+    this->m_name = node->get_name();
+
+    auto edges = this->get_out_edges();
+    for (auto& edge : edges)
+    {
+        enforce(edge->get_src() == shared_from_this());
+        if (edge->is_control_edge())
+            continue;
+        size_t i = 0;
+        std::deque<descriptor::Input> m_inputs;
+        for (auto& argument : edge->get_dst()->get_in_edges())
+        {
+            if (argument->is_control_edge())
+                continue;
+            for (descriptor::Output& output : argument->get_src()->get_op_ptr()->get_outputs())
+            {
+                m_inputs.emplace_back(edge->get_dst()->get_op_ptr().get(), i++, output);
+            }
+        }
+        edge->get_dst()->get_op_ptr()->get_inputs() = std::move(m_inputs);
+    }
 }
 
 void GNode::Clear()

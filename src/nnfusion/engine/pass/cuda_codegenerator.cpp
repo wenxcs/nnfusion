@@ -776,9 +776,24 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
 
             lu_main << "\n//warm up for 5 iters:\n";
-            lu_main << "for(int i_=0; i_<5; i_++)\n";
+            lu_main << "for(int i_=0; i_< 5; i_++)\n";
             lu_main.block_begin();
+            lu_main << h2dcopy.get_code();
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
+            lu_main << d2hcopy.get_code();
+            lu_main << "CUDA_SAFE_CALL(cudaDeviceSynchronize()); \n";
+
+            for (size_t i = 0; i < tu->out.size(); i++)
+            {
+                auto& tensor = *tu->out[i];
+                lu_main << "printf(\"%s \\n\", \"" << tensor.get_name() << ":\");\n"
+                        << "for (int i = 0; i < "
+                        << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
+                        << "; ++i) printf(\"%f \", " << tensor.get_name() << "_host[i]); "
+                        << "\nprintf(\" .. (size = " << tensor.get_tensor_layout()->get_size()
+                        << ", ends with %f);\\n\", " << tensor.get_name() << "_host["
+                        << tensor.get_tensor_layout()->get_size() - 1 << "]);\n";
+            }
             lu_main.block_end();
 
             lu_main << "\n//GPU time measurement\n";
@@ -824,18 +839,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
             }
             lu_main << "cuda_free();\n\n";
-
-            lu_main << "CUDA_SAFE_CALL(cudaDeviceSynchronize()); \n";
-
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu_main << "printf(\"%s \\n\", \"" << tensor.get_name() << ":\");\n"
-                        << "for (int i = 0; i < "
-                        << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
-                        << "; ++i) printf(\"%f \", " << tensor.get_name() << "_host[i]); "
-                        << "\nprintf(\"\\n\");\n";
-            }
         }
 
         //free host input args
