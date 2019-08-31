@@ -61,6 +61,46 @@ namespace nnfusion
                 return kernel_mem->save_outputs<T>();
             }
 
+            // multiple inputs (or outputs) may have different element types
+            bool mixed_type_execute(const vector<vector<char>>& inputs,
+                                    vector<vector<char>>& outputs)
+            {
+                auto& kernel_mem = pctx->kernel_memory;
+                auto kctx = pctx->kernel->m_context;
+                enforce(inputs.size() == kctx->inputs.size());
+
+                for (size_t i = 0; i < kctx->inputs.size(); i++)
+                {
+                    auto& t = kctx->inputs[i];
+                    size_t _size = t.get_size() * t.get_element_type().size();
+                    enforce(inputs[i].size() == _size);
+
+                    kernel_mem->load_input_from(i, inputs[i].data(), _size);
+                }
+
+                if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
+                    0)
+                {
+                    LOG_ERR << "Failed execute the kernel.";
+                    return false;
+                }
+
+                outputs.clear();
+                void** ptrs = kernel_mem->unsafe_outputs();
+                for (size_t i = 0; i < kctx->outputs.size(); ++i)
+                {
+                    auto& t = kctx->outputs[i];
+                    size_t _size = t.get_size() * t.get_element_type().size();
+
+                    enforce(ptrs[i] != nullptr);
+                    vector<char> output(_size);
+                    memcpy(output.data(), ptrs[i], _size);
+
+                    outputs.push_back(move(output));
+                }
+                return true;
+            }
+
             ///\brief simple interface for execute
             template <typename T>
             vector<vector<T>> unsafe_execute(const void* val)
@@ -169,5 +209,5 @@ namespace nnfusion
             void create_profiling_contexts(shared_ptr<GNode> node);
             void connect_nodes(shared_ptr<GNode> node);
         };
-    };
-}
+    }; // namespace profiler
+} // namespace nnfusion

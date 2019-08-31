@@ -44,6 +44,12 @@ namespace nnfusion
             const std::string& get_unique_name() const;
             const std::string& get_name() const;
             void set_name(const std::string& name);
+            void reset_op_ptr(const std::shared_ptr<ngraph::Node>& node)
+            {
+                this->m_op_ptr = node;
+                this->m_op_type = node->description();
+                this->m_name = node->get_name();
+            }
 
             /// Get in edges
             const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_in_edges() const;
@@ -78,5 +84,5 @@ namespace nnfusion
             std::set<std::shared_ptr<Edge>> m_in_edges;
             std::set<std::shared_ptr<Edge>> m_out_edges;
         };
-    }
-}
+    } // namespace graph
+} // namespace nnfusion
