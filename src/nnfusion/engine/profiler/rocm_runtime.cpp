@@ -26,7 +26,7 @@ bool RocmDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     int ret =
         system(("/opt/rocm/bin/hipcc\t-O3\t-Wno-ignored-attributes\t-fPIC\t-lMIOpen\t-lrocblas\t-I/"
                 "opt/rocm/include\t-I/opt/rocm/rocblas/include\t-I/opt/rocm/rocrand/include\t-I/"
-                "opt/rocm/hiprand/include\t-I/opt/rocm/hipsparse/include\t--shared\t-O3\t" +
+                "opt/rocm/hiprand/include\t-I/opt/rocm/hipsparse/include\t--shared\t" +
                 srcname + "\t-o\t" + objname)
                    .c_str());
     if (ret != 0)

@@ -157,8 +157,7 @@ bool ReferenceRuntime::compile(const ProfilingContext::Pointer& ke)
     source_file << ke->source_code->get_code();
     source_file.close();
 
-    int ret =
-        system(("gcc\t-fPIC\t-shared\t-std=c++11\t-O3\t" + srcname + "\t-o\t" + objname).c_str());
+    int ret = system(("gcc\t-fPIC\t-shared\t-std=c++11\t" + srcname + "\t-o\t" + objname).c_str());
     if (ret != 0)
         return false;
     if (!file_exsits(objname))

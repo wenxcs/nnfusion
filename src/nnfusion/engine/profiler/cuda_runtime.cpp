@@ -218,10 +218,9 @@ bool CudaDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     source_file << ke->source_code->get_code();
     source_file.close();
 
-    int ret =
-        system(("nvcc\t--compiler-options\t'-fPIC\t-lcudnn\t-lcublas\t-lcudart'\t--shared\t-O3\t" +
-                srcname + "\t-o\t" + objname)
-                   .c_str());
+    int ret = system(("nvcc\t--compiler-options\t'-fPIC\t-lcudnn\t-lcublas\t-lcudart'\t--shared\t" +
+                      srcname + "\t-o\t" + objname)
+                         .c_str());
     if (ret != 0)
         return false;
     if (!file_exsits(objname))
