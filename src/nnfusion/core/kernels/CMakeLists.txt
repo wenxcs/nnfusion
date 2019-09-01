@@ -9,7 +9,7 @@
 #     ${NGRAPH_INCLUDE_PATH}
 # )
 # target_compile_options(kernels_common PRIVATE "-fPIC")
-# target_link_libraries(kernels_common ngraph codegen nnfusion_common nnfusion_util )
+# target_link_libraries(kernels_common ngraph nnfusion_common nnfusion_util )
 
 
 #-------lib_kernels_registration----------
@@ -23,7 +23,7 @@ target_include_directories(kernels_registration SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}
 )
 target_link_libraries(kernels_registration PRIVATE
-    ngraph codegen nnfusion_common nnfusion_util
+    ngraph nnfusion_common nnfusion_util
 )
 target_compile_options(kernels_registration PRIVATE "-fPIC")
 
@@ -38,7 +38,7 @@ add_executable(kernel_test ${TEST})
 
 target_link_libraries(kernel_test 
     kernels_registration
-    -Wl,--whole-archive 
+    ${WholeArchiveFlag}
     kernels_cuda 
-    -Wl,--no-whole-archive
+    ${NoWholeArchiveFlag}
 )

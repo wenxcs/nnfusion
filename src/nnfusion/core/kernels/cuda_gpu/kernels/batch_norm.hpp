@@ -30,7 +30,6 @@ namespace nnfusion
                 //<todo> For future purpose
                 bool global_states = false;
                 bool save_states = false;
-                ;
             };
         } // namespace cuda
     }     // namespace kernels

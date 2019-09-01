@@ -122,15 +122,4 @@ namespace nnfusion
                         __LINE__,                                                                  \
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
-
-#ifdef NGRAPH_DEBUG_ENABLE
-#define NGRAPH_DEBUG                                                                               \
-    nnfusion::LogHelper(nnfusion::LOG_TYPE::_LOG_TYPE_DEBUG,                                       \
-                        nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
-                        __LINE__,                                                                  \
-                        nnfusion::default_logger_handler_func)                                     \
-        .stream()
-#else
-#define NGRAPH_DEBUG nnfusion::get_nil_stream()
-#endif
 }

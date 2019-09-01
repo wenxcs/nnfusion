@@ -21,7 +21,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ngraph/codegen/code_writer.hpp"
 #include "ngraph/descriptor/layout/dense_tensor_layout.hpp"
 #include "ngraph/descriptor/tensor.hpp"
 #include "ngraph/function.hpp"
@@ -188,6 +187,7 @@ namespace nnfusion
             std::ifstream in(get_file_from_templates(rel_path), std::ios::binary);
             std::ofstream out(target_name, std::ios::binary);
             out << in.rdbuf();
+            return true;
         }
     } // namespace codegen
 } // namespace nnfusion
@@ -195,6 +195,7 @@ namespace nnfusion
 using namespace std;
 using namespace nnfusion;
 
+#include "code_writer.hpp"
 #include "nlohmann_json.hpp"
 #include "nnfusion/util/util.hpp"
 #include "type_info.hpp"

@@ -4,6 +4,7 @@ set(SRC
     languageunit.cpp
     type_info.cpp
     tensorwrapper.cpp
+    code_writer.cpp
 )
 
 add_library(nnfusion_common STATIC ${SRC})
@@ -12,4 +13,4 @@ target_include_directories(nnfusion_common SYSTEM PUBLIC
 )
 
 target_compile_options(nnfusion_common PRIVATE "-fPIC")
-target_link_libraries(nnfusion_common ngraph codegen nnfusion_util )
+target_link_libraries(nnfusion_common ngraph nnfusion_util)

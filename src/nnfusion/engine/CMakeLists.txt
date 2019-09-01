@@ -24,14 +24,14 @@ if (NNFUSION_ENABLE)
         nnfusion_common
         nnfusion_ir
         nnfusion_util
-        codegen
         # kernels
         kernels_registration
-        -Wl,--whole-archive 
+        # use ${WholeArchiveFlag} because MacOS' ldtool use different flag.
+        ${WholeArchiveFlag}
         kernels_cuda 
         kernels_cpu
         nnfusion_engine_profiler
-        -Wl,--no-whole-archive
+        ${NoWholeArchiveFlag}
     )
 
     set_target_properties(nnfusion_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})

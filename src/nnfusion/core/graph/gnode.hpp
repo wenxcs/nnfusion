@@ -37,7 +37,11 @@ namespace nnfusion
             void initialize(const std::shared_ptr<ngraph::Node> op_ptr);
             size_t get_instance_id() const { return m_instance_id; }
             size_t get_id() const { return m_id; }
-            size_t set_id(size_t id) { m_id = id; }
+            size_t set_id(size_t id)
+            {
+                m_id = id;
+                return m_id;
+            }
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
             std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }

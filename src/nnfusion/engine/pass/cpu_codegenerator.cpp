@@ -65,6 +65,7 @@ bool CpuCodeGenerator::projgen()
     save_file(this->lu_nnfusion_rt);
     save_file(this->lu_header);
     save_file(this->lu_main);
+    return true;
 }
 
 bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,

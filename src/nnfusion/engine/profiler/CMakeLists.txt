@@ -9,8 +9,12 @@ set(ENGINE_PROFILER
     binary_utils.cpp
 )
 
-add_library(nnfusion_engine_profiler SHARED
+add_library(nnfusion_engine_profiler STATIC
     ${ENGINE_PROFILER}
+)
+
+target_link_libraries(nnfusion_engine_profiler
+    nnfusion_graph
 )
 
 set_target_properties(nnfusion_engine_profiler PROPERTIES VERSION ${NGRAPH_VERSION})

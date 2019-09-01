@@ -127,6 +127,7 @@ bool CudaCodeGenerator::projgen()
     save_file(this->lu_nnfusion_rt);
     save_file(this->lu_header);
     save_file(this->lu_main);
+    return true;
 }
 
 // bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,

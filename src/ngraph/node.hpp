@@ -145,7 +145,11 @@ namespace ngraph
         virtual bool is_commutative() { return false; }
         size_t get_instance_id() const { return m_instance_id; }
         size_t get_id() const { return m_id; }
-        size_t set_id(size_t id) { m_id = id; }
+        size_t set_id(size_t id)
+        {
+            m_id = id;
+            return m_id;
+        }
         friend std::ostream& operator<<(std::ostream&, const Node&);
         virtual std::ostream& write_short_description(std::ostream&) const;
         virtual std::ostream& write_long_description(std::ostream&) const;

@@ -113,7 +113,8 @@ namespace nnfusion
                 {
                     auto& t = kctx->inputs[i];
                     size_t _size = t.get_size() * t.get_element_type().size();
-                    kernel_mem->load_input_from(i, val + offset, _size);
+                    void* newval = (void*)((char*)val + offset);
+                    kernel_mem->load_input_from(i, newval, _size);
                     offset += _size;
                 }
 
