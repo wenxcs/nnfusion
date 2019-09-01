@@ -5,7 +5,7 @@ add_subdirectory(pass)
 set(SRC
     graph.cpp
     gnode.cpp
-    edge.cpp
+    gedge.cpp
     graph_util.cpp
 )
 

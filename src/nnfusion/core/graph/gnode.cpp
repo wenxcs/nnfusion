@@ -19,7 +19,7 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "nnfusion/core/graph/edge.hpp"
+#include "nnfusion/core/graph/gedge.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 
@@ -103,9 +103,7 @@ void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
 
 void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& node)
 {
-    // Todo:
-    //	1) update node->get_outputs();
-    // 	2) handle upstream/downstream nodes (includes control dependencies);
+    // Todo: handle other relations with upstream nodes (get_inputs() & control dependencies);
 
     this->m_op_ptr = node;
     this->m_op_type = node->description();
@@ -117,9 +115,22 @@ void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& node)
         enforce(edge->get_src() == shared_from_this());
         if (edge->is_control_edge())
             continue;
-        size_t i = 0;
+        std::vector<std::shared_ptr<nnfusion::graph::Edge>> ordered_edges;
+        for (auto& edge : edge->get_dst()->get_in_edges())
+        {
+            ordered_edges.push_back(edge);
+        }
+        std::sort(ordered_edges.begin(),
+                  ordered_edges.end(),
+                  [](const std::shared_ptr<nnfusion::graph::Edge>& a,
+                     const std::shared_ptr<nnfusion::graph::Edge>& b) {
+                      return (size_t)a->get_dst_input() <
+                             (size_t)b->get_dst_input(); // put -1 to the end
+                  });
+
         std::deque<descriptor::Input> m_inputs;
-        for (auto& argument : edge->get_dst()->get_in_edges())
+        size_t i = 0;
+        for (auto& argument : ordered_edges)
         {
             if (argument->is_control_edge())
                 continue;

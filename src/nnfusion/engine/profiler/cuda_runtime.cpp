@@ -219,7 +219,9 @@ bool CudaDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     source_file.close();
 
     int ret =
-        system(("nvcc\t--compiler-options\t'-fPIC\t-lcudnn\t-lcublas\t-lcudart'\t--shared\t-O3\t" +
+        system(("nvcc\t--compiler-options\t'-fPIC\t-lcudnn\t-lcublas "
+                "--shared'\t--cudart\tshared\t-O2\t-gencode="
+                "arch=compute_60,code=compute_60\t-gencode=arch=compute_61,code=compute_61\t" +
                 srcname + "\t-o\t" + objname)
                    .c_str());
     if (ret != 0)

@@ -1,4 +1,4 @@
-#include "nnfusion/core/graph/edge.hpp"
+#include "nnfusion/core/graph/gedge.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/graph/pass/manager.hpp"
 

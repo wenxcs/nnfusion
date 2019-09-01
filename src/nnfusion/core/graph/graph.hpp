@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <vector>
-#include "edge.hpp"
+#include "gedge.hpp"
 #include "gnode.hpp"
 #include "ngraph/function.hpp"
 #include "ngraph/op/parameter_vector.hpp"
