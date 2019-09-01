@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#include "gedge.hpp"
+#include "edge.hpp"
 
 using namespace nnfusion::graph;
 

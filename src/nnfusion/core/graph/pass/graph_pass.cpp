@@ -1,5 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
+#pragma once
+
 #include "graph_pass.hpp"
 #include "manager.hpp"
 
