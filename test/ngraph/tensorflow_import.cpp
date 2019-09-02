@@ -711,12 +711,30 @@ TEST(tensorflow_import, select_op)
     // [[7,8,9],[10,11,12]]
     Inputs inputs{};
 
-    // (1, 2, 2, 1)
     auto expected_outputs = test::NDArray<float, 2>({{1, 8, 3}, {10, 11, 6}}).get_vector();
 
     Outputs outputs{execute(model[0], inputs, "INTERPRETER")};
     EXPECT_TRUE(test::all_close_f(expected_outputs, outputs.front()));
 }
+
+TEST(tensorflow_import, reduce_sum_2_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_sum_2_graph.pb"));
+
+    // input [[1,2,3],[4,5,6]]
+    Inputs inputs{};
+
+    Outputs expected_outputs{{21}};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
 //TEST(onnx, model_add_abc_initializers)
 // {
 //     auto function = onnx_import::import_onnx_function(

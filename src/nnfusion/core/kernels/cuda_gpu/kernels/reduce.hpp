@@ -200,7 +200,10 @@ namespace nnfusion
                     }
                     block_size_x = fmin(512, block_size_x);
 
-                    lu << "extern __shared__ " << output_type << " sdata[];\n";
+                    // TODO (yanhon): if sdata size is not specified, frozen_reduce_sum_2_graph.pb will crash
+                    lu << "extern __shared__ " << output_type << " sdata[" << block_size_x
+                       << "];\n";
+                    //lu << "extern __shared__ " << output_type << " sdata[];\n";
                     lu << "uint32_t tid = threadIdx.x; \n";
                     lu << "uint32_t step = blockDim.x; \n";
                     lu << "sdata[tid] = 0;\n";
