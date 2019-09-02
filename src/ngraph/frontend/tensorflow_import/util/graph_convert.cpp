@@ -313,6 +313,64 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateBiasAddGradOp(const tensorflow::NodeDef& node,
+                                                   const NodeMap& all_ng_nodes,
+                                                   ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                std::string tf_data_format;
+                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format) == true);
+
+                if (tf_data_format == "")
+                {
+                    tf_data_format = "NHWC";
+                }
+
+                if (tf_data_format != "NHWC" && tf_data_format != "NCHW")
+                {
+                    std::cerr << "BiasAddGrad data format is neither NHWC nor NCHW";
+                    assert(false);
+                }
+
+                auto ng_input_shape = ng_input->get_shape();
+
+                if (ng_input_shape.size() < 2)
+                {
+                    std::cerr << "Input tensor must be at least 2D";
+                    assert(false);
+                }
+
+                bool is_nhwc = (tf_data_format == "NHWC");
+
+                ngraph::AxisSet ng_reduction_axes;
+
+                if (is_nhwc)
+                {
+                    for (size_t i = 0; i < ng_input_shape.size() - 1; i++)
+                    {
+                        ng_reduction_axes.insert(i);
+                    }
+                }
+
+                else
+                {
+                    for (size_t i = 0; i < ng_input_shape.size(); i++)
+                    {
+                        if (i != 1)
+                        {
+                            ng_reduction_axes.insert(i);
+                        }
+                    }
+                }
+
+                auto ng_bias_add_grad =
+                    std::make_shared<ngraph::op::Sum>(ng_input, ng_reduction_axes);
+
+                ng_bias_add_grad->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_bias_add_grad}};
+                return ret;
+            }
+
             NamedNodeVector TranslateReshapeOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
@@ -615,8 +673,8 @@ namespace ngraph
 
                 if (paddings.size() % 2 != 0)
                 {
-                    std::cerr
-                        << "Constant node for paddings does not have an even number of elements";
+                    std::cerr << "Constant node for paddings does not have an even number of "
+                                 "elements";
                     assert(false);
                 }
 
@@ -660,8 +718,8 @@ namespace ngraph
 
                 if (paddings.size() % 2 != 0)
                 {
-                    std::cerr
-                        << "Constant node for paddings does not have an even number of elements";
+                    std::cerr << "Constant node for paddings does not have an even number of "
+                                 "elements";
                     assert(false);
                 }
 
@@ -1835,7 +1893,8 @@ namespace ngraph
                                     << end_vec[i] << ":" << stride_vec[i]
                                     << ". nGraph begin, end, stride are: " << ng_begin_vec[i] << ":"
                                     << ng_end_vec[i] << ":" << ng_stride_vec[i]
-                                    << ". nGraph's begin and end have difference greater than 1";
+                                    << ". nGraph's begin and end have difference greater than "
+                                       "1";
                                 assert(false);
                             }
                         }
@@ -2015,6 +2074,7 @@ namespace ngraph
                 {"BatchMatMulV2", TranslateBatchMatMulOp},
                 {"BiasAdd", TranslateBiasAddOp},
                 {"BroadcastGradientArgs", TranslateBroadcastGradientArgsOp},
+                {"BiasAddGrad", TranslateBiasAddGradOp},
                 {"Cast", TranslateCastOp},
                 {"Const", TranslateConstOp},
                 {"Conv2D", TranslateConv2DOp},
@@ -2124,8 +2184,8 @@ namespace ngraph
                         {
                             if (in_control_dependence)
                             {
-                                std::cerr
-                                    << "Control dependencies must come after regular dependencies.";
+                                std::cerr << "Control dependencies must come after regular "
+                                             "dependencies.";
                                 assert(false);
                             }
                             src_node = iter->second.at(src_index);
