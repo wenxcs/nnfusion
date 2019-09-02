@@ -1986,8 +1986,7 @@ namespace ngraph
 
                 ng_out_node_0->set_name(node.name() + "x");
                 ng_out_node_1->set_name(node.name() + "y");
-                NamedNodeVector ret{{node.name() + "x", ng_out_node_0},
-                                    {node.name() + "y", ng_out_node_1}};
+                NamedNodeVector ret{{node.name(), ng_out_node_0}, {node.name(), ng_out_node_1}};
 
                 return ret;
             }
