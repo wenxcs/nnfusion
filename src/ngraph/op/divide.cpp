@@ -48,3 +48,26 @@ shared_ptr<Node> ngraph::operator/(const shared_ptr<Node> arg0, const shared_ptr
 {
     return make_shared<op::Divide>(arg0, arg1);
 }
+
+op::DivNoNan::DivNoNan(const shared_ptr<Node>& arg0, const shared_ptr<Node>& arg1)
+    : BinaryElementwiseArithmetic("DivNoNan", arg0, arg1)
+{
+    constructor_validate_and_infer_types();
+}
+
+shared_ptr<Node> op::DivNoNan::copy_with_new_args(const NodeVector& new_args) const
+{
+    check_new_args_count(this, new_args);
+    return make_shared<Divide>(new_args.at(0), new_args.at(1));
+}
+
+void op::DivNoNan::generate_adjoints(autodiff::Adjoints& adjoints, const NodeVector& deltas)
+{
+    auto delta = deltas.at(0);
+
+    auto x = get_argument(0);
+    auto y = get_argument(1);
+
+    adjoints.add_delta(x, delta / y);
+    adjoints.add_delta(y, -delta * shared_from_this() / y);
+}

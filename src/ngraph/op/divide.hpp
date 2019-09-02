@@ -38,6 +38,23 @@ namespace ngraph
             virtual void generate_adjoints(autodiff::Adjoints& adjoints,
                                            const NodeVector& deltas) override;
         };
+
+        /// \brief Elementwise division operation.
+        class DivNoNan : public util::BinaryElementwiseArithmetic
+        {
+        public:
+            /// \brief Constructs a division operation.
+            ///
+            /// \param arg0 Node that produces the first input tensor.
+            /// \param arg1 Node that produces the second input tensor.
+            DivNoNan(const std::shared_ptr<Node>& arg0, const std::shared_ptr<Node>& arg1);
+
+            virtual std::shared_ptr<Node>
+                copy_with_new_args(const NodeVector& new_args) const override;
+
+            virtual void generate_adjoints(autodiff::Adjoints& adjoints,
+                                           const NodeVector& deltas) override;
+        };
     }
 
     std::shared_ptr<ngraph::Node> operator/(const std::shared_ptr<ngraph::Node> arg0,
