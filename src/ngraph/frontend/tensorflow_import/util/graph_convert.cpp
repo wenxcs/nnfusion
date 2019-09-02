@@ -1404,6 +1404,88 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslatePackOp(const tensorflow::NodeDef& node,
+                                            const NodeMap& all_ng_nodes,
+                                            ngraph::op::ParameterVector& parameters)
+            {
+                const int input_cnt = node.input_size();
+                if (input_cnt < 2)
+                {
+                    std::cerr << "\"" << node.name() << "\" requires at least 2 inputs, got "
+                              << input_cnt << " instead";
+                    assert(false);
+                }
+                ngraph::NodeVector ng_args;
+                for (int i = 0; i < input_cnt - 1; i++)
+                {
+                    auto ng_arg = GetInputNode(all_ng_nodes, node, i);
+                    ng_args.push_back(ng_arg);
+                }
+
+                auto ng_pack_axis_op = GetInputNode(all_ng_nodes, node, input_cnt - 1);
+                std::vector<int> tf_pack_axis_vec;
+                assert(GetValueFromNGraphOp<int>(ng_pack_axis_op, &tf_pack_axis_vec) == true);
+                if (tf_pack_axis_vec.size() != 1)
+                {
+                    std::cerr << "The size of argument dim is not 1 for Pack";
+                    assert(false);
+                }
+                if (tf_pack_axis_vec[0] < 0)
+                {
+                    tf_pack_axis_vec[0] += int64(ng_args[0]->get_shape().size() + 1);
+                }
+
+                if (true)
+                {
+                    // option1, covert pack to combination of expand_dim and concat
+                    auto& input_shape = ng_args[0]->get_shape();
+                    auto input_shape_size = input_shape.size();
+
+                    // expand_dim/reshape
+                    auto new_dim_shape = input_shape;
+                    new_dim_shape.insert(new_dim_shape.begin() + size_t(tf_pack_axis_vec[0]), 1);
+                    std::vector<size_t> shape_dimensions(input_shape_size);
+                    std::iota(shape_dimensions.begin(), shape_dimensions.end(), 0);
+
+                    ngraph::NodeVector reshaped_ng_args;
+
+                    for (int i = 0; i < ng_args.size(); i++)
+                    {
+                        auto ng_arg = ng_args[i];
+                        auto ng_node = std::make_shared<ngraph::op::Reshape>(
+                            ng_arg, shape_dimensions, new_dim_shape);
+                        ng_node->set_name(node.name() + "_reshape_" + std::to_string(i));
+                        reshaped_ng_args.push_back(ng_node);
+                    }
+
+                    // concat
+                    std::shared_ptr<ngraph::Node> ng_concat_op =
+                        std::make_shared<ngraph::op::Concat>(reshaped_ng_args,
+                                                             size_t(tf_pack_axis_vec[0]));
+                    ng_concat_op->set_name(node.name());
+
+                    NamedNodeVector ret{{node.name(), ng_concat_op}};
+                    return ret;
+                }
+                else
+                {
+                    // TODO: option2, implement pack kernel
+                    std::cerr << "Pack kernel not implemented yet";
+                    assert(false);
+
+                    ngraph::op::OpConfig::any myConfig;
+                    myConfig["axis"] = tf_pack_axis_vec[0];
+
+                    auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                        node.name(), node.op(), ng_args, myConfig);
+
+                    ng_node->set_name(node.name());
+
+                    NamedNodeVector ret{{node.name(), ng_node}};
+                    return ret;
+                }
+            }
+
             NamedNodeVector TranslateAllOp(const tensorflow::NodeDef& node,
                                            const NodeMap& all_ng_nodes,
                                            ngraph::op::ParameterVector& parameters)
@@ -2099,6 +2181,7 @@ namespace ngraph
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"OneHot", TranslateOneHotOp},
+                {"Pack", TranslatePackOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
