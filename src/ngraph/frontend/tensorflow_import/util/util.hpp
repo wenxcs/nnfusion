@@ -19,6 +19,9 @@
 #include "ngraph/function.hpp"
 #include "ngraph/op/constant.hpp"
 #include "ngraph/op/reshape.hpp"
+
+#include "nnfusion/util/log.hpp"
+
 namespace ngraph
 {
     namespace frontend
@@ -153,7 +156,11 @@ namespace ngraph
             template <typename T>
             bool GetValueFromNGraphOp(std::shared_ptr<ngraph::Node> ng_op, std::vector<T>* values)
             {
-                assert(ng_op->description() == "Constant");
+                if (ng_op->description() != "Constant")
+                {
+                    LOG_ERR << "Asking for Constant value from op-type: " << ng_op->description();
+                    assert(false);
+                }
                 auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);
                 auto ng_element_type = ng_constant_op->get_element_type();
                 if (ng_element_type == ngraph::element::f32)

@@ -2181,7 +2181,7 @@ namespace ngraph
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"OneHot", TranslateOneHotOp},
-                {"Pack", TranslatePackOp},
+                // {"Pack", TranslatePackOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
