@@ -196,7 +196,7 @@ using namespace std;
 using namespace nnfusion;
 
 #include "code_writer.hpp"
-#include "nlohmann_json.hpp"
+#include "nlohmann/json.hpp"
 #include "nnfusion/util/util.hpp"
 #include "type_info.hpp"
 

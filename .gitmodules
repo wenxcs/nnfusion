@@ -1,0 +1,6 @@
+[submodule "thirdparty/protobuf"]
+	path = thirdparty/protobuf
+	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.protobuf
+[submodule "thirdparty/googletest"]
+	path = thirdparty/googletest
+	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.googletest

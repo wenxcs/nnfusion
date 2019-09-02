@@ -14,8 +14,6 @@
 # limitations under the License.
 # ******************************************************************************
 
-add_subdirectory(proto)
-
 add_library(tensorflow_import_interface STATIC
         tensorflow.cpp
         tensorflow.hpp
@@ -34,7 +32,7 @@ add_library(tensorflow_import STATIC
         tensorflow_base.hpp
 )
 
-add_dependencies(tensorflow_import_interface tensorflow_import_proto)
+add_dependencies(tensorflow_import_interface tensorflow_proto)
 add_dependencies(tensorflow_import tensorflow_import_interface)
 
 if (NOT NGRAPH_USE_SYSTEM_PROTOBUF)

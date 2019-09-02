@@ -69,7 +69,7 @@ if(NGRAPH_DISTRIBUTED_ENABLE)
 endif()
 
 target_link_libraries(unit-test PRIVATE ngraph_test_util)
-target_link_libraries(unit-test PRIVATE ngraph libgtest libjson Threads::Threads)
+target_link_libraries(unit-test PRIVATE ngraph libgtest Threads::Threads)
 target_link_libraries(unit-test PRIVATE ${CMAKE_DL_LIBS})
 target_link_libraries(unit-test PRIVATE op_registration)
 
@@ -112,7 +112,7 @@ target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_include_directories(unit-test PRIVATE ${TFPROTO_INCLUDE})
-    target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_import_proto)
+    target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_proto)
 endif()
 
 if (NGRAPH_ONNXIFI_ENABLE)

@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#include <onnx-ml.pb.h>
+#include "onnx/onnx-ml.pb.h"
 
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"

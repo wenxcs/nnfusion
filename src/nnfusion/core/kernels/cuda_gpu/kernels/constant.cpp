@@ -1,9 +1,11 @@
 // Microsoft (c) 2019, NNFusion Team
 #include <iostream>
+#include <stdexcept>
 #include <stdio.h>
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
+#include "nnfusion/core/ops/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -20,11 +22,7 @@ namespace nnfusion
                     op = static_pointer_cast<ngraph::op::Constant>(ctx->node);
                     enforce_not_nullptr(op) << "Node type is not Constant.";
 
-                    nnfusion::codegen::create_folder(folder);
-                    const_name = ctx->outputs[0].get_name();
-                    ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
-                    bin_file.write((const char*)op->get_data_ptr(), op->get_data_size());
-                    bin_file.close();
+                    folder = "./Constant/";
 
                     std::stringstream tag;
                     tag << "load_" << const_name;
@@ -33,6 +31,12 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    nnfusion::codegen::create_folder(folder);
+                    const_name = m_context->outputs[0].get_name();
+                    ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
+                    bin_file.write((const char*)op->get_data_ptr(), op->get_data_size());
+                    bin_file.close();
+
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& writer = *_lu;
                     writer << "std::ifstream bin_file(\"" << folder + const_name

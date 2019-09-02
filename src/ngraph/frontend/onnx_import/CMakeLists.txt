@@ -153,19 +153,19 @@ add_dependencies(onnx_import onnx_import_interface)
 
 if (NOT NGRAPH_USE_SYSTEM_PROTOBUF)
     add_dependencies(onnx_import_interface protobuf::libprotobuf)
-    add_dependencies(onnx_import_interface onnx::libonnx_proto)
+    add_dependencies(onnx_import_interface onnx_proto)
 endif()
 
 set_property(TARGET onnx_import PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(onnx_import PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${NGRAPH_INCLUDE_PATH}
-    SYSTEM PRIVATE ${ONNX_INCLUDE_DIR} ${ONNX_PROTO_INCLUDE_DIR} ${Protobuf_INCLUDE_DIR})
-target_link_libraries(onnx_import PRIVATE ${Protobuf_LIBRARIES} ${ONNX_PROTO_LIBRARY})
+    SYSTEM PRIVATE ${ONNXPROTO_INCLUDE} ${Protobuf_INCLUDE_DIR})
+target_link_libraries(onnx_import PRIVATE ${Protobuf_LIBRARIES} onnx_proto)
 
 target_compile_definitions(onnx_import PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
 
 set_property(TARGET onnx_import_interface PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(onnx_import_interface PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${NGRAPH_INCLUDE_PATH}
-    SYSTEM PRIVATE ${ONNX_INCLUDE_DIR} ${ONNX_PROTO_INCLUDE_DIR} ${Protobuf_INCLUDE_DIR})
+    SYSTEM PRIVATE ${ONNXPROTO_INCLUDE} ${Protobuf_INCLUDE_DIR})
 
 target_compile_definitions(onnx_import_interface PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
 

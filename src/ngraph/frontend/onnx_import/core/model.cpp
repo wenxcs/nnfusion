@@ -14,7 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
-#include <onnx-ml.pb.h>
+#include "onnx/onnx-ml.pb.h"
 
 #include "model.hpp"
 #include "ops_bridge.hpp"

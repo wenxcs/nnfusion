@@ -22,12 +22,7 @@ namespace nnfusion
                     op = static_pointer_cast<ngraph::op::Constant>(ctx->node);
                     enforce_not_nullptr(op) << "Node type is not Constant.";
 
-                    nnfusion::codegen::create_folder(folder);
-                    const_name = ctx->outputs[0].get_name();
-                    ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
-                    bin_file.write((const char*)op->get_data_ptr(), op->get_data_size());
-                    bin_file.close();
-                    op->get_friendly_name();
+                    folder = "./Constant/";
 
                     std::stringstream tag;
                     tag << "load_" << const_name;
@@ -36,6 +31,12 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    nnfusion::codegen::create_folder(folder);
+                    const_name = m_context->outputs[0].get_name();
+                    ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
+                    bin_file.write((const char*)op->get_data_ptr(), op->get_data_size());
+                    bin_file.close();
+
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& writer = *_lu;
                     writer << "std::ifstream bin_file(\"" << folder + const_name

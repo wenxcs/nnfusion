@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include <onnx-ml.pb.h>
+#include "onnx/onnx-ml.pb.h"
 
 #include "ngraph/op/parameter_vector.hpp"
 

@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include <onnx-ml.pb.h>
+#include "onnx/onnx-ml.pb.h"
 
 #include "ngraph/op/convert.hpp"
 #include "ngraph/type/element_type.hpp"

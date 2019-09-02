@@ -5,16 +5,7 @@
 
 #pragma once
 
-// This macro is use to determine if a compiler in use:
-//    1. In editor or external use;
-//    2. In compiling: Use auto-generated probobuf file, Read proto/CmakeLists.txt
-//       for details.
-#ifdef NNFUSION_SYSTEM_PROTOBUF_FLAG
 #include "graph.pb.h"
-#else
-#include "proto/graph.pb.h"
-#endif
-
 #include "ngraph/frontend/base.hpp"
 #include "ngraph/function.hpp"
 #include "ngraph/op/parameter_vector.hpp"
