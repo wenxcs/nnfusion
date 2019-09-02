@@ -2037,6 +2037,7 @@ namespace ngraph
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
+                {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"OneHot", TranslateOneHotOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
