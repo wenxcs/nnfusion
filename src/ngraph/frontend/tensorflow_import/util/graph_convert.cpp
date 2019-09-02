@@ -300,6 +300,19 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateReluGradOp(const tensorflow::NodeDef& node,
+                                                const NodeMap& all_ng_nodes,
+                                                ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_arg = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_node = std::make_shared<ngraph::op::ReluBackprop>(ng_arg, ng_delta);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateReshapeOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
@@ -2001,6 +2014,7 @@ namespace ngraph
                 {"BatchMatMul", TranslateBatchMatMulOp},
                 {"BatchMatMulV2", TranslateBatchMatMulOp},
                 {"BiasAdd", TranslateBiasAddOp},
+                {"BroadcastGradientArgs", TranslateBroadcastGradientArgsOp},
                 {"Cast", TranslateCastOp},
                 {"Const", TranslateConstOp},
                 {"Conv2D", TranslateConv2DOp},
@@ -2029,6 +2043,7 @@ namespace ngraph
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
                 {"Pow", TranslateBinaryOp<ngraph::op::Power>},
                 {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
+                {"ReluGrad", TranslateReluGradOp},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateRsqrtOp},
                 {"Select", TranslateSelectOp},
@@ -2043,8 +2058,7 @@ namespace ngraph
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
-                {"Transpose", TranslateTransposeToReshapeOp},
-                {"BroadcastGradientArgs", TranslateBroadcastGradientArgsOp}};
+                {"Transpose", TranslateTransposeToReshapeOp}};
 
             struct InputInfo
             {
