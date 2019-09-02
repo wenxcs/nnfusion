@@ -1,6 +1,6 @@
 #pragma once
 
-#include "edge.hpp"
+#include "gedge.hpp"
 #include "gnode.hpp"
 #include "graph.hpp"
 
