@@ -300,6 +300,19 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateReluGradOp(const tensorflow::NodeDef& node,
+                                                const NodeMap& all_ng_nodes,
+                                                ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_arg = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_node = std::make_shared<ngraph::op::ReluBackprop>(ng_arg, ng_delta);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateBiasAddGradOp(const tensorflow::NodeDef& node,
                                                    const NodeMap& all_ng_nodes,
                                                    ngraph::op::ParameterVector& parameters)
@@ -2060,11 +2073,13 @@ namespace ngraph
                 {"BatchMatMul", TranslateBatchMatMulOp},
                 {"BatchMatMulV2", TranslateBatchMatMulOp},
                 {"BiasAdd", TranslateBiasAddOp},
+                {"BroadcastGradientArgs", TranslateBroadcastGradientArgsOp},
                 {"BiasAddGrad", TranslateBiasAddGradOp},
                 {"Cast", TranslateCastOp},
                 {"Const", TranslateConstOp},
                 {"Conv2D", TranslateConv2DOp},
                 {"ConcatV2", TranslateConcatV2Op},
+                {"DivNoNan", TranslateBinaryOp<ngraph::op::DivNoNan>},
                 {"SparseSoftmaxCrossEntropyWithLogits",
                  TranslateSparseSoftmaxCrossEntropyWithLogitsOp},
                 {"Exp", TranslateUnaryOp<ngraph::op::Exp>},
@@ -2083,14 +2098,17 @@ namespace ngraph
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
+                {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"OneHot", TranslateOneHotOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
                 {"Pow", TranslateBinaryOp<ngraph::op::Power>},
                 {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
+                {"ReluGrad", TranslateReluGradOp},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateRsqrtOp},
+                {"RealDiv", TranslateBinaryOp<ngraph::op::Divide>},
                 {"Select", TranslateSelectOp},
                 {"Sigmoid", TranslateSigmoidOp},
                 {"Slice", TranslateSliceOp},
@@ -2103,8 +2121,7 @@ namespace ngraph
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
-                {"Transpose", TranslateTransposeToReshapeOp},
-                {"BroadcastGradientArgs", TranslateBroadcastGradientArgsOp}};
+                {"Transpose", TranslateTransposeToReshapeOp}};
 
             struct InputInfo
             {

@@ -225,6 +225,13 @@ namespace nnfusion
             };
 
             template <>
+            struct CudaOpMap<ngraph::op::DivNoNan>
+            {
+                static constexpr const char* op = "divnonan";
+                static constexpr const char* math_kernel = "x1 != 0 ? fdividef(x0, x1) : 0";
+            };
+
+            template <>
             struct CudaOpMap<ngraph::op::Sign>
             {
                 static constexpr const char* op = "sign";
