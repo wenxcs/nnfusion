@@ -266,6 +266,25 @@ TEST(tensorflow_import, bias_add_op)
     }
 }
 
+TEST(tensorflow_import, bias_add_grad_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_bias_add_grad_graph.pb"));
+
+    // input data is [1024,50] * 1
+    Inputs inputs{};
+
+    auto expected_outputs =
+        test::NDArray<float, 1>({1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+                                 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+                                 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+                                 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+                                 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024})
+            .get_vector();
+    Outputs outputs{execute(model[0], inputs, "INTERPRETER")};
+    EXPECT_TRUE(test::all_close_f(expected_outputs, outputs.front()));
+}
+
 TEST(tensorflow_import, avg_pool_op)
 {
     // Avg pool with strides=[1,2,2,1], ksize=[1,2,2,1], padding="SAME"
