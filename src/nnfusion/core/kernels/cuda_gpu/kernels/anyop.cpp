@@ -20,7 +20,7 @@ LanguageUnit_p cuda::AnyOP::emit_function_body()
 
     // function signature:
     // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
-    lu << "// This function is left blank by purpose.\n";
+    lu << "#warning \"This function is not implemented, and left blank by purpose.\"\n";
     return _lu;
 }
 

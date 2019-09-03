@@ -158,3 +158,7 @@ using namespace nnfusion::kernels;
 REGISTER_KERNEL_EMITTER("BatchMatMul",                                                // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
                         cuda::BatchMatMul)                                            // constructor
+
+REGISTER_KERNEL_EMITTER("BatchMatMul",                                                // op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
+                        cuda::BatchMatMul)                                            // constructor
