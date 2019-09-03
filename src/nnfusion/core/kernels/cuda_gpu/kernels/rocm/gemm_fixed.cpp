@@ -84,6 +84,22 @@ namespace nnfusion
                         m_gridDim = dim3(128, 2, 1);
                         m_blockDim = dim3(16, 16, 1);
                     }
+                    else if (arg0_shape == ngraph::Shape({512, 4096}) &&
+                             arg1_shape == ngraph::Shape({4096, 1024}))
+                    {
+                        templ =
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_512x4096x1024.h.in";
+                        m_gridDim = dim3(16, 8, 1);
+                        m_blockDim = dim3(16, 16, 1);
+                    }
+                    else if (arg0_shape == ngraph::Shape({512, 1024}) &&
+                             arg1_shape == ngraph::Shape({1024, 4096}))
+                    {
+                        templ =
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_512x1024x4096.h.in";
+                        m_gridDim = dim3(64, 8, 1);
+                        m_blockDim = dim3(16, 16, 1);
+                    }
                     else
                         return nullptr;
 
