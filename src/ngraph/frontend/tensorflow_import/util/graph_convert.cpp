@@ -1409,30 +1409,25 @@ namespace ngraph
                                             ngraph::op::ParameterVector& parameters)
             {
                 const int input_cnt = node.input_size();
-                if (input_cnt < 2)
+                if (input_cnt < 1)
                 {
-                    std::cerr << "\"" << node.name() << "\" requires at least 2 inputs, got "
+                    std::cerr << "\"" << node.name() << "\" requires at least 1 inputs, got "
                               << input_cnt << " instead";
                     assert(false);
                 }
+                int pack_axis = 0;
+                assert(GetNodeAttr(node.attr(), "axis", pack_axis) == true);
+
                 ngraph::NodeVector ng_args;
-                for (int i = 0; i < input_cnt - 1; i++)
+                for (int i = 0; i < input_cnt; i++)
                 {
                     auto ng_arg = GetInputNode(all_ng_nodes, node, i);
                     ng_args.push_back(ng_arg);
                 }
 
-                auto ng_pack_axis_op = GetInputNode(all_ng_nodes, node, input_cnt - 1);
-                std::vector<int> tf_pack_axis_vec;
-                assert(GetValueFromNGraphOp<int>(ng_pack_axis_op, &tf_pack_axis_vec) == true);
-                if (tf_pack_axis_vec.size() != 1)
+                if (pack_axis < 0)
                 {
-                    std::cerr << "The size of argument dim is not 1 for Pack";
-                    assert(false);
-                }
-                if (tf_pack_axis_vec[0] < 0)
-                {
-                    tf_pack_axis_vec[0] += int64(ng_args[0]->get_shape().size() + 1);
+                    pack_axis += int64(ng_args[0]->get_shape().size() + 1);
                 }
 
                 if (true)
@@ -1443,7 +1438,7 @@ namespace ngraph
 
                     // expand_dim/reshape
                     auto new_dim_shape = input_shape;
-                    new_dim_shape.insert(new_dim_shape.begin() + size_t(tf_pack_axis_vec[0]), 1);
+                    new_dim_shape.insert(new_dim_shape.begin() + size_t(pack_axis), 1);
                     std::vector<size_t> shape_dimensions(input_shape_size);
                     std::iota(shape_dimensions.begin(), shape_dimensions.end(), 0);
 
@@ -1460,8 +1455,7 @@ namespace ngraph
 
                     // concat
                     std::shared_ptr<ngraph::Node> ng_concat_op =
-                        std::make_shared<ngraph::op::Concat>(reshaped_ng_args,
-                                                             size_t(tf_pack_axis_vec[0]));
+                        std::make_shared<ngraph::op::Concat>(reshaped_ng_args, size_t(pack_axis));
                     ng_concat_op->set_name(node.name());
 
                     NamedNodeVector ret{{node.name(), ng_concat_op}};
@@ -1474,7 +1468,7 @@ namespace ngraph
                     assert(false);
 
                     ngraph::op::OpConfig::any myConfig;
-                    myConfig["axis"] = tf_pack_axis_vec[0];
+                    myConfig["axis"] = pack_axis;
 
                     auto ng_node = std::make_shared<ngraph::op::GenericOp>(
                         node.name(), node.op(), ng_args, myConfig);
@@ -2181,7 +2175,7 @@ namespace ngraph
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"OneHot", TranslateOneHotOp},
-                // {"Pack", TranslatePackOp},
+                {"Pack", TranslatePackOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},

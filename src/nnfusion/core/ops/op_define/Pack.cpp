@@ -2,7 +2,6 @@
 
 #include "nnfusion/core/ops/generic_op.hpp"
 
-#if 0
 REGISTER_OP(Pack).attr<int>("axis", 0).infershape([](ngraph::op::GenericOp& target_op) -> void {
     enforce(target_op.get_input_size() >= 1)
         << "Inputs of Pack operator should not be less than 1.";
@@ -20,14 +19,12 @@ REGISTER_OP(Pack).attr<int>("axis", 0).infershape([](ngraph::op::GenericOp& targ
     }
 
     int axis = target_op.localOpConfig.getRoot()["axis"];
+    enforce(axis >= 0 && axis <= input_shape_0.size())
+        << "Pack dim " << axis << " not in the interval [" << 0 << ", " << input_shape_0.size()
+        << "].";
 
     auto output_shape_0 = input_shape_0;
     output_shape_0.insert(output_shape_0.begin() + size_t(axis), target_op.get_input_size());
 
     target_op.set_output_type(0, target_op.get_input_element_type(0), output_shape_0);
-});
-#endif
-
-REGISTER_OP(Pack).infershape([](ngraph::op::GenericOp& target_op) -> void {
-    ngraph::Shape output_shape_0 = {target_op.get_input_size()};
 });
