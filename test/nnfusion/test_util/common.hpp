@@ -89,13 +89,73 @@ namespace ngraph
     }
 }
 
+#include "nnfusion/engine/profiler/profiler.hpp"
+
+using namespace nnfusion::profiler;
+
 namespace nnfusion
 {
     namespace test
     {
+        template <typename T>
+        extern bool all_close(const std::vector<T>& a, const std::vector<T>& b);
+
+        template <>
+        bool all_close<float>(const std::vector<float>& a, const std::vector<float>& b);
+
+        template <>
+        bool all_close<int>(const std::vector<int>& a, const std::vector<int>& b);
+
         bool check_kernel(shared_ptr<ngraph::Node> node,
                           DeviceType dev_t,
                           const vector<float>& IN,
                           const vector<float>& OUT);
+
+        template <typename T = float>
+        bool check_kernel(shared_ptr<ngraph::Node> node,
+                          DeviceType dev_t,
+                          const vector<T>& IN,
+                          const vector<T>& OUT)
+        {
+            auto rt = CudaDefaultRuntime::Runtime();
+            std::vector<shared_ptr<const KernelRegistration>> available_kernels =
+                KernelRegistry::Global()->FindKernelRegistrations(
+                    node->description(), CUDA_GPU, DT_FLOAT);
+            shared_ptr<KernelContext> ctx(new KernelContext(node));
+            bool kernel_found = false;
+            for (auto& kernel_reg : available_kernels)
+            {
+                auto kernel = kernel_reg->m_factory(ctx);
+                if (kernel->get_or_emit_source())
+                {
+                    kernel_found = true;
+                    auto pctx = make_shared<ProfilingContext>(kernel);
+                    Profiler prof(rt, pctx);
+
+                    // The execute() will return a vector of vector,
+                    // we only compare the first one with our ground
+                    // truth
+                    auto res = prof.unsafe_execute<T>((void*)IN.data());
+                    if (res.empty())
+                        return false;
+                    auto& res_first = res[0];
+
+                    if (res_first.size() != OUT.size())
+                        return false;
+
+                    if (!all_close(res_first, OUT))
+                        return false;
+
+                    LOG_INFO << "Kernel pass unit-test.";
+                }
+                else
+                {
+                    LOG_WARN << "Kernel is not available.";
+                }
+            }
+            if (!kernel_found)
+                LOG_WARN << "No available found!";
+            return kernel_found;
+        }
     }
 }

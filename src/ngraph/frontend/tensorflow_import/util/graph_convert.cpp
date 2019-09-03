@@ -1996,6 +1996,45 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateTileOp(const tensorflow::NodeDef& node,
+                                            const NodeMap& all_ng_nodes,
+                                            ngraph::op::ParameterVector& parameters)
+            {
+                /*
+                This operation creates a new tensor by replicating input multiples times. 
+                The output tensor's i'th dimension has input.dims(i) * multiples[i] elements, 
+                and the values of input are replicated multiples[i] times along the 'i'th dimension. 
+                For example, tiling [a b c d] by [2] produces [a b c d a b c d].
+                */
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_multiples = GetInputNode(all_ng_nodes, node, 1);
+                ngraph::op::OpConfig::any myConfig;
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    node.op(),
+                    std::vector<std::shared_ptr<Node>>({ng_input, ng_multiples}),
+                    myConfig);
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateUnsortedSegmentSumOp(const tensorflow::NodeDef& node,
+                                                          const NodeMap& all_ng_nodes,
+                                                          ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_seg_id = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_seg_num = GetInputNode(all_ng_nodes, node, 2);
+                ngraph::op::OpConfig::any myConfig;
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(),
+                    node.op(),
+                    std::vector<std::shared_ptr<Node>>({ng_input, ng_seg_id, ng_seg_num}),
+                    myConfig);
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateSoftmaxOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                ngraph::op::ParameterVector& parameters)
@@ -2199,6 +2238,8 @@ namespace ngraph
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
+                {"Tile", TranslateTileOp},
+                {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
                 {"Transpose", TranslateTransposeToReshapeOp}};
 
             struct InputInfo

@@ -754,6 +754,68 @@ TEST(tensorflow_import, reduce_sum_2_op)
     }
 }
 
+TEST(tensorflow_import, addn)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_addn_graph.pb"));
+
+    Inputs inputs{{1, 2}, {3, 4}, {5, 6}};
+
+    Outputs expected_outputs{{9, 12}};
+
+    ///\todo Change ngraph::INTERPRETER into nnfusion::reference
+    /*
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+    */
+}
+
+TEST(tensorflow_import, tile)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_tile_graph.pb"));
+
+    Inputs inputs{};
+
+    Outputs expected_outputs{{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8,
+                              5, 6, 7, 8, 5, 6, 7, 8, 1, 2, 3, 4, 1, 2, 3, 4,
+                              1, 2, 3, 4, 5, 6, 7, 8, 5, 6, 7, 8, 5, 6, 7, 8}};
+
+    ///\todo Change ngraph::INTERPRETER into nnfusion::reference
+    /*
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+    */
+}
+
+TEST(tensorflow_import, unsorted_segment_sum)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_unsorted_segment_sum_graph.pb"));
+
+    Inputs inputs{};
+
+    Outputs expected_outputs{{5, 5, 5, 5, 5, 6, 7, 8}};
+
+    ///\todo Change ngraph::INTERPRETER into nnfusion::reference
+    /*
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+    */
+}
+
 //TEST(onnx, model_add_abc_initializers)
 // {
 //     auto function = onnx_import::import_onnx_function(

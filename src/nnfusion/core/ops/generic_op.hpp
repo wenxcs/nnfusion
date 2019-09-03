@@ -101,6 +101,15 @@ namespace ngraph
             return get_op_configs()[opname];
         }
 
+        template <typename T>
+        std::string expand_vector(string name, vector<T>& d, std::string typestring)
+        {
+            stringstream ss;
+            for (int i = 0; i < d.size(); i++)
+                ss << typestring << " " << name << i << " = " << to_string(d[i]) << ";\n";
+            return ss.str();
+        }
+
         inline std::string create_code_from_template(std::string templ,
                                                      const ngraph::op::OpConfig::any& feed_dict)
         {
