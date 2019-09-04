@@ -1666,6 +1666,35 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateRsqrtGradOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+
+                //`grad = dy * -0.5 * y^3`, where `y = rsqrt(x)`, and `dy`
+                // Create a constant tensor populated with the value 3.
+                auto et = ng_input->get_element_type();
+                auto shape = ng_input->get_shape();
+                std::vector<std::string> constant_values(ngraph::shape_size(shape), "3");
+
+                auto ng_exponent =
+                    std::make_shared<ngraph::op::Constant>(et, shape, constant_values);
+
+                // Raise each element of the input to the power 3.
+                auto ng_pow = std::make_shared<ngraph::op::Power>(ng_input, ng_exponent);
+
+                // Create a constant tensor populated with the value -1/2.
+                std::vector<std::string> constant_diff(ngraph::shape_size(shape), "-0.5");
+                auto ng_diff = std::make_shared<ngraph::op::Constant>(et, shape, constant_diff);
+                auto ng_multiply = std::make_shared<ngraph::op::Multiply>(ng_pow, ng_delta);
+                auto ng_node = std::make_shared<ngraph::op::Multiply>(ng_multiply, ng_diff);
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateStridedSliceOp(const tensorflow::NodeDef& node,
                                                     const NodeMap& all_ng_nodes,
                                                     ngraph::op::ParameterVector& parameters)
@@ -2178,6 +2207,33 @@ namespace ngraph
                 return ret;
             }
 
+            // Computes the gradient for tanh of 'x' w.r.t its input
+            // grad = dy * (1 - y * y)
+            // where y = tanh(x) and dy is the corresponding input gradient
+            NamedNodeVector TranslateTanhGradOp(const tensorflow::NodeDef& node,
+                                                const NodeMap& all_ng_nodes,
+                                                ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+
+                auto et = ng_input->get_element_type();
+                auto input_shape = ng_input->get_shape();
+
+                auto ng_sq = std::make_shared<ngraph::op::Multiply>(ng_input, ng_input);
+
+                std::vector<std::string> const_values(ngraph::shape_size(input_shape), "1");
+
+                auto ng_const =
+                    std::make_shared<ngraph::op::Constant>(et, input_shape, const_values);
+
+                auto ng_sub = std::make_shared<ngraph::op::Subtract>(ng_const, ng_sq);
+                auto ng_node = std::make_shared<ngraph::op::Multiply>(ng_delta, ng_sub);
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -2223,6 +2279,7 @@ namespace ngraph
                 {"ReluGrad", TranslateReluGradOp},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateRsqrtOp},
+                {"RsqrtGrad", TranslateRsqrtGradOp},
                 {"RealDiv", TranslateBinaryOp<ngraph::op::Divide>},
                 {"Select", TranslateSelectOp},
                 {"Sigmoid", TranslateSigmoidOp},
@@ -2238,6 +2295,7 @@ namespace ngraph
                 {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
                 {"Sum", TranslateSumOp},
                 {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
+                {"TanhGrad", TranslateTanhGradOp},
                 {"Tile", TranslateTileOp},
                 {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
                 {"Transpose", TranslateTransposeToReshapeOp}};
