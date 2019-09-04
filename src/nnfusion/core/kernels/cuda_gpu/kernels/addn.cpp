@@ -49,12 +49,10 @@ namespace nnfusion
                     // First: using string stream
 
                     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
-                    lu << "uint32_t step = gridDim.x * blockDim.x;\n";
-                    lu << "uint32_t tmax = " << threads << ";\n";
-                    lu << "for ( ;tid < tmax; tid += step)\n";
+                    lu << "if(tid < " << threads << ")\n";
                     lu.block_begin();
                     {
-                        lu << dtype.c_type_string() << " accum = 0.0;\n";
+                        lu << dtype.c_type_string() << " accum = 0;\n";
                         for (size_t i = 0; i < input_count; i++)
                             lu << "accum += input" << i << "[tid];\n";
                         lu << "output0[tid] = accum;\n";

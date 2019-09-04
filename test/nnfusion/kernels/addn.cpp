@@ -39,3 +39,25 @@ TEST(nnfusion_core_kernels, addn)
 
     EXPECT_TRUE(nnfusion::test::check_kernel<float>(node, CUDA_GPU, IN, OUT));
 }
+
+TEST(nnfusion_core_kernels, addn_large)
+{
+    // Prepare inputs
+    // you can treate both input and weights as ngraph::op::Paramter
+    Shape shape_a{102424};
+    auto A = make_shared<op::Parameter>(element::f32, shape_a);
+    Shape shape_b{102424};
+    auto B = make_shared<op::Parameter>(element::f32, shape_b);
+    auto inputs = vector<shared_ptr<ngraph::Node>>{A, B};
+
+    string node_type("AddN");
+    // Create node for AddN
+    ngraph::op::OpConfig::any myConfig;
+    auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
+
+    // Prepare test data
+    auto IN = vector<float>(102424 * 2, 1);
+    auto OUT = vector<float>(102424, 2);
+
+    EXPECT_TRUE(nnfusion::test::check_kernel<float>(node, CUDA_GPU, IN, OUT));
+}
