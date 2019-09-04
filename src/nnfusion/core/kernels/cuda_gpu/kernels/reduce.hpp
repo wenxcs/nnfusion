@@ -56,7 +56,7 @@ namespace nnfusion
                     // Trivial case: no reduction axes.
                     if (reduce_rank == 0)
                     {
-                        return emit_function_body_memcpy();
+                        return nullptr;
                     }
                     else if (out_rank != 0)
                     {
@@ -375,6 +375,78 @@ namespace nnfusion
                 ngraph::NVShape input_strides, non_reduce_strides, reduce_strides, reduce_shape;
                 size_t data_bytes, rank, reduce_rank, out_rank;
                 uint32_t nthreads_acc;
+                string reduce_op, input_type, output_type;
+            };
+
+            template <class T>
+            class ReduceMemcpy : public CudaLibEmitter
+            {
+            public:
+                ReduceMemcpy(shared_ptr<KernelContext> ctx)
+                    : CudaLibEmitter(ctx)
+                {
+                    if (auto reduce = dynamic_pointer_cast<ngraph::op::Reduce>(ctx->node))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else if (auto reduce = dynamic_pointer_cast<ngraph::op::Sum>(ctx->node))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else
+                    {
+                        enforce(false) << "incorrect kernel for reduce";
+                    }
+
+                    reduce_rank = reduce_axis.size();
+                    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
+                    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+                    rank = input_shape.size();
+                    out_rank = rank - reduce_rank;
+
+                    reduce_op = CudaOpMap<T>::op;
+                    input_type = ctx->inputs[0].get_element_type().c_type_string();
+                    output_type = ctx->outputs[0].get_element_type().c_type_string();
+
+                    std::stringstream tag;
+                    tag << "cuda"
+                        << "_reduce_Memcpy"
+                        << "_" << reduce_op << "_" << input_type << "_" << output_type << "_s_"
+                        << join(input_shape, "_") << "_axis_" << join(reduce_axis, "_");
+                    custom_tag = tag.str();
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    if (reduce_rank != 0)
+                    {
+                        return nullptr;
+                    }
+
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+                    auto& lu = *_lu;
+                    auto dst = m_context->outputs[0];
+                    auto src = m_context->inputs[0];
+                    lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
+                    lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
+
+                    emit_memcpyDtD(lu, dst, src);
+
+                    return _lu;
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+                    _lu->require(header::cuda);
+                    return _lu;
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                ngraph::AxisSet reduce_axis;
+                ngraph::Shape input_shape, output_shape;
+                size_t rank, reduce_rank, out_rank;
                 string reduce_op, input_type, output_type;
             };
         } // namespace cuda
