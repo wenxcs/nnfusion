@@ -22,6 +22,7 @@
 #include "ngraph/op/divide.hpp"
 #include "ngraph/op/dot.hpp"
 #include "ngraph/op/exp.hpp"
+#include "ngraph/op/floor.hpp"
 #include "ngraph/op/get_output_element.hpp"
 #include "ngraph/op/less_eq.hpp"
 #include "ngraph/op/max_pool.hpp"
@@ -2275,6 +2276,25 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateFloorDivOp(const tensorflow::NodeDef& node,
+                                                const NodeMap& all_ng_nodes,
+                                                ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+
+                std::tie(ng_lhs, ng_rhs) =
+                    ngraph::builder::numpy_broadcast(std::make_pair(ng_lhs, ng_rhs));
+
+                auto ng_div = std::make_shared<ngraph::op::Divide>(ng_lhs, ng_rhs);
+
+                auto ng_node = std::make_shared<ngraph::op::Floor>(ng_div);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
                 {"Add", TranslateBinaryOp<ngraph::op::Add>},
@@ -2297,6 +2317,7 @@ namespace ngraph
                 {"Exp", TranslateUnaryOp<ngraph::op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
                 {"Fill", TranslateFillOp},
+                {"FloorDiv", TranslateFloorDivOp},
                 {"FusedBatchNorm", TranslateFusedBatchNormOp},
                 {"FusedBatchNormV2", TranslateFusedBatchNormOp},
                 {"GatherV2", TranslateGatherV2Op},
