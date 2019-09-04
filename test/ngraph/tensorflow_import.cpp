@@ -42,6 +42,27 @@ using Model = std::vector<std::shared_ptr<Function>>;
 //         file_util::path_join(SERIALIZED_ZOO, "tensorflow/inception_v3_2016_08_28_frozen.pb"));
 //}
 
+TEST(tensorflow_import, floormod_op)
+{
+    auto model = frontend::load_tensorflow_model(
+        file_util::path_join(SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_floor_mod.pb"));
+
+    Inputs inputs;
+
+    inputs.emplace_back(
+        test::NDArray<float, 2>{{1.8, 2.2}, {-1.3, -0.04}, {3.0, -12}}.get_vector());
+    inputs.emplace_back(test::NDArray<float, 1>{100, -100}.get_vector());
+    Outputs expected_outputs{
+        test::NDArray<float, 2>{{1.8, -97.8}, {98.7, -0.04}, {3, -12}}.get_vector()};
+
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        Outputs outputs{execute(model[i], inputs, "INTERPRETER")};
+        EXPECT_EQ(outputs.size(), 1);
+        EXPECT_EQ(expected_outputs[i], outputs.front());
+    }
+}
+
 TEST(tensorflow_import, abs_op)
 {
     auto model = frontend::load_tensorflow_model(

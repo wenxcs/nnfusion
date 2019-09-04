@@ -2224,6 +2224,28 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateFloorModOp(const tensorflow::NodeDef& node,
+                                                const NodeMap& all_ng_nodes,
+                                                ngraph::op::ParameterVector& parameters)
+            {
+                auto ng_input_1 = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_input_2 = GetInputNode(all_ng_nodes, node, 1);
+
+                std::tie(ng_input_1, ng_input_2) =
+                    ngraph::builder::numpy_broadcast(std::make_pair(ng_input_1, ng_input_2));
+
+                std::shared_ptr<ngraph::Node> ng_floordiv_op = std::make_shared<ngraph::op::Floor>(
+                    std::make_shared<ngraph::op::Divide>(ng_input_1, ng_input_2));
+
+                std::shared_ptr<ngraph::Node> ng_floormod_op =
+                    std::make_shared<ngraph::op::Subtract>(
+                        ng_input_1,
+                        std::make_shared<ngraph::op::Multiply>(ng_floordiv_op, ng_input_2));
+
+                ng_floormod_op->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_floormod_op}};
+                return ret;
+            }
             NamedNodeVector TranslateDynamicStitchOp(const tensorflow::NodeDef& node,
                                                      const NodeMap& all_ng_nodes,
                                                      ngraph::op::ParameterVector& parameters)
@@ -2317,6 +2339,7 @@ namespace ngraph
                 {"Exp", TranslateUnaryOp<ngraph::op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
                 {"Fill", TranslateFillOp},
+                {"FloorMod", TranslateFloorModOp},
                 {"FloorDiv", TranslateFloorDivOp},
                 {"FusedBatchNorm", TranslateFusedBatchNormOp},
                 {"FusedBatchNormV2", TranslateFusedBatchNormOp},
