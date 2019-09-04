@@ -2223,6 +2223,31 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateDynamicStitchOp(const tensorflow::NodeDef& node,
+                                                     const NodeMap& all_ng_nodes,
+                                                     ngraph::op::ParameterVector& parameters)
+            {
+                int32 num_partitions;
+                std::vector<std::shared_ptr<Node>> input_nodes;
+
+                assert(GetNodeAttr(node.attr(), "N", num_partitions) == true);
+                for (int i = 0; i < num_partitions * 2; i++)
+                {
+                    auto ng_input = GetInputNode(all_ng_nodes, node, i);
+                    input_nodes.push_back(ng_input);
+                }
+
+                ngraph::op::OpConfig::any myConfig;
+                myConfig["N"] = num_partitions;
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(), node.op(), input_nodes, myConfig);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             // Computes the gradient for tanh of 'x' w.r.t its input
             // grad = dy * (1 - y * y)
             // where y = tanh(x) and dy is the corresponding input gradient
@@ -2267,6 +2292,7 @@ namespace ngraph
                 {"Conv2D", TranslateConv2DOp},
                 {"ConcatV2", TranslateConcatV2Op},
                 {"DivNoNan", TranslateBinaryOp<ngraph::op::DivNoNan>},
+                {"DynamicStitch", TranslateDynamicStitchOp},
                 {"Equal", TranslateBinaryOp<ngraph::op::Equal>},
                 {"Exp", TranslateUnaryOp<ngraph::op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
