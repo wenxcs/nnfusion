@@ -97,6 +97,8 @@ namespace nnfusion
 {
     namespace test
     {
+        IProfilingRuntime::Pointer gen_runtime(DeviceType dev_t);
+
         template <typename T>
         extern bool all_close(const std::vector<T>& a, const std::vector<T>& b);
 
@@ -117,10 +119,10 @@ namespace nnfusion
                           const vector<T>& IN,
                           const vector<T>& OUT)
         {
-            auto rt = CudaDefaultRuntime::Runtime();
+            auto rt = gen_runtime(dev_t);
             std::vector<shared_ptr<const KernelRegistration>> available_kernels =
                 KernelRegistry::Global()->FindKernelRegistrations(
-                    node->description(), CUDA_GPU, DT_FLOAT);
+                    node->description(), dev_t, DT_FLOAT);
             shared_ptr<KernelContext> ctx(new KernelContext(node));
             bool kernel_found = false;
             for (auto& kernel_reg : available_kernels)

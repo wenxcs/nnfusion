@@ -75,6 +75,22 @@ namespace ngraph
                 return ret;
             }
 
+            NamedNodeVector TranslateInvertPermutationOp(const tensorflow::NodeDef& node,
+                                                         const NodeMap& all_ng_nodes,
+                                                         ngraph::op::ParameterVector& parameters)
+            {
+                auto inputs = GetAllInputNode(all_ng_nodes, node);
+                ngraph::op::OpConfig::any myConfig;
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(), node.op(), inputs, myConfig);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+
+                return ret;
+            }
+
             NamedNodeVector TranslateNoOp(const tensorflow::NodeDef& node,
                                           const NodeMap& all_ng_nodes,
                                           ngraph::op::ParameterVector& parameters)
@@ -2263,6 +2279,7 @@ namespace ngraph
                 {"StopGradient", TranslateIdentityOp},
                 {"NoOp", TranslateNoOp},
                 {"Identity", TranslateIdentityOp},
+                {"InvertPermutation", TranslateInvertPermutationOp},
                 {"MatMul", TranslateMatMulOp},
                 {"LessEqual", TranslateBinaryOp<ngraph::op::LessEq>},
                 {"MaxPool", TranslateMaxPoolOp},
