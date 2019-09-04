@@ -739,12 +739,12 @@ TEST(tensorflow_import, select_op)
 TEST(tensorflow_import, reduce_sum_2_op)
 {
     auto model = frontend::load_tensorflow_model(file_util::path_join(
-        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_sum_2_graph.pb"));
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_sum_null_graph.pb"));
 
     // input [[1,2,3],[4,5,6]]
     Inputs inputs{};
 
-    Outputs expected_outputs{{21}};
+    Outputs expected_outputs{{1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.}};
 
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
     {

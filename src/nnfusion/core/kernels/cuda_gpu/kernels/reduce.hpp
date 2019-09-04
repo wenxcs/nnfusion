@@ -53,7 +53,12 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    if (out_rank != 0)
+                    // Trivial case: no reduction axes.
+                    if (reduce_rank == 0)
+                    {
+                        return emit_function_body_memcpy();
+                    }
+                    else if (out_rank != 0)
                     {
                         return emit_function_body_nd();
                     }
@@ -73,6 +78,21 @@ namespace nnfusion
                             return emit_function_body_scalar();
                         }
                     }
+                }
+
+                LanguageUnit_p emit_function_body_memcpy()
+                {
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+                    auto& lu = *_lu;
+
+                    lu << "if (input0 != output0) {\n"
+                       << "   cudaMemcpy(output0, input0, "
+                       << static_cast<uint32_t>(shape_size(input_shape)) << " * sizeof("
+                       << input_type << ")"
+                       << ", cudaMemcpyDeviceToDevice);\n"
+                       << "}\n";
+
+                    return _lu;
                 }
 
                 LanguageUnit_p emit_function_body_nd()
