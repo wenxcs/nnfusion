@@ -10,7 +10,7 @@ namespace nnfusion
     {
         namespace pass
         {
-            class ReshapeInplacePass : public GraphPassBase
+            class OpInplacePass : public GraphPassBase
             {
             public:
                 bool run_on_graph(std::shared_ptr<Graph>& graph) override;

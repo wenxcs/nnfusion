@@ -8,7 +8,7 @@
 #include "generate_result_op_pass.hpp"
 #include "liveness_pass.hpp"
 #include "memory_layout_pass.hpp"
-#include "reshape_inplace_pass.hpp"
+#include "op_inplace_pass.hpp"
 #include "runtime_const_folding_pass.hpp"
 
 using namespace nnfusion::graph::pass;
@@ -24,7 +24,7 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<LivenessPass>();
     pass_manager.register_pass<MemoryLayoutPass>(64);
-    pass_manager.register_pass<ReshapeInplacePass>();
+    pass_manager.register_pass<OpInplacePass>();
     pass_manager.run_passes(graph);
 
     return true;
