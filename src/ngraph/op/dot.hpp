@@ -61,9 +61,11 @@ namespace ngraph
                     new_args.at(0), new_args.at(1), m_reduction_axes_count);
             }
 
+            bool& get_transpose_B() { return m_transpose_B; }
         protected:
             size_t m_reduction_axes_count;
             bool m_has_reduction_axes_count;
+            bool m_transpose_B = false;
 
             virtual void generate_adjoints(autodiff::Adjoints& adjoints,
                                            const NodeVector& deltas) override;

@@ -40,6 +40,7 @@ namespace nnfusion
                     auto gemm = static_pointer_cast<ngraph::op::Dot>(ctx->node);
                     auto reduction_axes = gemm->get_reduction_axes_count();
                     auto& dtype = ctx->outputs[0].get_element_type().c_type_string();
+                    auto transpose_B = gemm->get_transpose_B();
 
                     if (arg0_shape.empty() || arg1_shape.empty())
                         return nullptr;
@@ -53,52 +54,102 @@ namespace nnfusion
                         return nullptr;
 
                     std::string templ;
-                    if (arg0_shape == ngraph::Shape({128, 9216}) &&
-                        arg1_shape == ngraph::Shape({9216, 4096}))
+                    if (arg0_shape[0] == 1)
                     {
-                        templ =
-                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_128x9216x4096.h.in";
+                        m_gridDim = dim3(1, 0, 1);
+                        m_blockDim = dim3(64, 1, 1);
+
+                        int dataSize;
+
+                        if (transpose_B)
+                            assert(arg0_shape[1] == arg1_shape[1]), m_gridDim.y = arg1_shape[0];
+                        else
+                            assert(arg0_shape[1] == arg1_shape[0]), m_gridDim.y = arg1_shape[1];
+
+                        templ = ngraph::op::create_code_from_template(
+                            R"(
+	constexpr unsigned int gridDimX = @gridDimX@;
+    constexpr unsigned int gridDimY = @gridDimY@;
+    constexpr unsigned int blockSize = @blockSize@;
+    constexpr unsigned int dataSize = @dataSize@;
+    constexpr bool transpose_B = @transpose_B@;
+
+    extern __shared__ float sdata[blockSize];
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x*(blockSize*2) + tid;
+    constexpr unsigned int gridSize = blockSize*2*gridDimX;
+    sdata[tid] = 0;
+    if (transpose_B) {
+        #pragma unroll
+        while (i < dataSize) { sdata[tid] += input0[i] * input1[blockIdx.y * dataSize + i] + input0[i + blockSize] * input1[blockIdx.y * dataSize + i + blockSize]; i += gridSize; }
+    } else {
+        #pragma unroll
+        while (i < dataSize) { sdata[tid] += input0[i] * input1[blockIdx.y + gridDimY * i] + input0[i + blockSize] * input1[blockIdx.y + gridDimY * i + gridDimY * blockSize]; i += gridSize; }
+    }
+    if (blockSize >= 128) { __syncthreads(); }
+    if (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
+    if (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
+
+    // warp_reduce
+    volatile float *__sdata = (volatile float *)sdata;
+    if (blockSize >= 128) __sdata[tid] += __sdata[tid + 64];
+    if (blockSize >= 64) __sdata[tid] += __sdata[tid + 32];
+    if (blockSize >= 32) __sdata[tid] += __sdata[tid + 16];
+    if (blockSize >= 16) __sdata[tid] += __sdata[tid + 8];
+    if (blockSize >= 8) __sdata[tid] += __sdata[tid + 4];
+    if (blockSize >= 4) __sdata[tid] += __sdata[tid + 2];
+    if (blockSize >= 2) __sdata[tid] += __sdata[tid + 1];
+
+    if (tid == 0) output0[blockIdx.y] = sdata[0];
+
+						)",
+                            {
+                                {"transpose_B", (bool)transpose_B},
+                                {"gridDimX", 1},
+                                {"gridDimY", m_gridDim.y},
+                                {"dataSize", arg0_shape[1]},
+                                {"blockSize", 64},
+                            });
+                    }
+                    else if (arg0_shape == ngraph::Shape({128, 9216}) &&
+                             arg1_shape == ngraph::Shape({9216, 4096}))
+                    {
                         m_gridDim = dim3(128, 4, 1);
                         m_blockDim = dim3(16, 16, 1);
+                        templ = nnfusion::codegen::get_content_from_templates(
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_128x9216x4096.h.in");
                     }
                     else if (arg0_shape == ngraph::Shape({128, 4096}) &&
                              arg1_shape == ngraph::Shape({4096, 4096}))
                     {
-                        templ =
-                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_128x4096x4096.h.in";
                         m_gridDim = dim3(128, 4, 1);
                         m_blockDim = dim3(16, 16, 1);
-                    }
-                    else if (arg0_shape == ngraph::Shape({1, 256}) &&
-                             arg1_shape == ngraph::Shape({256, 256}))
-                    {
-                        templ = "rocm_adapter/fixed_kernels/gemm/manual_NN_1x256x256.h.in";
-                        m_gridDim = dim3(1, 256, 1);
-                        m_blockDim = dim3(64, 1, 1);
+                        templ = nnfusion::codegen::get_content_from_templates(
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_128x4096x4096.h.in");
                     }
                     else if (arg0_shape == ngraph::Shape({64, 25088}) &&
                              arg1_shape == ngraph::Shape({25088, 4096}))
                     {
-                        templ =
-                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_64x25088x4096.h.in";
                         m_gridDim = dim3(128, 2, 1);
                         m_blockDim = dim3(16, 16, 1);
+                        templ = nnfusion::codegen::get_content_from_templates(
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_64x25088x4096.h.in");
                     }
                     else if (arg0_shape == ngraph::Shape({512, 4096}) &&
                              arg1_shape == ngraph::Shape({4096, 1024}))
                     {
-                        templ =
-                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_512x4096x1024.h.in";
                         m_gridDim = dim3(16, 8, 1);
                         m_blockDim = dim3(16, 16, 1);
+                        templ = nnfusion::codegen::get_content_from_templates(
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_512x4096x1024.h.in");
                     }
                     else if (arg0_shape == ngraph::Shape({512, 1024}) &&
                              arg1_shape == ngraph::Shape({1024, 4096}))
                     {
-                        templ =
-                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_512x1024x4096.h.in";
                         m_gridDim = dim3(64, 8, 1);
                         m_blockDim = dim3(16, 16, 1);
+                        templ = nnfusion::codegen::get_content_from_templates(
+                            "rocm_adapter/fixed_kernels/gemm/matmul_autotvm_NN_512x1024x4096.h.in");
                     }
                     else
                         return nullptr;
@@ -109,7 +160,7 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
                     lu.block_begin();
-                    lu << nnfusion::codegen::get_content_from_templates(templ) << "\n";
+                    lu << templ << "\n";
                     lu.block_end();
                     return _lu;
                 }

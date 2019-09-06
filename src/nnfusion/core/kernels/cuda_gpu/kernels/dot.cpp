@@ -25,6 +25,12 @@ cuda::Dot::Dot(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cuda::Dot::emit_function_body()
 {
+    auto& ctx = m_context;
+    auto gemm = static_pointer_cast<ngraph::op::Dot>(ctx->node);
+    auto transpose_B = gemm->get_transpose_B();
+    if (transpose_B)
+        return nullptr;
+
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 

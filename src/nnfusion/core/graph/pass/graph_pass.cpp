@@ -10,6 +10,7 @@
 #include "memory_layout_pass.hpp"
 #include "reshape_inplace_pass.hpp"
 #include "runtime_const_folding_pass.hpp"
+#include "vector_dot_transpose_pass.hpp"
 
 using namespace nnfusion::graph::pass;
 using namespace std;
@@ -21,6 +22,7 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<GenerateResultOpPass>();
     //pass_manager.register_pass<ConstantFoldingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
+    pass_manager.register_pass<VectorDotTransposePass>();
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<LivenessPass>();
     pass_manager.register_pass<MemoryLayoutPass>(64);
