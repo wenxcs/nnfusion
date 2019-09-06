@@ -9,13 +9,13 @@
 #include "ngraph/except.hpp"
 #include "ngraph/file_util.hpp"
 #include "ngraph/frontend/onnx_import/onnx.hpp"
-#include "ngraph/frontend/tensorflow_import/tensorflow.hpp"
 #include "ngraph/graph_util.hpp"
 #include "ngraph/pass/manager.hpp"
 #include "ngraph/pass/visualize_tree.hpp"
 #include "ngraph/runtime/backend.hpp"
 #include "ngraph/serializer.hpp"
 #include "ngraph/util.hpp"
+#include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 
 #include "nnfusion/core/graph/graph.hpp"
 
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
             if (model_format == "function")
             {
                 std::vector<std::shared_ptr<Function>> functions =
-                    ngraph::frontend::load_tensorflow_model(model);
+                    nnfusion::frontend::load_tensorflow_model(model);
                 // TODO(jxue): currently we only use the first output function, need to support compile
                 // multiple output functions in the future
                 f = functions.front();
@@ -148,7 +148,7 @@ int main(int argc, char** argv)
             else if (model_format == "graph")
             {
                 // load tensorlfow model as graph
-                graph = ngraph::frontend::load_tensorflow_model_as_graph(model);
+                graph = nnfusion::frontend::load_tensorflow_model_as_graph(model);
             }
             else
             {
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
         }
         else if (format == "onnx")
         {
-            f = onnx_import::import_onnx_function(model);
+            f = ngraph::onnx_import::import_onnx_function(model);
         }
         else
         {

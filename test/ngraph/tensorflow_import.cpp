@@ -21,8 +21,8 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "ngraph/frontend/tensorflow_import/tensorflow.hpp"
 #include "ngraph/ngraph.hpp"
+#include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 #include "util/all_close.hpp"
 #include "util/all_close_f.hpp"
 #include "util/ndarray.hpp"
@@ -31,7 +31,7 @@
 #include "ngraph/file_util.hpp"
 
 using namespace ngraph;
-
+using namespace nnfusion;
 using Inputs = std::vector<std::vector<float>>;
 using Outputs = std::vector<std::vector<float>>;
 using Model = std::vector<std::shared_ptr<Function>>;
