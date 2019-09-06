@@ -6,6 +6,8 @@
 #include "../graph.hpp"
 #include "ngraph/op/reshape.hpp"
 #include "ngraph/op/result.hpp"
+#include "ngraph/op/sum.hpp"
+#include "ngraph/op/broadcast.hpp"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::graph::pass;
@@ -59,6 +61,56 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
                     op_annotations->add_in_place_oi_pair({0, 0, false});
                     result->set_op_annotations(op_annotations);
                 }               
+        }
+        
+        if (node->get_op_type() == "Sum")
+        {
+            std::shared_ptr<ngraph::op::Sum> sum =
+                std::static_pointer_cast<ngraph::op::Sum>(node->get_op_ptr());
+
+            ngraph::AxisSet reduce_axes = sum->get_reduction_axes();
+
+            if (reduce_axes.empty())
+            {
+                auto op_annotations = sum->get_op_annotations();
+                if (op_annotations)
+                {
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                }
+                else
+                {
+                    op_annotations = std::make_shared<ngraph::op::util::OpAnnotations>();
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                    sum->set_op_annotations(op_annotations);
+                }
+            }
+        }
+
+        if (node->get_op_type() == "Broadcast")
+        {
+            std::shared_ptr<ngraph::op::Broadcast> broadcast =
+                std::static_pointer_cast<ngraph::op::Broadcast>(node->get_op_ptr());
+
+            ngraph::AxisSet broadcast_axes = broadcast->get_broadcast_axes();
+
+            if (broadcast_axes.empty())
+            {
+                auto op_annotations = broadcast->get_op_annotations();
+                if (op_annotations)
+                {
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                }
+                else
+                {
+                    op_annotations = std::make_shared<ngraph::op::util::OpAnnotations>();
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                    broadcast->set_op_annotations(op_annotations);
+                }
+            }
         }
     }
     return true;
