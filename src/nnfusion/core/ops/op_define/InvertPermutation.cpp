@@ -27,8 +27,6 @@ REGISTER_OP(InvertPermutation)
                 enforce(element_records[input_vector[i]] == 1)
                     << "The frequency of a number in InvertPermutation's inputs cannot above 1";
             }
-            enforce(element_records.size() == (input_vector.size() - 1))
-                << "The input vector must contain all number between 0 to n-1";
         }
 
         ngraph::Shape output_shape_0(shape_0);
