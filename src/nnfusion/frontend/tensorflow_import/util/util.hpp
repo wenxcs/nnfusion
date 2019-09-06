@@ -22,6 +22,8 @@
 
 #include "nnfusion/util/log.hpp"
 
+#include "nnfusion/engine/profiler/profiler.hpp"
+
 namespace nnfusion
 {
     namespace frontend

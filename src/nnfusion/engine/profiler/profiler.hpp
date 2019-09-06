@@ -195,7 +195,7 @@ namespace nnfusion
         class GraphEvaluate
         {
         public:
-            GraphEvaluate(shared_ptr<Graph> graph)
+            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph)
                 : gctx(GraphEvaluationContext(graph))
             {
                 rt = ReferenceRuntime::Runtime();

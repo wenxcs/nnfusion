@@ -305,8 +305,8 @@ namespace nnfusion
         ///\todo (wenxh) support full-feature profiling, this to be done with new codegen.
         struct GraphEvaluationContext
         {
-            shared_ptr<Graph> graph = nullptr;
-            GraphEvaluationContext(shared_ptr<Graph> pGraph) { graph = pGraph; };
+            shared_ptr<nnfusion::graph::Graph> graph = nullptr;
+            GraphEvaluationContext(shared_ptr<nnfusion::graph::Graph> pGraph) { graph = pGraph; };
             void reset() { graph = nullptr; }
             ///\brief This function will generate a reference kernel for the GNode
             void set_profiling_context(shared_ptr<GNode> gnode, ProfilingContext::Pointer kctx)
