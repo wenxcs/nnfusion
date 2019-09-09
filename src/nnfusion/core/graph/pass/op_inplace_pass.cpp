@@ -4,8 +4,10 @@
 #include "../gnode.hpp"
 #include "../graph.hpp"
 #include "ngraph/op/broadcast.hpp"
+#include "ngraph/op/reduce.hpp"
 #include "ngraph/op/reshape.hpp"
 #include "ngraph/op/result.hpp"
+#include "ngraph/op/slice.hpp"
 #include "ngraph/op/sum.hpp"
 
 using namespace nnfusion::graph;
@@ -65,7 +67,7 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
         if (node->get_op_type() == "Sum")
         {
             std::shared_ptr<ngraph::op::Sum> sum =
-                std::static_pointer_cast<ngraph::op::Sum>(node->get_op_ptr());
+                std::dynamic_pointer_cast<ngraph::op::Sum>(node->get_op_ptr());
 
             ngraph::AxisSet reduce_axes = sum->get_reduction_axes();
 
@@ -108,6 +110,31 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
                     // pass-through
                     op_annotations->add_in_place_oi_pair({0, 0, false});
                     broadcast->set_op_annotations(op_annotations);
+                }
+            }
+        }
+
+        if (node->get_op_type() == "Reduce")
+        {
+            std::shared_ptr<ngraph::op::Reduce> reduce =
+                std::dynamic_pointer_cast<ngraph::op::Reduce>(node->get_op_ptr());
+
+            ngraph::AxisSet reduce_axes = reduce->get_reduction_axes();
+
+            if (reduce_axes.empty())
+            {
+                auto op_annotations = reduce->get_op_annotations();
+                if (op_annotations)
+                {
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                }
+                else
+                {
+                    op_annotations = std::make_shared<ngraph::op::util::OpAnnotations>();
+                    // pass-through
+                    op_annotations->add_in_place_oi_pair({0, 0, false});
+                    reduce->set_op_annotations(op_annotations);
                 }
             }
         }
