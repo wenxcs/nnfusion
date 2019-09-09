@@ -7,7 +7,6 @@
 #include "ngraph/op/reduce.hpp"
 #include "ngraph/op/reshape.hpp"
 #include "ngraph/op/result.hpp"
-#include "ngraph/op/slice.hpp"
 #include "ngraph/op/sum.hpp"
 
 using namespace nnfusion::graph;
