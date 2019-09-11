@@ -19,8 +19,8 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    bool using_fixed = getenv("NNFUSION_ENABLE_FIXED")
-                                           ? bool(atoi(getenv("NNFUSION_ENABLE_FIXED")))
+                    bool using_fixed = getenv("NNFUSION_ENABLE_CANDIDATE")
+                                           ? bool(atoi(getenv("NNFUSION_ENABLE_CANDIDATE")))
                                            : 1;
                     if (!using_fixed)
                         return nullptr;
