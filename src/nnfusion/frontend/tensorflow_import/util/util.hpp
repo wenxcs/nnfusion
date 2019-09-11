@@ -26,6 +26,91 @@
 
 namespace nnfusion
 {
+    namespace
+    {
+        std::vector<std::vector<char>>
+            get_node_outputs(std::shared_ptr<Node> ng_op, int depth = 0, int arg_idx = 0)
+        {
+            LOG_INFO << "[" << depth << ":" << arg_idx
+                     << "] Working for node: " << ng_op->get_name();
+            static std::map<std::shared_ptr<Node>, std::vector<std::vector<char>>> dict;
+            auto it = dict.find(ng_op);
+            if (it != dict.end())
+                return it->second;
+            if (ng_op->description() == "Constant")
+            {
+                auto const_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);
+                std::vector<char> one(const_op->get_data_size());
+                memcpy(one.data(), const_op->get_data_ptr(), one.size());
+                for (int i = 0; i < std::min(10LU, one.size()); ++i)
+                    printf("%u ", one[i]);
+                puts("...");
+                auto& it = dict[ng_op];
+                it.push_back(std::move(one));
+                assert(one.size() == 0);
+                return it;
+            }
+            std::vector<std::vector<char>> _inputs, _outputs;
+            int arg_cnt = 0;
+            for (auto args : ng_op->get_arguments())
+            {
+                auto outs = get_node_outputs(args, depth + 1, arg_cnt++);
+                for (auto& out : outs)
+                {
+                    _inputs.emplace_back(std::move(out));
+                    assert(out.size() == 0);
+                }
+            }
+
+            // Prepare runtime backend
+            nnfusion::profiler::IProfilingRuntime::Pointer runtime = nullptr;
+            std::vector<shared_ptr<const KernelRegistration>> kernel_regs;
+
+            runtime = nnfusion::profiler::RocmDefaultRuntime::Runtime();
+            if (runtime->check_env())
+            {
+                kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
+                    ng_op->description(), ROCM_GPU, DT_FLOAT);
+                if (kernel_regs.size() == 0)
+                    kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
+                        ng_op->description(), CUDA_GPU, DT_FLOAT);
+            }
+            else
+            {
+                runtime = nnfusion::profiler::CudaDefaultRuntime::Runtime();
+                enforce(runtime->check_env());
+                kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
+                    ng_op->description(), CUDA_GPU, DT_FLOAT);
+            }
+
+            bool const_infer_success = false;
+            shared_ptr<KernelContext> ctx(new KernelContext(ng_op));
+            for (auto& kernel_reg : kernel_regs)
+            {
+                auto kernel = kernel_reg->m_factory(ctx);
+                if (!kernel->get_or_emit_source())
+                    continue;
+
+                nnfusion::profiler::ProfilingContext::Pointer pctx =
+                    make_shared<nnfusion::profiler::ProfilingContext>(kernel);
+
+                nnfusion::profiler::Profiler prof(runtime, pctx);
+                if (!prof.mixed_type_execute(_inputs, _outputs))
+                    continue;
+                for (int j = 0; j < _outputs.size(); ++j)
+                    for (int i = 0; i < std::min(10LU, _outputs[j].size()); ++i)
+                        printf("%u ", _outputs[j][i]);
+                puts("...");
+
+                LOG_INFO << "  For node `" << ng_op->get_name()
+                         << "`: get runtime output results of size " << _outputs.size();
+                const_infer_success = true;
+                break;
+            }
+            return dict[ng_op] = _outputs;
+        }
+    } // namespace
+
     namespace frontend
     {
         namespace tensorflow_import
@@ -155,11 +240,41 @@ namespace nnfusion
                 return dst_values;
             }
 
+            template <typename T, typename S>
+            void fill_values(std::vector<T>& dst, std::vector<char> src)
+            {
+                assert(src.size() % sizeof(S) == 0);
+                dst.resize(src.size() / sizeof(S));
+                S* raw_data = (S*)src.data();
+                for (int i = 0; i < dst.size(); ++i)
+                    dst[i] = raw_data[i];
+            }
+
             template <typename T>
             bool GetValueFromNGraphOp(std::shared_ptr<ngraph::Node> ng_op, std::vector<T>* values)
             {
                 if (ng_op->description() != "Constant")
                 {
+                    auto outs = get_node_outputs(ng_op);
+                    assert(outs.size() == 1);
+                    auto out_type = ng_op->get_output_element_type(0);
+                    LOG_INFO << "Type of Output Value is " << out_type.c_type_string();
+
+                    if (out_type == ngraph::element::f32)
+                        fill_values<T, float>(*values, outs[0]);
+                    else if (out_type == ngraph::element::f64)
+                        fill_values<T, double>(*values, outs[0]);
+                    else if (out_type == ngraph::element::i32)
+                        fill_values<T, int>(*values, outs[0]);
+                    else if (out_type == ngraph::element::u32)
+                        fill_values<T, unsigned>(*values, outs[0]);
+                    else
+                    {
+                        LOG_ERR << "Unsupport op-type conversion, op-type = " << out_type;
+                        assert(false);
+                    }
+                    return true;
+
                     LOG_ERR << "Asking for Constant value from op-type: " << ng_op->description();
                     assert(false);
                 }
@@ -307,7 +422,7 @@ namespace nnfusion
                     dst[2] = src[1];
                     dst[3] = src[2];
                 }
-            }
+            } // namespace detail
 
             static inline void BatchToNGraph(bool is_nhwc, std::shared_ptr<ngraph::Node>& ng_input)
             {

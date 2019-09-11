@@ -2613,17 +2613,21 @@ namespace nnfusion
 
             NamedNodeVector GraphConvert::convert_node(const tensorflow::NodeDef& node)
             {
+                LOG_INFO << ">> ++ Managing TF_IMPORT node " << node.name();
+                NamedNodeVector ret;
                 auto func = TRANSLATE_OP_MAP.find(node.op());
                 if (func != TRANSLATE_OP_MAP.end())
                 {
-                    return func->second(node, m_ng_node, m_parameters);
+                    ret = func->second(node, m_ng_node, m_parameters);
                 }
                 else
                 {
                     // std::cerr << "Unsupport operator: " << node.op() << std::endl;
                     // return NamedNodeVector{};
-                    return TranslateGenericNoAttrOp(node, m_ng_node, m_parameters);
+                    ret = TranslateGenericNoAttrOp(node, m_ng_node, m_parameters);
                 }
+                LOG_INFO << ">> -- Managing TF_IMPORT node " << node.name();
+                return std::move(ret);
             }
 
             std::vector<std::shared_ptr<ngraph::Function>> GraphConvert::get_funcs()
