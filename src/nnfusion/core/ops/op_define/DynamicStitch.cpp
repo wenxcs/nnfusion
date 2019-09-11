@@ -45,7 +45,8 @@ REGISTER_OP(DynamicStitch)
             else
             {
                 all_indices_constant = false;
-                enforce(false) << "currently we do not support dynamic tensor shape";
+                enforce(false) << "currently we do not support dynamic tensor shape, input_node="
+                               << indices_node->description();
             }
             auto& indices_shape = target_op.get_input_shape(i);
             auto& data_shape = target_op.get_input_shape(i + num_partitions);
