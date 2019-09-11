@@ -241,6 +241,19 @@ std::vector<std::shared_ptr<GNode>> Graph::get_ordered_ops(bool include_control_
     return update_nodes;
 }
 
+std::vector<std::shared_ptr<GNode>> Graph::get_const_nodes()
+{
+    std::vector<std::shared_ptr<GNode>> const_nodes;
+    for (auto node : get_nodes())
+    {
+        if (node->get_op_type() == "Constant")
+        {
+            const_nodes.push_back(node);
+        }
+    }
+    return const_nodes;
+}
+
 const std::shared_ptr<nnfusion::graph::Edge>
     Graph::add_edge(std::shared_ptr<GNode> source, int x, std::shared_ptr<GNode> dest, int y)
 {

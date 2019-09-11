@@ -9,6 +9,7 @@ set(SRC
     generate_result_op_pass.cpp
     graph_pass.cpp
     manager.cpp
+    gradient_weight_mapping_pass.cpp
 )
 
 add_library(nnfusion_graph_pass STATIC ${SRC})

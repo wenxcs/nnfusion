@@ -45,7 +45,7 @@ void GNode::initialize(const std::shared_ptr<ngraph::Node> op_ptr)
 {
     m_op_ptr = op_ptr;
     m_op_type = op_ptr->description();
-    m_name = op_ptr->get_name();
+    m_name = op_ptr->get_friendly_name();
 
     m_in_edges.clear();
     m_out_edges.clear();

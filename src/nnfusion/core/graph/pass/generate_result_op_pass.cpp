@@ -5,7 +5,6 @@
 #include "generate_result_op_pass.hpp"
 #include "../gnode.hpp"
 #include "../graph.hpp"
-#include "ngraph/op/reshape.hpp"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::graph::pass;

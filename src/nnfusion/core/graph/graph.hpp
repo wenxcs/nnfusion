@@ -65,6 +65,8 @@ namespace nnfusion
 
             std::vector<std::shared_ptr<GNode>> get_nodes();
             std::vector<std::shared_ptr<GNode>> get_ordered_ops(bool include_control_deps = true);
+            std::vector<std::shared_ptr<GNode>> get_const_nodes();
+
             std::shared_ptr<GNode> find_node_id(size_t id) const { return m_nodes[id]; }
             // Adds an edge that connects the xth output of `source` to the yth input of
             // `dest` and returns it. Does not update dest's NodeDef.

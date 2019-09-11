@@ -2520,6 +2520,16 @@ namespace nnfusion
                         else
                         {
                             gnode = node2gnode_map[node.second];
+                            if (gnode->get_name() != node.first)
+                            {
+                                if ((*gnode)["Alias"].is_valid())
+                                {
+                                    std::cerr << "node " << gnode->get_name()
+                                              << " has more than one alias.";
+                                    assert(false);
+                                }
+                                (*gnode)["Alias"] = node.first;
+                            }
                         }
                         gnode_map[node.first].push_back(gnode);
 
