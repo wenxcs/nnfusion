@@ -9,7 +9,7 @@ REGISTER_OP(Tile).infershape([](ngraph::op::GenericOp& target_op) -> void {
     enforce(ng_op->description() == "Constant")
         << "We only accept the Tile input \"multiples\" as Constant.";
     ///\todo multiples must be int32 or int64, we use int32 in this case, currently we ignore int64
-    auto multiples = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op)->get_vector<int>();
+    auto multiples = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op)->get_vector<int64_t>();
     enforce(input_shape_0.size() == multiples.size());
     ngraph::Shape output_shape_0(multiples.size());
     for (int i = 0; i < multiples.size(); i++)

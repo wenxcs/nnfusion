@@ -356,7 +356,7 @@ namespace nnfusion
             template <>
             struct CudaOpMap<ngraph::op::Minimum>
             {
-                static constexpr const char* op = "min";
+                static constexpr const char* op = "min_f";
                 static constexpr const char* math_kernel = "x0 > x1 ? x1 : x0";
                 static constexpr const char* atomic = "atomicMin";
             };
@@ -364,7 +364,7 @@ namespace nnfusion
             template <>
             struct CudaOpMap<ngraph::op::Maximum>
             {
-                static constexpr const char* op = "max";
+                static constexpr const char* op = "max_f";
                 static constexpr const char* math_kernel = "x0 > x1 ? x0 : x1";
                 static constexpr const char* atomic = "atomicMax";
             };

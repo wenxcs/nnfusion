@@ -20,7 +20,7 @@ namespace nnfusion
 
             private:
                 ngraph::Shape output_shape;
-                float start, limit, delta;
+                int start, limit, delta;
                 int range_num;
             };
         } // namespace cuda

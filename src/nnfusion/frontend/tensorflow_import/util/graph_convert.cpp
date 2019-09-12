@@ -1661,6 +1661,41 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateRangeOp(const tensorflow::NodeDef& node,
+                                             const NodeMap& all_ng_nodes,
+                                             ngraph::op::ParameterVector& parameters)
+            {
+                std::vector<std::shared_ptr<Node>> input_nodes;
+                auto start_node = GetInputNode(all_ng_nodes, node, 0);
+                input_nodes.push_back(start_node);
+                auto limit_node = GetInputNode(all_ng_nodes, node, 1);
+                input_nodes.push_back(limit_node);
+                auto delta_node = GetInputNode(all_ng_nodes, node, 2);
+                input_nodes.push_back(delta_node);
+
+                std::vector<int64> start_vec;
+                enforce(GetValueFromNGraphOp<int64>(start_node, &start_vec) == true);
+                enforce(start_vec.size() > 0);
+                std::vector<int64> limit_vec;
+                enforce(GetValueFromNGraphOp<int64>(limit_node, &limit_vec) == true);
+                enforce(limit_vec.size() > 0);
+                std::vector<int64> delta_vec;
+                enforce(GetValueFromNGraphOp<int64>(delta_node, &delta_vec) == true);
+                enforce(delta_vec.size() > 0);
+
+                ngraph::op::OpConfig::any myConfig;
+                myConfig["start"] = start_vec[0];
+                myConfig["limit"] = limit_vec[0];
+                myConfig["delta"] = delta_vec[0];
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(), node.op(), input_nodes, myConfig);
+
+                ng_node->set_name(node.name());
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateRsqrtOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
                                              ngraph::op::ParameterVector& parameters)
@@ -2047,18 +2082,26 @@ namespace nnfusion
                                             ngraph::op::ParameterVector& parameters)
             {
                 /*
-                This operation creates a new tensor by replicating input multiples times. 
-                The output tensor's i'th dimension has input.dims(i) * multiples[i] elements, 
-                and the values of input are replicated multiples[i] times along the 'i'th dimension. 
+                This operation creates a new tensor by replicating input multiples times.
+                The output tensor's i'th dimension has input.dims(i) * multiples[i] elements,
+                and the values of input are replicated multiples[i] times along the 'i'th dimension.
                 For example, tiling [a b c d] by [2] produces [a b c d a b c d].
                 */
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 auto ng_multiples = GetInputNode(all_ng_nodes, node, 1);
+
+                std::vector<int64> in_value;
+                enforce(GetValueFromNGraphOp<int64>(ng_multiples, &in_value))
+                    << "TileOp currently do not support dynamic tensor shape";
+                auto ng_input_shape = ng_multiples->get_shape();
+                auto ng_const =
+                    std::make_shared<ngraph::op::Constant>(element::i64, ng_input_shape, in_value);
+
                 ngraph::op::OpConfig::any myConfig;
                 auto ng_node = std::make_shared<ngraph::op::GenericOp>(
                     node.name(),
                     node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input, ng_multiples}),
+                    std::vector<std::shared_ptr<Node>>({ng_input, ng_const}),
                     myConfig);
                 NamedNodeVector ret{{node.name(), ng_node}};
                 return ret;
@@ -2071,11 +2114,18 @@ namespace nnfusion
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 auto ng_seg_id = GetInputNode(all_ng_nodes, node, 1);
                 auto ng_seg_num = GetInputNode(all_ng_nodes, node, 2);
+
+                std::vector<int> in_value;
+                enforce(GetValueFromNGraphOp<int>(ng_seg_num, &in_value))
+                    << "We only accept the sgements number as Constant.";
+                auto ng_const = std::make_shared<ngraph::op::Constant>(
+                    element::i32, ng_seg_num->get_shape(), in_value);
+
                 ngraph::op::OpConfig::any myConfig;
                 auto ng_node = std::make_shared<ngraph::op::GenericOp>(
                     node.name(),
                     node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input, ng_seg_id, ng_seg_num}),
+                    std::vector<std::shared_ptr<Node>>({ng_input, ng_seg_id, ng_const}),
                     myConfig);
                 NamedNodeVector ret{{node.name(), ng_node}};
                 return ret;
@@ -2254,10 +2304,25 @@ namespace nnfusion
                 std::vector<std::shared_ptr<Node>> input_nodes;
 
                 assert(GetNodeAttr(node.attr(), "N", num_partitions) == true);
+
                 for (int i = 0; i < num_partitions * 2; i++)
                 {
                     auto ng_input = GetInputNode(all_ng_nodes, node, i);
-                    input_nodes.push_back(ng_input);
+                    auto ng_input_shape = ng_input->get_shape();
+
+                    if (i < num_partitions)
+                    {
+                        std::vector<int64> in_value;
+                        enforce(GetValueFromNGraphOp<int64>(ng_input, &in_value))
+                            << "DynamicStitch currently do not support dynamic tensor shape";
+                        auto ng_const = std::make_shared<ngraph::op::Constant>(
+                            element::i64, ng_input_shape, in_value);
+                        input_nodes.push_back(ng_const);
+                    }
+                    else
+                    {
+                        input_nodes.push_back(ng_input);
+                    }
                 }
 
                 ngraph::op::OpConfig::any myConfig;
@@ -2352,16 +2417,19 @@ namespace nnfusion
                 {"InvertPermutation", TranslateInvertPermutationOp},
                 {"MatMul", TranslateMatMulOp},
                 {"LessEqual", TranslateBinaryOp<ngraph::op::LessEq>},
+                {"Maximum", TranslateBinaryOp<ngraph::op::Maximum>},
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
                 {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
+                {"Neg", TranslateUnaryOp<ngraph::op::Negative>},
                 {"OneHot", TranslateOneHotOp},
                 {"Pack", TranslatePackOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
                 {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
                 {"Pow", TranslateBinaryOp<ngraph::op::Power>},
+                {"Range", TranslateRangeOp},
                 {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
                 {"ReluGrad", TranslateReluGradOp},
                 {"Reshape", TranslateReshapeOp},

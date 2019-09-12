@@ -14,30 +14,26 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class InvertPermutation : public KernelEmitter
+            class InvertPermutation : public CudaEmitter
             {
             public:
                 InvertPermutation(shared_ptr<KernelContext> ctx)
-                    : KernelEmitter(ctx, "cuda")
+                    : CudaEmitter(ctx)
                 {
                     data_size = ctx->inputs[0].get_size();
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    auto code = ngraph::op::create_code_from_template(
-                        R"(
-                            for (int i = 0; i < @number@; i++)
-                            {
-                                output0[input0[i]] = i;
-                            }
-                        )",
-                        {{"number", data_size}});
-
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
+
+                    lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
+                    lu << "if(tid < " << data_size << ")\n";
                     lu.block_begin();
-                    lu << code << "\n";
+                    {
+                        lu << "output0[input0[tid]] = tid;\n";
+                    }
                     lu.block_end();
                     return _lu;
                 }
@@ -45,7 +41,17 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+                    _lu->require(header::cuda);
                     return _lu;
+                }
+
+                void set_launch_config() override
+                {
+                    uint32_t block_size_x = 512;
+                    size_t block_cnt = align_to_block_size(data_size, block_size_x);
+
+                    m_gridDim = dim3(block_cnt, 1, 1);
+                    m_blockDim = dim3(block_size_x, 1, 1);
                 }
 
             private:
@@ -61,9 +67,3 @@ REGISTER_KERNEL_EMITTER(
     "InvertPermutation",
     Device(CUDA_GPU).TypeConstraint(DT_FLOAT), // TODO: this op input and output will all be int
     cuda::InvertPermutation)
-
-REGISTER_KERNEL_EMITTER("InvertPermutation",
-                        Device(GENERIC_CPU)
-                            .TypeConstraint(DT_FLOAT)
-                            .Tag("reference"), // TODO: this op input and output will all be int
-                        cuda::InvertPermutation)
