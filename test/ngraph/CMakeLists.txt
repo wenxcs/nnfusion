@@ -38,7 +38,6 @@ set(NGRAPH_TESTS
     ngraph/pass_liveness.cpp
     ngraph/pass_manager.cpp
     ngraph/pass_memory_layout.cpp
-    ngraph/pass_op_inplace.cpp
     ngraph/pattern.cpp
     ngraph/reshape_elimination.cpp
     ngraph/serialize.cpp

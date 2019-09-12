@@ -39,7 +39,7 @@ bool check_inplace_oi_pair(shared_ptr<ngraph::op::Op> node)
     return false;
 }
 
-TEST(ngraph_op, reshape)
+TEST(nnfusion_op, reshape)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -63,7 +63,7 @@ TEST(ngraph_op, reshape)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, result)
+TEST(nnfusion_op, result)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -85,7 +85,7 @@ TEST(ngraph_op, result)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sum)
+TEST(nnfusion_op, sum)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -108,7 +108,7 @@ TEST(ngraph_op, sum)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, broadcast)
+TEST(nnfusion_op, broadcast)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -132,7 +132,7 @@ TEST(ngraph_op, broadcast)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, max)
+TEST(nnfusion_op, max)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -155,7 +155,7 @@ TEST(ngraph_op, max)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, min)
+TEST(nnfusion_op, min)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -178,7 +178,7 @@ TEST(ngraph_op, min)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, abs)
+TEST(nnfusion_op, abs)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -200,7 +200,7 @@ TEST(ngraph_op, abs)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, acos)
+TEST(nnfusion_op, acos)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -222,7 +222,7 @@ TEST(ngraph_op, acos)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, asin)
+TEST(nnfusion_op, asin)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -244,7 +244,7 @@ TEST(ngraph_op, asin)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, atan)
+TEST(nnfusion_op, atan)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -266,7 +266,7 @@ TEST(ngraph_op, atan)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, ceiling)
+TEST(nnfusion_op, ceiling)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -288,7 +288,7 @@ TEST(ngraph_op, ceiling)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, cos)
+TEST(nnfusion_op, cos)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -310,7 +310,7 @@ TEST(ngraph_op, cos)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, cosh)
+TEST(nnfusion_op, cosh)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -332,7 +332,7 @@ TEST(ngraph_op, cosh)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, exp)
+TEST(nnfusion_op, exp)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -354,7 +354,7 @@ TEST(ngraph_op, exp)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, floor)
+TEST(nnfusion_op, floor)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -376,7 +376,7 @@ TEST(ngraph_op, floor)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, log)
+TEST(nnfusion_op, log)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -398,7 +398,7 @@ TEST(ngraph_op, log)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sin)
+TEST(nnfusion_op, sin)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -420,7 +420,7 @@ TEST(ngraph_op, sin)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sinh)
+TEST(nnfusion_op, sinh)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -442,7 +442,7 @@ TEST(ngraph_op, sinh)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sqrt)
+TEST(nnfusion_op, sqrt)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -464,7 +464,7 @@ TEST(ngraph_op, sqrt)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, tan)
+TEST(nnfusion_op, tan)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -486,7 +486,7 @@ TEST(ngraph_op, tan)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, tanh)
+TEST(nnfusion_op, tanh)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -508,7 +508,7 @@ TEST(ngraph_op, tanh)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, power)
+TEST(nnfusion_op, power)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -532,7 +532,7 @@ TEST(ngraph_op, power)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, subtract)
+TEST(nnfusion_op, subtract)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -556,7 +556,7 @@ TEST(ngraph_op, subtract)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, divide)
+TEST(nnfusion_op, divide)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -580,7 +580,7 @@ TEST(ngraph_op, divide)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, divnonan)
+TEST(nnfusion_op, divnonan)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -604,7 +604,7 @@ TEST(ngraph_op, divnonan)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sign)
+TEST(nnfusion_op, sign)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -626,7 +626,7 @@ TEST(ngraph_op, sign)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, relu)
+TEST(nnfusion_op, relu)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -648,7 +648,7 @@ TEST(ngraph_op, relu)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, negative)
+TEST(nnfusion_op, negative)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -670,7 +670,7 @@ TEST(ngraph_op, negative)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, select)
+TEST(nnfusion_op, select)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -696,7 +696,7 @@ TEST(ngraph_op, select)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, relubackprop)
+TEST(nnfusion_op, relubackprop)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -720,7 +720,7 @@ TEST(ngraph_op, relubackprop)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, add)
+TEST(nnfusion_op, add)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -773,7 +773,7 @@ TEST(nnfusion_op, addn)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, multiply)
+TEST(nnfusion_op, multiply)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -798,7 +798,7 @@ TEST(ngraph_op, multiply)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, minimum)
+TEST(nnfusion_op, minimum)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -823,7 +823,7 @@ TEST(ngraph_op, minimum)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, maximum)
+TEST(nnfusion_op, maximum)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -848,7 +848,7 @@ TEST(ngraph_op, maximum)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sigmoid)
+TEST(nnfusion_op, sigmoid)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
@@ -870,7 +870,7 @@ TEST(ngraph_op, sigmoid)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(ngraph_op, sigmoidbackprop)
+TEST(nnfusion_op, sigmoidbackprop)
 {
     // Prepare inputs
     Shape shape_a{2, 3};
