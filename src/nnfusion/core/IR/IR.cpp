@@ -59,7 +59,7 @@ BasicBlock::Pointer Program::get_exit()
         return exit;
     for (auto& i : *this)
     {
-        if (i->get_prior() == nullptr)
+        if (i->get_next() == nullptr)
         {
             if (exit != nullptr)
                 LOG_WARN << "Several exit basic blocks in Program: We only support fist one.";

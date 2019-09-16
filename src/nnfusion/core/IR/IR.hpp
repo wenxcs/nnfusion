@@ -31,6 +31,17 @@ namespace nnfusion
             Pointer next, prior;
         };
 
+        // This is quite like a inline function, left blank by purpose.
+        class ExpandableBlock : public Instruction
+        {
+        public:
+            ExpandableBlock() {}
+            using Pointer = std::shared_ptr<ExpandableBlock>;
+
+        private:
+            BasicBlock bb;
+        };
+
         ///\todo multi-i/o BasicBlock;
 
         ///\brief The Program is a set of Basic blocks.
