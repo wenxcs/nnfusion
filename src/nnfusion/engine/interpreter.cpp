@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "interpreter.hpp"
 #include "nnfusion/engine/pass/cpu_codegenerator.hpp"
+#include "nnfusion/engine/pass/create_fusion_block.hpp"
 #include "nnfusion/engine/pass/cuda_codegenerator.hpp"
 #include "nnfusion/engine/pass/device_dispatcher.hpp"
 #include "nnfusion/engine/pass/extract_function_signature.hpp"
@@ -14,6 +15,7 @@ Interpreter::Interpreter()
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
+    m_passes->push_back(make_shared<CreateFusionBlock>(CreateFusionBlock()));
     m_passes->push_back(make_shared<ProfilingBasedKernelSelector>(ProfilingBasedKernelSelector()));
     m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
     m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
@@ -194,6 +196,13 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
                     INS["DEBUG"] = 1;
                     auto res = INS["DEBUG"].as<int>();
                 }
+
+                // move fusion group tags to intructions
+                if ((*gnode)["elem_group_id"].is_valid() || (*gnode)["fusion_group_id"].is_valid())
+                {
+                    ir->copy_tags_from(*gnode);
+                }
+
                 ir->setName(node->get_name());
                 bb_main->push_back(ir);
             }

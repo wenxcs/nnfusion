@@ -7,6 +7,7 @@
 #include "constant_folding_pass.hpp"
 #include "generate_result_op_pass.hpp"
 #include "gradient_weight_mapping_pass.hpp"
+#include "kernel_fusion_pass.hpp"
 #include "liveness_pass.hpp"
 #include "memory_layout_pass.hpp"
 #include "multi_reshape_folding_pass.hpp"
@@ -28,6 +29,7 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
+    pass_manager.register_pass<KernelFusionPass>();
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<LivenessPass>();
     pass_manager.register_pass<MemoryLayoutPass>(64);

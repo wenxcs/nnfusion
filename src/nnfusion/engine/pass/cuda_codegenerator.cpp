@@ -176,6 +176,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     auto& prog = tu->program;
     for (auto iterator : prog)
     {
+        std::vector<shared_ptr<KernelEmitter>> block_kernels;
         for (auto ins : *iterator)
         {
             string op_name = ins->operatorDef()->description();
@@ -194,9 +195,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     if (k.second != nullptr && k.first == device_type())
                     {
                         if (kernel_selected)
-                            LOG_WARN << "More than one candidates.";
+                            enforce(false) << "More than one candidates.";
                         else
-                            kernels.push_back(k.second);
+                            block_kernels.push_back(k.second);
 
                         kernel_selected = true;
                     }
@@ -219,7 +220,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     auto kernel = kernel_reg->m_factory(ctx);
                     if (kernel->get_or_emit_source())
                     {
-                        kernels.push_back(kernel);
+                        block_kernels.push_back(kernel);
                         has_valid_kernel = true;
                         break;
                     }
@@ -233,8 +234,24 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
                 auto kernel = kernel_reg->m_factory(ctx);
                 kernel->get_or_emit_source();
-                kernels.push_back(kernel);
+                block_kernels.push_back(kernel);
             }
+        }
+
+        if (iterator->hasAttribute("fusion_group_id"))
+        {
+            auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+                "ElementWiseFused", CUDA_GPU, DT_FLOAT);
+            enforce_not_nullptr(kernel_reg);
+            auto ctx = std::make_shared<KernelContext>();
+            ctx->kernels = block_kernels;
+            auto kernel = kernel_reg->m_factory(ctx);
+            kernel->get_or_emit_source();
+            kernels.push_back(kernel);
+        }
+        else
+        {
+            kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
         }
     }
 

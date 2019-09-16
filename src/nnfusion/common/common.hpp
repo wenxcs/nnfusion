@@ -144,7 +144,7 @@ namespace nnfusion
             }
             else
             {
-                printf("Directory %s already exists\n", tar_path.c_str());
+                //printf("Directory %s already exists\n", tar_path.c_str());
                 flag = true;
             }
             return flag;

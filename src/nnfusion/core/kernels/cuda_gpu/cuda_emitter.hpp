@@ -49,6 +49,17 @@ namespace nnfusion
                 dim3 m_gridDim;
             };
 
+            class CudaElementwiseEmitter : public CudaEmitter
+            {
+            public:
+                CudaElementwiseEmitter(shared_ptr<KernelContext> ctx)
+                    : CudaEmitter(ctx)
+                {
+                }
+
+                virtual std::pair<std::string, shared_ptr<LanguageUnit>> get_op_kernel() = 0;
+            };
+
             class CudaLibEmitter : public KernelEmitter
             {
             public:

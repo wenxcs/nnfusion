@@ -10,11 +10,11 @@ namespace nnfusion
         namespace cuda
         {
             template <class T>
-            class ElementWise : public CudaEmitter
+            class ElementWise : public CudaElementwiseEmitter
             {
             public:
                 ElementWise(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : CudaElementwiseEmitter(ctx)
                 {
                     enforce(ctx->outputs.size() == 1)
                         << "Multi-output elementwise ops are not currently supported.";
@@ -86,6 +86,19 @@ namespace nnfusion
 
                     m_gridDim = dim3(grids, 1, 1);
                     m_blockDim = dim3(blocks, 1, 1);
+                }
+
+                std::pair<std::string, shared_ptr<LanguageUnit>> get_op_kernel() override
+                {
+                    std::string op = CudaOpMap<T>::op;
+                    shared_ptr<LanguageUnit> kernel = nullptr;
+
+                    if (CudaOpMap<T>::math_kernel != nullptr)
+                    {
+                        kernel = get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
+                        enforce_not_nullptr(kernel);
+                    }
+                    return std::make_pair(op, kernel);
                 }
 
             private:

@@ -10,12 +10,16 @@ namespace nnfusion
 {
     namespace kernels
     {
+        class KernelEmitter;
+
         class KernelContext
         {
         public:
             using Pointer = shared_ptr<KernelContext>;
 
             KernelContext(shared_ptr<ngraph::Node> node);
+
+            KernelContext(){};
 
             // The node this OpKernel corresponds to
             shared_ptr<ngraph::Node> node;
@@ -37,6 +41,9 @@ namespace nnfusion
 
             // The number of gpu streaming multiprocessor
             uint32_t gpu_num_sm;
+
+            // used for kernel fusion
+            std::vector<shared_ptr<KernelEmitter>> kernels;
         };
 
         // OpKernel defines the interfaces of generating a specific computation kernel
@@ -65,7 +72,7 @@ namespace nnfusion
         protected:
             // Generate function name for this kernel, the default name is:
             // "op_name + args_shapes + data_type + device + custom_tag"
-            LanguageUnit_p emit_function_name();
+            virtual LanguageUnit_p emit_function_name();
 
             // Emit the function body of a specific kernel for this operator
             // the order of function args is following the order of inputs/outputs
