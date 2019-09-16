@@ -22,18 +22,9 @@ REGISTER_OP(DynamicStitch)
             {
                 auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(indices_node);
                 auto ng_element_type = ng_constant_op->get_element_type();
-                enforce(ng_element_type == ngraph::element::i32 ||
-                        ng_element_type == ngraph::element::i64);
+                enforce(ng_element_type == ngraph::element::i64);
                 std::vector<int64_t> values;
-                if (ng_element_type == ngraph::element::i32)
-                {
-                    std::vector<int32_t> values_int32 = ng_constant_op->get_vector<int32_t>();
-                    values.insert(values.begin(), values_int32.begin(), values_int32.end());
-                }
-                else
-                {
-                    values = ng_constant_op->get_vector<int64_t>();
-                }
+                values = ng_constant_op->get_vector<int64_t>();
 
                 indices_inputs.push_back(values);
                 for (size_t i = 0; i < values.size(); i++)

@@ -319,7 +319,7 @@ namespace nnfusion
             struct CudaOpMap<ngraph::op::ReluBackprop>
             {
                 static constexpr const char* op = "relu_backprop";
-                static constexpr const char* math_kernel = "x1 * int(x0 > 0)";
+                static constexpr const char* math_kernel = "x0 * int(x1 > 0)";
             };
 
             template <>

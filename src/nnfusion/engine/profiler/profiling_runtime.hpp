@@ -274,9 +274,9 @@ namespace nnfusion
         public:
             using Pointer = shared_ptr<ProfilingContext>;
             string working_dir = "profile/";
-            const size_t warmup_times = 5;
-            const size_t host_times = 1;
-            const size_t runtime_times = 10000;
+            size_t warmup_times = 5;
+            size_t host_times = 1;
+            size_t runtime_times = 10000;
             // This emitter includes the kernel context;
             ProfilingResult result;
             kernels::KernelEmitter::Pointer kernel;

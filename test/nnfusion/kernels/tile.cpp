@@ -23,8 +23,8 @@ TEST(nnfusion_core_kernels, tile)
     Shape shape_a{4};
     auto A = make_shared<op::Parameter>(element::i32, shape_a);
     Shape shape_b{1};
-    vector<int> multiples{2};
-    auto B = make_shared<op::Constant>(element::i32, shape_b, multiples);
+    vector<int64_t> multiples{2};
+    auto B = make_shared<op::Constant>(element::i64, shape_b, multiples);
     auto inputs = vector<shared_ptr<ngraph::Node>>{A, B};
 
     string node_type("Tile");

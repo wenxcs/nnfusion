@@ -93,6 +93,9 @@ namespace nnfusion
 
                 nnfusion::profiler::ProfilingContext::Pointer pctx =
                     make_shared<nnfusion::profiler::ProfilingContext>(kernel);
+                pctx->warmup_times = 0;
+                pctx->host_times = 1;
+                pctx->runtime_times = 1;
 
                 nnfusion::profiler::Profiler prof(runtime, pctx);
                 if (!prof.mixed_type_execute(_inputs, _outputs))

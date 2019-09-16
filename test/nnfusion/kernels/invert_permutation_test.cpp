@@ -27,5 +27,5 @@ TEST(nnfusion_core_kernels, InvertPermutation)
     auto IN = vector<int>{3, 4, 0, 2, 1};
     auto OUT = vector<int>{2, 4, 3, 0, 1};
 
-    EXPECT_TRUE(nnfusion::test::check_kernel<int>(node, GENERIC_CPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel<int>(node, CUDA_GPU, IN, OUT));
 }

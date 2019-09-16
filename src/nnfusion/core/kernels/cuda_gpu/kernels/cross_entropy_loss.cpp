@@ -23,7 +23,7 @@ namespace
             return nullptr; // following kernel implementation not supporting that case
 
         auto src = "output0[threadIdx.x] = -log(input0[threadIdx.x * " +
-                   std::to_string(input_shapes[0][0]) + " + (int)input1[threadIdx.x]]);";
+                   std::to_string(input_shapes[0][1]) + " + (int)input1[threadIdx.x]]);";
 
         return ngraph::op::OpConfig::any({
             {"block_dim", {input_shapes[1][0], 1, 1}},

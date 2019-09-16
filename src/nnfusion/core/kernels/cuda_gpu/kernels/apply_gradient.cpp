@@ -39,6 +39,8 @@ namespace nnfusion
                     lu << "if(tid < " << threads << ")\n";
                     lu.block_begin();
                     {
+                        // output the gradient for debugging
+                        lu << "output0[tid] = input1[tid];\n";
                         lu << "input0[tid] = input0[tid] - lr * input1[tid];\n";
                     }
                     lu.block_end();

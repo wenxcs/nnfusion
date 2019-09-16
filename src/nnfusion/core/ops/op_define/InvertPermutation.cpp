@@ -15,6 +15,7 @@ REGISTER_OP(InvertPermutation)
         auto ng_op = target_op.get_argument(0);
         if (ng_op->description() == "Constant")
         {
+            enforce(target_op.get_element_type() == ngraph::element::i32);
             std::unordered_map<int, int> element_records;
             auto input_vector =
                 std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op)->get_vector<int>();

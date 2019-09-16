@@ -497,13 +497,22 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
-                    lu_kernel_entry << " // kernel order = " << ++kernel_order << "\n";
+                    lu_kernel_entry << " // order=" << ++kernel_order
+                                    << ", name=" << kernel->m_context->node->get_friendly_name()
+                                    << "\n";
                     lu_kernel_entry << func_name << fu->call_unit->get_code();
                     if (enable_debug)
                     {
                         for (auto out_name : kernel->m_context->output_names)
-                            lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name
-                                            << ");\n";
+                        {
+                            if (kernel->m_context->dtypes[kernel->m_context->dtypes.size() - 1] ==
+                                "float")
+                                lu_kernel_entry
+                                    << "Debug(\"" << kernel->m_context->node->get_friendly_name()
+                                    << "\", " << out_name << ", "
+                                    << kernel->m_context->outputs[0].get_size() << ");\n";
+                            //<< std::min(size_t(10), kernel->m_context->outputs[0].get_size()) << ");\n";
+                        }
                     }
                     if (enable_timing)
                     {
@@ -573,9 +582,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
          CUDA_SAFE_CALL(cudaMemcpy(host_tensor, tensor_ptr + offset,  sizeof(float) * debug_size, cudaMemcpyDeviceToHost));
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
+         size_t print_size = min((size_t)10, debug_size);
          printf("%s: ", name.c_str());
-         for (int i = 0; i < debug_size; ++i) printf("%f ", host_tensor[i]);
-         printf("\n");
+         for (int i = 0; i < print_size; ++i) printf("%f ", host_tensor[i]);
+         printf("...(size= %lu end with %f )\n", debug_size, host_tensor[debug_size - 1]);
+         //print with an offset
+         size_t print_offset = debug_size / 3;
+         print_size = min((size_t)10, debug_size - print_offset);
+         printf("%s: ", name.c_str());
+         for (int i = 0; i < print_size; ++i) printf("%f ", host_tensor[i + print_offset]);
+         printf("...(offset= %lu)\n", print_offset);
      }
              )";
     }
@@ -794,7 +810,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
 
             lu_main << "\n//warm up for 5 iters:\n";
-            lu_main << "for(int i_=0; i_< 5; i_++)\n";
+            lu_main << "for(int i_=0; i_< 1; i_++)\n";
             lu_main.block_begin();
             lu_main << h2dcopy.get_code();
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";

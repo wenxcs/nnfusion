@@ -26,7 +26,7 @@ namespace
     output0[blockIdx.x * @step_size@ + threadIdx.x] = input0[blockIdx.x * @step_size@ + threadIdx.x] + ((int)input1[blockIdx.x] == threadIdx.x ? -1 : 0);
                         )",
                                                          {
-                                                             {"step_size", input_shapes[0][0]},
+                                                             {"step_size", input_shapes[0][1]},
                                                          });
 
         return ngraph::op::OpConfig::any({
