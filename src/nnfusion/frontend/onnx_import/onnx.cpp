@@ -25,7 +25,7 @@
 #include "onnx.hpp"
 #include "ops_bridge.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -100,4 +100,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

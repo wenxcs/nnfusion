@@ -55,7 +55,7 @@ static std::shared_ptr<ngraph::Node> get_sub_matrix(const std::shared_ptr<ngraph
     return ngraph::onnx_import::reshape::squeeze(sub_matrix);
 }
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -143,4 +143,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

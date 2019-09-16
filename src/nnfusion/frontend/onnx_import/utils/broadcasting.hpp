@@ -23,7 +23,7 @@
 #include "ngraph/op/broadcast.hpp"
 #include "ngraph/shape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {

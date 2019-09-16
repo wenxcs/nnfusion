@@ -115,6 +115,11 @@ if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_proto)
 endif()
 
+if (NGRAPH_ONNX_IMPORT_ENABLE)
+    target_include_directories(unit-test PRIVATE ${ONNXPROTO_INCLUDE})
+    target_link_libraries(unit-test PRIVATE onnx_import onnx_proto)
+endif()
+
 if (NGRAPH_ONNXIFI_ENABLE)
     target_include_directories(unit-test SYSTEM PUBLIC ${ONNX_INCLUDE_DIR})
     target_link_libraries(unit-test PRIVATE onnxifi-ngraph)

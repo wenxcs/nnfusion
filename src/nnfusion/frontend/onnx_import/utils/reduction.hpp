@@ -37,7 +37,7 @@
 #include "utils/common.hpp"
 #include "utils/reshape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -136,4 +136,4 @@ namespace nnfusion
 
         } // namespace  reduction
     }     // namespace onnx_import
-} // namespace nnfusion
+} // namespace ngraph

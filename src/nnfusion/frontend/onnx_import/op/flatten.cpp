@@ -19,7 +19,7 @@
 #include "exceptions.hpp"
 #include "utils/reshape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {

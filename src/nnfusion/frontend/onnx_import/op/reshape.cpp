@@ -27,7 +27,7 @@
 #include "reshape.hpp"
 #include "utils/reshape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -75,4 +75,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

@@ -29,7 +29,7 @@
 #include "squeeze.hpp"
 #include "utils/reshape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -87,4 +87,4 @@ namespace nnfusion
             } // namespace set_1
         }     //namespace op
     }         // namespace onnx_import
-} // namespace nnfusion
+} // namespace ngraph

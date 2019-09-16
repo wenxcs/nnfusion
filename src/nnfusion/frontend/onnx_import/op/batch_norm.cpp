@@ -20,10 +20,10 @@
 #include "ngraph/node_vector.hpp"
 #include "ngraph/op/batch_norm.hpp"
 
-#include "ngraph/frontend/onnx_import/exceptions.hpp"
-#include "ngraph/frontend/onnx_import/op/batch_norm.hpp"
+#include "../exceptions.hpp"
+#include "../op/batch_norm.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -67,4 +67,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

@@ -23,8 +23,7 @@
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"
 
-using namespace ngraph;
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -321,4 +320,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

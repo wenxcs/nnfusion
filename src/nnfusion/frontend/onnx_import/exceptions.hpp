@@ -19,7 +19,7 @@
 #include "ngraph/assertion.hpp"
 #include "ngraph/except.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {

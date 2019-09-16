@@ -26,7 +26,7 @@
 #include "ngraph/node_vector.hpp"
 #include "ngraph/shape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -143,4 +143,4 @@ namespace nnfusion
 
         } // namespace  reshape
     }     // namespace onnx_import
-} // namespace nnfusion
+} // namespace ngraph

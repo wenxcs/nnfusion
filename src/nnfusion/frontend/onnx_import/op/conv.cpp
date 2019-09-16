@@ -26,12 +26,12 @@
 #include "ngraph/op/convolution.hpp"
 #include "ngraph/op/slice.hpp"
 
-#include "ngraph/frontend/onnx_import/exceptions.hpp"
-#include "ngraph/frontend/onnx_import/op/conv.hpp"
-#include "ngraph/frontend/onnx_import/utils/broadcasting.hpp"
-#include "ngraph/frontend/onnx_import/utils/convpool.hpp"
+#include "../exceptions.hpp"
+#include "../op/conv.hpp"
+#include "../utils/broadcasting.hpp"
+#include "../utils/convpool.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -145,4 +145,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

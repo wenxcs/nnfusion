@@ -22,10 +22,10 @@
 #include "ngraph/node_vector.hpp"
 #include "ngraph/op/log.hpp"
 
+#include "../op/softmax.hpp"
 #include "core/node.hpp"
-#include "ngraph/frontend/onnx_import/op/softmax.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -44,4 +44,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

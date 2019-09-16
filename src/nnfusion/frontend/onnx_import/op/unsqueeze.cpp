@@ -22,7 +22,7 @@
 #include "exceptions.hpp"
 #include "unsqueeze.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -60,4 +60,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

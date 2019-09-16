@@ -29,7 +29,7 @@ static inline int64_t get_valid_array_idx(int64_t idx, int64_t last_idx)
     return (idx >= 0) ? std::min(idx, last_idx) : std::max<int64_t>(0, last_idx + idx);
 }
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -69,4 +69,4 @@ namespace nnfusion
 
     } // namespace onnx_import
 
-} // namespace nnfusion
+} // namespace ngraph

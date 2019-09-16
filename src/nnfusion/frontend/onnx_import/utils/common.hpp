@@ -22,7 +22,7 @@
 #include <type_traits> // std::enable_if, std::is_floating_point, std::is_integral
 #include <vector>
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {
@@ -102,4 +102,4 @@ namespace nnfusion
 
         } // namespace  common
     }     // namespace onnx_import
-} // namespace nnfusion
+} // namespace ngraph

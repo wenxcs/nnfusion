@@ -27,7 +27,7 @@
 
 #include "core/node.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {

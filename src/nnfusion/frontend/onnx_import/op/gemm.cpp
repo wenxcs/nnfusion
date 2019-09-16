@@ -22,11 +22,11 @@
 #include "ngraph/op/dot.hpp"
 #include "ngraph/op/multiply.hpp"
 
-#include "ngraph/frontend/onnx_import/exceptions.hpp"
-#include "ngraph/frontend/onnx_import/utils/broadcasting.hpp"
-#include "ngraph/frontend/onnx_import/utils/reshape.hpp"
+#include "../exceptions.hpp"
+#include "../utils/broadcasting.hpp"
+#include "../utils/reshape.hpp"
 
-namespace nnfusion
+namespace ngraph
 {
     namespace onnx_import
     {

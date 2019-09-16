@@ -15,8 +15,8 @@
 # ******************************************************************************
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)
-    add_subdirectory(onnx_import)
+    # add_subdirectory(onnx_import)
     if (NGRAPH_ONNXIFI_ENABLE)
-        add_subdirectory(onnxifi)
+        # add_subdirectory(onnxifi)
     endif()
 endif()

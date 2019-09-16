@@ -16,14 +16,12 @@
 
 set(ONNX_OPSET_VERSION 9 CACHE INTERNAL "Supported version of ONNX operator set")
 
-add_library(onnx_import_interface OBJECT
+add_library(onnx_import STATIC
         onnx.cpp
         onnx.hpp
         core/operator_set.hpp
         core/node.cpp
-        core/node.hpp)
-
-add_library(onnx_import STATIC
+        core/node.hpp
         core/attribute.cpp
         core/attribute.hpp
         core/graph.cpp
@@ -149,11 +147,11 @@ add_library(onnx_import STATIC
         utils/reshape.hpp
         utils/variadic.hpp)
 
-add_dependencies(onnx_import onnx_import_interface)
+add_dependencies(onnx_import onnx_proto)
 
 if (NOT NGRAPH_USE_SYSTEM_PROTOBUF)
-    add_dependencies(onnx_import_interface protobuf::libprotobuf)
-    add_dependencies(onnx_import_interface onnx_proto)
+    add_dependencies(onnx_import protobuf::libprotobuf)
+    # add_dependencies(onnx_import onnx_proto)
 endif()
 
 set_property(TARGET onnx_import PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -163,17 +161,17 @@ target_link_libraries(onnx_import PRIVATE ${Protobuf_LIBRARIES} onnx_proto)
 
 target_compile_definitions(onnx_import PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
 
-set_property(TARGET onnx_import_interface PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(onnx_import_interface PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${NGRAPH_INCLUDE_PATH}
+set_property(TARGET onnx_import PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(onnx_import PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${NGRAPH_INCLUDE_PATH}
     SYSTEM PRIVATE ${ONNXPROTO_INCLUDE} ${Protobuf_INCLUDE_DIR})
 
-target_compile_definitions(onnx_import_interface PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
+target_compile_definitions(onnx_import PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
     target_compile_options(onnx_import PRIVATE -Wno-undef -Wno-reserved-id-macro -Wno-switch-enum
             -Wno-extended-offsetof -Wno-shorten-64-to-32 -Wno-unused-macros -Wno-missing-variable-declarations
             -Wno-unused-private-field -Wno-shadow -Wno-deprecated)
-    target_compile_options(onnx_import_interface PRIVATE -Wno-undef -Wno-reserved-id-macro -Wno-switch-enum
+    target_compile_options(onnx_import PRIVATE -Wno-undef -Wno-reserved-id-macro -Wno-switch-enum
             -Wno-extended-offsetof -Wno-shorten-64-to-32 -Wno-unused-macros -Wno-missing-variable-declarations
             -Wno-unused-private-field -Wno-shadow -Wno-deprecated)
 endif()
