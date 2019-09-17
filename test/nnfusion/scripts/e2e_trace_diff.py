@@ -20,7 +20,7 @@ class node:
         self.name = name
         self.inputs = list()
         self.outputs = list()
-        self.confident_pair = dict()  # "node" : 1.0(confidence)
+        self.map_node = ""  # "node" : 1.0(confidence)
         self.confident_list = list()
         self.output_data = None
 
@@ -41,11 +41,12 @@ class tracefile:
         self.allnodes = dict()
         self.entries = list()
         self.outputs = list()
-        self.valid_outputs = set()
-        self.no_match = set()
         self.match = set()
-        self.ind = 0
-        self.visited = dict()
+        self.boundary_visited = set()
+        self.boundary = set()
+        self.cacheallclose = dict()
+        self.ischild = dict()
+        self.cache_subgraph_match = dict()
 
     def read_nnfusion_trace(self, file):
         #  node: 0.0  0.0 : input1, input2
@@ -64,11 +65,16 @@ class tracefile:
                 "...(")[0].strip().split(" ")]
             data = data1 + data2
 
+            mapnode = ""
+            if "," in name:
+                mapnode = name.split(",")[0].strip()
+                name = name.split(",")[1].strip()
             # create node
             n = node(name)
             n.add_parent(inputs)
             n.add_data(data)
             self.allnodes[name] = n
+            self.allnodes[name].map_node = mapnode
 
             # add children
             for p in inputs:
@@ -137,128 +143,140 @@ class tracefile:
             if len(self.allnodes[nname].outputs) == 0:
                 self.outputs.append(nname)
 
+    def rouge_match(self, trace):
+        for v in self.allnodes.keys():
+            flag = False
+            for nnfname in self.allnodes.keys():
+                if nnfname.startswith(self.allnodes[v].map_node):
+                    flag = True
+                    break
+            if len(self.allnodes[v].map_node) > 0 and not flag:
+                for tfname in trace.allnodes.keys():
+                    if tfname[:-2] == self.allnodes[v].map_node:
+                        if self.allclose(v, trace, tfname):
+                            self.allnodes[v].confident_list.append(tfname)
+                            self.match.add(v)
+            else:
+                for u in trace.allnodes.keys():
+                    if self.allclose(v, trace, u):
+                        self.allnodes[v].confident_list.append(u)
+        
+        for f in trace.allnodes.keys():
+            for s in trace.allnodes.keys():
+                trace.is_child(f, s)
+
+    def add_valid_parent(self, root):
+        for parent in self.allnodes[root].inputs:
+            if parent not in self.match:
+                self.match.add(parent)
+                self.add_valid_parent(parent)
+    
+    def allclose(self, a, trace, b):
+        if a+b not in self.cacheallclose.keys():
+            if (not self.allnodes[a].output_data is None)\
+                and (not trace.allnodes[b].output_data is None)\
+                and len(self.allnodes[a].output_data) == len(trace.allnodes[b].output_data)\
+                and np.allclose(self.allnodes[a].output_data, trace.allnodes[b].output_data, rtol=1.e-4, atol=1.e-4):
+                self.cacheallclose[a+b] = True
+            else:
+                self.cacheallclose[a+b] = False
+        return self.cacheallclose[a+b]
+    
     def is_child(self, father, son):
+        if father == "__root__":
+            return True
+        if (father+son) in self.ischild.keys():
+            return self.ischild[father+son]
         if father == son:
             return True
         start_node = self.allnodes[father]
         for u in start_node.outputs:
             if self.is_child(u, son):
+                self.ischild[u + son] = True
                 return True
+        self.ischild[father + son] = False
         return False
 
-    def is_child_matched(self, n, trace, v):
-        for child in self.allnodes[n].outputs:
-            valid = False
-            for u in self.allnodes[child].confident_list:
-                if trace.is_child(v, u):
-                    valid = True
-            if not(valid or self.is_child_matched(child, trace, v)):
-                return False
-        return True
+    def subgraph_match(self, cur_node, trace, trace_node, dep=0):
+        if cur_node + trace_node in self.cache_subgraph_match.keys():
+            return self.cache_subgraph_match[cur_node + trace_node]
 
-    def rouge_match(self, trace):
-        for v in self.allnodes.keys():
-            for u in trace.allnodes.keys():
-                if self.allnodes[v].output_data is None or trace.allnodes[u].output_data is None or len(self.allnodes[v].output_data) != len(trace.allnodes[u].output_data):
-                    continue
-                # logging.info(self.allnodes[v].output_data, trace.allnodes[u].output_data)
-                if np.allclose(self.allnodes[v].output_data, trace.allnodes[u].output_data, rtol=1.e-4, atol=1.e-4):
-                    self.allnodes[v].confident_list.append(u)
-                    # trace.allnodes[u].confident_list.append(v)
-
-    def subgrah_match(self, cur_node, trace, trace_node, dep=0):
-        if cur_node + trace_node in self.visited.keys():
-            return self.visited[cur_node + trace_node]
         tabs = "".join(["-"]*dep)
 
-        if trace_node in self.allnodes[cur_node].confident_list:
+        if self.allclose(cur_node, trace, trace_node):
             logging.info("%s%s --allclose--> %s" %
                          (tabs, cur_node, trace_node))
-            if cur_node in self.outputs:  # and trace_node in trace.outputs:
-                #print("[Confident Path]" + "-> ".join(confident_path))
-                # for match in confident_path:
-                self.match.add(cur_node)
-                self.visited[cur_node+trace_node] = True
-                logging.info("%s^------- Confident match path ends here."%(" "*dep))
+            if cur_node in self.outputs:
+                self.cache_subgraph_match[cur_node+trace_node] = True
+                logging.info(
+                    "%s^------- Confident match path ends here." % (" "*dep))
                 return True
-        # else:
-            # logging.info("%s%s --skip--> None"%(tabs, cur_node))
 
-        ret_flag = False
+        ret_flag = True
         for subnode in self.allnodes[cur_node].outputs:
             node_flag = False
             # valid for one case
             for trace_sub_node in self.allnodes[subnode].confident_list:
                 if trace.is_child(trace_node, trace_sub_node):
-                    if self.subgrah_match(subnode, trace, trace_sub_node, dep + 1):
+                    if self.subgraph_match(subnode, trace, trace_sub_node, dep + 1):
                         node_flag = True
-            # can skip this node
-            sub_flag = len(self.allnodes[subnode].outputs) > 0
-            for subsubnode in self.allnodes[subnode].outputs:
-                logging.info("%s%s --skip-->" %
-                         (tabs, cur_node))
-                if not self.subgrah_match(subsubnode, trace, trace_node, dep + 1):
-                    sub_flag = False
-                    break
 
-            if node_flag or sub_flag:
-                ret_flag = True
+            sub_flag = False
+            no_sub = True
+            for tfname in self.allnodes[subnode].confident_list:
+                if tfname[:-2] == self.allnodes[subnode].map_node:
+                    # cannot skip this node
+                    no_sub = False
+            if no_sub:
+                sub_flag = len(self.allnodes[subnode].outputs) > 0
+                for subsubnode in self.allnodes[subnode].outputs:
+                    if not self.subgraph_match(subsubnode, trace, trace_node, dep + 1):
+                        sub_flag = False
+                        break
 
-        if ret_flag:
-            self.match.add(cur_node)
-        else:
-            logging.info("%s%s --failed--> none" %
-                         (tabs, cur_node))
-            self.no_match.add(cur_node)
+            ret_flag = ret_flag and (node_flag or sub_flag)
 
-        self.visited[cur_node+trace_node] = ret_flag
+        self.cache_subgraph_match[cur_node+trace_node] = ret_flag
         return ret_flag
+
+    
+    def find_boundary(self, root, trace, trace_node):
+        if root in self.boundary_visited:
+            return
+        self.boundary_visited.add(root)
+
+        if root not in self.match:
+            return
+
+        for sub in self.allnodes[root].outputs:
+            if sub not in self.match:
+                for sub_trace_node in self.allnodes[sub].confident_list:
+                    if trace.is_child(trace_node, sub_trace_node):
+                        if self.subgraph_match(sub, trace, sub_trace_node):
+                            self.match.add(sub)
+
+        for sub in self.allnodes[root].outputs:
+            if sub not in self.match:
+                self.boundary.add(sub)
+            else:
+                sub_trace_node = trace_node
+                if len(self.allnodes[sub].confident_list) == 1:
+                    trace_node = self.allnodes[sub].confident_list[0]
+                self.find_boundary(sub, trace, sub_trace_node)
 
     def compare_with(self, trace):
         self.rouge_match(trace)
-
-        logging.info("Entry: " + ", ".join(self.entries))
-        logging.info("Result: " + ", ".join(self.outputs))
-        # DFS to output all fist missmatch
-        # Root level nodes
-        for v in self.entries:
-            flag = False
-            if len(self.allnodes[v].confident_list) == 0:
-                if self.allnodes[v].output_data is None:
-                    for u in self.allnodes[v].outputs:
-                        for trace_node in self.allnodes[u].confident_list:
-                            logging.info("%s --skip-->" %
-                                (v))
-                            if self.subgrah_match(u, trace, trace_node):
-                                flag = True
-            else:
-                for trace_node in self.allnodes[v].confident_list:
-                    if self.subgrah_match(v, trace, trace_node):
-                        flag = True
-            if flag:
-                self.match.add(v)
-            else:
-                self.no_match.add(v)
-
-        #logging.info("Possible match:")
-        # logging.info("\n".join(self.match))
-
-        print("\n[Confident match]")
-        for item in self.match:
-            print(" - %s - possible {%s}" % (item,
-                                             ", ".join(self.allnodes[item].confident_list)))
-        print("\n[No match]")
-        nomatch = self.no_match - self.match
-        pomatch = set(self.allnodes.keys()) - self.no_match.union(self.match)
-        for item in nomatch:
-            print(" - %s - possible {%s}" % (item,
-                                             ", ".join(self.allnodes[item].confident_list)))
-        print("\n[Uncertain match]")
-        for item in pomatch:
-            if not self.allnodes[item].output_data is None:
-                print(
-                    " - %s - possible {%s}" % (item, ", ".join(self.allnodes[item].confident_list)))
-
+        initlist = list(self.match)
+        for valid in initlist:
+            self.add_valid_parent(valid)
+        
+        for n in self.entries:
+            trace_node = "__root__"
+            if len(self.allnodes[n].confident_list) == 1:
+                trace_node = self.allnodes[n].confident_list[0]
+            self.find_boundary(n, trace, trace_node)
+        
+        print("[Error Boundary] " + ", ".join(self.boundary))
         return False
 
 
