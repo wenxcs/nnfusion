@@ -497,8 +497,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
-                    lu_kernel_entry << " // order=" << ++kernel_order
-                                    << ", name=" << kernel->m_context->node->get_friendly_name()
+                    const string node_name = (kernel->m_context->node)
+                                                 ? kernel->m_context->node->get_friendly_name()
+                                                 : "internal_node";
+                    lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
                                     << "\n";
                     lu_kernel_entry << func_name << fu->call_unit->get_code();
                     if (enable_debug)
@@ -508,7 +510,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             if (kernel->m_context->outputs[i].get_type() != "float")
                                 continue;
                             auto out_name = kernel->m_context->output_names[i];
-                            lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name
+                            lu_kernel_entry << "Debug(\"" << node_name << "\", " << out_name
                                             << ", \"" << join(kernel->m_context->input_names)
                                             << "\", " << kernel->m_context->outputs[i].get_size()
                                             << ");\n";
