@@ -2077,6 +2077,59 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateStridedSliceGradOp(const tensorflow::NodeDef& node,
+                                                        const NodeMap& all_ng_nodes,
+                                                        ngraph::op::ParameterVector& parameters)
+            {
+                auto x = GetInputNode(all_ng_nodes, node, 0);
+                auto begin = GetInputNode(all_ng_nodes, node, 1);
+                auto end = GetInputNode(all_ng_nodes, node, 2);
+                auto strides = GetInputNode(all_ng_nodes, node, 3);
+                auto grad = GetInputNode(all_ng_nodes, node, 4);
+
+                std::vector<int32> x_value;
+                enforce(GetValueFromNGraphOp<int32>(x, &x_value))
+                    << "StridedSliceGradOp currently do not support dynamic output tensor shape";
+                auto x_shape = x->get_shape();
+                auto x_const =
+                    std::make_shared<ngraph::op::Constant>(element::i32, x_shape, x_value);
+
+                int tf_shrink_axis_mask;
+                assert(GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask) == true);
+
+                int tf_end_mask;
+                assert(GetNodeAttr(node.attr(), "end_mask", tf_end_mask) == true);
+
+                int tf_begin_mask;
+                assert(GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask) == true);
+
+                int tf_new_axis_mask;
+                assert(GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask) == true);
+
+                int tf_ellipsis_mask;
+                assert(GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask) == true);
+
+                ngraph::op::OpConfig::any myConfig;
+                myConfig["begin_mask"] = tf_begin_mask;
+                myConfig["end_mask"] = tf_end_mask;
+                myConfig["ellipsis_mask"] = tf_ellipsis_mask;
+                myConfig["new_axis_mask"] = tf_new_axis_mask;
+                myConfig["shrink_axis_mask"] = tf_shrink_axis_mask;
+                // TODO: change shape with mask
+
+                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                    node.name(), // Node name, looks like "tf_model/add_n";
+                    node.op(),   // Operator name, looks like "AddN";
+                    std::vector<std::shared_ptr<Node>>(
+                        {x_const, begin, end, strides, grad}), // The inputs of nodes;
+                    myConfig); // The configuration we generated above;
+
+                ng_node->set_name(node.name()); // Set the node name;
+
+                NamedNodeVector ret{{node.name(), ng_node}};
+                return ret;
+            }
+
             NamedNodeVector TranslateTileOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
                                             ngraph::op::ParameterVector& parameters)
