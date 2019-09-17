@@ -503,15 +503,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     lu_kernel_entry << func_name << fu->call_unit->get_code();
                     if (enable_debug)
                     {
-                        for (auto out_name : kernel->m_context->output_names)
+                        for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                         {
-                            if (kernel->m_context->dtypes[kernel->m_context->dtypes.size() - 1] ==
-                                "float")
-                                lu_kernel_entry
-                                    << "Debug(\"" << kernel->m_context->node->get_friendly_name()
-                                    << "\", " << out_name << ", "
-                                    << kernel->m_context->outputs[0].get_size() << ");\n";
-                            //<< std::min(size_t(10), kernel->m_context->outputs[0].get_size()) << ");\n";
+                            if (kernel->m_context->outputs[i].get_type() != "float")
+                                continue;
+                            auto out_name = kernel->m_context->output_names[i];
+                            lu_kernel_entry << "Debug(\"" << out_name << "\", " << out_name
+                                            << ", \"" << join(kernel->m_context->input_names)
+                                            << "\", " << kernel->m_context->outputs[i].get_size()
+                                            << ");\n";
                         }
                     }
                     if (enable_timing)
@@ -576,7 +576,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     if (enable_debug)
     {
         lu << R"(
-     inline void Debug(std::string name, float* tensor_ptr, size_t debug_size = 10, size_t offset=0)
+     inline void Debug(std::string name, float* tensor_ptr, std::string inputs, size_t debug_size = 10, size_t offset=0)
      {
          float* host_tensor = (float*)malloc(sizeof(float) * debug_size);
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
@@ -585,13 +585,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
          size_t print_size = min((size_t)10, debug_size);
          printf("%s: ", name.c_str());
          for (int i = 0; i < print_size; ++i) printf("%f ", host_tensor[i]);
-         printf("...(size= %lu end with %f )\n", debug_size, host_tensor[debug_size - 1]);
+         printf("...(size= %lu end with %f ) :", debug_size, host_tensor[debug_size - 1]);
          //print with an offset
          size_t print_offset = debug_size / 3;
          print_size = min((size_t)10, debug_size - print_offset);
-         printf("%s: ", name.c_str());
          for (int i = 0; i < print_size; ++i) printf("%f ", host_tensor[i + print_offset]);
-         printf("...(offset= %lu)\n", print_offset);
+         printf("...(offset= %lu) ", print_offset);
+         printf(": %s\n", inputs.c_str());
      }
              )";
     }
