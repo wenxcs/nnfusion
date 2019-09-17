@@ -497,9 +497,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
-                    lu_kernel_entry << " // order=" << ++kernel_order
-                                    << ", name=" << kernel->m_context->node->get_friendly_name()
-                                    << "\n";
+                    lu_kernel_entry << " // order=" << ++kernel_order;
+                    if (kernel->m_context->node != nullptr)
+                        lu_kernel_entry << ", name="
+                                        << kernel->m_context->node->get_friendly_name();
+                    else
+                        lu_kernel_entry << ", fused group";
+                    lu_kernel_entry << "\n";
                     lu_kernel_entry << func_name << fu->call_unit->get_code();
                     if (enable_debug)
                     {
