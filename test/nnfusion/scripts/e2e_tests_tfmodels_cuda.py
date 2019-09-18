@@ -5,6 +5,7 @@ import os
 import sys
 import subprocess
 import logging
+import numpy as np
 
 ground_truth = {"frozen_random-weights_bert_large.pb":
                 "0.001335 0.001490 0.000675 0.002558 0.000761 0.001435 0.000518 0.001516 0.000738 0.001183  .. (size = 1001, ends with 0.000281);",
@@ -48,27 +49,35 @@ for pbfile in os.listdir(models):
         continue
     os.system("rm -rf nnfusion_rt")
     logging.info("Compiling " + pbfile)
-    os.system("%s %s -f tensorflow -b nnfusion &> nnfusion.log" %
+    os.system("%s %s -f tensorflow -b nnfusion >> nnfusion.log" %
               (nnfusion_cli, os.path.join(models, pbfile)))
     if not os.path.exists("nnfusion_rt/cuda_codegen/nnfusion_rt.cu"):
         logging.error("Failed at nnfusion compiling phase.")
-        exit(1)
-    os.system("cd nnfusion_rt/cuda_codegen/ && cmake . &> cmake.log && make -j &> cmake.log")
+        exit(2)
+    os.system("cd nnfusion_rt/cuda_codegen/ && cmake . >> cmake.log && make -j 2>&1 >> cmake.log")
     if not os.path.exists("nnfusion_rt/cuda_codegen/main_test"):
         logging.error("Failed at nvcc compiling phase.")
-        exit(1)
+        exit(3)
     os.system("cd nnfusion_rt/cuda_codegen/ && ./main_test > result.txt")
     if not os.path.exists("nnfusion_rt/cuda_codegen/result.txt"):
         logging.error("Failed at nvcc compiling phase.")
-        exit(1)
+        exit(4)
     result_file = open("nnfusion_rt/cuda_codegen/result.txt")
     results = result_file.readlines()
-    if len(results) < 2 or results[1].strip() != ground_truth[pbfile]:
-        appended = "."
-        if len(results) > 1:
-            appended = "Expected: %s vs Output: %s." % (
-                ground_truth[pbfile], results[1])
-        logging.error("main_test has wrong result" + appended)
-        exit(1)
+    if len(results) >= 2 : #or results[1].strip() != ground_truth[pbfile]:
+        a_data = [float(v.strip()) for v in results[1].split("..")[0].strip().split(" ")]
+        b_data = [float(v.strip()) for v in ground_truth[pbfile].split("..")[0].strip().split(" ")]
+        if not np.allclose(a_data, b_data, rtol=1.e-4, atol=1.e-4):
+            appended = "."
+            if len(results) > 1:
+                appended = "Expected: %s vs Output: %s." % (
+                    ground_truth[pbfile], results[1])
+            logging.error("%s has wrong result - "%pbfile + appended)
+            exit(5)
+        else:
+            print("%s has right result!"%pbfile)
+    else:
+        exit(6)
     os.system("rm -rf nnfusion_rt")
+print("All Done!.")
 exit(0)
