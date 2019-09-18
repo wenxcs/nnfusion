@@ -44,7 +44,10 @@ namespace nnfusion
                                 for (auto& in_edge : dst->get_in_edges())
                                 {
                                     assert(in_edge->get_dst() == dst);
-                                    if (!in_edge->get_src()->is_constant())
+                                    auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
+                                        in_edge->get_src()->get_op_ptr());
+                                    if (!in_edge->get_src()->is_constant() ||
+                                        p_const->is_parameter())
                                     {
                                         inferable = false;
                                         break;

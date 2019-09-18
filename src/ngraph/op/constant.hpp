@@ -172,6 +172,7 @@ namespace ngraph
                 return reinterpret_cast<T*>(m_data);
             }
 
+            bool& is_parameter() { return m_is_parameter; }
             bool is_constant() const override { return true; }
         protected:
             Constant(const std::string& name, const NodeVector& args)
@@ -262,6 +263,7 @@ namespace ngraph
                 }
             }
 
+            bool m_is_parameter = false;
             element::Type m_element_type;
             Shape m_shape{};
             void* m_data{nullptr};

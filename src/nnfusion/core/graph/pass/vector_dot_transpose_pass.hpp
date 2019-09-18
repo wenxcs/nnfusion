@@ -19,7 +19,7 @@ namespace nnfusion
                 {
                     bool using_pass = getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE")
                                           ? atoi(getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE"))
-                                          : 0;
+                                          : 1;
                     if (!using_pass)
                         return true;
 
@@ -50,7 +50,9 @@ namespace nnfusion
                                           return (size_t)a->get_dst_input() <
                                                  (size_t)b->get_dst_input(); // put -1 to the end
                                       });
-                            if (!inputs[1]->get_src()->is_constant())
+                            auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
+                                inputs[1]->get_src()->get_op_ptr());
+                            if (!inputs[1]->get_src()->is_constant() || p_const->is_parameter())
                                 continue;
                             auto x = inputs[0]->get_src()->get_op_ptr()->get_shape();
                             if (x.size() != 2 || x[0] != 1)

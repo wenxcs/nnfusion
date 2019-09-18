@@ -39,6 +39,10 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                 ngraph::op::OpConfig::any myConfig;
                 myConfig["learning_rate"] = 0.001;
 
+                auto p_const =
+                    std::dynamic_pointer_cast<ngraph::op::Constant>(weight_node->get_op_ptr());
+                p_const->is_parameter() = true;
+
                 auto apply_gradient_op = std::make_shared<ngraph::op::GenericOp>(
                     "apply_gradient_" + const_name,
                     "ApplyGradient",
