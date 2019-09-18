@@ -88,6 +88,7 @@ namespace nnfusion
                 shared_ptr<ngraph::op::Reshape> reshape;
                 bool is_memcpy;
                 bool is_noop;
+                bool is_inplace;
             };
 
         } // namespace cuda

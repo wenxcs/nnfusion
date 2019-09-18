@@ -434,10 +434,18 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     reshape = static_pointer_cast<ngraph::op::Reshape>(ctx->node);
     is_memcpy = false;
     is_noop = false;
+    is_inplace = false;
     //Noop
     if (ctx->outputs[0].get_name() == ctx->inputs[0].get_name())
     {
         is_noop = true;
+    }
+    //Inplace
+
+    auto annotations = reshape->get_op_annotations();
+    if (annotations && annotations->get_in_place_oi_pairs().size() > 0)
+    {
+        is_inplace = true;
     }
 
     arg_shape = ctx->inputs[0].get_shape();
@@ -469,7 +477,7 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    if (is_memcpy)
+    if (is_memcpy && !is_inplace)
     {
         lu << "if (input0 != output0) {\n"
            << "   cudaMemcpy(output0, input0, " << static_cast<uint32_t>(shape_size(arg_shape))

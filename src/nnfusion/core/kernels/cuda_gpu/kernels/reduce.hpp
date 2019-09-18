@@ -385,13 +385,24 @@ namespace nnfusion
                 ReduceMemcpy(shared_ptr<KernelContext> ctx)
                     : CudaLibEmitter(ctx)
                 {
+                    is_inplace = false;
                     if (auto reduce = dynamic_pointer_cast<ngraph::op::Reduce>(ctx->node))
                     {
                         reduce_axis = reduce->get_reduction_axes();
+                        auto annotations = reduce->get_op_annotations();
+                        if (annotations && annotations->get_in_place_oi_pairs().size() > 0)
+                        {
+                            is_inplace = true;
+                        }
                     }
                     else if (auto reduce = dynamic_pointer_cast<ngraph::op::Sum>(ctx->node))
                     {
                         reduce_axis = reduce->get_reduction_axes();
+                        auto annotations = reduce->get_op_annotations();
+                        if (annotations && annotations->get_in_place_oi_pairs().size() > 0)
+                        {
+                            is_inplace = true;
+                        }
                     }
                     else
                     {
@@ -430,8 +441,10 @@ namespace nnfusion
                     lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
                     lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
 
-                    emit_memcpyDtD(lu, dst, src);
-
+                    if (!is_inplace)
+                    {
+                        emit_memcpyDtD(lu, dst, src);
+                    }
                     return _lu;
                 }
 
@@ -448,6 +461,7 @@ namespace nnfusion
                 ngraph::Shape input_shape, output_shape;
                 size_t rank, reduce_rank, out_rank;
                 string reduce_op, input_type, output_type;
+                bool is_inplace;
             };
         } // namespace cuda
     }     // namespace kernels
