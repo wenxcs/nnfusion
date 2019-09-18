@@ -27,9 +27,8 @@ LanguageUnit_p cuda::Dot::emit_function_body()
 {
     auto& ctx = m_context;
     auto gemm = static_pointer_cast<ngraph::op::Dot>(ctx->node);
-    auto transpose_B = gemm->get_transpose_B();
-    if (transpose_B)
-        return nullptr;
+    auto trans_A = gemm->get_transpose_A();
+    auto trans_B = gemm->get_transpose_B();
 
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
@@ -88,20 +87,41 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_HOST));
               \n ";
               */
-            lu << "CUBLAS_SAFE_CALL(cublasSgemv(global_cublas_handle, "
-               << "CUBLAS_OP_T, " << arg0_shape[1] << ", " << arg0_shape[0] << ", "
-               << " &alpha,"
+            lu << "CUBLAS_SAFE_CALL(cublasSgemv(global_cublas_handle, ";
+            if (trans_A)
+                lu << "CUBLAS_OP_N, " << arg0_shape[0] << ", " << arg0_shape[1] << ", ";
+            else
+                lu << "CUBLAS_OP_T, " << arg0_shape[1] << ", " << arg0_shape[0] << ", ";
+            lu << " &alpha,"
                << " static_cast<const float*>(input0)," << arg0_shape[1] << ", "
                << " static_cast<const float*>(input1),"
                << " 1,"
                << " &beta,"
                << " static_cast<float*>(output0),"
                << " 1));\n";
-            /*
-      lu << "CUBLAS_SAFE_CALL(
-                   cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_DEVICE));
-        \n ";
-        */
+        }
+        else if ((arg0_shape.size() == 2) && (arg1_shape.size() == 2) && (reduction_axes == 1) &&
+                 (trans_A || trans_B))
+        {
+            int m = trans_B ? arg1_shape[0] : arg1_shape[1];
+            int n = trans_A ? arg0_shape[1] : arg0_shape[0];
+            int k = trans_A ? arg0_shape[0] : arg0_shape[1];
+
+            lu << "const float alpha = 1.0;\nconst float beta = 0;\n";
+
+            lu << "CUBLAS_SAFE_CALL(cublasSgemm(global_cublas_handle,"
+               << (trans_B ? " CUBLAS_OP_T," : " CUBLAS_OP_N,")
+               << (trans_A ? " CUBLAS_OP_T," : " CUBLAS_OP_N,") << " " << m << ","
+               << " " << n << ","
+               << " " << k << ","
+               << " &alpha,"
+               << " static_cast<const float*>(input1),"
+               << " " << arg1_shape[1] << ","
+               << " static_cast<const float*>(input0),"
+               << " " << arg0_shape[1] << ","
+               << " &beta,"
+               << " static_cast<float*>(output0),"
+               << " " << m << "));\n";
         }
         else
         {
