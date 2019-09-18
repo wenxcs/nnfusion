@@ -424,6 +424,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             // enforce(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu_main_init << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, "
                          << tu->memory_pool_size << "));\n";
+            lu_main_init << "CUDA_SAFE_CALL(cudaMemset((void*)_memory_pool, 0, "
+                         << tu->memory_pool_size << "));\n";
 
             for (auto kernel : kernels)
             {
@@ -510,10 +512,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             if (kernel->m_context->outputs[i].get_type() != "float")
                                 continue;
                             auto out_name = kernel->m_context->output_names[i];
-                            lu_kernel_entry << "Debug(\"" << node_name << "\", " << out_name
-                                            << ", \"" << join(kernel->m_context->input_names)
-                                            << "\", " << kernel->m_context->outputs[i].get_size()
-                                            << ");\n";
+                            lu_kernel_entry << "Debug(\"" << node_name << ", " << out_name << "\", "
+                                            << out_name << ", \""
+                                            << join(kernel->m_context->input_names) << "\", "
+                                            << kernel->m_context->outputs[i].get_size() << ");\n";
                         }
                     }
                     if (enable_timing)
@@ -586,12 +588,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
          size_t print_size = min((size_t)10, debug_size);
          printf("%s: ", name.c_str());
-         for (int i = 0; i < print_size; ++i) printf("%f ", host_tensor[i]);
-         printf("...(size= %lu end with %f ) :", debug_size, host_tensor[debug_size - 1]);
+         for (int i = 0; i < print_size; ++i) printf("%e ", host_tensor[i]);
+         printf("...(size= %lu end with %e ) :", debug_size, host_tensor[debug_size - 1]);
          //print with an offset
          size_t print_offset = debug_size / 3;
          print_size = min((size_t)10, debug_size - print_offset);
-         for (int i = 0; i < print_size; ++i) printf("%f ", host_tensor[i + print_offset]);
+         for (int i = 0; i < print_size; ++i) printf("%e ", host_tensor[i + print_offset]);
          printf("...(offset= %lu) ", print_offset);
          printf(": %s\n", inputs.c_str());
      }
@@ -810,9 +812,14 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto& tv = tu->out[i];
                 params.push_back(tv->get_name());
             }
-
+            int warm_step = 5, test_step = 100;
+            if (enable_debug)
+            {
+                warm_step = 0;
+                test_step = 1;
+            }
             lu_main << "\n//warm up for 5 iters:\n";
-            lu_main << "for(int i_=0; i_< 1; i_++)\n";
+            lu_main << "for(int i_=0; i_< " << warm_step << "; i_++)\n";
             lu_main.block_begin();
             lu_main << h2dcopy.get_code();
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
@@ -825,9 +832,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << "printf(\"%s \\n\", \"" << tensor.get_name() << ":\");\n"
                         << "for (int i = 0; i < "
                         << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
-                        << "; ++i) printf(\"%f \", " << tensor.get_name() << "_host[i]); "
+                        << "; ++i) printf(\"%e \", " << tensor.get_name() << "_host[i]); "
                         << "\nprintf(\" .. (size = " << tensor.get_tensor_layout()->get_size()
-                        << ", ends with %f);\\n\", " << tensor.get_name() << "_host["
+                        << ", ends with %e);\\n\", " << tensor.get_name() << "_host["
                         << tensor.get_tensor_layout()->get_size() - 1 << "]);\n";
             }
             lu_main.block_end();
@@ -841,7 +848,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "cudaEventRecord(start);\n\n";
             lu_main << "//kernel call\n";
 
-            lu_main << "int steps = 100;\n";
+            lu_main << "int steps = " << test_step << ";\n";
             lu_main << "cudaProfilerStart();\n";
             lu_main << "for (int i_=0; i_<steps; i_++)\n";
             lu_main.block_begin();

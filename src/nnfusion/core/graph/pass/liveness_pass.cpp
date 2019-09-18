@@ -11,6 +11,7 @@
 #include "ngraph/op/constant.hpp"
 #include "ngraph/op/parameter.hpp"
 #include "ngraph/op/result.hpp"
+#include "nnfusion/core/ops/generic_op.hpp"
 #include "nnfusion/util/log.hpp"
 
 using namespace nnfusion::graph;
@@ -22,6 +23,8 @@ bool LivenessPass::run_on_graph(std::shared_ptr<Graph>& graph)
     std::unordered_set<ngraph::descriptor::Tensor*> persistent_tensors;
     std::unordered_set<ngraph::descriptor::Tensor*> output_tensors;
     std::unordered_set<ngraph::descriptor::Tensor*> constant_tensors;
+    // tensors in this list will not be reused
+    std::unordered_set<ngraph::descriptor::Tensor*> pre_allocated_tensors;
 
     for (const auto gnode : graph->get_parameters())
     {
@@ -57,8 +60,20 @@ bool LivenessPass::run_on_graph(std::shared_ptr<Graph>& graph)
                 constant_tensors.insert(&tensor);
             }
         }
+
+        if (memory_reuse_blacklist.count(node->description()) > 0)
+        {
+            for (size_t i = 0; i < node->get_output_size(); ++i)
+            {
+                ngraph::descriptor::Tensor& tensor = node->get_output_tensor(i);
+                constant_tensors.insert(&tensor);
+                persistent_tensors.insert(&tensor);
+                pre_allocated_tensors.insert(&tensor);
+            }
+        }
     }
 
+    bool is_fisrt_node = true;
     std::unordered_set<ngraph::descriptor::Tensor*> currently_live;
     for (auto it = gnodes.rbegin(); it != gnodes.rend(); it++)
     {
@@ -118,6 +133,13 @@ bool LivenessPass::run_on_graph(std::shared_ptr<Graph>& graph)
         }
         node->liveness_free_list = free_tensor_decls;
         node->liveness_new_list = new_tensor_decls;
+    }
+
+    // allocate memory for the non-reusable tensors at very begining
+    if (gnodes.size() > 0)
+    {
+        const std::shared_ptr<ngraph::Node>& node = gnodes[0]->get_op_ptr();
+        node->liveness_new_list.insert(pre_allocated_tensors.begin(), pre_allocated_tensors.end());
     }
 
     return true;
