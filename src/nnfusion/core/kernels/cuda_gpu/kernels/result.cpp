@@ -15,15 +15,6 @@ cuda::Result::Result(shared_ptr<KernelContext> ctx)
     std::stringstream tag;
     tag << "cuda_result";
     custom_tag = tag.str();
-    //Inplace
-    result = static_pointer_cast<ngraph::op::Result>(ctx->node);
-    is_inplace = false;
-    //Inplace
-    auto annotations = result->get_op_annotations();
-    if (annotations && annotations->get_in_place_oi_pairs().size() > 0)
-    {
-        is_inplace = true;
-    }
 }
 
 LanguageUnit_p cuda::Result::emit_function_body()
@@ -35,10 +26,7 @@ LanguageUnit_p cuda::Result::emit_function_body()
     lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
     lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
 
-    if (!is_inplace)
-    {
-        emit_memcpyDtD(lu, dst, src);
-    }
+    emit_memcpyDtD(lu, dst, src);
 
     return _lu;
 }

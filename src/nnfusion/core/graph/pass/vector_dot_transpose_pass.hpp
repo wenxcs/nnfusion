@@ -19,7 +19,7 @@ namespace nnfusion
                 {
                     bool using_pass = getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE")
                                           ? atoi(getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE"))
-                                          : 1;
+                                          : 0;
                     if (!using_pass)
                         return true;
 

@@ -19,8 +19,6 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                shared_ptr<ngraph::op::Result> result;
-                bool is_inplace;
             };
         } // namespace cuda
     }     // namespace kernels
