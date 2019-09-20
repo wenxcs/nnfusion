@@ -14,6 +14,9 @@ namespace nnfusion
             {
             public:
                 bool run_on_graph(std::shared_ptr<Graph>& graph) override;
+
+            private:
+                bool shared_in_nodes(std::shared_ptr<GNode>& node);
             };
         }
     }
