@@ -18,6 +18,8 @@ namespace nnfusion
                  std::shared_ptr<TranslationUnit> tu) override;
 
         virtual std::string get_generate_cmakelists(void);
+        virtual std::string get_generate_cmakelists(bool superscaler_enable);
+
         virtual void post_projgen(void);
         virtual std::string get_target_name(void);
         virtual std::vector<shared_ptr<const kernels::KernelRegistration>>

@@ -35,14 +35,14 @@ namespace nnfusion
                 {
                 }
 
-                FunctionUnit_p get_or_emit_source() override;
-
                 virtual bool is_static_function() override { return false; }
+                // Need to regenerate function call with new assigned launch config(stream).
+                LanguageUnit_p emit_function_call() override;
+
             protected:
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
 
-                LanguageUnit_p emit_function_call() override;
                 LanguageUnit_p emit_function_signature() override;
 
                 dim3 m_blockDim;

@@ -17,8 +17,8 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
         KernelRegistry::Global()->FindKernelRegistrations(node->description(), devtype, DT_FLOAT);
 
-    // Skip since only one candidate
-    if (kernel_regs.size() == 1)
+    // Skip since only one candidate or constant
+    if (kernel_regs.size() == 1 || node->is_constant())
         return std::make_pair(devtype, nullptr);
 
     shared_ptr<KernelContext> ctx(new KernelContext(node));
@@ -100,48 +100,140 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
             if ((*ins)["Enable_Kernel_Selection"].is_valid() &&
                 (*ins)["Enable_Kernel_Selection"].as<bool>())
             {
-                vector<pair<DeviceType, KernelEmitter::Pointer>> res;
-                if (!(*ins)["Kernel_Selection_Device"].is_valid() ||
-                    ((*ins)["Kernel_Selection_Device"].as<DeviceType>() == CUDA_GPU))
+                (*ins)["Kernel_Selection_Result"] =
+                    vector<pair<DeviceType, KernelEmitter::Pointer>>();
+                auto& res = (*ins)["Kernel_Selection_Result"]
+                                .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+
+                vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+                for (auto t : dev_type)
                 {
-                    auto rt =
-                        dynamic_pointer_cast<IProfilingRuntime>(CudaDefaultRuntime::Runtime());
-                    auto ans = profiling_best(ins->operatorDef(), CUDA_GPU, rt);
+                    if ((*ins)["Kernel_Selection_Device"].is_valid() &&
+                        (*ins)["Kernel_Selection_Device"].as<DeviceType>() != t)
+                        continue;
+
+                    auto ans = profiling_best(ins->operatorDef(), t, get_default_runtime(t));
+
                     if (ans.second != nullptr)
                         res.push_back(ans);
                 }
+            }
+        }
+    }
+    return true;
+}
 
-                if (!(*ins)["Kernel_Selection_Device"].is_valid() ||
-                    ((*ins)["Kernel_Selection_Device"].as<DeviceType>() == ROCM_GPU))
+pair<DeviceType, kernels::KernelEmitter::Pointer>
+    DefaultKernelSelector::pick_first(shared_ptr<ngraph::Node> node, DeviceType devtype)
+{
+    std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+        KernelRegistry::Global()->FindKernelRegistrations(node->description(), devtype, DT_FLOAT);
+    shared_ptr<KernelContext> ctx(new KernelContext(node));
+
+    for (auto kernel_reg : kernel_regs)
+    {
+        auto kernel = kernel_reg->m_factory(ctx);
+        // constant kernel emitter will write file to save weights, skip to do it when codegen.
+        if (node->is_constant() || kernel->get_or_emit_source())
+        {
+            // if(kernel->get_or_emit_source() != nullptr)
+            //    LOG_WARN << "Valid kernel found:" << node->get_name();
+            return std::make_pair(devtype, kernel);
+        }
+    }
+    LOG_ERR << "No valid kernel found:" << node->get_name();
+    return std::make_pair(devtype, nullptr);
+}
+
+pair<DeviceType, kernels::KernelEmitter::Pointer>
+    DefaultKernelSelector::pick_first_rocm(shared_ptr<ngraph::Node> node)
+{
+    shared_ptr<KernelContext> ctx(new KernelContext(node));
+    auto kernel_regs =
+        KernelRegistry::Global()->FindKernelRegistrations(node->description(), ROCM_GPU, DT_FLOAT);
+    if (!kernel_regs.size())
+        kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
+            node->description(), CUDA_GPU, DT_FLOAT);
+    else
+    {
+        auto priority = [](const std::string& tag) -> int {
+            static char sym_prio[] = "PRIORITY_";
+            int at = tag.find(sym_prio);
+            return (at != 0) ? 0 : atoi(tag.substr(sizeof(sym_prio) - 1).c_str());
+        };
+
+        std::sort(kernel_regs.begin(),
+                  kernel_regs.end(),
+                  [&](const shared_ptr<const KernelRegistration>& x,
+                      const shared_ptr<const KernelRegistration>& y) {
+                      auto x_prio = priority(x->m_tag), y_prio = priority(y->m_tag);
+                      if (x_prio != y_prio)
+                          return x_prio > y_prio;
+
+                      auto x_type = x->m_factory(ctx)->get_kernel_type();
+                      auto y_type = y->m_factory(ctx)->get_kernel_type();
+                      if (x_type != y_type)
+                          return x_type < y_type;
+
+                      return false;
+                  });
+    }
+
+    for (auto kernel_reg : kernel_regs)
+    {
+        auto kernel = kernel_reg->m_factory(ctx);
+        if (node->is_constant() || kernel->get_or_emit_source())
+        {
+            return std::make_pair(ROCM_GPU, kernel);
+        }
+    }
+    LOG_ERR << "No valid kernel found:" << node->get_name();
+    return std::make_pair(ROCM_GPU, nullptr);
+}
+
+bool DefaultKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
+                                std::shared_ptr<TranslationUnit> tu)
+{
+    auto& p = tu->program;
+    for (auto iterator : p)
+    {
+        for (auto ins : *iterator)
+        {
+            if (!(*ins)["Kernel_Selection_Result"].is_valid())
+                (*ins)["Kernel_Selection_Result"] =
+                    vector<pair<DeviceType, KernelEmitter::Pointer>>();
+            auto& res = (*ins)["Kernel_Selection_Result"]
+                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+
+            vector<DeviceType> dev_type{CUDA_GPU /*, ROCM_GPU, GENERIC_CPU*/};
+            for (auto t : dev_type)
+            {
+                if ((*ins)["Kernel_Selection_Device"].is_valid() &&
+                    (*ins)["Kernel_Selection_Device"].as<DeviceType>() != t)
+                    continue;
+
+                bool selected = false;
+                for (auto& p : res)
                 {
-                    if (RocmDefaultRuntime::Runtime()->check_env())
+                    if (p.first == t)
                     {
-                        auto rt =
-                            dynamic_pointer_cast<IProfilingRuntime>(RocmDefaultRuntime::Runtime());
-                        auto ans = profiling_best(ins->operatorDef(), ROCM_GPU, rt);
-                        if (ans.second != nullptr)
-                            res.push_back(ans);
+                        selected = true;
+                        break;
                     }
-                    else
-                        LOG_WARN << "Rocm runtime is not available.";
                 }
+                if (selected)
+                    continue;
 
-                if (!(*ins)["Kernel_Selection_Device"].is_valid() ||
-                    ((*ins)["Kernel_Selection_Device"].as<DeviceType>() == GENERIC_CPU))
+                if (t == ROCM_GPU)
                 {
-                    if (false)
-                    {
-                        auto rt =
-                            dynamic_pointer_cast<IProfilingRuntime>(ReferenceRuntime::Runtime());
-                        auto ans = profiling_best(ins->operatorDef(), GENERIC_CPU, rt);
-                        if (ans.second != nullptr)
-                            res.push_back(ans);
-                    }
-                    else
-                        LOG_WARN << "CPU runtime is not available.";
+                    auto ans = pick_first_rocm(ins->operatorDef());
+                    res.push_back(ans);
                 }
-
-                (*ins)["Kernel_Selection_Result"] = move(res);
+                else
+                {
+                    auto ans = pick_first(ins->operatorDef(), t);
+                    res.push_back(ans);
+                }
             }
         }
     }

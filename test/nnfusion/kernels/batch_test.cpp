@@ -40,24 +40,11 @@ namespace nnfusion
         }
 
         ///\todo Maybe a better/general way
-        IProfilingRuntime::Pointer gen_runtime(DeviceType dev_t)
-        {
-            IProfilingRuntime::Pointer ip = nullptr;
-            switch (dev_t)
-            {
-            case CUDA_GPU: ip = CudaDefaultRuntime::Runtime(); break;
-            case ROCM_GPU: ip = CudaDefaultRuntime::Runtime(); break;
-            case GENERIC_CPU: ip = ReferenceRuntime::Runtime(); break;
-            }
-            if (ip != nullptr && ip->check_env())
-                return ip;
-            return nullptr;
-        }
 
         template <typename T, typename val_t = float>
         bool check_kernels(DeviceType dev_t, DataType data_t)
         {
-            auto rt = gen_runtime(dev_t);
+            auto rt = get_default_runtime(dev_t);
             if (rt == nullptr)
                 return false;
 

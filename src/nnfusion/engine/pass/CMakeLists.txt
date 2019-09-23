@@ -11,6 +11,12 @@ set(SRC
     rocm_codegenerator.cpp
     device_dispatcher.cpp
     kernel_selection.cpp
+    # tensor related
+    tensor/tensor_memory_layout.cpp
+    tensor/host_tensor_allocation.cpp
+    # train related
+    train/async_execution.cpp
+    # fusion
     create_fusion_block.cpp
 )
 add_library(nnfusion_engine_pass STATIC ${SRC})

@@ -10,16 +10,45 @@
 #include "nnfusion/engine/pass/ngraph_function_pass.hpp"
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
+#include "pass/tensor/host_tensor_allocation.hpp"
+#include "pass/tensor/tensor_memory_layout.hpp"
+#include "pass/train/async_execution.hpp"
+
+using namespace nnfusion::pass;
+
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
+    // kernel selection
+    m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
+    m_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
+    m_passes->push_back(make_shared<DefaultKernelSelector>());
+
+    /*
+        This is disabled since we did use same stream for allreduce or applygradient;
+        m_passes->push_back(make_shared<TrainningAsyncExecution>());
+    */
+
+    // CUDA
+    m_passes->push_back(make_shared<HostTensorAllocation>(CUDA_GPU));
+    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, true, CUDA_GPU));
+    m_passes->push_back(make_shared<CreateFusionBlock>());
+    m_passes->push_back(make_shared<CudaCodeGenerator>());
+
+    /*
+    // CPU
+    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false, GENERIC_CPU));
+    m_passes->push_back(make_shared<CpuCodeGenerator>());
+    // ROCM
+    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false, ROCM_GPU));
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
     m_passes->push_back(make_shared<CreateFusionBlock>(CreateFusionBlock()));
     m_passes->push_back(make_shared<ProfilingBasedKernelSelector>(ProfilingBasedKernelSelector()));
     m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
     m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
     m_passes->push_back(nnfusion::make_rocm_codegenerator());
+    */
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,

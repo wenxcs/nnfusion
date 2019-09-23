@@ -44,7 +44,9 @@ namespace ngraph
         public:
             Tensor(const element::Type& element_type,
                    const PartialShape& pshape,
-                   const std::string& name);
+                   const std::string& name,
+                   bool is_persistent = false,
+                   bool is_host_tensor = false);
 
             const std::string& get_name() const { return m_name; }
             void set_tensor_type(const element::Type& element_type, const PartialShape& pshape);
@@ -61,9 +63,11 @@ namespace ngraph
 
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
-
             size_t size() const;
-
+            bool is_persistent() const { return m_persistent; }
+            bool is_host_tensor() const { return m_host_tensor; }
+            void set_persistent() { m_persistent = true; }
+            void set_host_tensor(bool value = true) { m_host_tensor = value; }
         protected:
             element::Type m_element_type;
 
@@ -77,6 +81,9 @@ namespace ngraph
             std::string m_name;
             std::shared_ptr<layout::TensorLayout> m_tensor_layout;
             size_t m_pool_offset{0};
+
+            bool m_persistent;
+            bool m_host_tensor;
         };
 
         std::ostream& operator<<(std::ostream&, const ngraph::descriptor::Tensor&);

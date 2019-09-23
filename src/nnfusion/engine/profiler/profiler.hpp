@@ -210,5 +210,7 @@ namespace nnfusion
             void create_profiling_contexts(shared_ptr<GNode> node);
             void connect_nodes(shared_ptr<GNode> node);
         };
-    }; // namespace profiler
-} // namespace nnfusion
+
+        IProfilingRuntime::Pointer get_default_runtime(DeviceType dev_t);
+    };
+}

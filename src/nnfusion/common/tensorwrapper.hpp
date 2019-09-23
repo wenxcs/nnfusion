@@ -8,11 +8,16 @@ namespace nnfusion
     class TensorWrapper;
 }
 
+// descriptor::Tensor is just descriptor.
 class nnfusion::TensorWrapper
 {
 public:
+    using Pointer = shared_ptr<nnfusion::TensorWrapper>;
     TensorWrapper(const shared_ptr<descriptor::Tensor>&, const string& alias = "");
 
+    bool is_host() const;
+    bool is_persistent() const;
+    void set_host_tensor(bool value = true);
     size_t get_size() const;
     size_t get_offset() const;
     const Shape& get_shape() const;
@@ -25,4 +30,5 @@ public:
 private:
     shared_ptr<descriptor::Tensor> m_tensor;
     string m_alias;
+    bool m_ishost;
 };

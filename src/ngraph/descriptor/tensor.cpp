@@ -23,11 +23,15 @@ using namespace std;
 
 descriptor::Tensor::Tensor(const element::Type& element_type,
                            const PartialShape& pshape,
-                           const std::string& name)
+                           const std::string& name,
+                           bool is_persistent,
+                           bool is_host_tensor)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : Shape{})
     , m_partial_shape(pshape)
     , m_name(name)
+    , m_persistent(is_persistent)
+    , m_host_tensor(is_host_tensor)
 {
 }
 

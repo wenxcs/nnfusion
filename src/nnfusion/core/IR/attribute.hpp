@@ -170,6 +170,15 @@ namespace nnfusion
                 }
                 return this;
             }
+
+            template <typename T>
+            bool is_a(Symbol name) const
+            {
+                auto it = find(name, true);
+                T* child = static_cast<T*>(it->get());
+                return child->check_type();
+            }
+
             template <typename T>
             typename T::ValueType& get(Symbol name) const
             {
@@ -229,6 +238,12 @@ namespace nnfusion
                 return get<ScalarAttributeValue<T>>(name);
             }
 
+            template <typename T>
+            bool CheckType(Symbol name) const
+            {
+                return is_a<ScalarAttributeValue<T>>(name);
+            }
+
             void copy_tags_from(const Tagable& attr)
             {
                 for (auto& it : attr.values_)
@@ -263,6 +278,12 @@ namespace nnfusion
 
             bool is_valid() { return _tags->hasAttribute(_sym); };
             template <typename T>
+            bool is_valid_as()
+            {
+                return is_valid() && _tags->CheckType<T>(_sym);
+            };
+
+            template <typename T>
             const Tagable* set(T val)
             {
                 enforce_not_nullptr(_tags);
@@ -284,6 +305,8 @@ namespace nnfusion
                 set(val);
             }
 
+            // Special type conversion assuming data is bool type;
+            operator bool() { return is_valid_as<bool>() && this->as<bool>(); }
             ///\brief This will give the reference;
             ///\todo(wenxh) Need check the datatype, which should be stored at
             // ScalarAttributeValue.
@@ -306,5 +329,14 @@ namespace nnfusion
             Tagable* _tags = nullptr;
             Symbol _sym;
         };
+
+        template <>
+        void nnfusion::ir::TagProxy::operator=<char*>(char* str);
+        template <>
+        void nnfusion::ir::TagProxy::operator=<char[]>(char str[]);
+        template <>
+        const Tagable* TagProxy::set<char*>(char* val);
+        template <>
+        const Tagable* TagProxy::set<char[]>(char val[]);
     }
 }

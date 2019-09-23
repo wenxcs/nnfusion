@@ -19,4 +19,15 @@ namespace nnfusion
                            DeviceType devtype,
                            nnfusion::profiler::IProfilingRuntime::Pointer runtime);
     };
+
+    class DefaultKernelSelector : public IInterpreterPass
+    {
+    public:
+        bool run(std::shared_ptr<InterpreterContext> ctx,
+                 std::shared_ptr<TranslationUnit> tu) override;
+        pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+            pick_first(shared_ptr<ngraph::Node> node, DeviceType devtype);
+        pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+            pick_first_rocm(shared_ptr<ngraph::Node> node);
+    };
 }

@@ -4,21 +4,22 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-FunctionUnit_p cuda::CudaEmitter::get_or_emit_source()
-{
-    set_launch_config();
-    return KernelEmitter::get_or_emit_source();
-}
-
 LanguageUnit_p cuda::CudaEmitter::emit_function_call()
 {
     LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_call"));
     auto& lu = *_lu;
     vector<string> names;
+    set_launch_config();
+    // Default stream shouled be none
+    string exe_stream = m_context->async_info.execution_stream.is_default_stream()
+                            ? ""
+                            // todo: add config for shared_memory
+                            : ", 0, " + m_context->async_info.execution_stream.name;
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
     names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
     lu << "<<<dim3(" << m_gridDim.x << ", " << m_gridDim.y << ", " << m_gridDim.z << "), dim3("
-       << m_blockDim.x << ", " << m_blockDim.y << ", " << m_blockDim.z << ") >>>"
+       << m_blockDim.x << ", " << m_blockDim.y << ", " << m_blockDim.z << ") " << exe_stream
+       << ">>>"
        << "(" << join(names, ", ") << ");\n";
 
     return _lu;

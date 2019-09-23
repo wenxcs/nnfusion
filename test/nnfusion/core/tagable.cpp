@@ -7,6 +7,7 @@
 #include <set>
 #include <string>
 #include <vector>
+
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
 #include "ngraph/op/pad.hpp"

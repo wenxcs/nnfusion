@@ -45,8 +45,11 @@ namespace nnfusion
                     }
                     lu.block_end();
 
-                    // Second: using template. You can read one_hot.cpp for detail, for this case
-                    // you cannot use template since we have uncertain amount of "accum += input$i[$threadid]".
+                    // TODO(jxue): disabled for local version correctness
+                    // We assign applygradient to use it's default stream.
+                    // auto& async_info = m_context->async_info;
+                    // async_info.execution_stream.number = 2;
+                    // async_info.execution_stream.name = "applygradient_stream";
 
                     return _lu;
                 }
@@ -55,6 +58,8 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
+                    // TODO(jxue): disabled for local version correctness
+                    //_lu->require(declaration::applygradient_stream);
                     return _lu;
                 }
 

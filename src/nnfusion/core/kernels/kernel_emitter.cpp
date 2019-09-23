@@ -86,6 +86,15 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
         params.push_back(ss.str());
     }
 
+    for (size_t i = 0; i < m_context->tensors.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->tensors[i].get_type() << "* ";
+        // defult name is: "persit0", "persist1" ...
+        ss << m_context->tensors[i].get_name();
+        params.push_back(ss.str());
+    }
+
     lu << "void "
        << "(" << join(params, ", ") << ")";
     return _lu;
@@ -98,6 +107,7 @@ LanguageUnit_p KernelEmitter::emit_function_call()
     vector<string> names;
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
     names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
+    names.insert(names.end(), m_context->tensor_names.begin(), m_context->tensor_names.end());
     lu << "(" << join(names, ", ") << ");\n";
 
     return _lu;
@@ -126,6 +136,18 @@ LanguageUnit_p KernelEmitter::emit_comments()
         lu << "\tshape: " << out.get_shape();
         lu << "\n";
     }
+
+    if (!m_context->tensors.empty())
+        lu << "// Other tensors in use:\n";
+
+    for (auto& persist : m_context->tensors)
+    {
+        lu << "//\t- name: " << persist.get_name();
+        lu << "\ttype: " << persist.get_type();
+        lu << "\tshape: " << persist.get_shape();
+        lu << "\n";
+    }
+
     return _lu;
 }
 
@@ -133,6 +155,8 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
 {
     if (m_is_emitted)
     {
+        if (!m_context->async_info.execution_stream.is_default_stream())
+            m_function_unit->call_unit = emit_function_call();
         return m_function_unit;
     }
 
@@ -177,4 +201,27 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     m_is_emitted = true;
 
     return fu;
+}
+
+const TensorWrapper& KernelEmitter::allocate_tensor(
+    Shape shape, element::Type elt, string name, bool host, bool persistent)
+{
+    // Internal access of this tensor should be like temp0, temp1 ...
+    // External access of this tensor should be like Conv1_temp0, Conv2_temp1...
+    ///\important Important assumption! the tensor allocated can only be seen inside the kernel.
+    ///\todo wenxh difference: Tensor::name, TensorWrapper::name, KernelContext::I/O/T/PNames
+    string wrapper_name = "temp" + to_string(m_context->tensors.size());
+    // Generate tensor name
+    if (name.empty())
+    {
+        name = m_context->node->get_name();
+        name = name + "_" + wrapper_name;
+    }
+    TensorWrapper temp_tensor(
+        make_shared<ngraph::descriptor::Tensor>(elt, shape, name, persistent, host), wrapper_name);
+    m_context->tensors.push_back(move(temp_tensor));
+    m_context->tensor_names.push_back(name);
+
+    LOG_INFO << "Tensor allocated:\t" << name << ", shape is:" << shape;
+    return m_context->tensors.back();
 }

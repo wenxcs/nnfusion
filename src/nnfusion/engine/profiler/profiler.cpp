@@ -135,3 +135,17 @@ unordered_map<string, ProfilingContext::Pointer> GraphEvaluate::eval()
     // The result data ptr is like result["nodename"]->kernel_memory->unsafe_output(0);
     return move(result);
 }
+
+IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(DeviceType dev_t)
+{
+    IProfilingRuntime::Pointer ip = nullptr;
+    switch (dev_t)
+    {
+    case CUDA_GPU: ip = CudaDefaultRuntime::Runtime(); break;
+    case ROCM_GPU: ip = CudaDefaultRuntime::Runtime(); break;
+    case GENERIC_CPU: ip = ReferenceRuntime::Runtime(); break;
+    }
+    if (ip != nullptr && ip->check_env())
+        return ip;
+    return nullptr;
+}

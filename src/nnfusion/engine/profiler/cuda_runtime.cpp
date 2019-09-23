@@ -56,6 +56,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
     auto& arg = ke->kernel->m_context->inputs;
     auto& out = ke->kernel->m_context->outputs;
+    auto& temp = ke->kernel->m_context->tensors;
 
     writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
     for (size_t i = 0; i + 1 < arg.size(); i++)
@@ -97,23 +98,83 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
                       "cudaDevAttrMultiProcessorCount, 0));\n";
         }
 
+        auto tensor_declare = [](const TensorWrapper& t) -> std::string {
+            return t.get_type() + "* " + t.get_name() + ";\n";
+        };
+
+        auto tensor_alloc_cuda = [](const TensorWrapper& tensor) {
+            stringstream s;
+            s << "cudaMalloc((void**)&" << tensor.get_name() << "," << tensor.get_size() << " * "
+              << tensor.get_element_type().size() << ");\n";
+            return s.str();
+        };
+
+        auto tensor_alloc_host = [](const TensorWrapper& tensor) {
+            stringstream s;
+            s << tensor.get_name() << " = new " << tensor.get_type() << "[" << tensor.get_size()
+              << "];\n";
+            return s.str();
+        };
+
+        auto tensor_cpy_h2d = [](const TensorWrapper& tensor, string from) {
+            stringstream s;
+            s << "cudaMemcpy(" << tensor.get_name() << ", " << from << ", " << tensor.get_size()
+              << " * " << tensor.get_element_type().size() << ", "
+              << "cudaMemcpyHostToDevice);\n";
+            return s.str();
+        };
+
+        auto tensor_cpy_d2h = [](string to, const TensorWrapper& tensor) {
+            stringstream s;
+            s << "cudaMemcpy(" << to << ", " << tensor.get_name() << ", " << tensor.get_size()
+              << " * " << tensor.get_element_type().size() << ", "
+              << "cudaMemcpyDeviceToHost);\n";
+            return s.str();
+        };
+
+        auto tensor_free_cuda = [](const TensorWrapper& tensor) {
+            stringstream s;
+            s << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+            return s.str();
+        };
+
+        auto tensor_free_host = [](const TensorWrapper& tensor) {
+            stringstream s;
+            s << "delete[] " << tensor.get_name() << ";\n";
+            return s.str();
+        };
+
         for (size_t i = 0; i < arg.size(); i++)
         {
             auto& tensor = arg[i];
-            writer << tensor.get_type() << "* " << tensor.get_name() << ";\n"
-                   << "cudaMalloc((void**)&" << tensor.get_name() << "," << tensor.get_size()
-                   << " * " << tensor.get_element_type().size() << ");\n";
-
-            writer << "cudaMemcpy(" << tensor.get_name() << ", " << tensor.get_name() << "_host, "
-                   << tensor.get_size() << " * " << tensor.get_element_type().size() << ", "
-                   << "cudaMemcpyHostToDevice);\n";
+            writer << tensor_declare(tensor);
+            if (tensor.is_host())
+                writer << tensor.get_name() << " = " << tensor.get_name() + "_host;\n";
+            else
+            {
+                writer << tensor_alloc_cuda(tensor);
+                writer << tensor_cpy_h2d(tensor, tensor.get_name() + "_host");
+            }
         }
+
         for (size_t i = 0; i < out.size(); i++)
         {
             auto& tensor = out[i];
-            writer << tensor.get_type() << "* " << tensor.get_name() << ";\n"
-                   << "cudaMalloc((void**)&" << tensor.get_name() << "," << tensor.get_size()
-                   << " * " << tensor.get_element_type().size() << ");\n";
+            writer << tensor_declare(tensor);
+            if (tensor.is_host())
+                writer << tensor.get_name() << " = " << tensor.get_name() + "_host;\n";
+            else
+                writer << tensor_alloc_cuda(tensor);
+        }
+
+        for (size_t i = 0; i < temp.size(); i++)
+        {
+            auto& tensor = out[i];
+            writer << tensor_declare(tensor);
+            if (tensor.is_host())
+                writer << tensor_alloc_host(tensor);
+            else
+                writer << tensor_alloc_cuda(tensor);
         }
 
         writer << "cudaEvent_t start, stop;\n";
@@ -136,21 +197,31 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         for (size_t i = 0; i < out.size(); i++)
         {
             auto& tensor = out[i];
-            writer << "cudaMemcpy(" << tensor.get_name() << "_host, " << tensor.get_name() << ", "
-                   << tensor.get_size() << " * " << tensor.get_element_type().size() << ", "
-                   << "cudaMemcpyDeviceToHost);\n";
+            if (!tensor.is_host())
+                writer << tensor_cpy_d2h(tensor.get_name() + "_host", tensor);
         }
 
         for (size_t i = 0; i < arg.size(); i++)
         {
             auto& tensor = arg[i];
-            writer << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+            if (!tensor.is_host())
+                writer << tensor_free_cuda(tensor);
         }
 
         for (size_t i = 0; i < out.size(); i++)
         {
             auto& tensor = out[i];
-            writer << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+            if (!tensor.is_host())
+                writer << tensor_free_cuda(tensor);
+        }
+
+        for (size_t i = 0; i < temp.size(); i++)
+        {
+            auto& tensor = temp[i];
+            if (!tensor.is_host())
+                writer << tensor_free_cuda(tensor);
+            else
+                writer << tensor_free_host(tensor);
         }
 
         if (re->local_symbol.count("declaration::global_cublas_handle") > 0)

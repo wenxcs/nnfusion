@@ -11,6 +11,7 @@ namespace nnfusion
             LU_DECLARE(cuda);
             LU_DECLARE(cublas);
             LU_DECLARE(cudnn);
+            LU_DECLARE(super_scaler);
         } // namespace header
 
         namespace macro
@@ -35,6 +36,8 @@ namespace nnfusion
             LU_DECLARE(global_cudnn_handle);
             LU_DECLARE(num_SMs);
             LU_DECLARE(cuda_reduce_primitive);
+            LU_DECLARE(allreduce_stream);
+            LU_DECLARE(applygradient_stream);
         } // namespace declaration
     }     // namespace kernels
 } // namespace nnfusion

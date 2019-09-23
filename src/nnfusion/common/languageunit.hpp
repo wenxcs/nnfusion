@@ -76,6 +76,23 @@ namespace nnfusion
             sig.insert(pos, fname);
             return sig;
         }
+
+        string get_specialized_funciton_call(string func_name = "")
+        {
+            enforce_not_nullptr(this->name_unit);
+            enforce_not_nullptr(this->signature_unit);
+            string fname = func_name == "" ? this->name_unit->get_code() : func_name;
+            string call = this->call_unit->get_code();
+
+            size_t spos = call.find("cudaStream_t*");
+            if (spos == 0)
+            {
+                size_t pos = call.find("(");
+                call.insert(pos, fname);
+                return call;
+            }
+            return fname + call;
+        }
     };
 
     using FunctionUnit_p = shared_ptr<FunctionUnit>;

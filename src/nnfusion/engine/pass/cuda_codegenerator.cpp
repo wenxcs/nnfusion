@@ -50,6 +50,12 @@ namespace
 
 std::string CudaCodeGenerator::get_generate_cmakelists(void)
 {
+    return get_generate_cmakelists(false);
+}
+
+// todo: add flags for future.
+std::string CudaCodeGenerator::get_generate_cmakelists(bool super_scalar_enable)
+{
     LanguageUnit lu;
     lu << R"(project(main_test)
 cmake_minimum_required(VERSION 3.5)
@@ -58,7 +64,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
@@ -72,8 +78,10 @@ link_directories(/usr/local/cuda/lib64)
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES cuda/include include)
-
-include_directories(${CUDNN_INCLUDE_DIR} ${CUDA_INCLUDE_DIRS})
+)" << (super_scalar_enable ? "find_package(MPI)" : "")
+       << R"(
+include_directories(${CUDNN_INCLUDE_DIR} ${CUDA_INCLUDE_DIRS} )"
+       << (super_scalar_enable ? "${MPI_INCLUDE_PATH}" : "") << R"()
 
 find_library(CUDNN_LIBRARY cudnn
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}
@@ -89,7 +97,12 @@ target_link_libraries(nnfusion_naive_rt
     ${CUDA_cudart_LIBRARY}
     ${CUDA_LIBRARIES}
     ${CUDA_CUBLAS_LIBRARIES}
-    ${CUDNN_LIBRARIES}
+    ${CUDNN_LIBRARIES})"
+       << (super_scalar_enable ? R"(
+    ${MPI_LIBRARIES}
+    nccl)"
+                               : "")
+       << R"(
 )
 
 cuda_add_executable(main_test main_test.cpp)
@@ -104,6 +117,8 @@ void CudaCodeGenerator::post_projgen()
                                                 "./image_tests/image_test.cpp");
     nnfusion::codegen::copy_file_from_templates("image_tests/CMakeLists_cuda.txt",
                                                 "./image_tests/CMakeLists.txt");
+    nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.hpp",
+                                                "./super_scaler.hpp");
 }
 
 std::string CudaCodeGenerator::get_target_name()
@@ -173,6 +188,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     bool rc = true;
 
     std::vector<shared_ptr<KernelEmitter>> kernels;
+    std::unordered_map<KernelEmitter*, string> kernel_memcpy;
     auto& prog = tu->program;
     for (auto iterator : prog)
     {
@@ -185,6 +201,17 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 continue;
             }
 
+            if (ins->operatorDef()->is_constant())
+            {
+                auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+                    ins->operatorDef()->description(), CUDA_GPU, DT_FLOAT);
+                shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+                auto kernel = kernel_reg->m_factory(ctx);
+                kernel->get_or_emit_source();
+                kernels.push_back(kernel);
+                continue;
+            }
+
             if ((*ins)["Kernel_Selection_Result"].is_valid())
             {
                 auto res = (*ins)["Kernel_Selection_Result"]
@@ -192,19 +219,51 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 bool kernel_selected = false;
                 for (auto& k : res)
                 {
-                    if (k.second != nullptr && k.first == device_type())
+                    if (k.second != nullptr && k.first == device_type() &&
+                        k.second->get_or_emit_source() != nullptr)
                     {
                         if (kernel_selected)
                             enforce(false) << "More than one candidates.";
                         else
+                        {
                             block_kernels.push_back(k.second);
+
+                            LanguageUnit m;
+                            if ((*ins)["memcpy_pair"].is_valid())
+                            {
+                                auto mempairs =
+                                    (*ins)["memcpy_pair"]
+                                        .as<unordered_map<TensorWrapper*, TensorWrapper*>>();
+                                for (auto& it : mempairs)
+                                {
+                                    string memcpykind = it.first->is_host()
+                                                            ? "cudaMemcpyDeviceToHost"
+                                                            : "cudaMemcpyHostToDevice";
+                                    m << "cudaMemcpy(" << it.first->get_name() << ", "
+                                      << it.second->get_name() << ", " << memcpykind << ");\n";
+                                }
+                                kernel_memcpy[k.second.get()] = m.get_code();
+                            }
+                        }
 
                         kernel_selected = true;
                     }
                 }
                 if (kernel_selected)
                     continue;
+                else
+                {
+                    auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+                        "AnyOP", CUDA_GPU, DT_FLOAT);
+                    enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                    shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+                    auto kernel = kernel_reg->m_factory(ctx);
+                    kernel->get_or_emit_source();
+                    kernels.push_back(kernel);
+                }
             }
+
+            // enforce(false) << "Should not use this code anymore.";
 
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
@@ -287,6 +346,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
     lu << "char* _memory_pool;\n\n";
+    if (tu->program.m_context.host_memory_pool_size > 0)
+        lu << "char* host_memory_pool;\n\n";
 
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
     // Collect Function Definition
@@ -423,9 +484,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             // enforce(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu_main_init << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, "
-                         << tu->memory_pool_size << "));\n";
+                         << tu->program.m_context.memory_pool_size << "));\n";
+
+            // Should make memory pool more feature and united;
+            if (tu->program.m_context.host_memory_pool_size > 0)
+                lu_main_init << "host_memory_pool = new char["
+                             << tu->program.m_context.host_memory_pool_size << "];\n";
+
             lu_main_init << "CUDA_SAFE_CALL(cudaMemset((void*)_memory_pool, 0, "
-                         << tu->memory_pool_size << "));\n";
+                         << tu->program.m_context.memory_pool_size << "));\n";
 
             for (auto kernel : kernels)
             {
@@ -436,8 +503,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     allocated.insert(it.get_name());
 
                     lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(_memory_pool+"
-                                 << it.get_offset() << ");\n";
+                    string pool_name = it.is_host() ? "host_memory_pool" : "_memory_pool";
+                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(" << pool_name
+                                 << "+" << it.get_offset() << ");\n";
                 }
 
                 for (auto& it : kernel->m_context->outputs)
@@ -447,8 +515,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     allocated.insert(it.get_name());
 
                     lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(_memory_pool+"
-                                 << it.get_offset() << ");\n";
+                    string pool_name = it.is_host() ? "host_memory_pool" : "_memory_pool";
+                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(" << pool_name
+                                 << "+" << it.get_offset() << ");\n";
+                }
+
+                for (auto& it : kernel->m_context->tensors)
+                {
+                    if (allocated.count(it.get_name()) > 0)
+                        continue;
+                    allocated.insert(it.get_name());
+
+                    lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
+                    string pool_name = it.is_host() ? "host_memory_pool" : "_memory_pool";
+                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(" << pool_name
+                                 << "+" << it.get_offset() << ");\n";
                 }
             }
         }
@@ -468,6 +549,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
+            if (global_required.count("header::super_scaler"))
+            {
+                lu_main_init << "super_scaler_initialization();\n";
+            }
+            if (global_required.count("declaration::applygradient_stream"))
+            {
+                lu_main_init << "cudaStreamCreate(&applygradient_stream);\n";
+            }
+            if (global_required.count("declaration::allreduce_stream"))
+            {
+                lu_main_init << "cudaStreamCreate(&allreduce_stream);\n";
+            }
+
             if (enable_timing)
             {
                 lu_kernel_entry << "static cudaEvent_t hEvents[" << kernels.size() << "];\n";
@@ -504,7 +598,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                                  : "internal_node";
                     lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
                                     << "\n";
-                    lu_kernel_entry << func_name << fu->call_unit->get_code();
+                    // Put memcpy here
+                    lu_kernel_entry << kernel_memcpy[kernel.get()];
+                    lu_kernel_entry << fu->get_specialized_funciton_call(func_name);
+
                     if (enable_debug)
                     {
                         for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
@@ -527,6 +624,17 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
+
+            if (global_required.count("declaration::allreduce_stream"))
+            {
+                lu_kernel_entry << "cudaStreamSynchronize(allreduce_stream);\n";
+                lu_main_free << "cudaStreamDestroy(allreduce_stream);\n";
+            }
+            if (global_required.count("declaration::applygradient_stream"))
+            {
+                lu_kernel_entry << "cudaStreamSynchronize(applygradient_stream);\n";
+                lu_main_free << "cudaStreamDestroy(applygradient_stream);\n";
+            }
             if (global_required.count("declaration::global_cublas_handle") > 0)
             {
                 lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
@@ -534,6 +642,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (global_required.count("declaration::global_cudnn_handle") > 0)
             {
                 lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+            }
+            if (global_required.count("header::super_scaler"))
+            {
+                lu_main_free << "super_scaler_finalization();\n";
             }
             if (enable_timing)
             {
@@ -912,7 +1024,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     //generate CMakeList.txt
     LanguageUnit& lu_cmake = *this->lu_cmakefile;
-    lu_cmake << get_generate_cmakelists();
+    bool superscaler_enable = global_required.count("header::super_scaler") > 0;
+    lu_cmake << get_generate_cmakelists(superscaler_enable);
 
     projgen();
 

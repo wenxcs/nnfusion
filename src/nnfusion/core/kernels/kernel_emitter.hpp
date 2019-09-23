@@ -6,6 +6,8 @@
 #include "nnfusion/common/languageunit.hpp"
 #include "nnfusion/common/tensorwrapper.hpp"
 
+#include "async.hpp"
+
 namespace nnfusion
 {
     namespace kernels
@@ -30,6 +32,9 @@ namespace nnfusion
             // The output tensor descriptions
             vector<nnfusion::TensorWrapper> outputs;
 
+            // Allocated tensor descriptons
+            vector<nnfusion::TensorWrapper> tensors;
+
             // The input tensor names
             vector<string> input_names;
 
@@ -39,9 +44,13 @@ namespace nnfusion
             // The list of input and output data types
             vector<string> dtypes;
 
+            // The allocated tensor names
+            vector<string> tensor_names;
+
             // The number of gpu streaming multiprocessor
             uint32_t gpu_num_sm;
 
+            AsyncExecutionInfo async_info;
             // used for kernel fusion
             std::vector<shared_ptr<KernelEmitter>> kernels;
         };
@@ -93,6 +102,13 @@ namespace nnfusion
 
             // Emit comments
             virtual LanguageUnit_p emit_comments();
+
+            // Allocate persistant tensor, this could be used for trainning
+            virtual const TensorWrapper& allocate_tensor(Shape shape,
+                                                         element::Type elt = element::f32,
+                                                         string name = "",
+                                                         bool host_tensor = false,
+                                                         bool persistent_tensor = false);
 
             // A kernel only emits kernel code once
             bool m_is_emitted;

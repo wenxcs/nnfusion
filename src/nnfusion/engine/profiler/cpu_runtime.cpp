@@ -70,6 +70,7 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
 
     auto& arg = ke->kernel->m_context->inputs;
     auto& out = ke->kernel->m_context->outputs;
+    auto& temp = ke->kernel->m_context->tensors;
 
     writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
     for (size_t i = 0; i + 1 < arg.size(); i++)
@@ -93,8 +94,31 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
     }
     writer << ")\n";
 
+    auto tensor_declare = [](const TensorWrapper& t) -> std::string {
+        return t.get_type() + "* " + t.get_name() + ";\n";
+    };
+
+    auto tensor_alloc_host = [](const TensorWrapper& tensor) {
+        stringstream s;
+        s << tensor.get_name() << " = new " << tensor.get_type() << "[" << tensor.get_size()
+          << "];\n";
+        return s.str();
+    };
+
+    auto tensor_free_host = [](const TensorWrapper& tensor) {
+        stringstream s;
+        s << "delete[] " << tensor.get_name() << ";\n";
+        return s.str();
+    };
+
     writer.block_begin();
     {
+        for (size_t i = 0; i < temp.size(); i++)
+        {
+            writer << tensor_declare(temp[i]);
+            writer << tensor_alloc_host(temp[i]);
+        }
+
         writer << "std::chrono::high_resolution_clock::time_point t1,t2;\n";
         writer << "for(int i=0; i < " << ke->warmup_times + ke->runtime_times << "; i++)\n";
         writer.block_begin();
@@ -109,6 +133,9 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
                   "std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);\n";
         writer << "double milliseconds = time_span.count();\n";
         writer << "return milliseconds/" << ke->runtime_times << ";\n";
+
+        for (size_t i = 0; i < temp.size(); i++)
+            writer << tensor_free_host(temp[i]);
     }
     writer.block_end();
 

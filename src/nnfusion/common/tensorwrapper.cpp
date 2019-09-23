@@ -10,7 +10,25 @@ using namespace nnfusion;
 TensorWrapper::TensorWrapper(const shared_ptr<descriptor::Tensor>& tv, const string& alias)
     : m_tensor(tv)
     , m_alias(alias)
+    , m_ishost(false)
 {
+}
+
+bool TensorWrapper::is_host() const
+{
+    // return m_tensor->is_host_tensor();
+    return m_ishost;
+}
+
+void TensorWrapper::set_host_tensor(bool val)
+{
+    // m_tensor->set_host_tensor(val);
+    m_ishost = val;
+}
+
+bool TensorWrapper::is_persistent() const
+{
+    return m_tensor->is_persistent();
 }
 
 size_t TensorWrapper::get_size() const
