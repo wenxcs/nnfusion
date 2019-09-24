@@ -26,7 +26,12 @@ LanguageUnit_p cuda::Result::emit_function_body()
     lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
     lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
 
-    emit_memcpyDtD(lu, dst, src);
+    //emit_memcpyDtD(lu, dst, src);
+    lu << "if (input0 != output0) {\n"
+       << "    CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
+       << dst.get_size() << " * " << dst.get_element_type().size()
+       << ", cudaMemcpyDeviceToDevice));\n"
+       << "}\n";
 
     return _lu;
 }
