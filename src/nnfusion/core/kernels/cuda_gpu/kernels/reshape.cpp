@@ -209,6 +209,10 @@ LanguageUnit_p cuda::Reshape2D::emit_function_body()
 
 void cuda::Reshape2D::set_launch_config()
 {
+    if (is_noop || is_memcpy || arg_rank != 2)
+    {
+        return;
+    }
     uint32_t aligned_grid_size_x = align_to_block_size(arg_shape[1], block_size);
     uint32_t aligned_grid_size_y = align_to_block_size(arg_shape[0], block_size);
 
@@ -222,9 +226,9 @@ cuda::Reshape3D::Reshape3D(shared_ptr<KernelContext> ctx)
     block_size = std::vector<uint32_t>(3, 0);
     // TODO: currently we set it to 16, will add tuning method later
     block_size_x = 16;
-    block_size[0] = block_size_x;                                       //x
-    block_size[2] = (input_order[2] == 0) ? block_size_x : 1;           //z
-    block_size[1] = (block_size[2] == block_size_x) ? 1 : block_size_x; //y
+    block_size[0] = block_size_x;                                                        //x
+    block_size[2] = (input_order.size() >= 3 && input_order[2] == 0) ? block_size_x : 1; //z
+    block_size[1] = (block_size[2] == block_size_x) ? 1 : block_size_x;                  //y
     input_strides = ngraph::row_major_strides(arg_shape);
     output_strides = ngraph::NVShape(arg_rank);
     trans_strides = ngraph::NVShape(arg_rank);
@@ -334,6 +338,10 @@ LanguageUnit_p cuda::Reshape3D::emit_function_body()
 
 void cuda::Reshape3D::set_launch_config()
 {
+    if (is_noop || is_memcpy || arg_rank != 3)
+    {
+        return;
+    }
     uint32_t aligned_grid_size_x = align_to_block_size(arg_shape[2], block_size[0]);
     uint32_t aligned_grid_size_y = align_to_block_size(arg_shape[1], block_size[1]);
     uint32_t aligned_grid_size_z = align_to_block_size(arg_shape[0], block_size[2]);
@@ -494,17 +502,17 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_dependency()
 
 // Register Reshape kernel emitter
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Reshape2D)                                              // constructor
+REGISTER_KERNEL_EMITTER("Reshape",                                                       // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_2D"), // attrs
+                        cuda::Reshape2D) // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Reshape3D)                                              // constructor
+REGISTER_KERNEL_EMITTER("Reshape",                                                       // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_3D"), // attrs
+                        cuda::Reshape3D) // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                    // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::ReshapehD)                                              // constructor
+REGISTER_KERNEL_EMITTER("Reshape",                                                      // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_D"), // attrs
+                        cuda::ReshapehD) // constructor
 
 REGISTER_KERNEL_EMITTER("Reshape",                                                 // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
