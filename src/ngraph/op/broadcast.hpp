@@ -18,7 +18,7 @@
 
 #include "ngraph/axis_set.hpp"
 #include "ngraph/op/op.hpp"
-
+#include "ngraph/util.hpp"
 namespace ngraph
 {
     namespace op
@@ -45,6 +45,10 @@ namespace ngraph
             /// \return A set containing the indices of the broadcast axes (0-based).
             const AxisSet& get_broadcast_axes() const { return m_broadcast_axes; }
             const Shape& get_broadcast_shape() const { return m_shape; }
+            bool is_inner_broadcast() { return m_is_inner_broadcast; }
+            bool is_outer_broadcast() { return m_is_outer_broadcast; }
+            size_t get_inner_broadcast_size() { return m_inner_bc_size; }
+            size_t get_outer_broadcast_size() { return m_outer_bc_size; }
         protected:
             Broadcast(const std::string& node_type,
                       const NodeVector& args,
@@ -55,8 +59,12 @@ namespace ngraph
                                            const NodeVector& deltas) override;
 
             virtual void infer_shape() {}
+            void inner_or_outer_broadcast();
             Shape m_shape;
             AxisSet m_broadcast_axes;
+            size_t m_inner_bc_size, m_outer_bc_size;
+            bool m_is_inner_broadcast = false;
+            bool m_is_outer_broadcast = false;
         };
 
         /// \brief Broadcast arg to the same shape as like_arg.

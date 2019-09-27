@@ -10,13 +10,6 @@ int ElementWiseFused::unique_func_id = 0;
 ElementWiseFused::ElementWiseFused(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    for (auto kernel : ctx->kernels)
-    {
-        auto cuda_kernel = std::dynamic_pointer_cast<CudaElementwiseEmitter>(kernel);
-        enforce_not_nullptr(cuda_kernel) << "kernel type:"
-                                         << kernel->m_context->node->description();
-        m_kernels.push_back(cuda_kernel);
-    }
     enforce_not_nullptr(FuseContext());
 }
 
@@ -27,7 +20,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
     std::unordered_map<std::string, size_t> node_outputs;
     std::unordered_map<std::string, TensorWrapper> tensor_wrappers;
 
-    for (auto kernel_emitter : m_kernels)
+    for (auto kernel_emitter : ctx->kernels)
     {
         auto node = kernel_emitter->m_context->node;
         for (const descriptor::Input& input : node->get_inputs())
@@ -88,22 +81,27 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
     create_ptr(LanguageUnit, lu_, get_function_name());
     LanguageUnit& lu = *lu_;
 
-    std::unordered_map<std::string, std::string> args, local_tensors;
+    std::unordered_map<std::string, std::string> in_args, out_args, local_tensors;
     for (int i = 0; i < m_context->inputs.size(); i++)
     {
         auto& tensor = m_context->inputs[i];
-        args[tensor.get_name()] = "input" + std::to_string(i) + "[tid]";
+        in_args[tensor.get_name()] = "input" + std::to_string(i);
     }
     for (int i = 0; i < m_context->outputs.size(); i++)
     {
         auto& tensor = m_context->outputs[i];
-        args[tensor.get_name()] = "output" + std::to_string(i) + "[tid]";
+        out_args[tensor.get_name()] = "output" + std::to_string(i);
     }
 
     size_t temp_tensor_id = 0;
 
-    uint32_t nthreads =
-        static_cast<uint32_t>(ngraph::shape_size(m_context->outputs[0].get_shape()));
+    uint32_t nthreads = 0;
+    for (auto& out : m_context->outputs)
+    {
+        auto size = static_cast<uint32_t>(ngraph::shape_size(out.get_shape()));
+        if (size > nthreads)
+            nthreads = size;
+    }
 
     int grids, blocks, bound;
     compute_best_config(grids, blocks, bound);
@@ -121,44 +119,85 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
         lu << "if (tid >= " << bound << ") return;\n";
     }
 
-    for (auto kernel_emitter : m_kernels)
+    for (auto kernel_emitter : m_context->kernels)
     {
-        auto op_kernel = kernel_emitter->get_op_kernel();
-        if (op_kernel.second != nullptr)
-        {
-            lu.require(op_kernel.second);
-        }
-
+        auto node = kernel_emitter->m_context->node;
         auto out_tw = kernel_emitter->m_context->outputs[0];
-        if (args.count(out_tw.get_name()) > 0)
+        if (auto bc = std::dynamic_pointer_cast<ngraph::op::Broadcast>(node))
         {
-            lu << args[out_tw.get_name()] << " = ";
-        }
-        else
-        {
-            if (local_tensors.count(out_tw.get_name()) == 0)
+            std::string index = "";
+            if (bc->is_inner_broadcast())
             {
-                local_tensors[out_tw.get_name()] = "temp" + std::to_string(temp_tensor_id++);
+                index += "[tid / " + std::to_string(bc->get_inner_broadcast_size()) + "]";
             }
-            lu << out_tw.get_type() << " " << local_tensors[out_tw.get_name()] << " = ";
-        }
-
-        std::vector<std::string> input_args;
-        for (int i = 0; i < kernel_emitter->m_context->inputs.size(); i++)
-        {
-            auto& in_tw = kernel_emitter->m_context->inputs[i];
-            if (args.count(in_tw.get_name()) > 0)
+            else
             {
-                input_args.push_back(args[in_tw.get_name()]);
+                enforce(bc->is_outer_broadcast());
+                index += "[tid % " + std::to_string(bc->get_outer_broadcast_size()) + "]";
+            }
+            local_tensors[out_tw.get_name()] = "temp" + std::to_string(temp_tensor_id++);
+            auto& in_tw = kernel_emitter->m_context->inputs[0];
+            enforce(in_args.count(in_tw.get_name()) > 0);
+
+            lu << out_tw.get_type() << " " << local_tensors[out_tw.get_name()] << " = "
+               << in_args[in_tw.get_name()] << index << ";\n";
+        }
+        else if (auto rs = std::dynamic_pointer_cast<ngraph::op::Reshape>(node))
+        {
+            enforce(rs->get_is_transpose() == false);
+            auto& in_tw = kernel_emitter->m_context->inputs[0];
+            if (in_args.count(in_tw.get_name()) > 0)
+            {
+                in_args[out_tw.get_name()] = in_args[in_tw.get_name()];
             }
             else
             {
                 enforce(local_tensors.count(in_tw.get_name()) > 0);
-                input_args.push_back(local_tensors[in_tw.get_name()]);
+                local_tensors[out_tw.get_name()] = local_tensors[in_tw.get_name()];
             }
         }
+        else
+        {
+            auto cuda_kernel = std::dynamic_pointer_cast<CudaElementwiseEmitter>(kernel_emitter);
+            enforce_not_nullptr(cuda_kernel) << "kernel type:"
+                                             << kernel_emitter->m_context->node->description();
+            auto op_kernel = cuda_kernel->get_op_kernel();
+            if (op_kernel.second != nullptr)
+            {
+                lu.require(op_kernel.second);
+            }
+            local_tensors[out_tw.get_name()] = "temp" + std::to_string(temp_tensor_id++);
+            std::vector<std::string> input_args;
+            for (int i = 0; i < cuda_kernel->m_context->inputs.size(); i++)
+            {
+                auto& in_tw = cuda_kernel->m_context->inputs[i];
+                if (in_args.count(in_tw.get_name()) > 0)
+                {
+                    input_args.push_back(in_args[in_tw.get_name()] + "[tid]");
+                }
+                else
+                {
+                    enforce(local_tensors.count(in_tw.get_name()) > 0);
+                    input_args.push_back(local_tensors[in_tw.get_name()]);
+                }
+            }
+            lu << out_tw.get_type() << " " << local_tensors[out_tw.get_name()] << " = "
+               << op_kernel.first << "(" << join(input_args, ", ") << ");\n";
+        }
+    }
 
-        lu << op_kernel.first << "(" << join(input_args, ", ") << ");\n";
+    for (auto& pair : out_args)
+    {
+        lu << pair.second << "[tid] = ";
+        if (local_tensors.count(pair.first) > 0)
+        {
+            lu << local_tensors[pair.first] << ";\n";
+        }
+        else
+        {
+            enforce(in_args.count(pair.first) > 0);
+            lu << in_args[pair.first] << "[tid];\n";
+        }
     }
 
     return lu_;
@@ -179,7 +218,7 @@ LanguageUnit_p ElementWiseFused::emit_function_name()
     auto& lu = *_lu;
 
     std::vector<std::string> names;
-    for (auto kernel : m_kernels)
+    for (auto kernel : m_context->kernels)
     {
         names.push_back(kernel->m_context->node->description());
     }
@@ -214,6 +253,14 @@ LanguageUnit_p ElementWiseFused::emit_comments()
         lu << "\tshape: " << out.get_shape();
         lu << "\n";
     }
+
+    lu << "// Fused functions:\n";
+    for (auto kernel : m_context->kernels)
+    {
+        lu << "// " << kernel->get_or_emit_source()->name_unit->get_code()
+           << kernel->get_or_emit_source()->call_unit->get_code();
+    }
+
     return _lu;
 }
 

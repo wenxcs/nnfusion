@@ -6,6 +6,8 @@
 #include <queue>
 #include "../gnode.hpp"
 #include "../graph.hpp"
+#include "ngraph/op/broadcast.hpp"
+#include "ngraph/op/reshape.hpp"
 #include "ngraph/op/util/binary_elementwise_arithmetic.hpp"
 #include "ngraph/op/util/unary_elementwise_arithmetic.hpp"
 
@@ -52,6 +54,8 @@ struct FuseGroup
     size_t num_consts;
     size_t num_outputs;
 
+    size_t output_size = 0; // used in element_group
+
     std::vector<size_t> nodes;
 };
 
@@ -61,7 +65,7 @@ public:
     KernelFuseOptimizer(std::shared_ptr<Graph> g)
         : m_graph(g)
     {
-        m_nodes.resize(m_graph->get_max_node_id(), TaggedNode());
+        m_nodes.resize(m_graph->get_max_node_id());
         ELEM_GROUP_NODEID = m_nodes.size();
         RegisterFusionOps();
     }
@@ -72,6 +76,7 @@ public:
             ExtractFusionGroups();
         if (fuse_groups != nullptr && fuse_groups->size() > 0)
         {
+            FuseReshapeAndBroadcast(fuse_groups);
             TagFusionGroupsOnGraph(fuse_groups);
             return true;
         }
@@ -130,10 +135,10 @@ private:
         for (auto id : group->nodes)
         {
             enforce(id < m_nodes.size());
-            TaggedNode& tn = m_nodes[id];
-            if (id >= ELEM_GROUP_NODEID && tn.elem_group)
+            auto tn = m_nodes[id];
+            if (id >= ELEM_GROUP_NODEID && tn->elem_group)
             {
-                num_nodes += tn.elem_group->nodes.size();
+                num_nodes += tn->elem_group->nodes.size();
             }
             else
             {
@@ -165,8 +170,10 @@ private:
         for (auto node : m_graph->get_nodes())
         {
             size_t id = node->get_id();
-            m_nodes[node->get_id()].node = node;
-            if (!m_nodes[id].visited && m_nodes[id].ready_inputs == node->get_in_edges().size())
+            m_nodes[id] = std::make_shared<TaggedNode>();
+            m_nodes[id]->node = node;
+            if (!(m_nodes[id]->visited) &&
+                (m_nodes[id]->ready_inputs == node->get_in_edges().size()))
             {
                 ready.push(id);
             }
@@ -175,7 +182,7 @@ private:
         while (state != WORK_DONE)
         {
             size_t node_id = 0;
-            TaggedNode* tn = nullptr;
+            std::shared_ptr<TaggedNode> tn = nullptr;
 
             switch (state)
             {
@@ -191,7 +198,7 @@ private:
 
                 node_id = ready.front();
                 ready.pop();
-                tn = &m_nodes[node_id];
+                tn = m_nodes[node_id];
                 break;
             }
             // Process the nodes in fuse_ready queue
@@ -221,7 +228,7 @@ private:
                 }
                 node_id = fuse_ready.front();
                 fuse_ready.pop_front();
-                tn = &m_nodes[node_id];
+                tn = m_nodes[node_id];
 
                 if (!cur_group)
                     cur_group = std::make_shared<FuseGroup>();
@@ -232,8 +239,7 @@ private:
             // Process the nodes in elem_ready queue
             case PROCESS_ELEM_NODE:
             {
-                if (elem_ready.empty())
-                {
+                auto AppendElementGroup = [&]() {
                     if (cur_elemgroup && cur_elemgroup->nodes.size() > 0)
                     {
                         // append cur_elemgroup to cur_group
@@ -241,25 +247,38 @@ private:
                         {
                             cur_group = std::make_shared<FuseGroup>();
                         }
-                        TaggedNode tn;
-                        tn.elem_group = cur_elemgroup;
+                        auto new_tn = std::make_shared<TaggedNode>();
+                        new_tn->elem_group = cur_elemgroup;
                         int new_id = m_nodes.size();
-                        m_nodes.push_back(tn);
+                        m_nodes.push_back(new_tn);
                         cur_group->nodes.push_back(new_id);
                         cur_elemgroup = nullptr;
                     }
+                };
+
+                if (elem_ready.empty())
+                {
+                    AppendElementGroup();
                     state = PROCESS_FUSIABLE_NODE;
                     break;
                 }
+
                 node_id = elem_ready.front();
                 elem_ready.pop_front();
-                tn = &m_nodes[node_id];
+                tn = m_nodes[node_id];
+
+                size_t tensor_size = shape_size(tn->node->get_op_ptr()->get_output_shape(0));
+                if (cur_elemgroup && cur_elemgroup->output_size != tensor_size)
+                {
+                    AppendElementGroup();
+                }
 
                 if (!cur_elemgroup)
                 {
                     cur_elemgroup = std::make_shared<FuseGroup>();
                 }
                 cur_elemgroup->nodes.push_back(node_id);
+                cur_elemgroup->output_size = tensor_size;
                 break;
             }
 
@@ -273,18 +292,92 @@ private:
                 tn->visited = true;
                 for (auto edge : tn->node->get_out_edges())
                 {
-                    auto& dst = m_nodes[edge->get_dst()->get_id()];
-                    dst.ready_inputs++;
+                    auto dst = m_nodes[edge->get_dst()->get_id()];
+                    dst->ready_inputs++;
 
-                    if (!dst.visited && dst.ready_inputs >= dst.node->get_in_edges().size())
+                    if (!(dst->visited) && (dst->ready_inputs >= dst->node->get_in_edges().size()))
                     {
-                        AddNodeToReadyQueues(dst.node, ready, fuse_ready, elem_ready);
+                        AddNodeToReadyQueues(dst->node, ready, fuse_ready, elem_ready);
                     }
                 }
             }
         } // while
 
         return groups;
+    }
+
+    void FuseReshapeAndBroadcast(std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups)
+    {
+        int next_fusion_group_id = 0;
+        int next_elem_group_id = 0;
+
+        for (auto group : *groups)
+        {
+            for (auto id : group->nodes)
+            {
+                enforce(id < m_nodes.size());
+                auto tn = m_nodes[id];
+                if (id >= ELEM_GROUP_NODEID && tn->elem_group)
+                {
+                    std::vector<size_t> fusable_input_nodes;
+                    for (auto elem_id : tn->elem_group->nodes)
+                    {
+                        enforce(elem_id < m_nodes.size());
+                        auto elem_tn = m_nodes[elem_id];
+                        enforce_not_nullptr(elem_tn->node);
+                        for (auto in_edge : elem_tn->node->get_in_edges())
+                        {
+                            if (in_edge->is_control_edge())
+                                continue;
+                            auto input_node = in_edge->get_src();
+                            while (input_node)
+                            {
+                                auto op = input_node->get_op_ptr();
+                                if (auto bc = std::dynamic_pointer_cast<ngraph::op::Broadcast>(op))
+
+                                {
+                                    if (bc->is_inner_broadcast() || bc->is_outer_broadcast())
+                                    {
+                                        fusable_input_nodes.push_back(input_node->get_id());
+                                        // cannot fuse more nodes before broadcast
+                                        break;
+                                    }
+                                }
+                                else if (auto rs =
+                                             std::dynamic_pointer_cast<ngraph::op::Reshape>(op))
+                                {
+                                    if (!(rs->get_is_transpose()) &&
+                                        (shape_size(op->get_output_shape(0)) ==
+                                         shape_size(
+                                             elem_tn->node->get_op_ptr()->get_output_shape(0))))
+                                        fusable_input_nodes.push_back(input_node->get_id());
+                                }
+                                else
+                                {
+                                    break;
+                                }
+
+                                bool input_set = false;
+                                for (auto edge : input_node->get_in_edges())
+                                {
+                                    if (!edge->is_control_edge())
+                                    {
+                                        enforce(input_set == false)
+                                            << "Reshape and Broadcast can only have 1 input!";
+                                        input_node = edge->get_src();
+                                        input_set = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // insert reshape and broadcast nodes into this element group
+                    tn->elem_group->nodes.insert(tn->elem_group->nodes.begin(),
+                                                 fusable_input_nodes.begin(),
+                                                 fusable_input_nodes.end());
+                }
+            }
+        }
     }
 
     void TagFusionGroupsOnGraph(std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups)
@@ -294,27 +387,27 @@ private:
 
         for (auto group : *groups)
         {
-            LOG_INFO << DebugStringFuseGroup(group);
+            // LOG_INFO << DebugStringFuseGroup(group);
             for (auto id : group->nodes)
             {
                 enforce(id < m_nodes.size());
-                TaggedNode& tn = m_nodes[id];
-                if (id >= ELEM_GROUP_NODEID && tn.elem_group)
+                auto tn = m_nodes[id];
+                if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
-                    for (auto elem_id : tn.elem_group->nodes)
+                    for (auto elem_id : tn->elem_group->nodes)
                     {
                         enforce(elem_id < m_nodes.size());
-                        TaggedNode& elem_tn = m_nodes[elem_id];
-                        enforce_not_nullptr(elem_tn.node);
+                        auto elem_tn = m_nodes[elem_id];
+                        enforce_not_nullptr(elem_tn->node);
 
-                        (*elem_tn.node)["elem_group_id"] = next_elem_group_id;
-                        (*elem_tn.node)["fusion_group_id"] = next_fusion_group_id;
+                        (*(elem_tn->node))["elem_group_id"] = next_elem_group_id;
+                        (*(elem_tn->node))["fusion_group_id"] = next_fusion_group_id;
                     }
                     next_elem_group_id++;
                 }
                 else
                 {
-                    (*tn.node)["fusion_group_id"] = next_fusion_group_id;
+                    (*(tn->node))["fusion_group_id"] = next_fusion_group_id;
                 }
             }
             next_fusion_group_id++;
@@ -328,8 +421,8 @@ private:
 
         auto PrintInfo = [this, &ret](const size_t id) {
             auto n = m_nodes[id];
-            ret << id << " / " << n.node->get_id() << ":" << n.node->get_name() << "\t"
-                << n.node->get_op_type() << "\n";
+            ret << id << " / " << n->node->get_id() << ":" << n->node->get_name() << "\t"
+                << n->node->get_op_type() << "\n";
         };
 
         ret << "FUSING NODES: [\n";
@@ -342,7 +435,7 @@ private:
             else
             {
                 ret << "((\n";
-                for (auto eid : m_nodes[id].elem_group->nodes)
+                for (auto eid : m_nodes[id]->elem_group->nodes)
                 {
                     PrintInfo(eid);
                 }
@@ -355,7 +448,7 @@ private:
 
 private:
     std::shared_ptr<Graph> m_graph;
-    std::vector<TaggedNode> m_nodes;
+    std::vector<std::shared_ptr<TaggedNode>> m_nodes;
     size_t ELEM_GROUP_NODEID;
 
     std::unordered_set<std::string> op_blacklist;
