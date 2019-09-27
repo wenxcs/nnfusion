@@ -9,7 +9,6 @@
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
-
 #include "cuda_codegenerator.hpp"
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/interpreter.hpp"
@@ -45,6 +44,13 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
         }
 
         virtual void post_projgen(void) override
+        {
+            //generate CMakeList.txt
+            LanguageUnit& lu_cmake = *this->lu_cmakefile;
+            lu_cmake << get_generate_cmakelists();
+        }
+
+        virtual void after_projgen(void) override
         {
             auto hipify_exec =
                 nnfusion::codegen::get_file_from_templates("rocm_adapter/hipify-nnfusion");

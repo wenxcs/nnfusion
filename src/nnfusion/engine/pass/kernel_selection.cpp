@@ -205,7 +205,7 @@ bool DefaultKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
             auto& res = (*ins)["Kernel_Selection_Result"]
                             .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
 
-            vector<DeviceType> dev_type{CUDA_GPU /*, ROCM_GPU, GENERIC_CPU*/};
+            vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
             for (auto t : dev_type)
             {
                 if ((*ins)["Kernel_Selection_Device"].is_valid() &&

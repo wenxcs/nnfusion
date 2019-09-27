@@ -21,6 +21,7 @@ namespace nnfusion
         virtual std::string get_generate_cmakelists(bool superscaler_enable);
 
         virtual void post_projgen(void);
+        virtual void after_projgen(void);
         virtual std::string get_target_name(void);
         virtual std::vector<shared_ptr<const kernels::KernelRegistration>>
             find_backend_kernels(const std::string& op_name, const shared_ptr<KernelContext>& ctx);

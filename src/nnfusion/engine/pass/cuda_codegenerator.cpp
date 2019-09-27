@@ -145,6 +145,10 @@ bool CudaCodeGenerator::projgen()
     return true;
 }
 
+void CudaCodeGenerator::after_projgen()
+{
+}
+
 // bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 //                         std::shared_ptr<TranslationUnit> tu)
 // {
@@ -1029,6 +1033,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     post_projgen();
     projgen();
+    after_projgen();
 
     // change to working directory
     int status = chdir("../../");
