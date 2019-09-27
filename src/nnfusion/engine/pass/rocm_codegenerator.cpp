@@ -46,6 +46,7 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
         virtual void post_projgen(void) override
         {
             //generate CMakeList.txt
+            this->lu_cmakefile = make_shared<LanguageUnit>("CMakeLists.txt");
             LanguageUnit& lu_cmake = *this->lu_cmakefile;
             lu_cmake << get_generate_cmakelists();
         }
