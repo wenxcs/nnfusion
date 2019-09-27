@@ -1027,9 +1027,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     bool superscaler_enable = global_required.count("header::super_scaler") > 0;
     lu_cmake << get_generate_cmakelists(superscaler_enable);
 
-    projgen();
-
     post_projgen();
+    projgen();
 
     // change to working directory
     int status = chdir("../../");

@@ -20,6 +20,16 @@ Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
+    // Todo: find another way
+    auto dev_name = getenv("NNFUSION_ENABLE_DEVICE") ? string(getenv("NNFUSION_ENABLE_DEVICE"))
+                                                     : string("CUDA");
+    DeviceType default_device;
+    if (dev_name == "ROCm")
+        default_device = ROCM_GPU;
+    else if (dev_name == "CPU")
+        default_device = GENERIC_CPU;
+    else
+        default_device = CUDA_GPU;
     // kernel selection
     m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
     m_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
@@ -30,25 +40,19 @@ Interpreter::Interpreter()
         m_passes->push_back(make_shared<TrainningAsyncExecution>());
     */
 
-    // CUDA
-    m_passes->push_back(make_shared<HostTensorAllocation>(CUDA_GPU));
-    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, true, CUDA_GPU));
+    m_passes->push_back(make_shared<HostTensorAllocation>(default_device));
+    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, true, default_device));
     m_passes->push_back(make_shared<CreateFusionBlock>());
-    m_passes->push_back(make_shared<CudaCodeGenerator>());
+    switch (default_device)
+    {
+    case CUDA_GPU: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
 
-    /*
-    // CPU
-    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false, GENERIC_CPU));
-    m_passes->push_back(make_shared<CpuCodeGenerator>());
-    // ROCM
-    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false, ROCM_GPU));
-    m_passes->push_back(make_shared<DefaultDeviceDispatcher>(DefaultDeviceDispatcher()));
-    m_passes->push_back(make_shared<CreateFusionBlock>(CreateFusionBlock()));
-    m_passes->push_back(make_shared<ProfilingBasedKernelSelector>(ProfilingBasedKernelSelector()));
-    m_passes->push_back(make_shared<CpuCodeGenerator>(CpuCodeGenerator()));
-    m_passes->push_back(make_shared<CudaCodeGenerator>(CudaCodeGenerator()));
-    m_passes->push_back(nnfusion::make_rocm_codegenerator());
-    */
+    case GENERIC_CPU: m_passes->push_back(make_shared<CpuCodeGenerator>()); break;
+
+    case ROCM_GPU: m_passes->push_back(nnfusion::make_rocm_codegenerator()); break;
+
+    default: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
+    }
 }
 
 Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,

@@ -71,6 +71,10 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
                                                         "./image_tests/image_test.cpp");
             nnfusion::codegen::copy_file_from_templates("image_tests/CMakeLists_rocm.txt",
                                                         "./image_tests/CMakeLists.txt");
+
+            //generate CMakeList.txt
+            LanguageUnit& lu_cmake = *this->lu_cmakefile;
+            lu_cmake << get_generate_cmakelists();
         }
 
         virtual std::string get_target_name(void) override { return "rocm_codegen"; }
