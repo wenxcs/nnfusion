@@ -56,7 +56,7 @@ namespace nnfusion
                     std::string templ;
                     if (arg0_shape[0] == 1)
                     {
-                        m_gridDim = dim3(1, 0, 1);
+                        m_gridDim = dim3(1, 1, 1);
                         m_blockDim = dim3(64, 1, 1);
 
                         int dataSize;

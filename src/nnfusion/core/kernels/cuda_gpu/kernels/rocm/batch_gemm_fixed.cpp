@@ -81,8 +81,8 @@ namespace nnfusion
                         templ =
                             "rocm_adapter/fixed_kernels/batch_gemm/"
                             "batch_matmul_autotvm_NN_16x512x64x512.h.in";
-                        m_gridDim = dim3(1, 16, 16);
-                        m_blockDim = dim3(32, 8, 1);
+                        m_gridDim = dim3(16, 8, 16);
+                        m_blockDim = dim3(8, 32, 1);
                     }
                     else
                         return nullptr;
