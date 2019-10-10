@@ -14,53 +14,117 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class UnsortedSegmentSum : public CudaEmitter
+            class UnsortedSegmentSum : public CudaLibEmitter
             {
                 shared_ptr<ngraph::op::GenericOp> generic_op;
-                size_t threads;
-                size_t input_count;
-                int stride0;
-                int rows;
-                ngraph::element::Type dtype;
+                size_t input_size, output_size;
+                string input0_t, input1_t, output0_t;
+                size_t input_outer_dim_size;
+                size_t input_inner_dim_size;
+                LanguageUnit_p reset_memory_kernel;
+                LanguageUnit_p unsorted_segment_sum_kernel;
+                string reset_memory_func_name;
+                string unsorted_segment_func_name;
 
             public:
                 UnsortedSegmentSum(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : CudaLibEmitter(ctx)
                     , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
                 {
-                    threads = ctx->outputs.front().get_size();
-                    input_count = ctx->inputs.size();
-                    dtype = ngraph::element::Type(ctx->outputs[0].get_element_type());
-                    auto in_shape = ctx->inputs.front().get_shape();
-                    stride0 = ngraph::row_major_strides(in_shape)[0];
-                    rows = in_shape[0];
+                    input_size = ctx->inputs[0].get_size();
+                    output_size = ctx->outputs[0].get_size();
+                    input_outer_dim_size = (ctx->inputs[1].get_shape())[0];
+                    input_inner_dim_size = ctx->inputs[0].get_size() / input_outer_dim_size;
+
+                    input0_t = ctx->inputs[0].get_element_type().c_type_string();
+                    input1_t = ctx->inputs[1].get_element_type().c_type_string();
+                    output0_t = ctx->outputs[0].get_element_type().c_type_string();
+
+                    std::stringstream ss;
+                    ss << "ResetMemory_" << input0_t;
+                    reset_memory_func_name = ss.str();
+
+                    ss.str(std::string());
+                    ss << "UnsortedSegmentSum_" << input0_t << "_" << input1_t << "_" << output0_t;
+                    unsorted_segment_func_name = ss.str();
+                }
+
+                void define_kernels()
+                {
+                    // Define the kernel for memory reset.
+                    reset_memory_kernel.reset(new LanguageUnit("declaration::reset_memory"));
+                    auto& lu_reset_memory_kernel = *reset_memory_kernel;
+
+                    auto code = ngraph::op::create_code_from_template(
+                        R"(
+__global__ void @func_name@(@input0_t@* input0)
+{
+uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+if(tid >= @nthreads@) return;
+input0[tid] = 0;
+}
+)",
+                        {{"func_name", reset_memory_func_name},
+                         {"input0_t", input0_t},
+                         {"nthreads", output_size}});
+
+                    lu_reset_memory_kernel << code;
+
+                    // Define the kernel for unsorted_segment_sum.
+                    unsorted_segment_sum_kernel.reset(
+                        new LanguageUnit("declaration::unsorted_segment_sum"));
+                    auto& lu_unsorted_seg_sum_kernel = *unsorted_segment_sum_kernel;
+
+                    code = ngraph::op::create_code_from_template(
+                        R"(
+__global__ void @func_name@(@input0_t@* input0, @input1_t@* input1, @output0_t@* output0)
+{
+uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+if(tid >= @nthreads@) return;
+size_t input_segment_index = tid / @input_inner_dim_size@;
+size_t segment_offset = tid % @input_inner_dim_size@;
+size_t output_segment_index = input1[input_segment_index];
+size_t output_index = output_segment_index * @input_inner_dim_size@ + segment_offset;
+atomicAdd(output0 + output_index, input0[tid]);
+}
+)",
+                        {{"func_name", unsorted_segment_func_name},
+                         {"input0_t", input0_t},
+                         {"input1_t", input1_t},
+                         {"output0_t", output0_t},
+                         {"nthreads", input_size},
+                         {"input_inner_dim_size", input_inner_dim_size}});
+
+                    lu_unsorted_seg_sum_kernel << code;
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    define_kernels();
+
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
 
+                    uint32_t block_size_x = 512;
+
+                    size_t output_block_cnt = align_to_block_size(output_size, block_size_x);
                     auto code = ngraph::op::create_code_from_template(
                         R"(
-uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-if(tid >= @nthreads@) return;
-size_t stride0 = @stride0@;
-size_t rowid = tid / stride0;
-size_t colid = tid - rowid * stride0;
-@typestring@ acc = 0;
-for(size_t row = 0; row < @row_number@; row++)
-{
-    if(input1[row] == rowid)
-        acc += input0[row * stride0 + colid];
-}
-output0[tid] = acc;
+@func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1)>>>(output0);
 )",
-                        {{"nthreads", threads},
-                         {"stride0", stride0},
-                         {"typestring", dtype.c_type_string()},
-                         {"row_number", rows}});
+                        {{"func_name", reset_memory_func_name},
+                         {"block_cnt", output_block_cnt},
+                         {"block_size_x", block_size_x}});
+                    lu << code;
 
+                    size_t input_block_cnt = align_to_block_size(input_size, block_size_x);
+                    code = ngraph::op::create_code_from_template(
+                        R"(
+@func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1)>>>(input0, input1, output0);
+)",
+                        {{"func_name", unsorted_segment_func_name},
+                         {"block_cnt", input_block_cnt},
+                         {"block_size_x", block_size_x}});
                     lu << code;
                     return _lu;
                 }
@@ -70,16 +134,9 @@ output0[tid] = acc;
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
                     _lu->require(header::stdio);
+                    _lu->require(reset_memory_kernel);
+                    _lu->require(unsorted_segment_sum_kernel);
                     return _lu;
-                }
-
-                void set_launch_config() override
-                {
-                    uint32_t block_size_x = 512;
-                    size_t block_cnt = align_to_block_size(threads, block_size_x);
-
-                    m_gridDim = dim3(block_cnt, 1, 1);
-                    m_blockDim = dim3(block_size_x, 1, 1);
                 }
             };
         }

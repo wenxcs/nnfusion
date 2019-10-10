@@ -948,9 +948,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << "printf(\"%s \\n\", \"" << tensor.get_name() << ":\");\n"
                         << "for (int i = 0; i < "
                         << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
-                        << "; ++i) printf(\"%e \", " << tensor.get_name() << "_host[i]); "
+                        << "; ++i) printf(\"%e \", (float)" << tensor.get_name() << "_host[i]); "
                         << "\nprintf(\" .. (size = " << tensor.get_tensor_layout()->get_size()
-                        << ", ends with %e);\\n\", " << tensor.get_name() << "_host["
+                        << ", ends with %e);\\n\", (float)" << tensor.get_name() << "_host["
                         << tensor.get_tensor_layout()->get_size() - 1 << "]);\n";
             }
             lu_main.block_end();
