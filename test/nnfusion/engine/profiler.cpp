@@ -19,7 +19,7 @@ using namespace nnfusion::profiler;
 TEST(nnfusion_engine_profiler, basic_utils)
 {
     // Prepare
-    auto node = nnfusion::inventory::create_object<op::Pad>();
+    auto node = nnfusion::inventory::create_object<op::Pad>(0);
     EXPECT_TRUE(node != nullptr);
 
     // Filter out the kernels meeting the requirement;
@@ -33,7 +33,7 @@ TEST(nnfusion_engine_profiler, basic_utils)
     auto output = nnfusion::inventory::generate_output<op::Pad, float>(0);
     vector<vector<float>> inputs;
     inputs.push_back(vector<float>{/*a*/ 1, 2, 3, 4, 5, 6});
-    inputs.push_back(vector<float>{/*b*/ 9});
+    inputs.push_back(vector<float>{/*b*/ 2112});
     vector<vector<float>> outputs;
     outputs.push_back(output);
 
