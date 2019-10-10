@@ -47,6 +47,7 @@ LanguageUnit_p cuda::StridedSliceGrad::emit_function_body()
     lu << "if(nthreads == 0)\n"
        << "nthreads = x[" << x_size - 1 << "] / strides[" << x_size - 1 << "];\n";
     lu << "uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;\n";
+    lu << "out[i] = 0;\n";
     lu << "if (i < nthreads)\n";
     lu.block_begin();
     {

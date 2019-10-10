@@ -13,7 +13,8 @@ namespace nnfusion
             {
             public:
                 bool run_on_graph(std::shared_ptr<Graph>& graph) override;
-                const std::unordered_set<std::string> memory_reuse_blacklist = {"StridedSliceGrad"};
+                const std::unordered_set<std::string> memory_reuse_blacklist =
+                    {}; //{"StridedSliceGrad"};
             };
         }
     }
