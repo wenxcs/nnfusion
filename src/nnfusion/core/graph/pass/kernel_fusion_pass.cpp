@@ -72,14 +72,24 @@ public:
 
     bool Optimize()
     {
-        std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> fuse_groups =
-            ExtractFusionGroups();
-        if (fuse_groups != nullptr && fuse_groups->size() > 0)
+        int fusion_level = getenv("NNFUSION_KERNEL_FUSION_LEVEL")
+                               ? atoi(getenv("NNFUSION_KERNEL_FUSION_LEVEL"))
+                               : 2;
+        if (fusion_level > 0)
         {
-            FuseReshapeAndBroadcast(fuse_groups);
-            TagFusionGroupsOnGraph(fuse_groups);
-            return true;
+            std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> fuse_groups =
+                ExtractFusionGroups();
+            if (fuse_groups != nullptr && fuse_groups->size() > 0)
+            {
+                if (fusion_level > 1)
+                {
+                    FuseReshapeAndBroadcast(fuse_groups);
+                }
+                TagFusionGroupsOnGraph(fuse_groups);
+                return true;
+            }
         }
+
         return true;
     }
 
