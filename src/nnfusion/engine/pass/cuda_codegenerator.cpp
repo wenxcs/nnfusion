@@ -234,7 +234,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 bool kernel_selected = false;
                 for (auto& k : res)
                 {
-                    if (k.second != nullptr && k.first == device_type() &&
+                    if (k.second != nullptr && k.first == DeviceType::CUDA_GPU &&
                         k.second->get_or_emit_source() != nullptr)
                     {
                         if (kernel_selected)
@@ -274,42 +274,42 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
                     auto kernel = kernel_reg->m_factory(ctx);
                     kernel->get_or_emit_source();
-                    kernels.push_back(kernel);
+                    block_kernels.push_back(kernel);
                 }
             }
 
             // enforce(false) << "Should not use this code anymore.";
 
-            shared_ptr<const KernelRegistration> kernel_reg = nullptr;
+            // shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
-            shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
-            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-                find_backend_kernels(op_name, ctx);
+            // shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+            // std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+            //     find_backend_kernels(op_name, ctx);
 
-            bool has_valid_kernel = false;
-            if (kernel_regs.size() > 0)
-            {
-                for (auto kernel_reg : kernel_regs)
-                {
-                    auto kernel = kernel_reg->m_factory(ctx);
-                    if (kernel->get_or_emit_source())
-                    {
-                        block_kernels.push_back(kernel);
-                        has_valid_kernel = true;
-                        break;
-                    }
-                }
-            }
+            // bool has_valid_kernel = false;
+            // if (kernel_regs.size() > 0)
+            // {
+            //     for (auto kernel_reg : kernel_regs)
+            //     {
+            //         auto kernel = kernel_reg->m_factory(ctx);
+            //         if (kernel->get_or_emit_source())
+            //         {
+            //             block_kernels.push_back(kernel);
+            //             has_valid_kernel = true;
+            //             break;
+            //         }
+            //     }
+            // }
 
-            if (kernel_regs.size() == 0 || !has_valid_kernel)
-            {
-                kernel_reg =
-                    KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
-                enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
-                auto kernel = kernel_reg->m_factory(ctx);
-                kernel->get_or_emit_source();
-                block_kernels.push_back(kernel);
-            }
+            // if (kernel_regs.size() == 0 || !has_valid_kernel)
+            // {
+            //     kernel_reg =
+            //         KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
+            //     enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+            //     auto kernel = kernel_reg->m_factory(ctx);
+            //     kernel->get_or_emit_source();
+            //     block_kernels.push_back(kernel);
+            // }
         }
 
         kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
