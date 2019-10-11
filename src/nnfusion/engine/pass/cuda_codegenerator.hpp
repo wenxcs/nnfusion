@@ -18,8 +18,6 @@ namespace nnfusion
                  std::shared_ptr<TranslationUnit> tu) override;
 
         virtual std::string get_generate_cmakelists(void);
-        virtual std::string get_generate_cmakelists(bool superscaler_enable);
-
         virtual void post_projgen(void);
         virtual void after_projgen(void);
         virtual std::string get_target_name(void);
@@ -32,5 +30,6 @@ namespace nnfusion
 
     protected:
         LanguageUnit_p lu_cmakefile, lu_nnfusion_rt, lu_header, lu_main;
+        bool super_scaler_enable = false;
     };
 } // namespace nnfusion

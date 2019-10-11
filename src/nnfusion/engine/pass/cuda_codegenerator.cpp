@@ -48,13 +48,8 @@ namespace
 
 } // namespace
 
-std::string CudaCodeGenerator::get_generate_cmakelists(void)
-{
-    return get_generate_cmakelists(false);
-}
-
 // todo: add flags for future.
-std::string CudaCodeGenerator::get_generate_cmakelists(bool super_scalar_enable)
+std::string CudaCodeGenerator::get_generate_cmakelists()
 {
     LanguageUnit lu;
     lu << R"(project(main_test)
@@ -78,10 +73,10 @@ link_directories(/usr/local/cuda/lib64)
 find_path(CUDNN_INCLUDE_DIR cudnn.h
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES cuda/include include)
-)" << (super_scalar_enable ? "find_package(MPI)" : "")
+)" << (super_scaler_enable ? "find_package(MPI)" : "")
        << R"(
 include_directories(${CUDNN_INCLUDE_DIR} ${CUDA_INCLUDE_DIRS} )"
-       << (super_scalar_enable ? "${MPI_INCLUDE_PATH}" : "") << R"()
+       << (super_scaler_enable ? "${MPI_INCLUDE_PATH}" : "") << R"()
 
 find_library(CUDNN_LIBRARY cudnn
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}
@@ -89,7 +84,10 @@ find_library(CUDNN_LIBRARY cudnn
 
 find_library(CUDA_cuda_LIBRARY cuda /usr/local/cuda/lib64/stubs)
 find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
-
+)" << (super_scaler_enable
+           ? "find_library(SUPER_SCALER_LIBRARIES libsuper_scaler.so ${CMAKE_CURRENT_SOURCE_DIR})"
+           : "")
+       << R"(
 cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)
 
 target_link_libraries(nnfusion_naive_rt
@@ -98,15 +96,21 @@ target_link_libraries(nnfusion_naive_rt
     ${CUDA_LIBRARIES}
     ${CUDA_CUBLAS_LIBRARIES}
     ${CUDNN_LIBRARIES})"
-       << (super_scalar_enable ? R"(
+       << (super_scaler_enable ? R"(
     ${MPI_LIBRARIES}
+    ${SUPER_SCALER_LIBRARIES}
     nccl)"
                                : "")
        << R"(
 )
 
 cuda_add_executable(main_test main_test.cpp)
-target_link_libraries(main_test nnfusion_naive_rt cudnn culibos cublas))";
+target_link_libraries(main_test nnfusion_naive_rt cudnn culibos cublas)
+add_custom_command(
+    TARGET nnfusion_naive_rt
+    POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/Constant ${CMAKE_BINARY_DIR}/Constant
+)
+)";
     return lu.get_code();
 }
 
@@ -117,8 +121,6 @@ void CudaCodeGenerator::post_projgen()
                                                 "./image_tests/image_test.cpp");
     nnfusion::codegen::copy_file_from_templates("image_tests/CMakeLists_cuda.txt",
                                                 "./image_tests/CMakeLists.txt");
-    nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.hpp",
-                                                "./super_scaler.hpp");
 }
 
 std::string CudaCodeGenerator::get_target_name()
@@ -147,6 +149,15 @@ bool CudaCodeGenerator::projgen()
 
 void CudaCodeGenerator::after_projgen()
 {
+    if (super_scaler_enable)
+    {
+        nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.h",
+                                                    "./super_scaler.h");
+        LOG_WARN << "libsuper_scaler.so should be copied from "
+                    "(build)/src/tools/nnfusion/templates/super_scaler/";
+        nnfusion::codegen::copy_file_from_templates("super_scaler/libsuper_scaler.so",
+                                                    "./libsuper_scaler.so");
+    }
 }
 
 // bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
@@ -553,10 +564,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
-            if (global_required.count("header::super_scaler"))
-            {
-                lu_main_init << "super_scaler_initialization();\n";
-            }
             if (global_required.count("declaration::applygradient_stream"))
             {
                 lu_main_init << "cudaStreamCreate(&applygradient_stream);\n";
@@ -649,6 +656,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
             if (global_required.count("header::super_scaler"))
             {
+                lu_kernel_entry << "super_scaler_sync();\n";
                 lu_main_free << "super_scaler_finalization();\n";
             }
             if (enable_timing)
@@ -678,7 +686,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu.block_begin();
         {
             lu << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
-            lu << "CUDA_SAFE_CALL(cudaSetDevice(0));\n";
+            if (global_required.count("header::super_scaler"))
+                lu << "super_scaler_initialization();\n";
+            else
+                lu << "CUDA_SAFE_CALL(cudaSetDevice(0));\n";
             lu << lu_main_init.get_code();
         }
         lu.block_end();
@@ -1028,8 +1039,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     //generate CMakeList.txt
     LanguageUnit& lu_cmake = *this->lu_cmakefile;
-    bool superscaler_enable = global_required.count("header::super_scaler") > 0;
-    lu_cmake << get_generate_cmakelists(superscaler_enable);
+    super_scaler_enable = global_required.count("header::super_scaler") > 0;
+    lu_cmake << get_generate_cmakelists();
 
     post_projgen();
     projgen();

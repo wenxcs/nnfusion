@@ -22,25 +22,37 @@ namespace nnfusion
         DeviceType device_type() override { return DeviceType::ROCM_GPU; }
         virtual std::string get_generate_cmakelists(void) override
         {
-            return R"(project(main_test)
+            LanguageUnit lu;
+            lu << R"(project(main_test)
 cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_CXX_COMPILER /opt/rocm/bin/hipcc)
 set(CMAKE_CXX_FLAGS "-O2 -Wno-ignored-attributes")
-
+)" << (super_scaler_enable ? "find_package(MPI)" : "")
+               << R"(
 include_directories(
     /opt/rocm/include
     /opt/rocm/rocblas/include
     /opt/rocm/rocrand/include
     /opt/rocm/hiprand/include
     /opt/rocm/hipsparse/include
+)" << (super_scaler_enable ? "${MPI_INCLUDE_PATH}" : "")
+               << R"(
 )
-
+)" << (super_scaler_enable
+           ? "find_library(ssrocm libsuper_scaler_rocm.so ${CMAKE_CURRENT_SOURCE_DIR})"
+           : "")
+               << R"(
 add_library(nnfusion_naive_rt nnfusion_rt.cpp)
-
 add_executable(main_test main_test.cpp)
-target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
+target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas )"
+               << (super_scaler_enable ? "${ssrocm} ${MPI_LIBRARIES}" : "") << R"()
+add_custom_command(
+    TARGET nnfusion_naive_rt
+    POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/Constant ${CMAKE_BINARY_DIR}/Constant
+)
 )";
+            return lu.get_code();
         }
 
         virtual void post_projgen(void) override
@@ -82,6 +94,16 @@ target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas)
             //generate CMakeList.txt
             LanguageUnit& lu_cmake = *this->lu_cmakefile;
             lu_cmake << get_generate_cmakelists();
+
+            if (super_scaler_enable)
+            {
+                nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.h",
+                                                            "./super_scaler.h");
+                LOG_WARN << "libsuper_scaler_rocm.so should be copied from "
+                            "(build)/src/tools/nnfusion/templates/super_scaler/";
+                nnfusion::codegen::copy_file_from_templates("super_scaler/libsuper_scaler_rocm.so",
+                                                            "./libsuper_scaler_rocm.so");
+            }
         }
 
         virtual std::string get_target_name(void) override { return "rocm_codegen"; }
