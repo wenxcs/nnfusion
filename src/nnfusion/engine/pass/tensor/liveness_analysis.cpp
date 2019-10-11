@@ -65,6 +65,11 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     persistent_tensors.insert(&tensor);
                     output_tensors.insert(&tensor);
                 }
+                for (auto& input_decl : node->get_inputs())
+                {
+                    auto& tensor = input_decl.get_tensor();
+                    constant_tensors.insert(&tensor);
+                }
             }
             if (auto constant_node = std::dynamic_pointer_cast<ngraph::op::Constant>(node))
             {

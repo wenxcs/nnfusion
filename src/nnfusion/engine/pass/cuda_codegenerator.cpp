@@ -435,7 +435,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto tv = tu->out[i];
                 string type = tv->get_element_type().c_type_string();
                 stringstream ss;
-                ss << type << "* " << tv->get_name();
+                ss << type << "** " << tv->get_name();
                 allocated.insert(tv->get_name());
                 params.push_back(ss.str());
             }
@@ -865,9 +865,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << "CUDA_SAFE_CALL(cudaMallocHost((void**)&" << tensor.get_name()
                         << "_host, sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                         << tensor.get_tensor_layout()->get_size() << "));\n";
-                lu_main << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
-                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
-                        << tensor.get_tensor_layout()->get_size() << "));\n";
 
                 d2hcopy << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
                         << tensor.get_name() << ", "
@@ -889,7 +886,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             for (int i = 0; i < tu->out.size(); i++)
             {
                 auto& tv = tu->out[i];
-                params.push_back(tv->get_name());
+                params.push_back("&" + tv->get_name());
             }
             int warm_step = 5, test_step = 100;
             if (enable_debug)
@@ -955,11 +952,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
             }
 
-            for (size_t i = 0; i < tu->out.size(); i++)
-            {
-                auto& tensor = *tu->out[i];
-                lu_main << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
-            }
             lu_main << "cuda_free();\n\n";
         }
 
