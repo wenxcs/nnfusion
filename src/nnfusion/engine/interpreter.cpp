@@ -4,6 +4,7 @@
 #include "nnfusion/engine/pass/create_fusion_block.hpp"
 #include "nnfusion/engine/pass/cuda_codegenerator.hpp"
 #include "nnfusion/engine/pass/device_dispatcher.hpp"
+#include "nnfusion/engine/pass/elementwise_kernel_fusion.hpp"
 #include "nnfusion/engine/pass/extract_function_signature.hpp"
 #include "nnfusion/engine/pass/extract_graph_signature.hpp"
 #include "nnfusion/engine/pass/kernel_selection.hpp"
@@ -11,6 +12,7 @@
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
 #include "pass/tensor/host_tensor_allocation.hpp"
+#include "pass/tensor/liveness_analysis.hpp"
 #include "pass/tensor/tensor_memory_layout.hpp"
 #include "pass/train/async_execution.hpp"
 
@@ -40,9 +42,12 @@ Interpreter::Interpreter()
         m_passes->push_back(make_shared<TrainningAsyncExecution>());
     */
 
-    m_passes->push_back(make_shared<HostTensorAllocation>(default_device));
-    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, true, default_device));
     m_passes->push_back(make_shared<CreateFusionBlock>());
+    m_passes->push_back(make_shared<ElementwiseKernelFusion>());
+    m_passes->push_back(make_shared<TensorLivenessAnalysis>());
+    m_passes->push_back(make_shared<HostTensorAllocation>(default_device));
+    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false, default_device));
+
     switch (default_device)
     {
     case CUDA_GPU: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;

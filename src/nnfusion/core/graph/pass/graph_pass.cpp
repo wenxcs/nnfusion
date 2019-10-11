@@ -8,8 +8,6 @@
 #include "generate_result_op_pass.hpp"
 #include "gradient_weight_mapping_pass.hpp"
 #include "kernel_fusion_pass.hpp"
-#include "liveness_pass.hpp"
-#include "memory_layout_pass.hpp"
 #include "multi_reshape_folding_pass.hpp"
 #include "op_inplace_pass.hpp"
 #include "runtime_const_folding_pass.hpp"
@@ -31,9 +29,6 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<VectorDotTransposePass>();
     pass_manager.register_pass<KernelFusionPass>();
     pass_manager.register_pass<AssignLayoutPass>();
-    pass_manager.register_pass<LivenessPass>();
-    // TODO: temporarily disable memory reuse, which can lead memory bugs for kernel fusion
-    pass_manager.register_pass<MemoryLayoutPass>(64, true);
     pass_manager.register_pass<OpInplacePass>();
     pass_manager.run_passes(graph);
 

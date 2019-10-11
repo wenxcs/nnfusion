@@ -78,6 +78,7 @@ set (SRC
     op/negative.cpp
     op/not.cpp
     op/not_equal.cpp
+    op/noop.cpp
     op/one_hot.cpp
     op/op.cpp
     op/or.cpp

@@ -312,21 +312,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
         }
 
-        if (iterator->hasAttribute("fusion_group_id"))
-        {
-            auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-                "ElementWiseFused", CUDA_GPU, DT_FLOAT);
-            enforce_not_nullptr(kernel_reg);
-            auto ctx = std::make_shared<KernelContext>();
-            ctx->kernels = block_kernels;
-            auto kernel = kernel_reg->m_factory(ctx);
-            kernel->get_or_emit_source();
-            kernels.push_back(kernel);
-        }
-        else
-        {
-            kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
-        }
+        kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
     }
 
     LOG_INFO << "Start dump whole source file...\n";
