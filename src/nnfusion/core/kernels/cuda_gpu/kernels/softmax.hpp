@@ -9,23 +9,20 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Softmax : public CudaEmitter
+            class Softmax : public CudaLibEmitter
             {
             public:
                 Softmax(shared_ptr<KernelContext> ctx);
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
-                void set_launch_config() override;
+                LanguageUnit_p
+                    cudnn_tensor_descriptor_from_shape_for_softmax(const ngraph::Shape& shape,
+                                                                   string desc);
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
                 ngraph::Shape input_shape, output_shape;
-                ngraph::AxisSet axes;
-                size_t expected_block_size;
-                size_t height;
-                size_t width;
-                bool valid_inputs = true;
             };
         } // namespace cuda
     }     // namespace kernels
