@@ -182,6 +182,20 @@ std::vector<shared_ptr<const KernelRegistration>>
     return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
 }
 
+KernelEmitter::Pointer
+    CudaCodeGenerator::match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res)
+{
+    for (auto& k : res)
+    {
+        if (k.second != nullptr && k.first == device_type() &&
+            k.second->get_or_emit_source() != nullptr)
+        {
+            return k.second;
+        }
+    }
+    return nullptr;
+}
+
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
 {
@@ -231,41 +245,26 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto res = (*ins)["Kernel_Selection_Result"]
                                .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-                bool kernel_selected = false;
-                for (auto& k : res)
+                auto matched_kernel = match_kernel(res);
+                if (matched_kernel)
                 {
-                    if (k.second != nullptr && k.first == DeviceType::CUDA_GPU &&
-                        k.second->get_or_emit_source() != nullptr)
+                    block_kernels.push_back(matched_kernel);
+
+                    LanguageUnit m;
+                    if ((*ins)["memcpy_pair"].is_valid())
                     {
-                        if (kernel_selected)
-                            enforce(false) << "More than one candidates.";
-                        else
+                        auto mempairs = (*ins)["memcpy_pair"]
+                                            .as<unordered_map<TensorWrapper*, TensorWrapper*>>();
+                        for (auto& it : mempairs)
                         {
-                            block_kernels.push_back(k.second);
-
-                            LanguageUnit m;
-                            if ((*ins)["memcpy_pair"].is_valid())
-                            {
-                                auto mempairs =
-                                    (*ins)["memcpy_pair"]
-                                        .as<unordered_map<TensorWrapper*, TensorWrapper*>>();
-                                for (auto& it : mempairs)
-                                {
-                                    string memcpykind = it.first->is_host()
-                                                            ? "cudaMemcpyDeviceToHost"
-                                                            : "cudaMemcpyHostToDevice";
-                                    m << "cudaMemcpy(" << it.first->get_name() << ", "
-                                      << it.second->get_name() << ", " << memcpykind << ");\n";
-                                }
-                                kernel_memcpy[k.second.get()] = m.get_code();
-                            }
+                            string memcpykind = it.first->is_host() ? "cudaMemcpyDeviceToHost"
+                                                                    : "cudaMemcpyHostToDevice";
+                            m << "cudaMemcpy(" << it.first->get_name() << ", "
+                              << it.second->get_name() << ", " << memcpykind << ");\n";
                         }
-
-                        kernel_selected = true;
+                        kernel_memcpy[matched_kernel.get()] = m.get_code();
                     }
                 }
-                if (kernel_selected)
-                    continue;
                 else
                 {
                     auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
@@ -277,39 +276,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     block_kernels.push_back(kernel);
                 }
             }
-
-            // enforce(false) << "Should not use this code anymore.";
-
-            // shared_ptr<const KernelRegistration> kernel_reg = nullptr;
-
-            // shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
-            // std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-            //     find_backend_kernels(op_name, ctx);
-
-            // bool has_valid_kernel = false;
-            // if (kernel_regs.size() > 0)
-            // {
-            //     for (auto kernel_reg : kernel_regs)
-            //     {
-            //         auto kernel = kernel_reg->m_factory(ctx);
-            //         if (kernel->get_or_emit_source())
-            //         {
-            //             block_kernels.push_back(kernel);
-            //             has_valid_kernel = true;
-            //             break;
-            //         }
-            //     }
-            // }
-
-            // if (kernel_regs.size() == 0 || !has_valid_kernel)
-            // {
-            //     kernel_reg =
-            //         KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
-            //     enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
-            //     auto kernel = kernel_reg->m_factory(ctx);
-            //     kernel->get_or_emit_source();
-            //     block_kernels.push_back(kernel);
-            // }
         }
 
         kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());

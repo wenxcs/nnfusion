@@ -106,6 +106,29 @@ add_custom_command(
             }
         }
 
+        virtual KernelEmitter::Pointer
+            match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res)
+        {
+            for (auto& k : res)
+            {
+                if (k.second != nullptr && k.first == device_type() &&
+                    k.second->get_or_emit_source() != nullptr)
+                {
+                    return k.second;
+                }
+            }
+            // if there is no valid ROCm kernel, use the CUDA kernel
+            for (auto& k : res)
+            {
+                if (k.second != nullptr && k.first == DeviceType::CUDA_GPU &&
+                    k.second->get_or_emit_source() != nullptr)
+                {
+                    return k.second;
+                }
+            }
+            return nullptr;
+        }
+
         virtual std::string get_target_name(void) override { return "rocm_codegen"; }
         virtual std::vector<shared_ptr<const KernelRegistration>>
             find_backend_kernels(const std::string& op_name,
