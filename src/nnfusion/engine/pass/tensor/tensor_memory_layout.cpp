@@ -37,7 +37,40 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
     std::unordered_set<descriptor::Tensor*> persistent_tensors;
 
+    // Collect persistent tensors;
     auto& p = tu->program;
+    for (auto iterator : p)
+    {
+        for (auto ins : *iterator)
+        {
+            auto node = ins->operatorDef();
+            persistent_tensors.insert(node->liveness_new_list.begin(),
+                                      node->liveness_new_list.end());
+        }
+    }
+
+    for (auto iterator : p)
+    {
+        for (auto ins : *iterator)
+        {
+            auto node = ins->operatorDef();
+            for (auto& tensor : node->liveness_free_list)
+                if (persistent_tensors.find(tensor) != persistent_tensors.end())
+                    persistent_tensors.erase(tensor);
+        }
+    }
+
+    for (auto iterator : p)
+    {
+        for (auto ins : *iterator)
+        {
+            auto node = ins->operatorDef();
+            for (auto& tensor : persistent_tensors)
+                if (node->liveness_new_list.find(tensor) != node->liveness_new_list.end())
+                    node->liveness_new_list.erase(tensor);
+        }
+    }
+
     for (auto iterator : p)
     {
         for (auto ins : *iterator)

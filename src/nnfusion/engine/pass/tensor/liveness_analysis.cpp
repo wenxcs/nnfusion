@@ -55,6 +55,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     ngraph::descriptor::Tensor& tensor = node->get_output_tensor(i);
                     persistent_tensors.insert(&tensor);
+                    constant_tensors.insert(&tensor);
                 }
             }
             if (node->is_output())
@@ -79,6 +80,31 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     constant_tensors.insert(&tensor);
                 }
             }
+        }
+    }
+
+    // Disable Reuse of constant
+    for (auto block_iter : p)
+    {
+        for (auto ins : *block_iter)
+        {
+            auto node = ins->operatorDef();
+            bool is_const = false;
+            for (auto& input_decl : node->get_inputs())
+            {
+                auto& tensor = input_decl.get_tensor();
+                if (constant_tensors.find(&tensor) == constant_tensors.end())
+                    break;
+                is_const = true;
+            }
+            if (is_const)
+                //\todo make this simple
+                for (size_t i = 0; i < node->get_output_size(); ++i)
+                {
+                    ngraph::descriptor::Tensor& tensor = node->get_output_tensor(i);
+                    tensor.set_persistent();
+                    constant_tensors.insert(&tensor);
+                }
         }
     }
 

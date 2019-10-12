@@ -119,12 +119,23 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
 
-                    lu << "if (input0 != output0) {\n"
-                       << "   cudaMemcpy(output0, input0, "
-                       << static_cast<uint32_t>(shape_size(input_shape)) << " * sizeof("
-                       << input_type << ")"
-                       << ", cudaMemcpyDeviceToDevice);\n"
-                       << "}\n";
+                    auto& input0 = m_context->node->get_inputs().at(0);
+                    auto& output0 = m_context->output_names[0];
+
+                    if (shape_size(m_context->inputs[0].get_shape()) ==
+                        shape_size(m_context->outputs[0].get_shape()))
+                    {
+                        lu << output0 << " = input0 /*" << m_context->input_names[0] << "*/;";
+                    }
+                    else
+                    {
+                        lu << "if (input0 != output0) {\n"
+                           << "   cudaMemcpy(output0, input0, "
+                           << static_cast<uint32_t>(shape_size(input_shape)) << " * sizeof("
+                           << input_type << ")"
+                           << ", cudaMemcpyDeviceToDevice);\n"
+                           << "}\n";
+                    }
 
                     return _lu;
                 }
@@ -499,17 +510,25 @@ if (thread_idx == 0) output0[block_idx] = val;
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
+
                     auto dst = m_context->outputs[0];
                     auto src = m_context->inputs[0];
-                    lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
-                    lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
+                    auto& input0 = m_context->node->get_inputs().at(0);
+                    auto& output0 = m_context->output_names[0];
 
-                    //emit_memcpyDtD(lu, dst, src);
-                    lu << "if (input0 != output0) {\n"
-                       << "    CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", "
-                       << src.get_name() << ", " << dst.get_size() << " * "
-                       << dst.get_element_type().size() << ", cudaMemcpyDeviceToDevice));\n"
-                       << "}\n";
+                    if (shape_size(m_context->inputs[0].get_shape()) ==
+                        shape_size(m_context->outputs[0].get_shape()))
+                    {
+                        lu << output0 << " = input0 /*" << m_context->input_names[0] << "*/;";
+                    }
+                    else
+                    {
+                        lu << "if (input0 != output0) {\n"
+                           << "   cudaMemcpy(output0, input0, " << dst.get_size() << " * sizeof("
+                           << m_context->dtypes[0] << ")"
+                           << ", cudaMemcpyDeviceToDevice);\n"
+                           << "}\n";
+                    }
 
                     return _lu;
                 }
