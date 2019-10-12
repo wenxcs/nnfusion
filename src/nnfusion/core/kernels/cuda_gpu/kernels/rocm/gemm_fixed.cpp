@@ -40,6 +40,8 @@ namespace nnfusion
                     auto gemm = static_pointer_cast<ngraph::op::Dot>(ctx->node);
                     auto reduction_axes = gemm->get_reduction_axes_count();
                     auto& dtype = ctx->outputs[0].get_element_type().c_type_string();
+                    if (gemm->get_transpose_A())
+                        return nullptr;
                     auto transpose_B = gemm->get_transpose_B();
 
                     if (arg0_shape.empty() || arg1_shape.empty())

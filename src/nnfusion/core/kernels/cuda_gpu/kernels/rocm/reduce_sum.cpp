@@ -30,10 +30,23 @@ namespace nnfusion
                     for (auto it : output_shape)
                         out_size *= it;
 
-                    if (out_size > 1)
+                    size_t blockY;
+                    std::string lda_offset;
+                    if (out_size == 1)
+                    {
+                        blockY = 1;
+                        lda_offset = "";
+                    }
+                    else if (input_shape.size() == 2 && output_shape.size() == 1 &&
+                             input_shape[0] != input_shape[1] && input_shape[0] == output_shape[0])
+                    {
+                        blockY = input_shape[0];
+                        lda_offset = "blockIdx.y * dataSize + ";
+                    }
+                    else
                         return nullptr;
 
-                    m_gridDim = dim3(1, 1, 1);
+                    m_gridDim = dim3(1, blockY, 1);
                     m_blockDim = dim3(64, 1, 1);
 
                     auto templ = ngraph::op::create_code_from_template(
@@ -48,7 +61,7 @@ namespace nnfusion
     unsigned int i = tid;
     sdata[tid] = 0;
     #pragma unroll
-    while (i < dataSize) { sdata[tid] += input0[i]; i += blockSize * gridDimX; }
+    while (i < dataSize) { sdata[tid] += input0[@lda_offset@i]; i += blockSize * gridDimX; }
     if (blockSize >= 128) { __syncthreads(); }
     if (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
     if (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
@@ -56,6 +69,9 @@ namespace nnfusion
     // warp_reduce
     volatile float *__sdata = (volatile float *)sdata;
     if (blockSize >= 128) __sdata[tid] += __sdata[tid + 64];
+#ifndef __HIP_PLATFORM_HCC__
+    __syncthreads();
+#endif
     if (blockSize >= 64) __sdata[tid] += __sdata[tid + 32];
     if (blockSize >= 32) __sdata[tid] += __sdata[tid + 16];
     if (blockSize >= 16) __sdata[tid] += __sdata[tid + 8];
@@ -65,9 +81,9 @@ namespace nnfusion
 
     if (tid == 0) output0[blockIdx.y] = sdata[0];
                         )",
-                        {
-                            {"gridDimY", m_gridDim.y}, {"dataSize", in_size},
-                        });
+                        {{"gridDimY", m_gridDim.y},
+                         {"dataSize", in_size},
+                         {"lda_offset", lda_offset}});
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
