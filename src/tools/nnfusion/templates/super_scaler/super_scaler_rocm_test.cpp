@@ -96,7 +96,7 @@ void allreduce_call(size_t cnt)
     {
         std::cout << gradients[i] << " ";
     }
-    delete gradients;
+    delete[] gradients;
     std::cout << std::endl;
 }
 

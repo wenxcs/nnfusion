@@ -42,7 +42,7 @@ if (hcc_FOUND)
   set(DYLIB_FLAGS -shared -fPIC)
   set(HCC_FLAGS -std=c++11 )
   set(HCC_FLAGS ${HCC_FLAGS} -I${MPI_C_HEADER_DIR})
-  set(HCC_FLAGS ${HCC_FLAGS} ${MPI_C_LINK_FLAGS} -lmpi)
+  set(HCC_FLAGS ${HCC_FLAGS} ${MPI_C_LINK_FLAGS} -lmpi -lmpi_cxx)
   set(HCC_FLAGS ${HCC_FLAGS} -L/opt/rocm/lib -lrccl)
 
   set(ss_rocm_lib ${CMAKE_BINARY_DIR}/libsuper_scaler_rocm.so)
