@@ -56,6 +56,8 @@ namespace nnfusion
                     std::string templ;
                     if (arg0_shape[0] == 1)
                     {
+                        if (arg0_shape[1] > 1024)
+                            return nullptr;
                         m_gridDim = dim3(1, 1, 1);
                         m_blockDim = dim3(64, 1, 1);
 

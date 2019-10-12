@@ -47,10 +47,13 @@ add_library(nnfusion_naive_rt nnfusion_rt.cpp)
 add_executable(main_test main_test.cpp)
 target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas )"
                << (super_scaler_enable ? "${ssrocm} ${MPI_LIBRARIES}" : "") << R"()
+if(EXISTS "${CMAKE_BINARY_DIR}/Constant")
+else()
 add_custom_command(
     TARGET nnfusion_naive_rt
     POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/Constant ${CMAKE_BINARY_DIR}/Constant
 )
+endif()
 )";
             return lu.get_code();
         }

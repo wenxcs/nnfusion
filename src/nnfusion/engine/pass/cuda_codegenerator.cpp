@@ -106,10 +106,13 @@ target_link_libraries(nnfusion_naive_rt
 
 cuda_add_executable(main_test main_test.cpp)
 target_link_libraries(main_test nnfusion_naive_rt cudnn culibos cublas)
+if(EXISTS "${CMAKE_BINARY_DIR}/Constant")
+else()
 add_custom_command(
     TARGET nnfusion_naive_rt
     POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/Constant ${CMAKE_BINARY_DIR}/Constant
 )
+endif()
 )";
     return lu.get_code();
 }
