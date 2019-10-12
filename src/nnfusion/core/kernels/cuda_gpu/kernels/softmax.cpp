@@ -57,8 +57,6 @@ LanguageUnit_p cuda::Softmax::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    lu << "cudnnHandle_t cudnnHandle;\n";
-    lu << "CUDNN_SAFE_CALL(cudnnCreate(&cudnnHandle));\n";
     auto input_tensor_desc =
         cudnn_tensor_descriptor_from_shape_for_softmax(input_shape, "input_tensor_desc");
     auto output_tensor_desc =
@@ -72,7 +70,7 @@ LanguageUnit_p cuda::Softmax::emit_function_body()
     lu << output_tensor_desc->get_code();
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
-    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxForward(cudnnHandle, "
+    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxForward(global_cudnn_handle, "
        << "CUDNN_SOFTMAX_ACCURATE, "
        << "CUDNN_SOFTMAX_MODE_INSTANCE, "
        << "&alpha, "
@@ -92,6 +90,7 @@ LanguageUnit_p cuda::Softmax::emit_dependency()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
     _lu->require(header::cuda);
     _lu->require(header::cudnn);
+    _lu->require(declaration::global_cudnn_handle);
     _lu->require(macro::CUDNN_SAFE_CALL);
     return _lu;
 }
