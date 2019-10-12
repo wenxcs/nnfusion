@@ -91,6 +91,12 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
             {
                 AddInplace(op, 0, 0);
             }
+
+            else if (node->get_op_type() == "ApplyGradient")
+            {
+                auto op = std::dynamic_pointer_cast<ngraph::op::GenericOp>(node->get_op_ptr());
+                AddInplace(op, 1, 0);
+            }
         }
     }
     return true;

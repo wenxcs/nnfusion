@@ -34,14 +34,14 @@ namespace nnfusion
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
-                    lu << "float lr = " << lr << ";\n";
-                    lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
-                    lu << "if(tid < " << threads << ")\n";
+                    lu << "// float lr = " << lr << ";\n";
+                    lu << "// uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
+                    lu << "// if(tid < " << threads << ")\n";
                     lu.block_begin();
                     {
                         // output the gradient for debugging
-                        lu << "output0[tid] = input1[tid];\n";
-                        lu << "input0[tid] = input0[tid] - lr * input1[tid];\n";
+                        lu << "// output0[tid] = input1[tid];\n";
+                        lu << "// input0[tid] = input0[tid] - lr * input1[tid];\n";
                     }
                     lu.block_end();
 

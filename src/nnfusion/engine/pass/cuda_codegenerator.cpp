@@ -936,7 +936,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             // kernel launch
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
 
-            lu_main << d2hcopy.get_code();
+            // lu_main << d2hcopy.get_code();
 
             lu_main.block_end();
             lu_main << "cudaProfilerStop();\n";

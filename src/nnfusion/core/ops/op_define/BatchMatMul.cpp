@@ -39,7 +39,7 @@ REGISTER_OP(BatchMatMul)
         if (!trans_A && !trans_B)
             assert(m1 == n0), output_shape_0.push_back(m0), output_shape_0.push_back(n1);
         else if (!trans_A && trans_B)
-            assert(m1 == n1), output_shape_0.push_back(m0), output_shape_0.push_back(m1);
+            assert(n0 == n1), output_shape_0.push_back(m0), output_shape_0.push_back(m1);
         else if (trans_A && !trans_B)
             assert(m0 == m1), output_shape_0.push_back(n0), output_shape_0.push_back(n1);
         else // trans_A && trans_B

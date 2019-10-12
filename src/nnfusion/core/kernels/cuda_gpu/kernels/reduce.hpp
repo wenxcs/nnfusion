@@ -2,6 +2,7 @@
 #pragma once
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
+#include "nnfusion/core/ops/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -36,6 +37,35 @@ namespace nnfusion
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
 
+                    // use to determine if it is RowReduction
+                    std::vector<size_t> axes_flag(input_shape.size(), 0);
+                    for (auto const& axis : reduce_axis)
+                    {
+                        axes_flag[axis] = 1;
+                    }
+                    height = 1;
+                    width = 1;
+                    is_row_reduction = true;
+                    int i = 0;
+                    for (; i < axes_flag.size() && axes_flag[i] == 0; i++)
+                    {
+                        height *= input_shape[i];
+                    }
+                    for (; i < axes_flag.size(); i++)
+                    {
+                        if (axes_flag[i] == 0)
+                        {
+                            is_row_reduction = false;
+                            break;
+                        }
+                        width *= input_shape[i];
+                    }
+                    if (is_row_reduction)
+                        expected_block_size =
+                            width > 512
+                                ? 512
+                                : pow(2, static_cast<size_t>(log2(static_cast<float>(width))));
+
                     uint32_t block_size_x_acc = 256;
                     nthreads_acc = ctx->gpu_num_sm * block_size_x_acc;
 
@@ -57,6 +87,10 @@ namespace nnfusion
                     if (reduce_rank == 0)
                     {
                         return nullptr;
+                    }
+                    else if (is_row_reduction)
+                    {
+                        return emit_row_reduction_body();
                     }
                     else if (out_rank != 0)
                     {
@@ -92,6 +126,35 @@ namespace nnfusion
                        << ", cudaMemcpyDeviceToDevice);\n"
                        << "}\n";
 
+                    return _lu;
+                }
+
+                LanguageUnit_p emit_row_reduction_body()
+                {
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+                    auto& lu = *_lu;
+                    auto code = ngraph::op::create_code_from_template(
+                        R"(
+int width = @width@;
+int block_size = @block_size@;
+const int warp_size = @warp_size@;
+__shared__ float shm[warp_size];
+
+int thread_idx = threadIdx.x;
+int block_idx = blockIdx.x;
+int data_idx_offset = block_idx * width;
+
+float val = 0.0;
+for (int tidx = thread_idx; tidx < width; tidx += block_size) {
+    int data_idx = tidx + data_idx_offset;
+    val += input0[data_idx];
+}
+val = reduceSum(val, thread_idx, block_size, shm);
+if (thread_idx == 0) output0[block_idx] = val;
+)",
+                        {{"width", width}, {"block_size", expected_block_size}, {"warp_size", 32}});
+
+                    lu << code << "\n";
                     return _lu;
                 }
 
@@ -314,6 +377,10 @@ namespace nnfusion
                     _lu->require(header::stdio);
                     _lu->require(macro::MIN);
                     _lu->require(declaration::num_SMs);
+                    if (is_row_reduction)
+                    {
+                        _lu->require(declaration::cuda_reduce_primitive);
+                    }
 
                     if (CudaOpMap<T>::math_kernel != nullptr)
                     {
@@ -330,7 +397,12 @@ namespace nnfusion
 
                 void set_launch_config() override
                 {
-                    if (out_rank != 0)
+                    if (is_row_reduction)
+                    {
+                        m_gridDim = dim3(height, 1, 1);
+                        m_blockDim = dim3(expected_block_size, 1, 1);
+                    }
+                    else if (out_rank != 0)
                     {
                         uint32_t nthreads = static_cast<uint32_t>(shape_size(output_shape));
                         // TODO: currently we set it to 64, will add tuning method later.
@@ -376,6 +448,8 @@ namespace nnfusion
                 size_t data_bytes, rank, reduce_rank, out_rank;
                 uint32_t nthreads_acc;
                 string reduce_op, input_type, output_type;
+                size_t height, width, expected_block_size;
+                bool is_row_reduction;
             };
 
             template <class T>

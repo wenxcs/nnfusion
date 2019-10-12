@@ -37,10 +37,14 @@ op::Dot::Dot(const shared_ptr<Node>& arg0, const shared_ptr<Node>& arg1)
 op::Dot::Dot(const shared_ptr<Node>& arg0,
              const shared_ptr<Node>& arg1,
              size_t reduction_axes_count,
-             bool has_reduction_axes_count)
+             bool has_reduction_axes_count,
+             bool trans_a,
+             bool trans_b)
     : Op("Dot", check_single_output_args({arg0, arg1}))
     , m_reduction_axes_count(reduction_axes_count)
     , m_has_reduction_axes_count(has_reduction_axes_count)
+    , m_transpose_A(trans_a)
+    , m_transpose_B(trans_b)
 {
     constructor_validate_and_infer_types();
 }
@@ -98,15 +102,18 @@ void op::Dot::validate_and_infer_types()
     {
         for (size_t i = 0; i < m_reduction_axes_count; i++)
         {
-            size_t axis_index_arg0 = size_t(arg0_shape.rank()) - m_reduction_axes_count + i;
-            size_t axis_index_arg1 = i;
+            size_t axis_index_arg0 =
+                m_transpose_A ? i : size_t(arg0_shape.rank()) - m_reduction_axes_count + i;
+            size_t axis_index_arg1 =
+                m_transpose_B ? size_t(arg1_shape.rank()) - m_reduction_axes_count + i : i;
 
             NODE_VALIDATION_ASSERT(
                 this, arg0_shape[axis_index_arg0].compatible(arg1_shape[axis_index_arg1]))
                 << "Paired axes (axis " << axis_index_arg0 << " from arg0, axis " << axis_index_arg1
                 << " from arg1) do not have same length (arg0 shape: " << arg0_shape
                 << ", arg1 shape: " << arg1_shape
-                << ", reduction axes count: " << m_reduction_axes_count << ").";
+                << ", reduction axes count: " << m_reduction_axes_count
+                << "transA: " << m_transpose_A << ", transB: " << m_transpose_B << ").";
         }
 
         std::vector<Dimension> result_dims(size_t(arg0_shape.rank()) + size_t(arg1_shape.rank()) -
@@ -116,11 +123,13 @@ void op::Dot::validate_and_infer_types()
 
         for (size_t j = 0; j < size_t(arg0_shape.rank()) - m_reduction_axes_count; j++)
         {
-            result_dims[i++] = arg0_shape[j];
+            size_t idx = m_transpose_A ? size_t(arg0_shape.rank()) - 1 - j : j;
+            result_dims[i++] = arg0_shape[idx];
         }
         for (size_t j = m_reduction_axes_count; j < size_t(arg1_shape.rank()); j++)
         {
-            result_dims[i++] = arg1_shape[j];
+            size_t idx = m_transpose_B ? size_t(arg0_shape.rank()) - 1 - j : j;
+            result_dims[i++] = arg1_shape[idx];
         }
 
         result_shape = PartialShape(result_dims);

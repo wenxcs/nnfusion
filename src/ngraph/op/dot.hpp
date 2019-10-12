@@ -36,7 +36,9 @@ namespace ngraph
             Dot(const std::shared_ptr<Node>& arg0,
                 const std::shared_ptr<Node>& arg1,
                 size_t reduction_axes_count,
-                bool has_reduction_axes_count = true);
+                bool has_reduction_axes_count = true,
+                bool trans_a = false,
+                bool trans_b = false);
 
             /// \brief Constructs a dot product operation with default dot-axis selection depending on the inputs.
             ///
@@ -59,6 +61,11 @@ namespace ngraph
                 check_new_args_count(this, new_args);
                 return std::make_shared<Dot>(
                     new_args.at(0), new_args.at(1), m_reduction_axes_count);
+            }
+            void set_transpose(bool trans_a, bool trans_b)
+            {
+                m_transpose_A = trans_a;
+                m_transpose_B = trans_b;
             }
 
             bool& get_transpose_A() { return m_transpose_A; }

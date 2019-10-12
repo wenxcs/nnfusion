@@ -197,17 +197,19 @@ namespace nnfusion
                 bool transpose_b = false;
                 assert(GetNodeAttr(node.attr(), "transpose_a", transpose_a) == true);
                 assert(GetNodeAttr(node.attr(), "transpose_b", transpose_b) == true);
-                if (transpose_a)
-                {
-                    ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
-                }
-                if (transpose_b)
-                {
-                    ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
-                }
+                // if (transpose_a)
+                // {
+                //     ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
+                // }
+                // if (transpose_b)
+                // {
+                //     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
+                // }
 
-                auto ng_node = std::make_shared<ngraph::op::Dot>(ng_lhs, ng_rhs);
+                auto ng_node = std::make_shared<ngraph::op::Dot>(
+                    ng_lhs, ng_rhs, 0, false, transpose_a, transpose_b);
                 ng_node->set_name(node.name());
+                //ng_node->set_transpose(transpose_a, transpose_b);
                 NamedNodeVector ret{{node.name(), ng_node}};
                 return ret;
             }
@@ -237,18 +239,18 @@ namespace nnfusion
                 ng_axis_order.push_back(input_dims - 1);
                 ng_axis_order.push_back(input_dims - 2);
 
-                if (adj_x)
-                {
-                    ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ng_axis_order);
-                }
-                if (adj_y)
-                {
-                    ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ng_axis_order);
-                }
+                // if (adj_x)
+                // {
+                //     ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ng_axis_order);
+                // }
+                // if (adj_y)
+                // {
+                //     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ng_axis_order);
+                // }
 
                 ngraph::op::OpConfig::any myConfig;
-                myConfig["adj_x"]["b"] = false;
-                myConfig["adj_y"]["b"] = false;
+                myConfig["adj_x"]["b"] = adj_x;
+                myConfig["adj_y"]["b"] = adj_y;
 
                 auto ng_node = std::make_shared<ngraph::op::GenericOp>(
                     node.name(),

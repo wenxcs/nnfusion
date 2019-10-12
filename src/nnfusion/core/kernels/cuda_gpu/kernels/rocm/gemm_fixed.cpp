@@ -64,9 +64,17 @@ namespace nnfusion
                         int dataSize;
 
                         if (transpose_B)
-                            assert(arg0_shape[1] == arg1_shape[1]), m_gridDim.y = arg1_shape[0];
+                        {
+                            if (arg0_shape[1] != arg1_shape[1])
+                                return nullptr;
+                            m_gridDim.y = arg1_shape[0];
+                        }
                         else
-                            assert(arg0_shape[1] == arg1_shape[0]), m_gridDim.y = arg1_shape[1];
+                        {
+                            if (arg0_shape[1] != arg1_shape[0])
+                                return nullptr;
+                            m_gridDim.y = arg1_shape[1];
+                        }
 
                         templ = ngraph::op::create_code_from_template(
                             R"(
