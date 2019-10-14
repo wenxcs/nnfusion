@@ -12,8 +12,7 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
     for (auto node : graph->get_nodes())
     {
-        if (auto op = std::dynamic_pointer_cast<ngraph::op::util::ArithmeticReduction>(
-                node->get_op_ptr()))
+        if (auto op = std::dynamic_pointer_cast<ngraph::op::Sum>(node->get_op_ptr()))
         {
             ngraph::AxisSet reduce_axes = op->get_reduction_axes();
             auto input_shape_product = shape_size(op->get_input_shape(0));
@@ -66,8 +65,27 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
 
         else if (!OpInplacePass::shared_in_nodes(node))
         {
-            if (auto op = std::dynamic_pointer_cast<ngraph::op::util::UnaryElementwiseArithmetic>(
-                    node->get_op_ptr()))
+            if (auto op = std::dynamic_pointer_cast<ngraph::op::Max>(node->get_op_ptr()))
+            {
+                ngraph::AxisSet reduce_axes = op->get_reduction_axes();
+                if (reduce_axes.empty())
+                {
+                    AddInplace(op, 0, 0);
+                }
+            }
+
+            else if (auto op = std::dynamic_pointer_cast<ngraph::op::Min>(node->get_op_ptr()))
+            {
+                ngraph::AxisSet reduce_axes = op->get_reduction_axes();
+                if (reduce_axes.empty())
+                {
+                    AddInplace(op, 0, 0);
+                }
+            }
+
+            else if (auto op =
+                         std::dynamic_pointer_cast<ngraph::op::util::UnaryElementwiseArithmetic>(
+                             node->get_op_ptr()))
             {
                 AddInplace(op, 0, 0);
             }
@@ -87,12 +105,6 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
             else if (node->get_op_type() == "AddN")
             {
                 auto op = std::dynamic_pointer_cast<ngraph::op::GenericOp>(node->get_op_ptr());
-                AddInplace(op, 0, 0);
-            }
-
-            else if (auto op =
-                         std::dynamic_pointer_cast<ngraph::op::SigmoidBackprop>(node->get_op_ptr()))
-            {
                 AddInplace(op, 0, 0);
             }
 
