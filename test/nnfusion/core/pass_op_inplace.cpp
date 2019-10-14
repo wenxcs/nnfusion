@@ -910,31 +910,6 @@ TEST(nnfusion_op, sigmoidbackprop)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(nnfusion_op, shared_ArithmeticReduction)
-{
-    // Prepare inputs
-    Shape shape_a{2, 3};
-    auto A = make_shared<op::Parameter>(element::f32, shape_a);
-    auto args = shared_ptr<ngraph::Node>(A);
-    ngraph::AxisSet reduction_axes;
-
-    // Create node
-    auto nodeA = std::make_shared<ngraph::op::Min>(args, reduction_axes);
-    auto nodeB = std::make_shared<ngraph::op::Max>(args, reduction_axes);
-
-    // Create graph
-    ngraph::NodeVector res{nodeA, nodeB};
-    ngraph::op::ParameterVector parameters{A};
-    std::string name = "ArithmeticReduction";
-    auto func = make_shared<ngraph::Function>(res, parameters, name);
-    auto graph = make_shared<nnfusion::graph::Graph>(func, name);
-
-    run(graph);
-
-    EXPECT_FALSE(check_inplace_oi_pair(nodeA));
-    EXPECT_FALSE(check_inplace_oi_pair(nodeB));
-}
-
 TEST(nnfusion_op, shared_UnaryElementwiseArithmetic)
 {
     // Prepare inputs
