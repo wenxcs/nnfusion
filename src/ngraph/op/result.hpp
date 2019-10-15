@@ -37,15 +37,18 @@ namespace ngraph
             virtual std::shared_ptr<Node>
                 copy_with_new_args(const NodeVector& new_args) const override;
 
-            virtual bool is_output() const override { return true; }
+            virtual bool is_output() const override { return m_needs_copy_to_host; }
             void set_needs_default_layout(bool val) { m_needs_default_layout = val; }
             bool needs_default_layout() const { return m_needs_default_layout; }
+            void set_needs_copy_to_host(bool val) { m_needs_copy_to_host = val; }
+            bool needs_copy_to_host() const { return m_needs_copy_to_host; }
         protected:
             virtual void generate_adjoints(autodiff::Adjoints& adjoints,
                                            const NodeVector& deltas) override;
 
         private:
             bool m_needs_default_layout{false};
+            bool m_needs_copy_to_host{true};
         };
     }
 }

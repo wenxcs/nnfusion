@@ -6,7 +6,6 @@ using namespace nnfusion::interpreter;
 bool ExtractGraphSignature::extract_result(std::shared_ptr<TranslationUnit> tu,
                                            std::shared_ptr<graph::Graph> graph)
 {
-    // TODO: graph->get_result???
     for (auto gnode : graph->get_outputs())
     {
         std::shared_ptr<ngraph::descriptor::Tensor> tv =
@@ -158,6 +157,11 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         shared_ptr<Node> op = graph->get_output_op(i)->get_op_ptr();
 
         CHECK_NOT_NULLPTR(op);
+        auto res = dynamic_pointer_cast<ngraph::op::Result>(op);
+        if (!res->needs_copy_to_host())
+        {
+            continue;
+        }
         shared_ptr<descriptor::Tensor> tv = op->get_output_tensor_ptr();
         CHECK_NOT_NULLPTR(tv);
 
@@ -167,8 +171,6 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         stringstream ss;
         ss << "((" << type << "*)(outputs[" << i << "]))";
         ctx->m_variable_name_map[tv->get_name()] = ss.str();
-        // TODO: add pass to cast output node to op::Result
-        auto res = dynamic_pointer_cast<ngraph::op::Result>(op);
         //keep assigning different outputs to a result descriptor
         //op::Result emitter will check if in and out descriptors are the same
         //and skip a copy

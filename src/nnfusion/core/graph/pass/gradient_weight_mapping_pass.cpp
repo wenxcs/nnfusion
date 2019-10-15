@@ -21,6 +21,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
     for (auto node : graph->get_outputs())
     {
         std::shared_ptr<GNode> update_node = node;
+        bool is_apply_gradient_op = false;
         if ((*node)["Alias"].is_valid())
         {
             std::string alias = (*node)["Alias"].as<std::string>();
@@ -66,6 +67,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                     graph->add_edge(node, 0, allreduce_node, 0);
                     graph->add_edge(allreduce_node, 0, apply_gradient_node, 1);
                     update_node = apply_gradient_node;
+                    is_apply_gradient_op = true;
                 }
                 else
                 {
@@ -80,11 +82,16 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                     graph->add_edge(weight_node, 0, apply_gradient_node, 0);
                     graph->add_edge(node, 0, apply_gradient_node, 1);
                     update_node = apply_gradient_node;
+                    is_apply_gradient_op = true;
                 }
             }
         }
-        // TODO: remove result op for gradient op
+
         auto result_op = std::make_shared<ngraph::op::Result>(update_node->get_op_ptr());
+        if (is_apply_gradient_op)
+        {
+            result_op->set_needs_copy_to_host(false);
+        }
         auto result_node = graph->add_node(result_op);
         graph->add_edge(update_node, 0, result_node, 0);
         result_nodes.emplace_back(result_node);

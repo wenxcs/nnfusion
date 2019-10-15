@@ -12,6 +12,8 @@ cuda::Result::Result(shared_ptr<KernelContext> ctx)
     CHECK(ctx->inputs.size() == 1) << "Input size mismatches.";
     CHECK(ctx->outputs.size() == 1) << "Output size mismatches.";
 
+    auto result_op = static_pointer_cast<ngraph::op::Result>(ctx->node);
+    need_copy_to_host = result_op->needs_copy_to_host();
     std::stringstream tag;
     tag << "cuda_result";
     custom_tag = tag.str();
@@ -24,7 +26,14 @@ LanguageUnit_p cuda::Result::emit_function_signature()
 
     vector<string> params;
     params.push_back(m_context->inputs[0].get_type() + "* input0");
-    params.push_back(m_context->outputs[0].get_type() + "** output0");
+    if (need_copy_to_host)
+    {
+        params.push_back(m_context->outputs[0].get_type() + "** output0");
+    }
+    else
+    {
+        params.push_back(m_context->outputs[0].get_type() + "* output0");
+    }
     lu << "void "
        << "(" << join(params, ", ") << ")";
     return _lu;
@@ -33,7 +42,10 @@ LanguageUnit_p cuda::Result::emit_function_signature()
 LanguageUnit_p cuda::Result::emit_function_body()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
-    *_lu << "*output0 = input0;";
+    if (need_copy_to_host)
+    {
+        *_lu << "*output0 = input0;";
+    }
     return _lu;
 }
 

@@ -20,6 +20,7 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
+                bool need_copy_to_host;
             };
         } // namespace cuda
     }     // namespace kernels
