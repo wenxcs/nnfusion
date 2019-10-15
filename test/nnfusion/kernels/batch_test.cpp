@@ -374,10 +374,8 @@ TEST(nnfusion_core_kernels, batch_kernel_tests_subtract)
     EXPECT_TRUE(nnfusion::test::check_kernels<op::Subtract>(CUDA_GPU, DT_FLOAT));
 }
 
-/*
 TEST(nnfusion_core_kernels, batch_kernel_tests_sum)
 {
     // EXPECT_TRUE(nnfusion::test::check_kernels<op::Sum>(GENERIC_CPU, DT_FLOAT));
     EXPECT_TRUE(nnfusion::test::check_kernels<op::Sum>(CUDA_GPU, DT_FLOAT));
 }
-*/

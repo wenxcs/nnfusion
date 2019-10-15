@@ -479,22 +479,11 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_function_body()
 
     if (is_memcpy)
     {
-        auto& input0 = m_context->node->get_inputs().at(0);
-        auto& output0 = m_context->output_names[0];
-
-        if (shape_size(m_context->inputs[0].get_shape()) ==
-            shape_size(m_context->outputs[0].get_shape()))
-        {
-            lu << output0 << " = input0 /*" << m_context->input_names[0] << "*/;";
-        }
-        else
-        {
-            lu << "if (input0 != output0) {\n"
-               << "   cudaMemcpy(output0, input0, " << static_cast<uint32_t>(shape_size(arg_shape))
-               << " * sizeof(" << m_context->dtypes[0] << ")"
-               << ", cudaMemcpyDeviceToDevice);\n"
-               << "}\n";
-        }
+        lu << "if (input0 != output0) {\n"
+           << "   cudaMemcpy(output0, input0, " << static_cast<uint32_t>(shape_size(arg_shape))
+           << " * sizeof(" << m_context->dtypes[0] << ")"
+           << ", cudaMemcpyDeviceToDevice);\n"
+           << "}\n";
     }
     else
     {

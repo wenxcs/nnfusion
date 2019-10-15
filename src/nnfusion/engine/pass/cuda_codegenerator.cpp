@@ -320,9 +320,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << "char* host_memory_pool;\n\n";
 
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
-    LanguageUnit def("FUNCTIONS");
     // Collect Function Definition
     {
+        LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
             FunctionUnit_p fu = kernel->get_or_emit_source();
@@ -369,6 +369,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
+        //Write Code
+        lu << def.collect_code() << "\n";
     }
 
     bool enable_debug =
@@ -535,7 +537,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_kernel_entry << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
             }
 
-            set<string> constant_vals;
             size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
@@ -555,55 +556,32 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (func_name.compare(0, 9, "Constant_") == 0)
                 {
                     lu_main_init << func_name << fu->call_unit->get_code();
-                    for (auto& out : kernel->m_context->output_names)
-                        constant_vals.insert(out);
                 }
                 else
                 {
-                    // Put constant-able node into cuda_init();
-                    bool const_inputs = true;
-                    for (auto& in : kernel->m_context->input_names)
-                    {
-                        if (constant_vals.find(in) == constant_vals.end())
-                        {
-                            const_inputs = false;
-                            break;
-                        }
-                    }
-                    if (const_inputs)
-                    {
-                        for (auto& out : kernel->m_context->output_names)
-                        {
-                            constant_vals.insert(out);
-                        }
-                    }
-
-                    auto& call_place = const_inputs ? lu_main_init : lu_kernel_entry;
-
                     const string node_name = (kernel->m_context->node)
                                                  ? kernel->m_context->node->get_friendly_name()
                                                  : "internal_node";
-                    if (!const_inputs)
-                        call_place << " // order=" << ++kernel_order << ", name=" << node_name
-                                   << "\n";
+                    lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
+                                    << "\n";
                     // Put memcpy here
-                    call_place << kernel_memcpy[kernel.get()];
-                    call_place << fu->get_specialized_funciton_call(func_name);
+                    lu_kernel_entry << kernel_memcpy[kernel.get()];
+                    lu_kernel_entry << fu->get_specialized_funciton_call(func_name);
 
-                    if (enable_debug && !const_inputs)
+                    if (enable_debug)
                     {
                         for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                         {
                             if (kernel->m_context->outputs[i].get_type() != "float")
                                 continue;
                             auto out_name = kernel->m_context->output_names[i];
-                            call_place << "Debug(\"" << node_name << ", " << out_name << "\", "
-                                       << out_name << ", \"" << join(kernel->m_context->input_names)
-                                       << "\", " << kernel->m_context->outputs[i].get_size()
-                                       << ");\n";
+                            lu_kernel_entry << "Debug(\"" << node_name << ", " << out_name << "\", "
+                                            << out_name << ", \""
+                                            << join(kernel->m_context->input_names) << "\", "
+                                            << kernel->m_context->outputs[i].get_size() << ");\n";
                         }
                     }
-                    if (enable_timing && !const_inputs)
+                    if (enable_timing)
                     {
                         lu_kernel_entry << "if (!hEvents[eventCnt]) "
                                            "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
@@ -659,8 +637,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu << "\n";
     {
         lu << lu_mem_plan_init.get_code();
-        //Write Code
-        lu << def.collect_code() << "\n";
         lu << "\nextern \"C\" void cuda_init()";
         lu.block_begin();
         {
