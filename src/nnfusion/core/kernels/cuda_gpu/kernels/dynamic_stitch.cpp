@@ -14,7 +14,7 @@ cuda::DynamicStitch::DynamicStitch(shared_ptr<KernelContext> ctx)
     std::vector<std::vector<int64_t>> indices_inputs =
         dynamic_stitch_node->localOpConfig.getRoot()["indices_inputs"];
     num_partitions = dynamic_stitch_node->localOpConfig.getRoot()["N"];
-    enforce(num_partitions == indices_inputs.size());
+    CHECK(num_partitions == indices_inputs.size());
 
     auto indice0_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     auto data0_shape = ngraph::Shape(ctx->inputs[num_partitions].get_shape());
@@ -35,9 +35,9 @@ cuda::DynamicStitch::DynamicStitch(shared_ptr<KernelContext> ctx)
     }
 
     first_dim_size = max_index + 1;
-    enforce(first_dim_size == output_shape[0]) << "first_dim_size=" << first_dim_size
-                                               << ", output_shape=[" << join(output_shape, ",")
-                                               << "]";
+    CHECK(first_dim_size == output_shape[0]) << "first_dim_size=" << first_dim_size
+                                             << ", output_shape=[" << join(output_shape, ",")
+                                             << "]";
 
     slice_size = 1;
     for (int d = indice0_shape.size(); d < data0_shape.size(); d++)

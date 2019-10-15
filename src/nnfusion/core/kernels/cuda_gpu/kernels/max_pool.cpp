@@ -25,7 +25,7 @@ cuda::MaxPool1D::MaxPool1D(shared_ptr<KernelContext> ctx)
     input_type = ctx->inputs[0].get_element_type().c_type_string();
     output_type = ctx->outputs[0].get_element_type().c_type_string();
 
-    // enforce(input_shape.size() == 3)
+    // CHECK(input_shape.size() == 3)
     //     << "Input shape size of MaxPool1D is invalid, shape size: " << input_shape.size()
     //     << "expected 3";
 
@@ -107,7 +107,7 @@ cuda::MaxPoolmD::MaxPoolmD(shared_ptr<KernelContext> ctx)
     input_type = ctx->inputs[0].get_element_type().c_type_string();
     output_type = ctx->outputs[0].get_element_type().c_type_string();
 
-    enforce(input_shape.size() == 4 || input_shape.size() == 5)
+    CHECK(input_shape.size() == 4 || input_shape.size() == 5)
         << "Input shape size of MaxPoolmD is invalid, shape size: " << input_shape.size()
         << "expected 4 or 5";
 
@@ -156,7 +156,7 @@ LanguageUnit_p cuda::MaxPoolmD::emit_function_body()
 
         auto expand_vector_int = [](string name, vector<int>& d) {
             stringstream ss;
-            enforce(d.size() > 0);
+            CHECK(d.size() > 0);
             ss << "int " << name << "[] = {";
             for (int i = 0; i + 1 < d.size(); i++)
                 ss << to_string(d[i]) << ", ";

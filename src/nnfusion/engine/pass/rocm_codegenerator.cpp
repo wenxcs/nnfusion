@@ -102,8 +102,8 @@ endif()
             {
                 nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.h",
                                                             "./super_scaler.h");
-                LOG_WARN << "libsuper_scaler_rocm.so should be copied from "
-                            "(build)/src/tools/nnfusion/templates/super_scaler/";
+                LOG(WARNING) << "libsuper_scaler_rocm.so should be copied from "
+                                "(build)/src/tools/nnfusion/templates/super_scaler/";
                 nnfusion::codegen::copy_file_from_templates("super_scaler/libsuper_scaler_rocm.so",
                                                             "./libsuper_scaler_rocm.so");
             }

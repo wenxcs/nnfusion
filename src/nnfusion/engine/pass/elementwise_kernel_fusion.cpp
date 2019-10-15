@@ -29,7 +29,7 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
             for (auto ins : *block_iter)
             {
                 auto node = ins->operatorDef();
-                enforce(!(node->is_parameter()) && !(node->is_constant()));
+                CHECK(!(node->is_parameter()) && !(node->is_constant()));
 
                 auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
                                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
@@ -45,7 +45,8 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
                 if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr ||
                     emitter_iter->second->get_or_emit_source() == nullptr)
                 {
-                    LOG_WARN << "Kernel should be emitted before this pass:" << node->get_name();
+                    LOG(WARNING) << "Kernel should be emitted before this pass:"
+                                 << node->get_name();
                     all_kernel_emitted = false;
                     break;
                 }
@@ -61,7 +62,7 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                     "ElementWiseFused", CUDA_GPU, DT_FLOAT);
-                enforce_not_nullptr(kernel_reg);
+                CHECK_NOT_NULLPTR(kernel_reg);
                 auto ctx = std::make_shared<KernelContext>();
                 ctx->kernels = block_kernels;
                 auto kernel = kernel_reg->m_factory(ctx);

@@ -64,12 +64,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg0", "arg1"};
                     std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                    std::stringstream ss_err;
-                    ss_err << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                           << " respectively, at Node " << m_context->node->get_name()
-                           << ", do not match for dot op";
-
-                    enforce(false) << ss_err.str();
+                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << ", do not match for dot op";
                 }
             }
 
@@ -145,12 +142,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg0", "arg1"};
                     std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                    std::stringstream ss_err;
-                    ss_err << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                           << " respectively, at Node " << m_context->node->get_name()
-                           << ", do not match for dot op";
-
-                    enforce(false) << ss_err.str();
+                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << ", do not match for dot op";
                 }
             }
             // check and calculate m for arg0 and out
@@ -164,12 +158,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg0", "output"};
                     std::vector<ngraph::Shape> shape_vec{arg0_shape, out_shape};
 
-                    std::stringstream ss_err;
-                    ss_err << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                           << " respectively, at Node " << m_context->node->get_name()
-                           << ", do not match for dot op";
-
-                    enforce(false) << ss_err.str();
+                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << ", do not match for dot op";
                 }
             }
             // check and calculate n for arg1 and out
@@ -183,12 +174,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg1", "output"};
                     std::vector<ngraph::Shape> shape_vec{arg1_shape, out_shape};
 
-                    std::stringstream ss_err;
-                    ss_err << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                           << " respectively, at Node " << m_context->node->get_name()
-                           << ", do not match for dot op";
-
-                    enforce(false) << ss_err.str();
+                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << ", do not match for dot op";
                 }
             }
 

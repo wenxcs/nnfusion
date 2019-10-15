@@ -1676,14 +1676,14 @@ namespace nnfusion
                 input_nodes.push_back(delta_node);
 
                 std::vector<int64> start_vec;
-                enforce(GetValueFromNGraphOp<int64>(start_node, &start_vec) == true);
-                enforce(start_vec.size() > 0);
+                CHECK(GetValueFromNGraphOp<int64>(start_node, &start_vec) == true);
+                CHECK(start_vec.size() > 0);
                 std::vector<int64> limit_vec;
-                enforce(GetValueFromNGraphOp<int64>(limit_node, &limit_vec) == true);
-                enforce(limit_vec.size() > 0);
+                CHECK(GetValueFromNGraphOp<int64>(limit_node, &limit_vec) == true);
+                CHECK(limit_vec.size() > 0);
                 std::vector<int64> delta_vec;
-                enforce(GetValueFromNGraphOp<int64>(delta_node, &delta_vec) == true);
-                enforce(delta_vec.size() > 0);
+                CHECK(GetValueFromNGraphOp<int64>(delta_node, &delta_vec) == true);
+                CHECK(delta_vec.size() > 0);
 
                 ngraph::op::OpConfig::any myConfig;
                 myConfig["start"] = start_vec[0];
@@ -2090,7 +2090,7 @@ namespace nnfusion
                 auto grad = GetInputNode(all_ng_nodes, node, 4);
 
                 std::vector<int32> x_value;
-                enforce(GetValueFromNGraphOp<int32>(x, &x_value))
+                CHECK(GetValueFromNGraphOp<int32>(x, &x_value))
                     << "StridedSliceGradOp currently do not support dynamic output tensor shape";
                 auto x_shape = x->get_shape();
                 auto x_const =
@@ -2146,7 +2146,7 @@ namespace nnfusion
                 auto ng_multiples = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> in_value;
-                enforce(GetValueFromNGraphOp<int64>(ng_multiples, &in_value))
+                CHECK(GetValueFromNGraphOp<int64>(ng_multiples, &in_value))
                     << "TileOp currently do not support dynamic tensor shape";
                 auto ng_input_shape = ng_multiples->get_shape();
                 auto ng_const =
@@ -2171,7 +2171,7 @@ namespace nnfusion
                 auto ng_seg_num = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int> in_value;
-                enforce(GetValueFromNGraphOp<int>(ng_seg_num, &in_value))
+                CHECK(GetValueFromNGraphOp<int>(ng_seg_num, &in_value))
                     << "We only accept the sgements number as Constant.";
                 auto ng_const = std::make_shared<ngraph::op::Constant>(
                     element::i32, ng_seg_num->get_shape(), in_value);
@@ -2298,9 +2298,9 @@ namespace nnfusion
                 {
                     auto ng_input = GetInputNode(all_ng_nodes, node, i);
                     auto ng_input_shape = ng_input->get_shape();
-                    enforce(ng_input_shape.size() == 1) << "input" << i << "must be a vector";
+                    CHECK(ng_input_shape.size() == 1) << "input" << i << "must be a vector";
                     std::vector<int64> in_value;
-                    enforce(GetValueFromNGraphOp<int64>(ng_input, &in_value));
+                    CHECK(GetValueFromNGraphOp<int64>(ng_input, &in_value));
 
                     BCast::Vec vec;
                     for (int64 i = 0; i < shape_size(ng_input_shape); ++i)
@@ -2311,7 +2311,7 @@ namespace nnfusion
                 }
 
                 BCast bcast(shapes[0], shapes[1]);
-                enforce(bcast.IsValid());
+                CHECK(bcast.IsValid());
                 // <<
                 // "Incompatible shapes: [" << str_util::Join(shapes[0], ","),
                 // "] vs. [", str_util::Join(shapes[1], ","), "]"));
@@ -2368,7 +2368,7 @@ namespace nnfusion
                     if (i < num_partitions)
                     {
                         std::vector<int64> in_value;
-                        enforce(GetValueFromNGraphOp<int64>(ng_input, &in_value))
+                        CHECK(GetValueFromNGraphOp<int64>(ng_input, &in_value))
                             << "DynamicStitch currently do not support dynamic tensor shape";
                         auto ng_const = std::make_shared<ngraph::op::Constant>(
                             element::i64, ng_input_shape, in_value);
@@ -2528,7 +2528,7 @@ namespace nnfusion
             GraphConvert::GraphConvert(const tensorflow::GraphDef& proto)
                 : tf_graph_proto{&proto}
             {
-                std::cerr << "Converting Tensorflow Graph" << std::endl;
+                LOG(INFO) << "Converting Tensorflow Graph" << std::endl;
 
                 m_ngraph = std::make_shared<nnfusion::graph::Graph>();
                 std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>
@@ -2696,7 +2696,7 @@ namespace nnfusion
                 }
 
                 m_ngraph->set_outputs(m_graph_outputs);
-                std::cout << "convert graph done" << endl;
+                LOG(INFO) << "convert graph done" << endl;
             }
 
             void GraphConvert::generate_topology()
@@ -2746,7 +2746,7 @@ namespace nnfusion
 
             NamedNodeVector GraphConvert::convert_node(const tensorflow::NodeDef& node)
             {
-                //LOG_INFO << ">> ++ Managing TF_IMPORT node " << node.name();
+                //LOG(INFO) << ">> ++ Managing TF_IMPORT node " << node.name();
                 NamedNodeVector ret;
                 auto func = TRANSLATE_OP_MAP.find(node.op());
                 if (func != TRANSLATE_OP_MAP.end())
@@ -2759,7 +2759,7 @@ namespace nnfusion
                     // return NamedNodeVector{};
                     ret = TranslateGenericNoAttrOp(node, m_ng_node, m_parameters);
                 }
-                //LOG_INFO << ">> -- Managing TF_IMPORT node " << node.name();
+                //LOG(INFO) << ">> -- Managing TF_IMPORT node " << node.name();
                 return std::move(ret);
             }
 
@@ -2772,9 +2772,9 @@ namespace nnfusion
                         std::make_shared<ngraph::Function>(output, m_parameters));
                 }
                 if (output_functions.size() > 1)
-                    LOG_WARN << "Please note that NNFusion current only support single"
-                             << " output graph. If your graph has more than one outputs, we "
-                             << "ONLY generate the source code for the first one.";
+                    LOG(WARNING) << "Please note that NNFusion current only support single"
+                                 << " output graph. If your graph has more than one outputs, we "
+                                 << "ONLY generate the source code for the first one.";
                 return output_functions;
             }
         } // namespace tensorflow_import

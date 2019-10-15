@@ -112,7 +112,7 @@ namespace nnfusion
             {
                 if (output_id >= raw_output.size() || input_id >= km->raw_output.size())
                 {
-                    LOG_WARN << "Invalid forward function.";
+                    LOG(WARNING) << "Invalid forward function.";
                     return *this;
                 }
                 km->raw_input[input_id] = raw_output[output_id];
@@ -126,14 +126,14 @@ namespace nnfusion
                 // Check if the buffer is same size;
                 if (input_id >= kctx->inputs.size() || size != buffsize)
                 {
-                    LOG_ERR << "Input data size and memory buffer size don't match:";
+                    LOG(ERROR) << "Input data size and memory buffer size don't match:";
                     return false;
                 }
                 auto status = memcpy(unsafe_input(input_id), data, buffsize);
 
                 if (status == nullptr)
                 {
-                    LOG_ERR << "Memcpy failed.";
+                    LOG(ERROR) << "Memcpy failed.";
                     return false;
                 }
                 return true;
@@ -146,14 +146,14 @@ namespace nnfusion
                 // Check if the buffer is same size;
                 if (output_id >= kctx->outputs.size() || size != buffsize)
                 {
-                    LOG_ERR << "Input data size and memory buffer size don't match:";
+                    LOG(ERROR) << "Input data size and memory buffer size don't match:";
                     return false;
                 }
                 auto status = memcpy(unsafe_output(output_id), data, buffsize);
 
                 if (status == nullptr)
                 {
-                    LOG_ERR << "Memcpy failed.";
+                    LOG(ERROR) << "Memcpy failed.";
                     return false;
                 }
                 return true;
@@ -167,14 +167,14 @@ namespace nnfusion
                 // Check if the buffer is same size;
                 if (input_id >= kctx->inputs.size() || sizeof(T) * data.size() != buffsize)
                 {
-                    LOG_ERR << "Input data size and memory buffer size don't match:";
+                    LOG(ERROR) << "Input data size and memory buffer size don't match:";
                     return false;
                 }
                 auto status = memcpy(unsafe_input(input_id), (void*)data.data(), buffsize);
 
                 if (status == nullptr)
                 {
-                    LOG_ERR << "Memcpy failed.";
+                    LOG(ERROR) << "Memcpy failed.";
                     return false;
                 }
 
@@ -186,7 +186,7 @@ namespace nnfusion
             {
                 if (data.size() != kctx->inputs.size())
                 {
-                    LOG_ERR << "Data items missmatch.";
+                    LOG(ERROR) << "Data items missmatch.";
                     return false;
                 }
                 for (int i = 0; i < data.size(); i++)
@@ -202,7 +202,7 @@ namespace nnfusion
             {
                 if (output_id > raw_output.size())
                 {
-                    LOG_ERR << "Index exceeded the limit of vector.";
+                    LOG(ERROR) << "Index exceeded the limit of vector.";
                     return vector<T>();
                 }
                 auto base = (T*)unsafe_output(output_id);
@@ -224,7 +224,7 @@ namespace nnfusion
             {
                 if (n > raw_input.size())
                 {
-                    LOG_ERR << "Index exceeded the limit of vector.";
+                    LOG(ERROR) << "Index exceeded the limit of vector.";
                     return nullptr;
                 }
                 return raw_input[n].get();
@@ -234,7 +234,7 @@ namespace nnfusion
             {
                 if (n > raw_output.size())
                 {
-                    LOG_ERR << "Index exceeded the limit of vector.";
+                    LOG(ERROR) << "Index exceeded the limit of vector.";
                     return nullptr;
                 }
                 return raw_output[n].get();
@@ -322,7 +322,7 @@ namespace nnfusion
                     return prof_cache[gnode->get_unique_name()];
                 else
                 {
-                    LOG_ERR << "No valid Profiling Context for this node.";
+                    LOG(ERROR) << "No valid Profiling Context for this node.";
                     return nullptr;
                 }
             }

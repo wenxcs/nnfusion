@@ -33,7 +33,7 @@ TEST(nnfusion_core_kernels, sample)
         {
             has_valid_kernel = true;
 
-            LOG_INFO << "Now on Kernel Emitter:\t" << kernel->get_function_name();
+            LOG(INFO) << "Now on Kernel Emitter:\t" << kernel->get_function_name();
 
             // Data
             auto input = nnfusion::inventory::generate_input<op::Pad, float>(0);
@@ -50,11 +50,11 @@ TEST(nnfusion_core_kernels, sample)
             // Rocm
             if (rocm_runtime->check_env())
             {
-                LOG_INFO << "Test ROCM runtime of Pad operator:";
+                LOG(INFO) << "Test ROCM runtime of Pad operator:";
                 nnfusion::profiler::Profiler prof(rocm_runtime, pctx);
                 prof.execute();
-                LOG_INFO << "Avg Host duration:" << pctx->result.get_host_avg();
-                LOG_INFO << "Avg Device duration:" << pctx->result.get_device_avg();
+                LOG(INFO) << "Avg Host duration:" << pctx->result.get_host_avg();
+                LOG(INFO) << "Avg Device duration:" << pctx->result.get_device_avg();
                 auto res = prof.execute(inputs);
                 EXPECT_EQ(res.size(), outputs.size());
                 for (int i = 0; i < res.size(); i++)
@@ -65,12 +65,12 @@ TEST(nnfusion_core_kernels, sample)
             {
                 // Now we use the tool to profile and test the kernel;
                 pctx->reset();
-                LOG_INFO << "Test Cuda runtime of Pad operator:";
+                LOG(INFO) << "Test Cuda runtime of Pad operator:";
                 nnfusion::profiler::Profiler prof(nnfusion::profiler::CudaDefaultRuntime::Runtime(),
                                                   pctx);
                 prof.execute();
-                LOG_INFO << "Avg Host duration:" << pctx->result.get_host_avg();
-                LOG_INFO << "Avg Device duration:" << pctx->result.get_device_avg();
+                LOG(INFO) << "Avg Host duration:" << pctx->result.get_host_avg();
+                LOG(INFO) << "Avg Device duration:" << pctx->result.get_device_avg();
 
                 auto res = prof.execute(inputs);
                 EXPECT_EQ(res.size(), outputs.size());
@@ -82,7 +82,7 @@ TEST(nnfusion_core_kernels, sample)
             if (true /*Must support*/)
             {
                 pctx->reset();
-                LOG_INFO << "Test CPU Reference runtime of Pad operator:";
+                LOG(INFO) << "Test CPU Reference runtime of Pad operator:";
                 nnfusion::profiler::Profiler ref_prof(
                     nnfusion::profiler::ReferenceRuntime::Runtime(), pctx);
                 auto res = ref_prof.execute(inputs);

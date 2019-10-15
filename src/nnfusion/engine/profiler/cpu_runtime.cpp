@@ -216,7 +216,7 @@ double ReferenceRuntime::execute(const ProfilingContext::Pointer& ke, void** inp
         if (kernel->get_or_emit_source())
         {
             has_valid_kernel = true;
-            LOG_INFO << "Replacing with reference kenel.";
+            LOG(INFO) << "Replacing with reference kenel.";
             // Replacing the kernel;
             ke->kernel = kernel;
         }

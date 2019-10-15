@@ -16,7 +16,7 @@ namespace nnfusion
                 ElementWise(shared_ptr<KernelContext> ctx)
                     : CudaElementwiseEmitter(ctx)
                 {
-                    enforce(ctx->outputs.size() == 1)
+                    CHECK(ctx->outputs.size() == 1)
                         << "Multi-output elementwise ops are not currently supported.";
 
                     for (auto& arg : ctx->inputs)
@@ -37,14 +37,14 @@ namespace nnfusion
                     {
                         auto math_kernel =
                             get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
-                        enforce_not_nullptr(math_kernel);
+                        CHECK_NOT_NULLPTR(math_kernel);
                         lu.require(math_kernel);
                     }
 
                     auto num_inputs = data_types.size() - 1;
                     uint32_t nthreads = static_cast<uint32_t>(
                         ngraph::shape_size(m_context->outputs[0].get_shape()));
-                    enforce(num_inputs > 0)
+                    CHECK(num_inputs > 0)
                         << "At least one input and one output tesnor for elementwise-op.";
 
                     int grids, blocks, bound;
@@ -96,7 +96,7 @@ namespace nnfusion
                     if (CudaOpMap<T>::math_kernel != nullptr)
                     {
                         kernel = get_math_kernel(op, CudaOpMap<T>::math_kernel, data_types);
-                        enforce_not_nullptr(kernel);
+                        CHECK_NOT_NULLPTR(kernel);
                     }
                     return std::make_pair(op, kernel);
                 }

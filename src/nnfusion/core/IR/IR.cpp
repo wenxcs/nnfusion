@@ -44,12 +44,12 @@ BasicBlock::Pointer Program::get_entry()
         if (i->get_prior() == nullptr)
         {
             if (entry != nullptr)
-                LOG_WARN << "Several entry basic blocks in Program: We only support fist one.";
+                LOG(WARNING) << "Several entry basic blocks in Program: We only support fist one.";
             entry = i;
         }
     }
     if (entry == nullptr)
-        LOG_WARN << "Program has no entry basic block.";
+        LOG(WARNING) << "Program has no entry basic block.";
     return entry;
 }
 
@@ -62,11 +62,11 @@ BasicBlock::Pointer Program::get_exit()
         if (i->get_next() == nullptr)
         {
             if (exit != nullptr)
-                LOG_WARN << "Several exit basic blocks in Program: We only support fist one.";
+                LOG(WARNING) << "Several exit basic blocks in Program: We only support fist one.";
             exit = i;
         }
     }
     if (exit == nullptr)
-        LOG_WARN << "Program has no exit basic block.";
+        LOG(WARNING) << "Program has no exit basic block.";
     return exit;
 }

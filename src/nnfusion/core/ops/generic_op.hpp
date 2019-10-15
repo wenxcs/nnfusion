@@ -97,7 +97,7 @@ namespace ngraph
                 throw std::runtime_error((std::string("OpConfig for opname `") + opname +
                                           "` is registered more than once.")
                                              .c_str());
-            std::cout << "Registering opname `" << opname << "`;\n";
+            LOG(INFO) << "Registering opname `" << opname << "`";
             return get_op_configs()[opname];
         }
 
@@ -179,8 +179,8 @@ namespace ngraph
                                                      .c_str());
                 }
 
-                LOG_INFO << "Managing GenericOp for Opeartor: type = " << opname
-                         << ", name = " << name << ", input_len = " << inputs.size();
+                LOG(INFO) << "Managing GenericOp for Opeartor: type = " << opname
+                          << ", name = " << name << ", input_len = " << inputs.size();
 
                 localOpConfig.check_constrait();
                 validate_and_infer_types();

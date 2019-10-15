@@ -33,7 +33,7 @@ namespace nnfusion
                                 if (edge->is_control_edge())
                                     continue;
 
-                                enforce(edge->get_src() == it);
+                                CHECK(edge->get_src() == it);
                                 auto dst = edge->get_dst();
                                 if (blocklist_nodes.count(dst))
                                     continue;
@@ -61,8 +61,8 @@ namespace nnfusion
                     for (auto& it : down_streams)
                     {
                         auto eval_node = it->get_op_ptr();
-                        LOG_INFO << ">> Found constant downstream node: " << it->get_name()
-                                 << ", Op Type = " << eval_node->description();
+                        LOG(INFO) << ">> Found constant downstream node: " << it->get_name()
+                                  << ", Op Type = " << eval_node->description();
 
                         bool const_infer_success = false;
                         std::vector<std::vector<char>> raw_inputs, raw_outputs;
@@ -74,27 +74,27 @@ namespace nnfusion
                             if (input->is_control_edge())
                                 continue;
                             auto const_node = input->get_src();
-                            LOG_INFO
+                            LOG(INFO)
                                 << "  Input of constant downstream node: " << const_node->get_name()
                                 << ", Op Type = " << const_node->get_op_ptr()->description() << "/"
                                 << const_node->get_op_type();
 
-                            enforce(input->get_dst() == it);
-                            enforce(const_node->is_constant());
+                            CHECK(input->get_dst() == it);
+                            CHECK(const_node->is_constant());
                             upstream_nodes.insert(const_node);
 
                             auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
                                 const_node->get_op_ptr());
-                            enforce(p_const != nullptr);
+                            CHECK(p_const != nullptr);
                             const void* ptr = p_const->get_data_ptr();
                             size_t length = p_const->get_data_size();
-                            LOG_INFO << "  With Constant Input Node: " << p_const->get_name()
-                                     << ", Memory Length = " << length;
+                            LOG(INFO) << "  With Constant Input Node: " << p_const->get_name()
+                                      << ", Memory Length = " << length;
 
                             std::vector<char> raw_input(length);
                             memcpy(raw_input.data(), ptr, length);
                             raw_inputs.emplace_back(std::move(raw_input));
-                            enforce(raw_input.size() == 0);
+                            CHECK(raw_input.size() == 0);
                         }
 
                         // Prepare runtime backend
@@ -104,7 +104,7 @@ namespace nnfusion
                         if (backend == "ROCm")
                         {
                             runtime = nnfusion::profiler::RocmDefaultRuntime::Runtime();
-                            enforce(runtime->check_env());
+                            CHECK(runtime->check_env());
                             kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
                                 eval_node->description(), ROCM_GPU, DT_FLOAT);
                             if (kernel_regs.size() == 0)
@@ -114,21 +114,20 @@ namespace nnfusion
                         else if (backend == "CUDA")
                         {
                             runtime = nnfusion::profiler::CudaDefaultRuntime::Runtime();
-                            enforce(runtime->check_env());
+                            CHECK(runtime->check_env());
                             kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
                                 eval_node->description(), CUDA_GPU, DT_FLOAT);
                         }
                         else if (backend == "CPU")
                         {
                             runtime = nnfusion::profiler::ReferenceRuntime::Runtime();
-                            enforce(runtime->check_env());
+                            CHECK(runtime->check_env());
                             // TODO: need to fill correct kernel_regs list for CPU
-                            enforce(false);
+                            CHECK_FAIL();
                         }
                         else
                         {
-                            LOG_ERR << "Cannot Recognize Backend Type: " << backend;
-                            enforce(false);
+                            CHECK_FAIL() << "Cannot Recognize Backend Type: " << backend;
                         }
 
                         // Runtime node output inference
@@ -146,21 +145,21 @@ namespace nnfusion
                             if (!prof.mixed_type_execute(raw_inputs, raw_outputs))
                                 continue;
 
-                            LOG_INFO << "  For node `" << eval_node->get_name()
-                                     << "`: get runtime output results of size "
-                                     << raw_outputs.size();
+                            LOG(INFO) << "  For node `" << eval_node->get_name()
+                                      << "`: get runtime output results of size "
+                                      << raw_outputs.size();
                             const_infer_success = true;
                             break;
                         }
                         if (!const_infer_success)
                         {
-                            LOG_INFO << "  For node `" << eval_node->get_name()
-                                     << "`: Cannot infer outputs, going to blacklist this node.";
+                            LOG(INFO) << "  For node `" << eval_node->get_name()
+                                      << "`: Cannot infer outputs, going to blacklist this node.";
                             blocklist_nodes.insert(it);
                             continue;
                         }
 
-                        enforce(
+                        CHECK(
                             raw_outputs.size() ==
                             1); // Only support single output; Multi-outputs lacks output-index properties in GNode.
 #if 0                           // For Debug only
@@ -175,7 +174,7 @@ namespace nnfusion
 						puts("..");
 #endif
                         // Ensure output layout is as expected, replace eval_node with new_constant in place
-                        enforce(raw_outputs.size() == eval_node->get_output_size());
+                        CHECK(raw_outputs.size() == eval_node->get_output_size());
                         for (int i = 0; i < eval_node->get_output_size(); ++i)
                         {
                             auto& shape = eval_node->get_output_shape(i);
@@ -183,7 +182,7 @@ namespace nnfusion
                             size_t memory = dtype.size();
                             for (auto& it : shape)
                                 memory *= it;
-                            enforce(memory == raw_outputs[i].size());
+                            CHECK(memory == raw_outputs[i].size());
 
                             auto new_constant = std::make_shared<ngraph::op::Constant>(
                                 dtype, shape, raw_outputs[i].data());
@@ -207,11 +206,11 @@ namespace nnfusion
                             it->reset_op_ptr(new_constant);
 
                             ++folding_cnt;
-                            LOG_INFO << "  Finish folding " << folding_cnt
-                                     << "th node: name = " << it->get_unique_name() << "/"
-                                     << it->get_op_ptr()->get_name()
-                                     << ", type = " << it->get_op_ptr()->description();
-                            LOG_INFO << "";
+                            LOG(INFO) << "  Finish folding " << folding_cnt
+                                      << "th node: name = " << it->get_unique_name() << "/"
+                                      << it->get_op_ptr()->get_name()
+                                      << ", type = " << it->get_op_ptr()->description();
+                            LOG(INFO) << "";
                         }
                     }
                     return folding_cnt;
@@ -230,12 +229,12 @@ namespace nnfusion
                     if (!has_warning)
                     {
                         has_warning = true;
-                        LOG_INFO << "To disable Runtime Constant Folding: export "
-                                    "NNFUSION_ENABLE_FOLDING_BACKEND=''";
+                        LOG(INFO) << "To disable Runtime Constant Folding: export "
+                                     "NNFUSION_ENABLE_FOLDING_BACKEND=''";
                     }
 
-                    LOG_INFO << "Runtime Constant Folding Pass starts up for Graph: "
-                             << graph->get_name();
+                    LOG(INFO) << "Runtime Constant Folding Pass starts up for Graph: "
+                              << graph->get_name();
 
                     // Folding output nodes results in kernel_emitter crashes
                     std::set<std::shared_ptr<GNode>> blocklist_nodes = {};
@@ -246,13 +245,13 @@ namespace nnfusion
                     do
                     {
                         folding_cnt = runtime_const_folding_iterate_once(graph, blocklist_nodes);
-                        LOG_INFO << ">> Runtime One Iteration Folds Infer-able Node Count: "
-                                 << folding_cnt;
+                        LOG(INFO) << ">> Runtime One Iteration Folds Infer-able Node Count: "
+                                  << folding_cnt;
                     } while (folding_cnt > 0);
-                    LOG_INFO << "";
-                    LOG_INFO << ">> Runtime Constant Folding Pass ends for Graph: "
-                             << graph->get_name();
-                    LOG_INFO << "";
+                    LOG(INFO) << "";
+                    LOG(INFO) << ">> Runtime Constant Folding Pass ends for Graph: "
+                              << graph->get_name();
+                    LOG(INFO) << "";
                     return true;
                 }
 

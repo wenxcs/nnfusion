@@ -1,14 +1,12 @@
 // Microsoft (c) 2019, NNFusion Team
 
-#pragma once
-
 #include <limits>
 #include <list>
 
 #include "memory_layout_pass.hpp"
 #include "ngraph/op/concat.hpp"
 #include "ngraph/op/constant.hpp"
-#include "nnfusion/util/error.hpp"
+#include "nnfusion/util/util.hpp"
 
 using namespace std;
 using namespace nnfusion::graph;

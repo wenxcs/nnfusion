@@ -53,7 +53,7 @@ bool TrainningAsyncExecution::run(std::shared_ptr<InterpreterContext> ctx,
 
             if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr)
             {
-                enforce(false)
+                CHECK_FAIL()
                     << "AllRedeuce && ApplyGradient Kernel should be emitted before this pass.";
             }
             else

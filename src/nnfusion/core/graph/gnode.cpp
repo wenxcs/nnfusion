@@ -112,7 +112,7 @@ void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& node)
     auto edges = this->get_out_edges();
     for (auto& edge : edges)
     {
-        enforce(edge->get_src() == shared_from_this());
+        CHECK(edge->get_src() == shared_from_this());
         if (edge->is_control_edge())
             continue;
         std::vector<std::shared_ptr<nnfusion::graph::Edge>> ordered_edges;

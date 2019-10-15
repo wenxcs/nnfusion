@@ -69,7 +69,7 @@ Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes
 
 bool Interpreter::translate(TranslationUnit::Pointer tu)
 {
-    enforce_not_nullptr(m_passes);
+    CHECK_NOT_NULLPTR(m_passes);
     return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
 }
 
@@ -81,7 +81,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
     shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
     shared_ptr<TranslationUnit> ngraph_tu(new TranslationUnit());
     ngraph_tu->m_function = function;
-    enforce(ngraph_passes.run(m_trans_ctx, ngraph_tu));
+    CHECK(ngraph_passes.run(m_trans_ctx, ngraph_tu));
     // Iterator through all functions
 
     // Deal with translation unit's program
@@ -90,13 +90,13 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
         shared_ptr<TranslationUnit> _tu(new TranslationUnit());
         auto current_function = p.first;
         _tus->emplace(p.first, _tu);
-        LOG_INFO << "Translating function:\t" << current_function->get_name() << endl;
+        LOG(INFO) << "Translating function:\t" << current_function->get_name() << endl;
 
         _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_function = current_function;
         auto bb_main = _tu->program.get_entry();
 
-        enforce(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
+        CHECK(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 
         // Translate the Node
         for (shared_ptr<Node> node : m_trans_ctx->m_function_ordered_ops.at(current_function))
@@ -116,14 +116,14 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
                     {
                         const descriptor::Output& output = input.get_output();
                         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        enforce_not_nullptr(tv);
+                        CHECK_NOT_NULLPTR(tv);
                         in.push_back(TensorWrapper(tv, tv->get_name()));
                     }
                     vector<TensorWrapper> out;
                     for (const descriptor::Output& output : node->get_outputs())
                     {
                         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        enforce_not_nullptr(tv);
+                        CHECK_NOT_NULLPTR(tv);
                         out.push_back(TensorWrapper(tv, tv->get_name()));
                     }
 
@@ -159,7 +159,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
             }
             ss << "}, (tag:)";
             ss << " DEBUG : " << ins->Tag().Get<int>("DEBUG") << " }";
-            LOG_INFO << ss.str();
+            LOG(INFO) << ss.str();
         }
         */
 
@@ -172,7 +172,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
 {
     // run graph passes
     nnfusion::graph::pass::GraphPass graph_passes;
-    enforce(graph_passes.run(graph));
+    CHECK(graph_passes.run(graph));
     shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
     graph_tu->m_graph = graph;
     // todo: multi graph???
@@ -187,13 +187,13 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
     {
         shared_ptr<TranslationUnit> _tu(new TranslationUnit());
         _tus->emplace(current_graph, _tu);
-        LOG_INFO << "Translating graph:\t" << current_graph->get_name() << endl;
+        LOG(INFO) << "Translating graph:\t" << current_graph->get_name() << endl;
 
         _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_graph = current_graph;
         auto bb_main = _tu->program.get_entry();
 
-        enforce(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
+        CHECK(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 
         // Translate the Node
         for (auto gnode : graph->get_ordered_ops())
@@ -214,14 +214,14 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
                     {
                         const descriptor::Output& output = input.get_output();
                         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        enforce_not_nullptr(tv);
+                        CHECK_NOT_NULLPTR(tv);
                         in.push_back(TensorWrapper(tv, tv->get_name()));
                     }
                     vector<TensorWrapper> out;
                     for (const descriptor::Output& output : node->get_outputs())
                     {
                         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        enforce_not_nullptr(tv);
+                        CHECK_NOT_NULLPTR(tv);
                         out.push_back(TensorWrapper(tv, tv->get_name()));
                     }
 
@@ -265,7 +265,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
             }
             ss << "}, (tag:)";
             ss << " DEBUG : " << ins->Tag().Get<int>("DEBUG") << " }";
-            LOG_INFO << ss.str();
+            LOG(INFO) << ss.str();
         }
          */
         translate(_tu);

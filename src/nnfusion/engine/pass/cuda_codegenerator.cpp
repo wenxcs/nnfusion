@@ -32,7 +32,6 @@ namespace
         }
         else
         {
-            printf("Directory %s already exists\n", tar_path.c_str());
             flag = true;
         }
         return flag;
@@ -156,8 +155,8 @@ void CudaCodeGenerator::after_projgen()
     {
         nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.h",
                                                     "./super_scaler.h");
-        LOG_WARN << "libsuper_scaler.so should be copied from "
-                    "(build)/src/tools/nnfusion/templates/super_scaler/";
+        LOG(WARNING) << "libsuper_scaler.so should be copied from "
+                        "(build)/src/tools/nnfusion/templates/super_scaler/";
         nnfusion::codegen::copy_file_from_templates("super_scaler/libsuper_scaler.so",
                                                     "./libsuper_scaler.so");
     }
@@ -171,7 +170,7 @@ void CudaCodeGenerator::after_projgen()
 //     {
 //         for (auto ins : *iterator)
 //         {
-//             LOG_INFO << "instruction name: " << ins->name() << ", device: " << ins->Tag().Get<DeviceType>("Device");
+//             LOG(INFO) << "instruction name: " << ins->name() << ", device: " << ins->Tag().Get<DeviceType>("Device");
 //             //ins->Tag().Set<DeviceType>("Device", CUDA_GPU);
 //         }
 //     }
@@ -272,7 +271,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                         "AnyOP", CUDA_GPU, DT_FLOAT);
-                    enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                    CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
                     shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
                     auto kernel = kernel_reg->m_factory(ctx);
                     kernel->get_or_emit_source();
@@ -284,7 +283,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
     }
 
-    LOG_INFO << "Start dump whole source file...\n";
+    LOG(INFO) << "Start dump whole source file...\n";
     // Code Gen
     LanguageUnit& lu = *this->lu_nnfusion_rt;
     lu << "// Microsoft (c) 2019, MSRA/NNFUSION Team\n";
@@ -452,7 +451,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
         //Planning
         {
-            // enforce(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
+            // CHECK(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu_main_init << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, "
                          << tu->program.m_context.memory_pool_size << "));\n";
 
@@ -549,7 +548,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 else
                 {
                     string func_key = fu->signature_unit->get_code() + fu->body_unit->get_code();
-                    enforce(decleard_function_LU.find(func_key) != decleard_function_LU.end());
+                    CHECK(decleard_function_LU.find(func_key) != decleard_function_LU.end());
                     func_name = decleard_function_LU[func_key]->get_code();
                 }
 

@@ -20,8 +20,8 @@ namespace nnfusion
             }
             else
             {
-                std::cerr << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
-                          << "]" << std::endl;
+                LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
+                          << "]";
             }
 
             auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
@@ -51,8 +51,8 @@ namespace nnfusion
             }
             else
             {
-                std::cerr << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
-                          << "]" << std::endl;
+                LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
+                          << "]";
             }
 
             auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};

@@ -20,7 +20,7 @@
 #include "ngraph/op/constant.hpp"
 #include "ngraph/op/reshape.hpp"
 
-#include "nnfusion/util/log.hpp"
+#include "nnfusion/util/util.hpp"
 
 #include "nnfusion/engine/profiler/profiler.hpp"
 
@@ -31,8 +31,8 @@ namespace nnfusion
         std::vector<std::vector<char>>
             get_node_outputs(std::shared_ptr<Node> ng_op, int depth = 0, int arg_idx = 0)
         {
-            LOG_INFO << "[" << depth << ":" << arg_idx
-                     << "] Working for node: " << ng_op->get_name();
+            LOG(INFO) << "[" << depth << ":" << arg_idx
+                      << "] Working for node: " << ng_op->get_name();
             static std::map<std::shared_ptr<Node>, std::vector<std::vector<char>>> dict;
             auto it = dict.find(ng_op);
             if (it != dict.end())
@@ -78,7 +78,7 @@ namespace nnfusion
             else
             {
                 runtime = nnfusion::profiler::CudaDefaultRuntime::Runtime();
-                enforce(runtime->check_env());
+                CHECK(runtime->check_env());
                 kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
                     ng_op->description(), CUDA_GPU, DT_FLOAT);
             }
@@ -105,8 +105,8 @@ namespace nnfusion
                         printf("%u ", _outputs[j][i]);
                 puts("...");
 
-                LOG_INFO << "  For node `" << ng_op->get_name()
-                         << "`: get runtime output results of size " << _outputs.size();
+                LOG(INFO) << "  For node `" << ng_op->get_name()
+                          << "`: get runtime output results of size " << _outputs.size();
                 const_infer_success = true;
                 break;
             }
@@ -261,7 +261,7 @@ namespace nnfusion
                     auto outs = get_node_outputs(ng_op);
                     assert(outs.size() == 1);
                     auto out_type = ng_op->get_output_element_type(0);
-                    LOG_INFO << "Type of Output Value is " << out_type.c_type_string();
+                    LOG(INFO) << "Type of Output Value is " << out_type.c_type_string();
 
                     if (out_type == ngraph::element::f32)
                         fill_values<T, float>(*values, outs[0]);
@@ -273,12 +273,13 @@ namespace nnfusion
                         fill_values<T, unsigned>(*values, outs[0]);
                     else
                     {
-                        LOG_ERR << "Unsupport op-type conversion, op-type = " << out_type;
+                        LOG(ERROR) << "Unsupport op-type conversion, op-type = " << out_type;
                         assert(false);
                     }
                     return true;
 
-                    LOG_ERR << "Asking for Constant value from op-type: " << ng_op->description();
+                    LOG(ERROR) << "Asking for Constant value from op-type: "
+                               << ng_op->description();
                     assert(false);
                 }
                 auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);

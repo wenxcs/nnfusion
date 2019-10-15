@@ -31,7 +31,7 @@ std::shared_ptr<std::vector<ir::BasicBlock::Pointer>> SplitBlock(ir::BasicBlock:
 
         if (group_id == current_group_id)
         {
-            enforce_not_nullptr(sub_block);
+            CHECK_NOT_NULLPTR(sub_block);
             sub_block->push_back(ins);
         }
         else
@@ -69,12 +69,12 @@ bool CreateFusionBlock::run(std::shared_ptr<InterpreterContext> ctx,
         if (block->hasAttribute("fusion_group_id"))
         {
             group_id = block->Get<int>("fusion_group_id");
-            LOG_INFO << "----------fusion group: " << group_id;
+            LOG(INFO) << "----------fusion group: " << group_id;
             for (auto ins : *block)
             {
-                LOG_INFO << ins->name();
+                LOG(INFO) << ins->name();
             }
-            LOG_INFO << "----------";
+            LOG(INFO) << "----------";
         }
     }
 

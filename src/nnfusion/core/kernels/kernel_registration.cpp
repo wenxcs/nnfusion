@@ -1,6 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "kernel_registration.hpp"
+#include "nnfusion/util/util.hpp"
 
+using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 KernelRegistration::KernelRegistration(const string op_name)
@@ -34,8 +36,8 @@ KernelRegistration& KernelRegistration::KernelFactory(const Factory factory)
 
 const shared_ptr<KernelRegistration> KernelRegistration::Build()
 {
-    enforce(!m_op_name.empty());
-    enforce_not_nullptr(m_factory);
+    CHECK(!m_op_name.empty());
+    CHECK_NOT_NULLPTR(m_factory);
     shared_ptr<KernelRegistration> sptr(this);
 
     return sptr;
@@ -45,7 +47,7 @@ bool KernelRegistry::RegisterKernel(const string op_name,
                                     shared_ptr<KernelRegistration> registration)
 {
     m_kernel_registry.insert(std::make_pair(op_name, registration));
-    LOG_INFO << "Registered kernel for Opeartor: " << op_name << ", tag: " << registration->m_tag;
+    LOG(INFO) << "Registered kernel for Opeartor: " << op_name << ", tag: " << registration->m_tag;
 
     return true;
 }
@@ -53,7 +55,7 @@ bool KernelRegistry::RegisterKernel(const string op_name,
 shared_ptr<const KernelRegistration>
     KernelRegistry::KernelSelect(std::vector<shared_ptr<const KernelRegistration>>& matched_regs)
 {
-    enforce(matched_regs.size() > 0);
+    CHECK(matched_regs.size() > 0);
 
     // a naive selector to always return the first matched kernel
     return matched_regs[0];

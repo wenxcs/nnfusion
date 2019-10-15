@@ -152,7 +152,8 @@ int main(int argc, char** argv)
             }
             else
             {
-                throw ngraph_error("Unsupported model format '" + model_format + "' in NNFusion");
+                throw nnfusion::errors::NotSupported("Unsupported model format '" + model_format +
+                                                     "' in NNFusion");
             }
         }
         else if (format == "onnx")
@@ -161,7 +162,8 @@ int main(int argc, char** argv)
         }
         else
         {
-            throw ngraph_error("Unsupported model format '" + format + "' in NNFusion");
+            throw nnfusion::errors::NotSupported("Unsupported model format '" + format +
+                                                 "' in NNFusion");
         }
 
         if (visualize)

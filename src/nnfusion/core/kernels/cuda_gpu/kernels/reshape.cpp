@@ -8,7 +8,7 @@ using namespace nnfusion::kernels;
 cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    enforce(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
+    CHECK(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<ngraph::op::Reshape>(ctx->node);
     is_memcpy = false;
     is_noop = false;
@@ -16,7 +16,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     if (ctx->outputs[0].get_name() == ctx->inputs[0].get_name())
     {
         is_noop = true;
-        // LOG_INFO << "Same input and output tensor." << endl;
+        // LOG(INFO) << "Same input and output tensor." << endl;
         return;
     }
 
@@ -31,7 +31,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     if (!reshape->get_is_transpose() || result_shape_product < 2)
     {
         is_memcpy = true;
-        // LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
+        // LOG(INFO) << "No need for zero-size or 1-d tensor reshape." << endl;
         return;
     }
 
@@ -438,7 +438,7 @@ void cuda::ReshapehD::set_launch_config()
 cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    enforce(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
+    CHECK(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<ngraph::op::Reshape>(ctx->node);
     is_memcpy = false;
     is_noop = false;
@@ -458,7 +458,7 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     if (!reshape->get_is_transpose() || result_shape_product < 2)
     {
         is_memcpy = true;
-        // LOG_INFO << "No need for zero-size or 1-d tensor reshape." << endl;
+        // LOG(INFO) << "No need for zero-size or 1-d tensor reshape." << endl;
     }
 
     std::stringstream tag;

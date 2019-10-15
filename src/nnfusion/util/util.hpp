@@ -3,5 +3,5 @@
 //  - such as error code, log tool.
 #pragma once
 
-#include "error.hpp"
-#include "log.hpp"
+#include "errors.hpp"
+#include "logging.hpp"

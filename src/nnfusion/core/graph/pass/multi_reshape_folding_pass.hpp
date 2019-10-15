@@ -23,8 +23,8 @@ namespace nnfusion
                     if (!using_pass)
                         return true;
 
-                    LOG_INFO << "Multi Reshape Folding Pass starts up for Graph: "
-                             << graph->get_name();
+                    LOG(INFO) << "Multi Reshape Folding Pass starts up for Graph: "
+                              << graph->get_name();
 
                     std::vector<std::shared_ptr<GNode>> tail_op;
                     std::vector<int> tail_op_idx;
@@ -118,10 +118,10 @@ namespace nnfusion
                         // printf("%s (%d) => %zd\n", tail_op[i]->get_op_ptr()->description().c_str(), tail_op_idx[i], chain.size());
                     }
 
-                    LOG_INFO << "";
-                    LOG_INFO << "Multi Reshape Folding Pass ends up for Graph: "
-                             << graph->get_name();
-                    LOG_INFO << "";
+                    LOG(INFO) << "";
+                    LOG(INFO) << "Multi Reshape Folding Pass ends up for Graph: "
+                              << graph->get_name();
+                    LOG(INFO) << "";
                     return true;
                 }
             };

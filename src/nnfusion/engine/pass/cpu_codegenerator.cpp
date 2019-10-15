@@ -34,7 +34,6 @@ namespace
         }
         else
         {
-            printf("Directory %s already exists\n", tar_path.c_str());
             flag = true;
         }
         return flag;
@@ -120,7 +119,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                     "AnyOP", GENERIC_CPU, DT_FLOAT);
-                enforce(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
                 auto kernel = kernel_reg->m_factory(ctx);
                 kernel->get_or_emit_source();
                 kernels.push_back(kernel);
@@ -128,7 +127,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
     }
 
-    LOG_INFO << "Start dump whole source file...\n";
+    LOG(INFO) << "Start dump whole source file...\n";
     // Code Gen
     LanguageUnit& lu = *this->lu_nnfusion_rt;
     lu << "// Microsoft (c) 2019, MSRA/NNFUSION Team\n";
@@ -274,7 +273,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
         //Planning
         {
-            // enforce(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
+            // CHECK(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
             lu_main_init << "memory_pool_ = (char *)malloc(" << tu->memory_pool_size << ");\n";
 
             for (auto kernel : kernels)

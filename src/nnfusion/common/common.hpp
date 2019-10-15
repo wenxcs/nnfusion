@@ -144,7 +144,7 @@ namespace nnfusion
             }
             else
             {
-                //printf("Directory %s already exists\n", tar_path.c_str());
+                LOG(INFO) << "Directory " << tar_path.c_str() << " already exists";
                 flag = true;
             }
             return flag;
@@ -203,8 +203,8 @@ using namespace nnfusion;
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 
 // Uncomment this for quick debug
-// #undef LOG_INFO
-// #define LOG_INFO std::cout
+// #undef LOG(INFO)INFO
+// #define LOG(INFO)INFO std::cout
 
 namespace nnfusion
 {

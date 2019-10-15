@@ -138,30 +138,30 @@ namespace nnfusion
                     auto res = prof.unsafe_execute<T>((void*)IN.data());
                     if (res.empty())
                     {
-                        LOG_INFO << "Kernel empty result.";
+                        LOG(INFO) << "Kernel empty result.";
                         return false;
                     }
                     auto& res_first = res[0];
 
                     if (res_first.size() != OUT.size())
                     {
-                        LOG_INFO << "Kernel result size error:" << res_first.size() << " vs. "
-                                 << OUT.size();
+                        LOG(INFO) << "Kernel result size error:" << res_first.size() << " vs. "
+                                  << OUT.size();
                         return false;
                     }
 
                     if (!all_close(res_first, OUT))
                         return false;
 
-                    LOG_INFO << "Kernel pass unit-test.";
+                    LOG(INFO) << "Kernel pass unit-test.";
                 }
                 else
                 {
-                    LOG_WARN << "Kernel is not available.";
+                    LOG(WARNING) << "Kernel is not available.";
                 }
             }
             if (!kernel_found)
-                LOG_WARN << "No available found!";
+                LOG(WARNING) << "No available found!";
             return kernel_found;
         }
     }

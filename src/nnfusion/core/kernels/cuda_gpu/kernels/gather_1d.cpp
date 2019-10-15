@@ -19,7 +19,7 @@ cuda::Gather1D::Gather1D(shared_ptr<KernelContext> ctx)
     {
         axis = input_shape_0.size() + axis;
     }
-    enforce(axis < input_shape_0.size());
+    CHECK(axis < input_shape_0.size());
 
     int64_t outer_size = 1;
     int64_t inner_size = 1;
@@ -33,7 +33,7 @@ cuda::Gather1D::Gather1D(shared_ptr<KernelContext> ctx)
     }
 
     int64_t out_size = ngraph::shape_size(output_shape);
-    enforce(out_size > 0);
+    CHECK(out_size > 0);
     is_axis_zero = outer_size == 1;
     gather_dim_size = input_shape_0[axis];
     indices_size = ngraph::shape_size(input_shape_1);

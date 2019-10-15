@@ -11,9 +11,9 @@ bool ExtractGraphSignature::extract_result(std::shared_ptr<TranslationUnit> tu,
     {
         std::shared_ptr<ngraph::descriptor::Tensor> tv =
             gnode->get_op_ptr()->get_output_tensor_ptr();
-        enforce_not_nullptr(tv);
+        CHECK_NOT_NULLPTR(tv);
         tu->output_names->insert(tv->get_name());
-        LOG_INFO << "Result Tensor: " << tv->get_name() << endl;
+        LOG(INFO) << "Result Tensor: " << tv->get_name() << endl;
     }
     return true;
 }
@@ -28,10 +28,10 @@ bool ExtractGraphSignature::extract_constants(std::shared_ptr<InterpreterContext
         {
             shared_ptr<descriptor::Tensor> tv =
                 gnode->get_op_ptr()->get_outputs()[0].get_tensor_ptr();
-            enforce_not_nullptr(tv);
+            CHECK_NOT_NULLPTR(tv);
             tu->constants->insert(tv);
 
-            LOG_INFO << "Constant Tensor: " << tv->get_name() << endl;
+            LOG(INFO) << "Constant Tensor: " << tv->get_name() << endl;
         }
     }
     return true;
@@ -67,8 +67,8 @@ void ExtractGraphSignature::propagate_in_place_input(std::shared_ptr<Interpreter
 
                         ctx->m_variable_name_map[output_tensor.get_name()] = input_name;
 
-                        LOG_INFO << "GPU codegen: Forwarding " << input_name << " through "
-                                 << output_tensor.get_name() << endl;
+                        LOG(INFO) << "GPU codegen: Forwarding " << input_name << " through "
+                                  << output_tensor.get_name() << endl;
                         stack.push_back(&c_op->get_outputs().at(output_index));
                     }
                 }
@@ -107,8 +107,8 @@ void ExtractGraphSignature::propagate_in_place_output(std::shared_ptr<Interprete
                     if (input_tensor.get_pool_offset() == offset && !tmp_node->is_parameter() &&
                         !tmp_node->is_constant())
                     {
-                        LOG_INFO << "Reusing " << output_name << " for " << input_tensor.get_name()
-                                 << endl;
+                        LOG(INFO) << "Reusing " << output_name << " for " << input_tensor.get_name()
+                                  << endl;
 
                         ctx->m_variable_name_map[input_tensor.get_name()] = output_name;
 
@@ -131,7 +131,7 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
         for (size_t i = 0; i < gnode->get_op_ptr()->get_output_size(); ++i)
         {
             shared_ptr<descriptor::Tensor> tv = gnode->get_op_ptr()->get_output_tensor_ptr(i);
-            enforce_not_nullptr(tv);
+            CHECK_NOT_NULLPTR(tv);
             tu->arg.push_back(tv);
             const element::Type& et = tv->get_element_type();
 
@@ -143,7 +143,7 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
 
             arg_index++;
 
-            LOG_INFO << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str() << endl;
+            LOG(INFO) << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str() << endl;
         }
     }
     return true;
@@ -157,9 +157,9 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
     {
         shared_ptr<Node> op = graph->get_output_op(i)->get_op_ptr();
 
-        enforce_not_nullptr(op);
+        CHECK_NOT_NULLPTR(op);
         shared_ptr<descriptor::Tensor> tv = op->get_output_tensor_ptr();
-        enforce_not_nullptr(tv);
+        CHECK_NOT_NULLPTR(tv);
 
         tu->out.push_back(tv);
 
@@ -180,8 +180,8 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
             auto output_name = ss.str();
             ctx->m_variable_name_map[itv->get_name()] = output_name;
             propagate_in_place_output(ctx, &(res->get_inputs().at(0).get_output()), output_name);
-            LOG_INFO << "Output Tensor:\t" << itv->get_name() << "\t with id:" << output_name
-                     << endl;
+            LOG(INFO) << "Output Tensor:\t" << itv->get_name() << "\t with id:" << output_name
+                      << endl;
         }
     }
     return true;
@@ -192,9 +192,9 @@ bool ExtractGraphSignature::run(std::shared_ptr<InterpreterContext> ctx,
 {
     auto graph = tu->m_graph;
     tu->memory_pool_size = graph->get_temporary_pool_size();
-    enforce(extract_result(tu, graph));
-    enforce(extract_constants(ctx, tu, graph));
-    enforce(extract_args(ctx, tu, graph));
-    enforce(extract_output(ctx, tu, graph));
+    CHECK(extract_result(tu, graph));
+    CHECK(extract_constants(ctx, tu, graph));
+    CHECK(extract_args(ctx, tu, graph));
+    CHECK(extract_output(ctx, tu, graph));
     return true;
 }

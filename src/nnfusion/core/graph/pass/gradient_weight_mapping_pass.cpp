@@ -1,7 +1,5 @@
 // Microsoft (c) 2019, NNFusion Team
 
-#pragma once
-
 #include "gradient_weight_mapping_pass.hpp"
 #include "../gnode.hpp"
 #include "../graph.hpp"

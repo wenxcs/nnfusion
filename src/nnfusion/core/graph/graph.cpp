@@ -141,7 +141,7 @@ const std::string& Graph::get_name() const
 
 void Graph::set_name(const std::string& name)
 {
-    enforce(m_name.empty()) << "Graph name may be set exactly once.";
+    CHECK(m_name.empty()) << "Graph name may be set exactly once.";
 
     m_name = name;
 }
@@ -271,8 +271,8 @@ const std::shared_ptr<nnfusion::graph::Edge>
     // control slots must only be linked to control slots
     if (x == kControlSlot || y == kControlSlot)
     {
-        enforce(x == kControlSlot);
-        enforce(y == kControlSlot);
+        CHECK(x == kControlSlot);
+        CHECK(y == kControlSlot);
     }
 
     std::shared_ptr<Edge> edge = nullptr;
@@ -337,7 +337,7 @@ void Graph::remove_edge(std::shared_ptr<Edge> edge)
     //TF_DCHECK_OK(IsValidNode(e->dst_)) << e->dst_->DebugString();
     edge->get_src()->remove_out_edge(edge);
     edge->get_dst()->remove_in_edge(edge);
-    enforce(edge == m_edges[edge->m_id]);
+    CHECK(edge == m_edges[edge->m_id]);
     //CHECK_GT(m_num_edges, 0);
 
     m_edges[edge->m_id] = nullptr;

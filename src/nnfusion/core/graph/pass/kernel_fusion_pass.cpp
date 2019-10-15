@@ -1,7 +1,5 @@
 // Microsoft (c) 2019, NNFusion Team
 
-#pragma once
-
 #include "kernel_fusion_pass.hpp"
 #include <queue>
 #include "../gnode.hpp"
@@ -144,7 +142,7 @@ private:
         size_t num_nodes = 0;
         for (auto id : group->nodes)
         {
-            enforce(id < m_nodes.size());
+            CHECK(id < m_nodes.size());
             auto tn = m_nodes[id];
             if (id >= ELEM_GROUP_NODEID && tn->elem_group)
             {
@@ -325,16 +323,16 @@ private:
         {
             for (auto id : group->nodes)
             {
-                enforce(id < m_nodes.size());
+                CHECK(id < m_nodes.size());
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
                     std::vector<size_t> fusable_input_nodes;
                     for (auto elem_id : tn->elem_group->nodes)
                     {
-                        enforce(elem_id < m_nodes.size());
+                        CHECK(elem_id < m_nodes.size());
                         auto elem_tn = m_nodes[elem_id];
-                        enforce_not_nullptr(elem_tn->node);
+                        CHECK_NOT_NULLPTR(elem_tn->node);
                         for (auto in_edge : elem_tn->node->get_in_edges())
                         {
                             if (in_edge->is_control_edge())
@@ -372,7 +370,7 @@ private:
                                 {
                                     if (!edge->is_control_edge())
                                     {
-                                        enforce(input_set == false)
+                                        CHECK(input_set == false)
                                             << "Reshape and Broadcast can only have 1 input!";
                                         input_node = edge->get_src();
                                         input_set = true;
@@ -397,18 +395,18 @@ private:
 
         for (auto group : *groups)
         {
-            // LOG_INFO << DebugStringFuseGroup(group);
+            // LOG(INFO) << DebugStringFuseGroup(group);
             for (auto id : group->nodes)
             {
-                enforce(id < m_nodes.size());
+                CHECK(id < m_nodes.size());
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
                     for (auto elem_id : tn->elem_group->nodes)
                     {
-                        enforce(elem_id < m_nodes.size());
+                        CHECK(elem_id < m_nodes.size());
                         auto elem_tn = m_nodes[elem_id];
-                        enforce_not_nullptr(elem_tn->node);
+                        CHECK_NOT_NULLPTR(elem_tn->node);
 
                         (*(elem_tn->node))["elem_group_id"] = next_elem_group_id;
                         (*(elem_tn->node))["fusion_group_id"] = next_fusion_group_id;

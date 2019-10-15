@@ -15,7 +15,7 @@ KernelContext::KernelContext(shared_ptr<Node> node)
     {
         const descriptor::Output& output = input.get_output();
         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-        enforce_not_nullptr(tv);
+        CHECK_NOT_NULLPTR(tv);
         inputs.push_back(TensorWrapper(tv, tv->get_name()));
         input_names.push_back(tv->get_name());
     }
@@ -24,7 +24,7 @@ KernelContext::KernelContext(shared_ptr<Node> node)
     for (const descriptor::Output& output : node->get_outputs())
     {
         shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-        enforce_not_nullptr(tv);
+        CHECK_NOT_NULLPTR(tv);
         outputs.push_back(TensorWrapper(tv, tv->get_name()));
         output_names.push_back(tv->get_name());
     }
@@ -170,20 +170,20 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
 
     if (kernel_definitions.find(this->m_kernel_name) != kernel_definitions.end())
     {
-        enforce_not_nullptr(fu = kernel_definitions[this->m_kernel_name]);
+        CHECK_NOT_NULLPTR(fu = kernel_definitions[this->m_kernel_name]);
         return fu;
     }
 
     // emit function units
-    enforce_not_nullptr(fu->signature_unit = emit_function_signature());
+    CHECK_NOT_NULLPTR(fu->signature_unit = emit_function_signature());
     fu->body_unit = emit_function_body();
     if (!fu->body_unit)
     {
         return nullptr;
     }
-    enforce_not_nullptr(fu->call_unit = emit_function_call());
-    enforce_not_nullptr(fu->dep_unit = emit_dependency());
-    enforce_not_nullptr(fu->comment_unit = emit_comments());
+    CHECK_NOT_NULLPTR(fu->call_unit = emit_function_call());
+    CHECK_NOT_NULLPTR(fu->dep_unit = emit_dependency());
+    CHECK_NOT_NULLPTR(fu->comment_unit = emit_comments());
 
     // Pass other to dep_unit
     for (auto& it : fu->call_unit->local_symbol)
@@ -194,8 +194,8 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     fu->body_unit->clean_require();
 
     // orgnize dep
-    enforce(fu->body_unit->require(fu->dep_unit));
-    enforce(fu->call_unit->require(fu->body_unit));
+    CHECK(fu->body_unit->require(fu->dep_unit));
+    CHECK(fu->call_unit->require(fu->body_unit));
 
     m_function_unit = fu;
     m_is_emitted = true;
@@ -222,6 +222,6 @@ const TensorWrapper& KernelEmitter::allocate_tensor(
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);
 
-    LOG_INFO << "Tensor allocated:\t" << name << ", shape is:" << shape;
+    LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
     return m_context->tensors.back();
 }

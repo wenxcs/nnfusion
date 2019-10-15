@@ -10,7 +10,7 @@ int ElementWiseFused::unique_func_id = 0;
 ElementWiseFused::ElementWiseFused(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    enforce_not_nullptr(FuseContext());
+    CHECK_NOT_NULLPTR(FuseContext());
 }
 
 std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
@@ -27,7 +27,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
         {
             const descriptor::Output& output = input.get_output();
             shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-            enforce_not_nullptr(tv);
+            CHECK_NOT_NULLPTR(tv);
             auto iter = node_outputs.find(tv->get_name());
             if (iter == node_outputs.end())
             {
@@ -36,7 +36,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
             }
             else
             {
-                enforce(iter->second > 0);
+                CHECK(iter->second > 0);
                 node_outputs[tv->get_name()] = node_outputs[tv->get_name()] - 1;
             }
         }
@@ -44,8 +44,8 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
         for (const descriptor::Output& output : node->get_outputs())
         {
             shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-            enforce_not_nullptr(tv);
-            enforce(node_outputs.find(tv->get_name()) == node_outputs.end());
+            CHECK_NOT_NULLPTR(tv);
+            CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
             node_outputs[tv->get_name()] = node->get_outputs()[0].get_inputs().size();
             tensor_wrappers.insert(
                 std::make_pair(tv->get_name(), TensorWrapper(tv, tv->get_name())));
@@ -58,7 +58,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
         {
             ctx->output_names.push_back(iter.first);
             auto tw = tensor_wrappers.find(iter.first);
-            enforce(tw != tensor_wrappers.end());
+            CHECK(tw != tensor_wrappers.end());
             ctx->outputs.push_back(tw->second);
         }
     }
@@ -132,19 +132,19 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
             }
             else
             {
-                enforce(bc->is_outer_broadcast());
+                CHECK(bc->is_outer_broadcast());
                 index += "[tid % " + std::to_string(bc->get_outer_broadcast_size()) + "]";
             }
             local_tensors[out_tw.get_name()] = "temp" + std::to_string(temp_tensor_id++);
             auto& in_tw = kernel_emitter->m_context->inputs[0];
-            enforce(in_args.count(in_tw.get_name()) > 0);
+            CHECK(in_args.count(in_tw.get_name()) > 0);
 
             lu << out_tw.get_type() << " " << local_tensors[out_tw.get_name()] << " = "
                << in_args[in_tw.get_name()] << index << ";\n";
         }
         else if (auto rs = std::dynamic_pointer_cast<ngraph::op::Reshape>(node))
         {
-            enforce(rs->get_is_transpose() == false);
+            CHECK(rs->get_is_transpose() == false);
             auto& in_tw = kernel_emitter->m_context->inputs[0];
             if (in_args.count(in_tw.get_name()) > 0)
             {
@@ -152,15 +152,15 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
             }
             else
             {
-                enforce(local_tensors.count(in_tw.get_name()) > 0);
+                CHECK(local_tensors.count(in_tw.get_name()) > 0);
                 local_tensors[out_tw.get_name()] = local_tensors[in_tw.get_name()];
             }
         }
         else
         {
             auto cuda_kernel = std::dynamic_pointer_cast<CudaElementwiseEmitter>(kernel_emitter);
-            enforce_not_nullptr(cuda_kernel) << "kernel type:"
-                                             << kernel_emitter->m_context->node->description();
+            CHECK_NOT_NULLPTR(cuda_kernel) << "kernel type:"
+                                           << kernel_emitter->m_context->node->description();
             auto op_kernel = cuda_kernel->get_op_kernel();
             if (op_kernel.second != nullptr)
             {
@@ -177,7 +177,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
                 }
                 else
                 {
-                    enforce(local_tensors.count(in_tw.get_name()) > 0);
+                    CHECK(local_tensors.count(in_tw.get_name()) > 0);
                     input_args.push_back(local_tensors[in_tw.get_name()]);
                 }
             }
@@ -195,7 +195,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
         }
         else
         {
-            enforce(in_args.count(pair.first) > 0);
+            CHECK(in_args.count(pair.first) > 0);
             lu << in_args[pair.first] << "[tid];\n";
         }
     }

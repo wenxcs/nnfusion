@@ -13,6 +13,12 @@
 
 namespace nnfusion
 {
+    const int DEBUG = 0;
+    const int INFO = 1;
+    const int WARNING = 2;
+    const int ERROR = 3;
+    const int FATAL = 4;
+
     class ConstString
     {
     public:
@@ -34,34 +40,15 @@ namespace nnfusion
         size_t m_size;
     };
 
-    constexpr const char* find_last(ConstString s, size_t offset, char ch)
-    {
-        return offset == 0 ? s.get_ptr(0) : (s[offset] == ch ? s.get_ptr(offset + 1)
-                                                             : find_last(s, offset - 1, ch));
-    }
-
-    constexpr const char* find_last(ConstString s, char ch)
-    {
-        return find_last(s, s.size() - 1, ch);
-    }
-
-    constexpr const char* get_file_name(ConstString s) { return find_last(s, '/'); }
     constexpr const char* trim_file_name(ConstString root, ConstString s)
     {
         return s.get_ptr(root.size());
     }
-    enum class LOG_TYPE
-    {
-        _LOG_TYPE_ERROR,
-        _LOG_TYPE_WARNING,
-        _LOG_TYPE_INFO,
-        _LOG_TYPE_DEBUG,
-    };
 
     class LogHelper
     {
     public:
-        LogHelper(LOG_TYPE,
+        LogHelper(int level,
                   const char* file,
                   int line,
                   std::function<void(const std::string&)> m_handler_func);
@@ -77,49 +64,49 @@ namespace nnfusion
     private:
         std::function<void(const std::string&)> m_handler_func;
         std::stringstream m_stream;
+        int m_level;
         static std::string log_path;
         static bool flag_save_to_file;
-    };
-
-    class Logger
-    {
-        friend class LogHelper;
-
-    public:
-        static void set_log_path(const std::string& path);
-        static void start();
-        static void stop();
-
-    private:
-        static void log_item(const std::string& s);
-        static void process_event(const std::string& s);
-        static void thread_entry(void* param);
-        static std::string m_log_path;
-        static std::deque<std::string> m_queue;
     };
 
     extern std::ostream& get_nil_stream();
 
     void default_logger_handler_func(const std::string& s);
 
-#define LOG_ERR                                                                                    \
-    nnfusion::LogHelper(nnfusion::LOG_TYPE::_LOG_TYPE_ERROR,                                       \
+#define _LOG_DEBUG                                                                                 \
+    nnfusion::LogHelper(nnfusion::DEBUG,                                                           \
                         nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
                         __LINE__,                                                                  \
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
 
-#define LOG_WARN                                                                                   \
-    nnfusion::LogHelper(nnfusion::LOG_TYPE::_LOG_TYPE_WARNING,                                     \
+#define _LOG_INFO                                                                                  \
+    nnfusion::LogHelper(nnfusion::INFO,                                                            \
                         nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
                         __LINE__,                                                                  \
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
 
-#define LOG_INFO                                                                                   \
-    nnfusion::LogHelper(nnfusion::LOG_TYPE::_LOG_TYPE_INFO,                                        \
+#define _LOG_WARNING                                                                               \
+    nnfusion::LogHelper(nnfusion::WARNING,                                                         \
                         nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
                         __LINE__,                                                                  \
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
+
+#define _LOG_ERROR                                                                                 \
+    nnfusion::LogHelper(nnfusion::ERROR,                                                           \
+                        nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
+                        __LINE__,                                                                  \
+                        nnfusion::default_logger_handler_func)                                     \
+        .stream()
+
+#define _LOG_FATAL                                                                                 \
+    nnfusion::LogHelper(nnfusion::FATAL,                                                           \
+                        nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
+                        __LINE__,                                                                  \
+                        nnfusion::default_logger_handler_func)                                     \
+        .stream()
+
+#define LOG(level) _LOG_##level
 }

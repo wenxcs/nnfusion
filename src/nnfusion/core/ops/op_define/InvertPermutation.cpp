@@ -6,17 +6,17 @@ REGISTER_OP(InvertPermutation)
     .attr<ngraph::op::OpConfig::any>("T")
     .infershape([](ngraph::op::GenericOp& target_op) -> void {
         // enforce is like assert, but when thing goes wrong, it will print error message.
-        enforce(target_op.get_input_size() == 1)
+        CHECK(target_op.get_input_size() == 1)
             << "Only one input is allowed for the InvertPermutation operator";
 
         auto& shape_0 = target_op.get_input_shape(0);
-        enforce(shape_0.size() == 1) << "The input only can take a 1-D integer tensor";
+        CHECK(shape_0.size() == 1) << "The input only can take a 1-D integer tensor";
 
         auto ng_op = target_op.get_argument(0);
         if (ng_op->description() == "Constant")
         {
-            enforce(target_op.get_input_element_type(0) == ngraph::element::i32 ||
-                    target_op.get_input_element_type(0) == ngraph::element::i64);
+            CHECK(target_op.get_input_element_type(0) == ngraph::element::i32 ||
+                  target_op.get_input_element_type(0) == ngraph::element::i64);
             std::unordered_map<int64_t, int64_t> element_records;
             std::vector<int64_t> input_vector;
             if (target_op.get_input_element_type(0) == ngraph::element::i32)
@@ -33,10 +33,10 @@ REGISTER_OP(InvertPermutation)
 
             for (int i = 0; i < input_vector.size(); i++)
             {
-                enforce(input_vector[i] >= 0 && input_vector[i] < input_vector.size())
+                CHECK(input_vector[i] >= 0 && input_vector[i] < input_vector.size())
                     << "The elements for InvertPermutation's inputs must between 0 to n-1";
                 element_records[input_vector[i]]++;
-                enforce(element_records[input_vector[i]] == 1)
+                CHECK(element_records[input_vector[i]] == 1)
                     << "The frequency of a number in InvertPermutation's inputs cannot above 1";
             }
         }

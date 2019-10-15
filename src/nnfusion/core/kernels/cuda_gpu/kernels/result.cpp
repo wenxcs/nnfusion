@@ -9,8 +9,8 @@ using namespace nnfusion::kernels;
 cuda::Result::Result(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    enforce(ctx->inputs.size() == 1) << "Input size mismatches.";
-    enforce(ctx->outputs.size() == 1) << "Output size mismatches.";
+    CHECK(ctx->inputs.size() == 1) << "Input size mismatches.";
+    CHECK(ctx->outputs.size() == 1) << "Output size mismatches.";
 
     std::stringstream tag;
     tag << "cuda_result";

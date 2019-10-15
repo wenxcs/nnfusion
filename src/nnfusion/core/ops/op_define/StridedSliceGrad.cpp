@@ -1,5 +1,4 @@
 // Microsoft (c) 2019, NNFusion Team
-#pragma once
 
 #include "nnfusion/core/ops/generic_op.hpp"
 // TODO: add StridedSliceGrad
@@ -19,8 +18,8 @@ REGISTER_OP(StridedSliceGrad)
         int new_axis_mask = target_op.localOpConfig.getRoot()["new_axis_mask"];
         int shrink_axis_mask = target_op.localOpConfig.getRoot()["shrink_axis_mask"];
         // TODO: handle the cases that these attrs are not zeros
-        enforce(begin_mask == 0 && end_mask == 0 && ellipsis_mask == 0 && new_axis_mask == 0 &&
-                shrink_axis_mask == 0)
+        CHECK(begin_mask == 0 && end_mask == 0 && ellipsis_mask == 0 && new_axis_mask == 0 &&
+              shrink_axis_mask == 0)
             << "do not support mast attributes yet!";
 
         // Set output size
@@ -28,7 +27,7 @@ REGISTER_OP(StridedSliceGrad)
         auto x_value = std::dynamic_pointer_cast<ngraph::op::Constant>(x)->get_vector<int32_t>();
         const ngraph::Shape& input_shape_0 = target_op.get_input_shape(0);
         int x_size = input_shape_0[0];
-        enforce(x_size == x_value.size());
+        CHECK(x_size == x_value.size());
 
         //Bert Defaut: ngraph::Shape output_shape_0 = {1, 256, 1024};
         ngraph::Shape output_shape_0;

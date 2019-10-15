@@ -12,13 +12,13 @@ bool DefaultDeviceDispatcher::run(std::shared_ptr<InterpreterContext> ctx,
     switch(default_device)
     {
         case GENERIC_CPU:
-        LOG_INFO << "GENERIC_CPU";
+        LOG(INFO) << "GENERIC_CPU";
         break;
         case  ROCM_GPU:
-        LOG_INFO << "ROCM_GPU";
+        LOG(INFO) << "ROCM_GPU";
         break;
         case CUDA_GPU:
-        LOG_INFO << "CUDA_GPU";
+        LOG(INFO) << "CUDA_GPU";
     }
     */
     for (auto iterator : p)

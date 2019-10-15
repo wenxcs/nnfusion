@@ -8,7 +8,7 @@ REGISTER_OP(DynamicStitch)
     .infershape([](ngraph::op::GenericOp& target_op) -> void {
         size_t input_size = target_op.get_input_size();
         int num_partitions = target_op.localOpConfig.getRoot()["N"];
-        enforce(num_partitions * 2 == input_size);
+        CHECK(num_partitions * 2 == input_size);
 
         bool all_indices_constant = true;
         int64_t max_index = 0;
@@ -22,7 +22,7 @@ REGISTER_OP(DynamicStitch)
             {
                 auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(indices_node);
                 auto ng_element_type = ng_constant_op->get_element_type();
-                enforce(ng_element_type == ngraph::element::i64);
+                CHECK(ng_element_type == ngraph::element::i64);
                 std::vector<int64_t> values;
                 values = ng_constant_op->get_vector<int64_t>();
 
@@ -36,8 +36,8 @@ REGISTER_OP(DynamicStitch)
             else
             {
                 all_indices_constant = false;
-                enforce(false) << "currently we do not support dynamic tensor shape, input_node="
-                               << indices_node->description();
+                CHECK_FAIL() << "currently we do not support dynamic tensor shape, input_node="
+                             << indices_node->description();
             }
             auto& indices_shape = target_op.get_input_shape(i);
             auto& data_shape = target_op.get_input_shape(i + num_partitions);

@@ -1,7 +1,5 @@
 // Microsoft (c) 2019, NNFusion Team
 
-#pragma once
-
 #include <unordered_set>
 
 #include "liveness_pass.hpp"
@@ -12,7 +10,7 @@
 #include "ngraph/op/parameter.hpp"
 #include "ngraph/op/result.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
-#include "nnfusion/util/log.hpp"
+#include "nnfusion/util/util.hpp"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::graph::pass;

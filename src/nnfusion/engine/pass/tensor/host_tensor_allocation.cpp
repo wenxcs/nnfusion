@@ -31,7 +31,7 @@ bool HostTensorAllocation::run(std::shared_ptr<InterpreterContext> ctx,
 
             if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr)
             {
-                LOG_WARN << "Kernel should be emitted before this pass:" << node->get_name();
+                LOG(WARNING) << "Kernel should be emitted before this pass:" << node->get_name();
                 continue;
             }
             else
@@ -69,8 +69,8 @@ bool HostTensorAllocation::run(std::shared_ptr<InterpreterContext> ctx,
                     }
 
                     TensorWrapper new_wrapper(newts->second);
-                    LOG_INFO << "Replacing " << node->get_name() << " " << tdesc->get_name()
-                             << " with new host tensor " << newts->second->get_name() << ".";
+                    LOG(INFO) << "Replacing " << node->get_name() << " " << tdesc->get_name()
+                              << " with new host tensor " << newts->second->get_name() << ".";
                     kernel_context->inputs[i] = new_wrapper;
 
                     // memcpy_pair: des <- src

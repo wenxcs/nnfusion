@@ -15,7 +15,7 @@ namespace nnfusion
                     : CudaEmitter(ctx)
                 {
                     auto _op = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
-                    enforce_not_nullptr(_op) << "Node type is not Broadcast.";
+                    CHECK_NOT_NULLPTR(_op) << "Node type is not Broadcast.";
                     auto& axes = _op->get_broadcast_axes();
                     if (axes.empty())
                     {

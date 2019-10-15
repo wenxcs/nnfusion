@@ -54,7 +54,7 @@ namespace nnfusion
                 if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
                     0)
                 {
-                    LOG_ERR << "Failed execute the kernel.";
+                    LOG(ERROR) << "Failed execute the kernel.";
                     return vector<vector<T>>();
                 }
 
@@ -67,13 +67,13 @@ namespace nnfusion
             {
                 auto& kernel_mem = pctx->kernel_memory;
                 auto kctx = pctx->kernel->m_context;
-                enforce(inputs.size() == kctx->inputs.size());
+                CHECK(inputs.size() == kctx->inputs.size());
 
                 for (size_t i = 0; i < kctx->inputs.size(); i++)
                 {
                     auto& t = kctx->inputs[i];
                     size_t _size = t.get_size() * t.get_element_type().size();
-                    enforce(inputs[i].size() == _size);
+                    CHECK(inputs[i].size() == _size);
 
                     kernel_mem->load_input_from(i, inputs[i].data(), _size);
                 }
@@ -81,7 +81,7 @@ namespace nnfusion
                 if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
                     0)
                 {
-                    LOG_ERR << "Failed execute the kernel.";
+                    LOG(ERROR) << "Failed execute the kernel.";
                     return false;
                 }
 
@@ -92,7 +92,7 @@ namespace nnfusion
                     auto& t = kctx->outputs[i];
                     size_t _size = t.get_size() * t.get_element_type().size();
 
-                    enforce(ptrs[i] != nullptr);
+                    CHECK(ptrs[i] != nullptr);
                     vector<char> output(_size);
                     memcpy(output.data(), ptrs[i], _size);
 
@@ -121,7 +121,7 @@ namespace nnfusion
                 if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
                     0)
                 {
-                    LOG_ERR << "Failed execute the kernel.";
+                    LOG(ERROR) << "Failed execute the kernel.";
                     return vector<vector<T>>();
                 }
 

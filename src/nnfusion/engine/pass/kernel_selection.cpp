@@ -24,7 +24,7 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
     shared_ptr<KernelContext> ctx(new KernelContext(node));
 
     bool has_valid_kernel = false;
-    LOG_INFO << "Start profiling...";
+    LOG(INFO) << "Start profiling...";
     auto comparef = [](const ProfilingContext::Pointer& a, const ProfilingContext::Pointer& b) {
         return a->result.get_device_avg() > b->result.get_device_avg();
     };
@@ -40,11 +40,11 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
             nnfusion::profiler::Profiler prof(runtime, pctx);
 
             if (!prof.execute())
-                LOG_INFO << "Kernel Failed.";
+                LOG(INFO) << "Kernel Failed.";
             else
             {
-                LOG_INFO << "Kernel Emitter#" << prof_res.size()
-                         << " time cost(ms):" << pctx->result.get_device_avg();
+                LOG(INFO) << "Kernel Emitter#" << prof_res.size()
+                          << " time cost(ms):" << pctx->result.get_device_avg();
                 prof_res.push(pctx);
             }
         }
@@ -57,7 +57,7 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
         ///\todo Check if the result is ready.
         if (!best->result.is_ready())
             continue;
-        LOG_INFO << "Best kernel time cost(ms):" << best->result.get_device_avg();
+        LOG(INFO) << "Best kernel time cost(ms):" << best->result.get_device_avg();
         return std::make_pair(devtype, move(best->kernel));
     }
     return std::make_pair(devtype, nullptr);
@@ -137,11 +137,11 @@ pair<DeviceType, kernels::KernelEmitter::Pointer>
         if (node->is_constant() || kernel->get_or_emit_source())
         {
             // if(kernel->get_or_emit_source() != nullptr)
-            //    LOG_WARN << "Valid kernel found:" << node->get_name();
+            //    LOG(WARNING) << "Valid kernel found:" << node->get_name();
             return std::make_pair(devtype, kernel);
         }
     }
-    LOG_ERR << "No valid kernel found:" << node->get_name();
+    LOG(ERROR) << "No valid kernel found:" << node->get_name();
     return std::make_pair(devtype, nullptr);
 }
 
@@ -187,7 +187,7 @@ pair<DeviceType, kernels::KernelEmitter::Pointer>
             return std::make_pair(ROCM_GPU, kernel);
         }
     }
-    LOG_ERR << "No valid kernel found:" << node->get_name();
+    LOG(ERROR) << "No valid kernel found:" << node->get_name();
     return std::make_pair(ROCM_GPU, nullptr);
 }
 

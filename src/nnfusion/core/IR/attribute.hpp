@@ -18,6 +18,8 @@
 #include "ngraph/node.hpp"
 #include "nnfusion/util/util.hpp"
 
+using namespace ngraph;
+
 namespace nnfusion
 {
     namespace ir
@@ -46,8 +48,8 @@ namespace nnfusion
             bool is_a() const
             {
                 if (type_hash == 0)
-                    LOG_WARN << "Attribute value type hash code was set to zero,"
-                                " this will ignore type check.";
+                    LOG(WARNING) << "Attribute value type hash code was set to zero,"
+                                    " this will ignore type check.";
                 return (type_hash == 0) || (typeid(T).hash_code() == type_hash);
             }
         };
@@ -185,12 +187,8 @@ namespace nnfusion
                 auto it = find(name, true);
                 T* child = static_cast<T*>(it->get());
                 using valuetype = typename T::ValueType;
-                if (!child->check_type())
-                {
-                    LOG_ERR << "Try to access the value using invalid data type: "
-                            << typeid(valuetype).name() << ".";
-                    enforce(false);
-                }
+                CHECK(child->check_type()) << "Try to access the value using invalid data type: "
+                                           << typeid(valuetype).name() << ".";
                 return child->value();
             }
             using AVPtr = AttributeValue::Ptr;
@@ -204,7 +202,7 @@ namespace nnfusion
                 auto it = std::find_if(values_.begin(), values_.end(), [&](const AVPtr& v) {
                     return v->name == name;
                 });
-                enforce(!required || it != values_.end()) << "The attribute is not existed.";
+                CHECK(!required || it != values_.end()) << "The attribute is not existed.";
                 return it;
             }
             using const_iterator = std::vector<AVPtr>::const_iterator;
@@ -213,8 +211,7 @@ namespace nnfusion
                 auto it = std::find_if(values_.begin(), values_.end(), [&](const AVPtr& v) {
                     return v->name == name;
                 });
-                enforce(!required || it != values_.end()) << "required undefined attribute:"
-                                                          << name;
+                CHECK(!required || it != values_.end()) << "required undefined attribute:" << name;
                 return it;
             }
         };
@@ -255,7 +252,8 @@ namespace nnfusion
                     }
                     else
                     {
-                        LOG_WARN << "Tagable interface will not copy existed item with same name.";
+                        LOG(WARNING)
+                            << "Tagable interface will not copy existed item with same name.";
                     }
                 }
             }
@@ -286,7 +284,7 @@ namespace nnfusion
             template <typename T>
             const Tagable* set(T val)
             {
-                enforce_not_nullptr(_tags);
+                CHECK_NOT_NULLPTR(_tags);
                 _tags->Set<T>(_sym, std::move(val));
                 return _tags;
             }
@@ -294,7 +292,7 @@ namespace nnfusion
             template <typename T>
             const Tagable* set_rval(T&& val)
             {
-                enforce_not_nullptr(_tags);
+                CHECK_NOT_NULLPTR(_tags);
                 _tags->Set<T>(_sym, val);
                 return _tags;
             }
@@ -313,7 +311,7 @@ namespace nnfusion
             template <typename T>
             T& as()
             {
-                enforce(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
+                CHECK(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
                 return _tags->Get<T>(_sym);
             }
 
@@ -321,7 +319,7 @@ namespace nnfusion
             template <typename T>
             T clone()
             {
-                enforce(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
+                CHECK(is_valid()) << "Tag doesn't have item who's name is: " << _sym << ".";
                 return _tags->Get<T>(_sym);
             }
 

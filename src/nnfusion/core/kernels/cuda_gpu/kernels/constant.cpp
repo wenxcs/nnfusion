@@ -20,7 +20,7 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cuda")
                 {
                     op = static_pointer_cast<ngraph::op::Constant>(ctx->node);
-                    enforce_not_nullptr(op) << "Node type is not Constant.";
+                    CHECK_NOT_NULLPTR(op) << "Node type is not Constant.";
 
                     folder = "./Constant/";
 

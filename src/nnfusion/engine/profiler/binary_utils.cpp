@@ -15,7 +15,7 @@ namespace nnfusion
         {
             if (!file_exsits(object_name))
             {
-                LOG_ERR << "Failed compiling the target source file.";
+                LOG(ERROR) << "Failed compiling the target source file.";
                 return nullptr;
             }
 

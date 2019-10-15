@@ -37,7 +37,7 @@ double Profiler::execute(void** input, void** output)
         duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
         if (device_time_span < 0)
         {
-            LOG_WARN << "Kernel launch failed.";
+            LOG(WARNING) << "Kernel launch failed.";
             continue;
         }
         pctx->result.record_host_duration(time_span.count());
@@ -86,7 +86,7 @@ void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
         }
     }
 
-    LOG_ERR << "Invalid reference kenel for " << gnode->get_name() << ".";
+    LOG(ERROR) << "Invalid reference kenel for " << gnode->get_name() << ".";
 }
 
 void GraphEvaluate::connect_nodes(shared_ptr<GNode> gnode)

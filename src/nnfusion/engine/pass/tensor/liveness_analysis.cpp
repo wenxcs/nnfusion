@@ -43,8 +43,8 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr ||
                     emitter_iter->second->get_or_emit_source() == nullptr)
                 {
-                    enforce(false) << "Kernel should be emitted before this pass:"
-                                   << node->get_name();
+                    CHECK_FAIL() << "Kernel should be emitted before this pass:"
+                                 << node->get_name();
                 }
                 op_kernels[node] = emitter_iter->second;
             }

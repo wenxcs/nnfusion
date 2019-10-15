@@ -93,7 +93,7 @@ namespace nnfusion
                 auto node = create_object<T, val_t>(case_id);
                 if (node == nullptr)
                     break;
-                LOG_INFO << "TestOp: " << node->description() << ", CaseId: " << case_id;
+                LOG(INFO) << "TestOp: " << node->description() << ", CaseId: " << case_id;
                 auto input = generate_input<T, val_t>(case_id);
                 auto output = generate_output<T, val_t>(case_id);
                 shared_ptr<KernelContext> ctx(new KernelContext(node));
@@ -124,7 +124,7 @@ namespace nnfusion
                     }
                     else
                     {
-                        LOG_WARN << "Kernel is not available";
+                        LOG(WARNING) << "Kernel is not available";
                     }
                 }
             }

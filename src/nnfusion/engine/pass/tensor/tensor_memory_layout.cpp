@@ -56,7 +56,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
             if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr)
                 // Can assign tensor layout even kernel is not emitted.
-                LOG_WARN << "Kernel should be emitted before this pass:" << node->get_name();
+                LOG(WARNING) << "Kernel should be emitted before this pass:" << node->get_name();
             else
                 kernel = emitter_iter->second;
 
@@ -70,7 +70,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
             if (kernel != nullptr)
             {
-                enforce_not_nullptr(kernel->m_context);
+                CHECK_NOT_NULLPTR(kernel->m_context);
                 // Allocate NoneResuseable Space for Persistent Tensors
                 for (auto& tensorwrapper : kernel->m_context->tensors)
                 {
@@ -103,7 +103,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
                             if (!is_same_dev(input, output))
                             {
-                                LOG_WARN
+                                LOG(WARNING)
                                     << "Tensor inplace oi pairs are not in same device, ignored.";
                                 continue;
                             }
