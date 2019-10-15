@@ -341,7 +341,7 @@ TEST(nnfusion_core_kernels, batch_kernel_tests_reshape)
 TEST(nnfusion_core_kernels, batch_kernel_tests_reverse)
 {
     // EXPECT_TRUE(nnfusion::test::check_kernels<op::Reverse>(GENERIC_CPU, DT_FLOAT));
-    // EXPECT_TRUE(nnfusion::test::check_kernels<op::Reverse>(CUDA_GPU, DT_FLOAT));
+    EXPECT_TRUE(nnfusion::test::check_kernels<op::Reverse>(CUDA_GPU, DT_FLOAT));
 }
 
 TEST(nnfusion_core_kernels, batch_kernel_tests_select)

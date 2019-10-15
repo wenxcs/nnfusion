@@ -32,16 +32,28 @@ LanguageUnit_p cuda::Reverse::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    vector<uint32_t> reverse_axes_flag(arg_rank, 0);
-    for (auto a : reverse_axes)
+    if (ngraph::is_scalar(arg_shape))
     {
-        reverse_axes_flag[a] = 1;
+        lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
+        lu << "if (tid < 1)\n";
+        lu.block_begin();
+        {
+            lu << "output0[0] = input0[0];\n";
+        }
+        lu.block_end();
     }
+    else
+    {
+        vector<uint32_t> reverse_axes_flag(arg_rank, 0);
+        for (auto a : reverse_axes)
+        {
+            reverse_axes_flag[a] = 1;
+        }
 
-    // function signature:
-    // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
-    auto code = ngraph::op::create_code_from_template(
-        R"(
+        // function signature:
+        // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
+        auto code = ngraph::op::create_code_from_template(
+            R"(
 int input_shape[] = {@input_shape@};
 int reverse_axes[] = {@reverse_axes@};
 uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -60,11 +72,12 @@ if (tid < @nthreads@) {
     output0[output_idx] = input0[tid];
 }
         )",
-        {{"input_shape", join(arg_shape)},
-         {"reverse_axes", join(reverse_axes_flag)},
-         {"nthreads", static_cast<uint32_t>(shape_size(arg_shape))},
-         {"rank", static_cast<uint32_t>(arg_rank)}});
-    lu << code;
+            {{"input_shape", join(arg_shape)},
+             {"reverse_axes", join(reverse_axes_flag)},
+             {"nthreads", static_cast<uint32_t>(shape_size(arg_shape))},
+             {"rank", static_cast<uint32_t>(arg_rank)}});
+        lu << code;
+    }
 
     return _lu;
 }
