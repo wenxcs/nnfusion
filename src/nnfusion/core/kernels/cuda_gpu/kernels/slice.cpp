@@ -34,32 +34,38 @@ LanguageUnit_p cuda::Slice::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    lu << "uint32_t input_strides[] = {" << join(input_strides) << "};\n";
-    lu << "uint32_t output_strides[] = {" << join(output_strides) << "};\n";
-    lu << "uint32_t lower_bounds[] = {" << join(lower_bounds) << "};\n";
-    lu << "uint32_t slice_strides[] = {" << join(slice_strides) << "};\n";
-
     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
     uint32_t nthreads = static_cast<uint32_t>(shape_size(output_shape));
     lu << "if (tid < " << nthreads << ")\n";
     lu.block_begin();
     {
-        lu << "uint32_t input_idx = 0;\n";
-        lu << "uint32_t output_idx = tid;\n";
-        size_t i = 0;
-        for (; i < output_shape.size() - 1; i++)
+        if (ngraph::is_scalar(input_shape))
         {
+            lu << "output0[0] = input0[0];\n";
+        }
+        else
+        {
+            lu << "uint32_t input_strides[] = {" << join(input_strides) << "};\n";
+            lu << "uint32_t output_strides[] = {" << join(output_strides) << "};\n";
+            lu << "uint32_t lower_bounds[] = {" << join(lower_bounds) << "};\n";
+            lu << "uint32_t slice_strides[] = {" << join(slice_strides) << "};\n";
+            lu << "uint32_t input_idx = 0;\n";
+            lu << "uint32_t output_idx = tid;\n";
+            size_t i = 0;
+            for (; i < output_shape.size() - 1; i++)
+            {
+                lu << "input_idx += (((output_idx / output_strides[" << i << "]) * slice_strides["
+                   << i << "]) + "
+                           "lower_bounds["
+                   << i << "]) * input_strides[" << i << "];\n";
+                lu << "output_idx %= output_strides[" << i << "];\n";
+            }
             lu << "input_idx += (((output_idx / output_strides[" << i << "]) * slice_strides[" << i
                << "]) + "
                   "lower_bounds["
                << i << "]) * input_strides[" << i << "];\n";
-            lu << "output_idx %= output_strides[" << i << "];\n";
+            lu << "output0[tid] = input0[input_idx];\n";
         }
-        lu << "input_idx += (((output_idx / output_strides[" << i << "]) * slice_strides[" << i
-           << "]) + "
-              "lower_bounds["
-           << i << "]) * input_strides[" << i << "];\n";
-        lu << "output0[tid] = input0[input_idx];\n";
     }
 
     lu.block_end();

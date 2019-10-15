@@ -359,7 +359,7 @@ TEST(nnfusion_core_kernels, batch_kernel_tests_sign)
 TEST(nnfusion_core_kernels, batch_kernel_tests_slice)
 {
     // EXPECT_TRUE(nnfusion::test::check_kernels<op::Slice>(GENERIC_CPU, DT_FLOAT));
-    // EXPECT_TRUE(nnfusion::test::check_kernels<op::Slice>(CUDA_GPU, DT_FLOAT));
+    EXPECT_TRUE(nnfusion::test::check_kernels<op::Slice>(CUDA_GPU, DT_FLOAT));
 }
 
 TEST(nnfusion_core_kernels, batch_kernel_tests_sqrt)
