@@ -144,7 +144,7 @@ namespace nnfusion
             }
             else
             {
-                LOG(INFO) << "Directory " << tar_path.c_str() << " already exists";
+                //LOG(INFO) << "Directory " << tar_path.c_str() << " already exists";
                 flag = true;
             }
             return flag;

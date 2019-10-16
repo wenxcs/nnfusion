@@ -25,12 +25,16 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
         if ((*node)["Alias"].is_valid())
         {
             std::string alias = (*node)["Alias"].as<std::string>();
-            std::string const_name = alias.substr(alias.find_first_of('/') + 1);
+            std::string expected_const_name = alias.substr(alias.find_first_of('/') + 1);
             auto gradient_shape = node->get_op_ptr()->get_output_shape(0);
             std::shared_ptr<GNode> weight_node = nullptr;
             for (auto const_node : const_nodes)
             {
-                if (const_node->get_name() == const_name &&
+                std::size_t found_pos = const_node->get_name().find("/read/");
+                std::string const_node_name = found_pos == std::string::npos
+                                                  ? const_node->get_name()
+                                                  : const_node->get_name().substr(0, found_pos);
+                if (const_node_name == expected_const_name &&
                     const_node->get_op_ptr()->get_output_shape(0) == gradient_shape)
                 {
                     weight_node = const_node;
@@ -54,7 +58,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                     // Result(node) -AllReduce-> ApplyGradient-> Parameter
                     auto allreduce_op = std::make_shared<ngraph::op::AllReduce>(node->get_op_ptr());
                     auto apply_gradient_op = std::make_shared<ngraph::op::GenericOp>(
-                        "apply_gradient_" + const_name,
+                        "apply_gradient_" + expected_const_name,
                         "ApplyGradient",
                         std::vector<std::shared_ptr<Node>>(
                             {weight_node->get_op_ptr(), allreduce_op}),
@@ -72,7 +76,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                 else
                 {
                     auto apply_gradient_op = std::make_shared<ngraph::op::GenericOp>(
-                        "apply_gradient_" + const_name,
+                        "apply_gradient_" + expected_const_name,
                         "ApplyGradient",
                         std::vector<std::shared_ptr<Node>>(
                             {weight_node->get_op_ptr(), node->get_op_ptr()}),
