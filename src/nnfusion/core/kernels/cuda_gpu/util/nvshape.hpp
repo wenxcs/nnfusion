@@ -77,12 +77,8 @@ namespace ngraph
         {
             for (size_t const& size : vec)
             {
-                if (size >> 32 != 0)
-                {
-                    throw std::runtime_error(
-                        "Request for std::vector<size_t> which exceeds the bitwidth available for "
-                        "NVShapes (32)");
-                }
+                CHECK(size >> 32 == 0) << "Request for std::vector<size_t> which exceeds the "
+                                          "bitwidth available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }
@@ -91,12 +87,8 @@ namespace ngraph
         {
             for (size_t const& size : shape)
             {
-                if (size >> 32 != 0)
-                {
-                    throw std::runtime_error(
-                        "Request for Shape which exceeds the bitwidth available for NVShapes "
-                        "(32)");
-                }
+                CHECK(size >> 32 == 0)
+                    << "Request for Shape which exceeds the bitwidth available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }
@@ -105,12 +97,8 @@ namespace ngraph
         {
             for (size_t const& size : strides)
             {
-                if (size >> 32 != 0)
-                {
-                    throw std::runtime_error(
-                        "Request for Strides which exceed the bitwidth available for NVShapes "
-                        "(32)");
-                }
+                CHECK(size >> 32 == 0)
+                    << "Request for Strides which exceed the bitwidth available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }
@@ -119,12 +107,8 @@ namespace ngraph
         {
             for (size_t const& size : coord)
             {
-                if (size >> 32 != 0)
-                {
-                    throw std::runtime_error(
-                        "Request for Coordinate which exceed the bitwidth available for NVShapes "
-                        "(32)");
-                }
+                CHECK(size >> 32 == 0) << "Request for Coordinate which exceed the bitwidth "
+                                          "available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }
@@ -133,12 +117,8 @@ namespace ngraph
         {
             for (auto const& size : vec)
             {
-                if (size >> 32 != 0)
-                {
-                    throw std::runtime_error(
-                        "Request for axis vector which exceed the bitwidth available for NVShapes "
-                        "(32)");
-                }
+                CHECK(size >> 32 == 0) << "Request for axis vector which exceed the bitwidth "
+                                          "available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }

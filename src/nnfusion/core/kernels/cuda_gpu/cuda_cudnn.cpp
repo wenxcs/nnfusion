@@ -22,11 +22,8 @@ std::string cuda::get_cudnn_datatype(std::string dtype)
         {"int8_t", "CUDNN_DATA_INT8"},
         {"int32_t", "CUDNN_DATA_INT32"}};
     auto p = datatype_map.find(dtype);
-    if (p == datatype_map.end())
-    {
-        std::string err = dtype + "is not supported by cuDNN";
-        throw std::runtime_error(err);
-    }
+    CHECK(p != datatype_map.end()) << dtype << " is not supported by cuDNN";
+
     return p->second;
 }
 

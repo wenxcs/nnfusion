@@ -25,6 +25,8 @@
 #include <tuple>
 #include <vector>
 
+#include "nnfusion/util/util.hpp"
+
 namespace ngraph
 {
     namespace runtime

@@ -33,10 +33,7 @@ LanguageUnit_p cuda::get_math_kernel(const std::string& name,
 
 uint32_t cuda::align_to_block_size(uint32_t threads, uint32_t block_size)
 {
-    if (threads > (1u << 31) - 1)
-    {
-        throw std::runtime_error("Cuda can't handle threads > 2^31 - 1.");
-    }
+    CHECK(threads <= (1u << 31) - 1) << "Cuda can't handle threads > 2^31 - 1.";
     uint32_t r = (threads + block_size - 1) / block_size;
     return r;
 }

@@ -14,15 +14,11 @@ namespace nnfusion
         std::vector<std::shared_ptr<ngraph::Function>> load_tensorflow_model(std::istream& sin)
         {
             tensorflow::GraphDef tensorflow_graph;
-            if (!tensorflow_graph.ParseFromIstream(&sin))
-            {
-                throw error::stream_parse{sin};
-            }
-            else
-            {
-                LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
-                          << "]";
-            }
+            CHECK(tensorflow_graph.ParseFromIstream(&sin))
+                << "failure parsing data from the stream";
+
+            LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
+                      << "]";
 
             auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
 
@@ -35,25 +31,18 @@ namespace nnfusion
             load_tensorflow_model(const std::string& path)
         {
             std::ifstream ifs{path, std::ios::in | std::ios::binary};
-            if (!ifs.is_open())
-            {
-                throw frontend::error::file_open{path};
-            }
+            CHECK(ifs.is_open()) << "failure opening file:" + path;
             return load_tensorflow_model(ifs);
         }
 
         std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(std::istream& sin)
         {
             tensorflow::GraphDef tensorflow_graph;
-            if (!tensorflow_graph.ParseFromIstream(&sin))
-            {
-                throw error::stream_parse{sin};
-            }
-            else
-            {
-                LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
-                          << "]";
-            }
+            CHECK(tensorflow_graph.ParseFromIstream(&sin))
+                << "failure parsing data from the stream";
+
+            LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
+                      << "]";
 
             auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
 
@@ -65,10 +54,7 @@ namespace nnfusion
             load_tensorflow_model_as_graph(const std::string& path)
         {
             std::ifstream ifs{path, std::ios::in | std::ios::binary};
-            if (!ifs.is_open())
-            {
-                throw frontend::error::file_open{path};
-            }
+            CHECK(ifs.is_open()) << "failure opening file:" + path;
             return load_tensorflow_model_as_graph(ifs);
         }
 

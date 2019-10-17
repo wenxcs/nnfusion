@@ -8,7 +8,6 @@
 #include "graph.pb.h"
 #include "ngraph/function.hpp"
 #include "ngraph/op/parameter_vector.hpp"
-#include "nnfusion/frontend/base.hpp"
 
 namespace nnfusion
 {

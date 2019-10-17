@@ -174,10 +174,8 @@ nnfusion::pass::AssignTensorMemoryLayout::MemoryManager::MemoryManager(size_t al
     , m_scheme{disable_memory_reuse ? allocation_scheme::NO_REUSE : allocation_scheme::FIRST_FIT}
     , m_max_allocated{0}
 {
-    if (m_alignment == 0)
-    {
-        throw invalid_argument("Memory alignment must be > 0");
-    }
+    CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
+        << "Memory alignment must be > 0";
     m_node_list.emplace_back(numeric_limits<size_t>::max(), block_state::FREE);
 }
 
@@ -312,10 +310,7 @@ void nnfusion::pass::AssignTensorMemoryLayout::MemoryManager::free(size_t offset
         }
         search_offset += it->m_size;
     }
-    if (!found)
-    {
-        throw runtime_error("bad free");
-    }
+    CHECK(found) << "bad free";
 }
 
 void nnfusion::pass::AssignTensorMemoryLayout::MemoryManager::dump(ostream& out)

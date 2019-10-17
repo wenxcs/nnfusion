@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include "gpu_util.hpp"
+#include "nnfusion/util/util.hpp"
 
 using namespace std;
 using namespace nnfusion;
@@ -91,7 +92,7 @@ namespace
                 return std::pair<uint64_t, uint64_t>{m, p};
             }
         }
-        throw std::runtime_error("Magic for unsigned integer division could not be found.");
+        CHECK_FAIL() << "Magic for unsigned integer division could not be found.";
     }
 
     // Magic numbers and shift amounts for integer division

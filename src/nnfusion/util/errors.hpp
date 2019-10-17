@@ -21,6 +21,7 @@
 #include <exception>
 #include <sstream>
 #include <vector>
+#include "logging.hpp"
 
 namespace nnfusion
 {
@@ -54,6 +55,15 @@ namespace nnfusion
             }
         };
 
+        class InvalidArgument : public std::invalid_argument
+        {
+        public:
+            explicit InvalidArgument(const std::string& what_arg)
+                : invalid_argument(what_arg)
+            {
+            }
+        };
+
         class CheckError : public RuntimeError
         {
         public:
@@ -72,14 +82,6 @@ namespace nnfusion
             const char* what() const noexcept override { return m_what.c_str(); }
         private:
             std::string m_what;
-        };
-
-        struct InvalidArgument : CheckError
-        {
-            explicit InvalidArgument(const std::string& what_arg)
-                : CheckError(what_arg)
-            {
-            }
         };
 
         struct NullPointer : CheckError
@@ -177,6 +179,7 @@ namespace nnfusion
                         explanation = "(no explanation given)";
                     }
                     ss << explanation;
+                    LOG(ERROR) << ss.str();
 
                     throw T(ss.str());
                 }
@@ -228,5 +231,26 @@ namespace nnfusion
 #define CHECK(cond) NNFUSION_CHECK_STREAM(::nnfusion::errors::CheckError, cond)
 #define CHECK_FAIL() NNFUSION_FAIL_STREAM(::nnfusion::errors::CheckError)
 
+#define CHECK_WITH_EXCEPTION(cond, T) NNFUSION_CHECK_STREAM(T, cond)
+#define CHECK_FAIL_WITH_EXCEPTION(T) NNFUSION_FAIL_STREAM(T)
+
 #define CHECK_NOT_NULLPTR(ptr_)                                                                    \
     NNFUSION_CHECK_STREAM(nnfusion::errors::NullPointer, ((ptr_) != nullptr))
+
+#ifdef NNFUSION_DEBUG
+
+#define DCHECK(cond) CHECK(cond)
+#define DCHECK_FAIL() CHECK_FAIL()
+#define DCHECK_WITH_EXCEPTION(cond, T) CHECK_WITH_EXCEPTION(cond, T)
+#define DCHECK_FAIL_WITH_EXCEPTION(T) CHECK_FAIL_WITH_EXCEPTION(T)
+#define DCHECK_NOT_NULLPTR(ptr_) CHECK_NOT_NULLPTR(ptr_)
+
+#else
+
+#define DCHECK(cond)
+#define DCHECK_FAIL()
+#define DCHECK_WITH_EXCEPTION(cond, T)
+#define DCHECK_FAIL_WITH_EXCEPTION(T)
+#define DCHECK_NOT_NULLPTR(ptr_)
+
+#endif

@@ -17,28 +17,24 @@ cuda::pooling_op_shape cuda::AvgPool1D::avgpool_shape(ngraph::Shape in,
     shape.C = in[1];
     shape.K = shape.C; // pooling feature maps is
     shape.J = shape.C; // not currently supported
-    if (in.size() == 3)
-    {
-        shape.D = 1;
-        shape.H = 1;
-        shape.W = in[2];
-        shape.M = 1;
-        shape.P = 1;
-        shape.Q = out[2];
-        shape.T = 1;
-        shape.R = 1;
-        shape.S = window[0];
-        shape.STRIDE_D = 0;
-        shape.STRIDE_H = 0;
-        shape.STRIDE_W = strides[0];
-        shape.PAD_D = 0;
-        shape.PAD_H = 0;
-        shape.PAD_W = pad[0];
-    }
-    else
-    {
-        throw std::runtime_error("AvgPool1D require 1 spatial dimension.");
-    }
+    CHECK(in.size() == 3) << "AvgPool1D require 1 spatial dimension.";
+
+    shape.D = 1;
+    shape.H = 1;
+    shape.W = in[2];
+    shape.M = 1;
+    shape.P = 1;
+    shape.Q = out[2];
+    shape.T = 1;
+    shape.R = 1;
+    shape.S = window[0];
+    shape.STRIDE_D = 0;
+    shape.STRIDE_H = 0;
+    shape.STRIDE_W = strides[0];
+    shape.PAD_D = 0;
+    shape.PAD_H = 0;
+    shape.PAD_W = pad[0];
+
     return shape;
 }
 

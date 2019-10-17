@@ -27,12 +27,8 @@ bool AssignLayoutPass::run_on_graph(std::shared_ptr<Graph>& graph)
         }
         catch (const std::exception& e)
         {
-            std::stringstream ss;
-            ss << "Error with node " << *node << ": ";
-            ss << e.what();
-            LOG(ERROR) << ss.str();
-            // TODO: how to handle error
-            throw std::invalid_argument(ss.str());
+            CHECK_FAIL_WITH_EXCEPTION(errors::InvalidArgument) << "Error with node " << *node
+                                                               << ": " << e.what();
         }
     }
     return true;

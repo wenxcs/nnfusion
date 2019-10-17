@@ -35,8 +35,7 @@ namespace ngraph
 
             OpConfig& check_constrait()
             {
-                if (!is_legal())
-                    throw std::runtime_error("OpConfig::check_constrait() not passed!");
+                CHECK(is_legal()) << "OpConfig::check_constrait() not passed!";
                 return *this;
             }
 
@@ -82,10 +81,8 @@ namespace ngraph
             GENERIC_OP_LOGGING();
 
             auto it = get_op_configs().find(opname);
-            if (it == get_op_configs().end())
-                throw std::runtime_error(
-                    (std::string("No config-definition found for op type `") + opname + "`")
-                        .c_str());
+            CHECK(it != get_op_configs().end())
+                << "No config-definition found for op type `" + opname + "`";
             return it->second;
         }
 
@@ -93,10 +90,8 @@ namespace ngraph
         {
             GENERIC_OP_LOGGING();
 
-            if (get_op_configs().find(opname) != get_op_configs().end())
-                throw std::runtime_error((std::string("OpConfig for opname `") + opname +
-                                          "` is registered more than once.")
-                                             .c_str());
+            CHECK(get_op_configs().find(opname) == get_op_configs().end())
+                << "OpConfig for opname `" + opname + "` is registered more than once.";
             LOG(INFO) << "Registering opname `" << opname << "`";
             return get_op_configs()[opname];
         }
@@ -170,13 +165,10 @@ namespace ngraph
 
                 for (auto& item : customOpConfig.items())
                 {
-                    if (keyset.find(item.key()) != keyset.end())
-                        localOpConfig.getRoot()[item.key()] = item.value();
-                    else
-                        throw std::runtime_error((std::string("Invalid attribution `") +
-                                                  item.key() + "` not recognized by op type `" +
-                                                  opname + "`")
-                                                     .c_str());
+                    CHECK(keyset.find(item.key()) != keyset.end())
+                        << "Invalid attribution `" + item.key() + "` not recognized by op type `" +
+                               opname + "`";
+                    localOpConfig.getRoot()[item.key()] = item.value();
                 }
 
                 LOG(INFO) << "Managing GenericOp for Opeartor: type = " << opname
@@ -189,7 +181,7 @@ namespace ngraph
             virtual std::shared_ptr<ngraph::Node>
                 copy_with_new_args(const NodeVector& new_args) const override
             {
-                throw std::runtime_error("Not expected to reach here: copy_with_new_args().");
+                CHECK_FAIL() << "Not expected to reach here: copy_with_new_args().";
                 return std::make_shared<GenericOp>(name, opname, new_args, localOpConfig.getRoot());
             }
 

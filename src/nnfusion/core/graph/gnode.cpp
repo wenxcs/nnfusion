@@ -67,14 +67,8 @@ const std::string& GNode::get_unique_name() const
 
 void GNode::set_name(const string& name)
 {
-    if (m_name.empty())
-    {
-        m_name = name;
-    }
-    else
-    {
-        throw ngraph::ngraph_error("Node name may be set exactly once");
-    }
+    CHECK(m_name.empty()) << "Node name may be set exactly once";
+    m_name = name;
 }
 
 GNode::~GNode()
