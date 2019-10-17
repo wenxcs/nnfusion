@@ -245,7 +245,7 @@ TEST(nnfusion_core_kernels, batch_kernel_tests_max)
 TEST(nnfusion_core_kernels, batch_kernel_tests_max_pool)
 {
     // EXPECT_TRUE(nnfusion::test::check_kernels<op::MaxPool>(GENERIC_CPU, DT_FLOAT));
-    // EXPECT_TRUE(nnfusion::test::check_kernels<op::MaxPool>(CUDA_GPU, DT_FLOAT));
+    EXPECT_TRUE(nnfusion::test::check_kernels<op::MaxPool>(CUDA_GPU, DT_FLOAT));
 }
 
 TEST(nnfusion_core_kernels, batch_kernel_tests_maximum)

@@ -46,17 +46,17 @@ LanguageUnit_p cuda::MaxPool1D::emit_function_body()
 
     // Index into output tensor.
     lu << "size_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
-    lu << "if (tid < nthreads)\n";
+    lu << "if (tid < " << static_cast<uint32_t>(shape_size(output_shape)) << ")\n";
     lu.block_begin();
     {
         // Index into input tensor.
         lu << "size_t start = (tid / " << output_width << ") * " << input_width << " + "
-           << " (tid % " << output_width << ") * " << window_stride << ";\n";
+           << " (tid % " << output_width << ") * " << window_stride[0] << ";\n";
         lu << input_type << " max_val = " << TypeInfo::Get(input_type)->lowest() << ";\n";
         lu << "for (size_t i = start; i < start + " << window_width << "; i++)\n";
         lu.block_begin();
         {
-            lu << "const " << input_type << " input = in[i];\n";
+            lu << "const " << input_type << " input = input0[i];\n";
             lu << "if (input > max_val)\n";
             lu.block_begin();
             {
@@ -65,7 +65,7 @@ LanguageUnit_p cuda::MaxPool1D::emit_function_body()
             lu.block_end();
         }
         lu.block_end();
-        lu << "out[tid] = max_val;\n";
+        lu << "output0[tid] = max_val;\n";
     }
     lu.block_end();
 
@@ -107,10 +107,6 @@ cuda::MaxPoolmD::MaxPoolmD(shared_ptr<KernelContext> ctx)
     input_type = ctx->inputs[0].get_element_type().c_type_string();
     output_type = ctx->outputs[0].get_element_type().c_type_string();
 
-    CHECK(input_shape.size() == 4 || input_shape.size() == 5)
-        << "Input shape size of MaxPoolmD is invalid, shape size: " << input_shape.size()
-        << "expected 4 or 5";
-
     std::stringstream tag;
     tag << "cudnn_maxpool_dtype_" << output_type << "_i" << join(input_shape, "_") << "_o"
         << join(output_shape, "_") << "_ws" << join(window_shape, "_") << "_wst"
@@ -121,6 +117,9 @@ cuda::MaxPoolmD::MaxPoolmD(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cuda::MaxPoolmD::emit_function_body()
 {
+    if (input_shape.size() != 4 && input_shape.size() != 5)
+        return nullptr;
+
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 

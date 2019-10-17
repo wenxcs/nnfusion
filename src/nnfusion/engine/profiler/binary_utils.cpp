@@ -24,6 +24,11 @@ namespace nnfusion
             handle = LoadLibrary(library_path.c_str());
 #else
             handle = dlopen(object_name.c_str(), RTLD_NOW);
+            if (!handle)
+            {
+                LOG(ERROR) << " could not open file [" << object_name << "]: " << dlerror();
+                return nullptr;
+            }
 #endif
             return handle;
         }
