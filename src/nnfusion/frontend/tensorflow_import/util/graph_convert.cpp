@@ -323,8 +323,8 @@ namespace nnfusion
                                                 const NodeMap& all_ng_nodes,
                                                 ngraph::op::ParameterVector& parameters)
             {
-                auto ng_arg = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+                auto ng_delta = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_arg = GetInputNode(all_ng_nodes, node, 1);
                 auto ng_node = std::make_shared<ngraph::op::ReluBackprop>(ng_arg, ng_delta);
 
                 ng_node->set_name(node.name());

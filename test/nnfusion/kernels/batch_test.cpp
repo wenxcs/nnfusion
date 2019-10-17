@@ -323,7 +323,7 @@ TEST(nnfusion_core_kernels, batch_kernel_tests_relu)
 TEST(nnfusion_core_kernels, batch_kernel_tests_relu_backprop)
 {
     // EXPECT_TRUE(nnfusion::test::check_kernels<op::ReluBackprop>(GENERIC_CPU, DT_FLOAT));
-    // EXPECT_TRUE(nnfusion::test::check_kernels<op::ReluBackprop>(CUDA_GPU, DT_FLOAT));
+    EXPECT_TRUE(nnfusion::test::check_kernels<op::ReluBackprop>(CUDA_GPU, DT_FLOAT));
 }
 
 TEST(nnfusion_core_kernels, batch_kernel_tests_replace_slice)
