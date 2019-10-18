@@ -55,7 +55,7 @@ namespace nnfusion
                     int axis = cfg["axis"].is_null() ? -1 : (int)cfg["axis"];
                     if (axis < 0)
                         axis = input_shape_0.size() - 1;
-                    assert(axis == input_shape_0.size() - 1);
+                    CHECK(axis == input_shape_0.size() - 1);
 
                     auto code = ngraph::op::create_code_from_template(
                         R"(

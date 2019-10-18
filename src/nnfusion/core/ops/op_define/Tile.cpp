@@ -3,7 +3,7 @@
 #include "nnfusion/core/ops/generic_op.hpp"
 
 REGISTER_OP(Tile).infershape([](ngraph::op::GenericOp& target_op) -> void {
-    assert(target_op.get_input_size() == 2);
+    CHECK(target_op.get_input_size() == 2);
     auto& input_shape_0 = target_op.get_input_shape(0);
     auto ng_op = target_op.get_argument(1);
     CHECK(ng_op->description() == "Constant")

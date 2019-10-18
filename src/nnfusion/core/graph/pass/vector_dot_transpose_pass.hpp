@@ -35,14 +35,14 @@ namespace nnfusion
                         if (it->get_op_ptr()->description() == "Dot")
                         {
                             auto dot = std::dynamic_pointer_cast<ngraph::op::Dot>(it->get_op_ptr());
-                            assert(dot != nullptr);
+                            CHECK_NOT_NULLPTR(dot);
                             if (dot->get_transpose_B())
                                 continue;
                             std::vector<std::shared_ptr<nnfusion::graph::Edge>> inputs;
                             for (auto& edge : it->get_in_edges())
                                 if (!edge->is_control_edge())
                                     inputs.push_back(edge);
-                            assert(inputs.size() == 2);
+                            CHECK(inputs.size() == 2);
                             std::sort(inputs.begin(),
                                       inputs.end(),
                                       [](const std::shared_ptr<nnfusion::graph::Edge>& a,
@@ -70,7 +70,7 @@ namespace nnfusion
                                         ((int*)y->get_data_ptr())[i + j * new_shape[0]];
 
                             dot->get_transpose_B() = true;
-                            assert(y->get_shape().size() == 2);
+                            CHECK(y->get_shape().size() == 2);
                             auto new_constant = std::make_shared<ngraph::op::Constant>(
                                 y->get_output_element_type(0), new_shape, values.data());
                             inputs[1]->get_src()->reset_op_ptr(new_constant);

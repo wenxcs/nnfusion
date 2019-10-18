@@ -143,12 +143,15 @@ namespace nnfusion
                                              ngraph::op::ParameterVector& parameters)
             {
                 tensorflow::DataType dtype;
-                assert(GetNodeAttr(node.attr(), "dtype", dtype) == true);
+                auto status = GetNodeAttr(node.attr(), "dtype", dtype);
+                CHECK(status);
                 ngraph::element::Type ng_et;
-                assert(TFDataTypeToNGraphElementType(dtype, &ng_et) == true);
+                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                CHECK(status);
                 tensorflow::TensorShapeProto tf_shape = node.attr().at("shape").shape();
                 ngraph::Shape ng_shape;
-                assert(TFTensorShapeToNGraphShape(tf_shape, &ng_shape));
+                status = TFTensorShapeToNGraphShape(tf_shape, &ng_shape);
+                CHECK(status);
 
                 auto ng_node = std::make_shared<T>(ng_et, ng_shape);
                 ng_node->set_name(node.name());
@@ -195,8 +198,10 @@ namespace nnfusion
                 // Transpose arguments if requested.
                 bool transpose_a = false;
                 bool transpose_b = false;
-                assert(GetNodeAttr(node.attr(), "transpose_a", transpose_a) == true);
-                assert(GetNodeAttr(node.attr(), "transpose_b", transpose_b) == true);
+                bool status = GetNodeAttr(node.attr(), "transpose_a", transpose_a);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "transpose_b", transpose_b);
+                CHECK(status);
                 // if (transpose_a)
                 // {
                 //     ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
@@ -224,8 +229,10 @@ namespace nnfusion
                 bool adj_x = false;
                 bool adj_y = false;
 
-                assert(GetNodeAttr(node.attr(), "adj_x", adj_x) == true);
-                assert(GetNodeAttr(node.attr(), "adj_y", adj_y) == true);
+                bool status = GetNodeAttr(node.attr(), "adj_x", adj_x);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "adj_y", adj_y);
+                CHECK(status);
 
                 int input_dims = ng_lhs->get_output_shape(0).size();
                 ngraph::AxisVector ng_axis_order;
@@ -270,22 +277,17 @@ namespace nnfusion
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 auto ng_bias = GetInputNode(all_ng_nodes, node, 1);
                 std::string tf_data_format;
-                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format) == true);
+                bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
 
-                if (tf_data_format != "NHWC" && tf_data_format != "NCHW")
-                {
-                    std::cerr << "BiasAdd data format is neither NHWC nor NCHW";
-                    assert(false);
-                }
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "BiasAdd data format is neither NHWC nor NCHW";
 
                 auto ng_input_shape = ng_input->get_shape();
                 auto ng_bias_shape = ng_bias->get_shape();
 
-                if (ng_bias_shape.size() != 1)
-                {
-                    std::cerr << "Bias argument to BiasAdd does not have one dimension";
-                    assert(false);
-                }
+                CHECK(ng_bias_shape.size() == 1)
+                    << "Bias argument to BiasAdd does not have one dimension";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
@@ -338,26 +340,20 @@ namespace nnfusion
             {
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 std::string tf_data_format;
-                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format) == true);
+                bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
 
                 if (tf_data_format == "")
                 {
                     tf_data_format = "NHWC";
                 }
 
-                if (tf_data_format != "NHWC" && tf_data_format != "NCHW")
-                {
-                    std::cerr << "BiasAddGrad data format is neither NHWC nor NCHW";
-                    assert(false);
-                }
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "BiasAddGrad data format is neither NHWC nor NCHW";
 
                 auto ng_input_shape = ng_input->get_shape();
 
-                if (ng_input_shape.size() < 2)
-                {
-                    std::cerr << "Input tensor must be at least 2D";
-                    assert(false);
-                }
+                CHECK(ng_input_shape.size() >= 2) << "Input tensor must be at least 2D";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
@@ -398,7 +394,8 @@ namespace nnfusion
                 auto ng_shape_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> shape;
-                assert(GetValueFromNGraphOp<int64>(ng_shape_op, &shape) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_shape_op, &shape);
+                CHECK(status);
 
                 size_t output_rank = shape.size();
                 size_t num_input_elements = ngraph::shape_size(ng_input->get_shape());
@@ -412,7 +409,7 @@ namespace nnfusion
                 {
                     if (shape[i] == -1)
                     {
-                        assert(seen_inferred == false);
+                        CHECK(!seen_inferred);
                         //if (seen_inferred)
                         //{
                         //    return errors::InvalidArgument("Multiple -1 dimensions in result shape");
@@ -438,7 +435,7 @@ namespace nnfusion
                             num_input_elements, ")");
                     }
                     */
-                    assert(num_input_elements % product_of_rest == 0);
+                    CHECK(num_input_elements % product_of_rest == 0);
                     shape[inferred_pos] = num_input_elements / product_of_rest;
                 }
 
@@ -467,9 +464,11 @@ namespace nnfusion
             {
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 tensorflow::DataType dtype;
-                assert(GetNodeAttr(node.attr(), "DstT", dtype) == true);
+                bool status = GetNodeAttr(node.attr(), "DstT", dtype);
+                CHECK(status);
                 ngraph::element::Type ng_et;
-                assert(TFDataTypeToNGraphElementType(dtype, &ng_et) == true);
+                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                CHECK(status);
                 auto ng_node = std::make_shared<ngraph::op::Convert>(ng_input, ng_et);
                 ng_node->set_name(node.name());
                 NamedNodeVector ret{{node.name(), ng_node}};
@@ -486,16 +485,18 @@ namespace nnfusion
                 std::string tf_padding_type;
                 std::string tf_data_format;
 
-                assert(GetNodeAttr(node.attr(), "strides", tf_strides) == true);
-                assert(GetNodeAttr(node.attr(), "ksize", tf_ksize) == true);
-                assert(GetNodeAttr(node.attr(), "padding", tf_padding_type) == true);
-                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format) == true);
+                bool status;
+                status = GetNodeAttr(node.attr(), "strides", tf_strides);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "ksize", tf_ksize);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
 
-                if (tf_data_format != "NHWC" && tf_data_format != "NCHW")
-                {
-                    std::cerr << "MaxPool data format is neither NHWC nor NCHW";
-                    assert(false);
-                }
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "MaxPool data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
                 ngraph::Strides ng_strides(2);
@@ -525,7 +526,6 @@ namespace nnfusion
                     ng_input, ng_kernel_shape, ng_strides, ng_padding_below, ng_padding_above);
 
                 BatchToTensorflow(is_nhwc, ng_maxpool);
-                //std::cerr << "maxpool outshape: {" << ngraph::join(ng_maxpool->get_shape()) << "}";
 
                 ng_maxpool->set_name(node.name());
                 NamedNodeVector ret{{node.name(), ng_maxpool}};
@@ -545,12 +545,18 @@ namespace nnfusion
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
                 auto ng_filter = GetInputNode(all_ng_nodes, node, 1);
 
-                assert(GetNodeAttr(node.attr(), "strides", tf_strides));
-                assert(GetNodeAttr(node.attr(), "dilations", tf_dilations));
-                assert(GetNodeAttr(node.attr(), "padding", tf_padding_type));
-                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format));
-                assert(tf_data_format == "NHWC" || tf_data_format == "NCHW");
+                bool status;
+                status = GetNodeAttr(node.attr(), "strides", tf_strides);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "dilations", tf_dilations);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
 
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "Conv2D data format is neither NHWC nor NCHW";
                 bool is_nhwc = (tf_data_format == "NHWC");
                 ngraph::Strides ng_strides(2);
                 ngraph::Strides ng_dilations(2);
@@ -603,16 +609,18 @@ namespace nnfusion
                 std::string tf_padding_type;
                 std::string tf_data_format;
 
-                assert(GetNodeAttr(node.attr(), "strides", tf_strides) == true);
-                assert(GetNodeAttr(node.attr(), "ksize", tf_ksize) == true);
-                assert(GetNodeAttr(node.attr(), "padding", tf_padding_type) == true);
-                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format) == true);
+                bool status;
+                status = GetNodeAttr(node.attr(), "strides", tf_strides);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "ksize", tf_ksize);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
 
-                if (tf_data_format != "NHWC" && tf_data_format != "NCHW")
-                {
-                    std::cerr << "AvgPool data format is neither NHWC nor NCHW";
-                    assert(false);
-                }
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "AvgPool data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
                 ngraph::Strides ng_strides(2);
@@ -647,7 +655,6 @@ namespace nnfusion
                                                           false);
 
                 BatchToTensorflow(is_nhwc, ng_avgpool);
-                //std::cerr << "avgpool outshape: {" << ngraph::join(ng_avgpool->get_shape()) << "}";
 
                 ng_avgpool->set_name(node.name());
                 NamedNodeVector ret{{node.name(), ng_avgpool}};
@@ -662,7 +669,8 @@ namespace nnfusion
                 auto ng_value = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<size_t> dims_vec;
-                assert(GetValueFromNGraphOp<size_t>(ng_shape_op, &dims_vec) == true);
+                bool status = GetValueFromNGraphOp<size_t>(ng_shape_op, &dims_vec);
+                CHECK(status);
 
                 ngraph::Shape ng_output_shape(dims_vec.size());
                 ngraph::AxisSet ng_axis_set;
@@ -688,14 +696,11 @@ namespace nnfusion
                 auto ng_padding_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> paddings;
-                assert(GetValueFromNGraphOp<int64>(ng_padding_op, &paddings) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_padding_op, &paddings);
+                CHECK(status);
 
-                if (paddings.size() % 2 != 0)
-                {
-                    std::cerr << "Constant node for paddings does not have an even number of "
-                                 "elements";
-                    assert(false);
-                }
+                CHECK(paddings.size() % 2 == 0)
+                    << "Constant node for paddings does not have an even number of elements";
 
                 ngraph::Shape padding_below(paddings.size() / 2);
                 ngraph::Shape padding_above(paddings.size() / 2);
@@ -728,19 +733,16 @@ namespace nnfusion
                 auto ng_constant_value_op = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> paddings;
-                assert(GetValueFromNGraphOp<int64>(ng_padding_op, &paddings) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_padding_op, &paddings);
+                CHECK(status);
 
-                assert(ng_constant_value_op->description() == "Constant");
+                CHECK(ng_constant_value_op->description() == "Constant");
                 auto ng_constant_op =
                     std::dynamic_pointer_cast<ngraph::op::Constant>(ng_constant_value_op);
                 auto constant_values = ng_constant_op->get_value_strings();
 
-                if (paddings.size() % 2 != 0)
-                {
-                    std::cerr << "Constant node for paddings does not have an even number of "
-                                 "elements";
-                    assert(false);
-                }
+                CHECK(paddings.size() % 2 == 0)
+                    << "Constant node for paddings does not have an even number of elements";
 
                 ngraph::Shape padding_below(paddings.size() / 2);
                 ngraph::Shape padding_above(paddings.size() / 2);
@@ -769,9 +771,9 @@ namespace nnfusion
                                                       ngraph::op::ParameterVector& parameters)
             {
                 bool tf_is_training;
-                if (GetNodeAttr(node.attr(), "is_training", tf_is_training) == false)
+                if (!GetNodeAttr(node.attr(), "is_training", tf_is_training))
                 {
-                    std::cout << "is_training attribute not present, setting to true";
+                    LOG(INFO) << "is_training attribute not present, setting to true";
                     tf_is_training = true;
                 }
                 auto ng_input = GetInputNode(all_ng_nodes, node, 0);
@@ -781,19 +783,17 @@ namespace nnfusion
                 auto ng_variance = GetInputNode(all_ng_nodes, node, 4);
 
                 std::string tf_data_format;
-                assert(GetNodeAttr(node.attr(), "data_format", tf_data_format));
+                bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
 
-                if (tf_data_format != "NHWC" && tf_data_format != "NCHW")
-                {
-                    std::cerr << "FusedBatchNorm data format is neither NHWC nor NCHW";
-                    assert(false);
-                }
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "FusedBatchNorm data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
                 float tf_epsilon;
-                if (GetNodeAttr(node.attr(), "epsilon", tf_epsilon) == false)
+                if (!GetNodeAttr(node.attr(), "epsilon", tf_epsilon))
                 {
-                    std::cout << "epsilon attribute not present, setting to 0.0001";
+                    LOG(INFO) << "epsilon attribute not present, setting to 0.0001";
                     // TensorFlow default
                     tf_epsilon = 0.0001;
                 }
@@ -814,12 +814,10 @@ namespace nnfusion
                                                 ngraph::op::ParameterVector& parameters)
             {
                 const int input_cnt = node.input_size();
-                if (input_cnt < 3)
-                {
-                    std::cerr << "\"" << node.name() << "\" requires at least 3 inputs, got "
-                              << input_cnt << " instead";
-                    assert(false);
-                }
+                CHECK(input_cnt >= 3) << "\"" << node.name()
+                                      << "\" requires at least 3 inputs, got " << input_cnt
+                                      << " instead";
+
                 ngraph::NodeVector ng_args;
                 for (int i = 0; i < input_cnt - 1; i++)
                 {
@@ -829,7 +827,8 @@ namespace nnfusion
 
                 auto ng_concat_axis_op = GetInputNode(all_ng_nodes, node, input_cnt - 1);
                 std::vector<int> tf_concat_axis_vec;
-                assert(GetValueFromNGraphOp<int>(ng_concat_axis_op, &tf_concat_axis_vec) == true);
+                bool status = GetValueFromNGraphOp<int>(ng_concat_axis_op, &tf_concat_axis_vec);
+                CHECK(status);
 
                 int64 concat_axis = tf_concat_axis_vec[0];
 
@@ -883,12 +882,14 @@ namespace nnfusion
                 }
 
                 std::vector<int64> sum_axes;
-                assert(GetValueFromNGraphOp<int64>(ng_axes_op, &sum_axes) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_axes_op, &sum_axes);
+                CHECK(status);
 
                 ngraph::Shape input_shape = ng_input->get_shape();
                 size_t input_rank = input_shape.size();
 
-                assert(CheckAxisDimInRange(sum_axes, input_rank));
+                status = CheckAxisDimInRange(sum_axes, input_rank);
+                CHECK(status);
 
                 std::vector<size_t> ng_reduction_axes_vect(sum_axes.size());
                 std::transform(
@@ -932,7 +933,8 @@ namespace nnfusion
                 // num_split : The number of ways to split. Must evenly divide
                 // value.shape[split_dim]
                 int32 num_split;
-                assert(GetNodeAttr(node.attr(), "num_split", num_split) == true);
+                bool status = GetNodeAttr(node.attr(), "num_split", num_split);
+                CHECK(status);
                 ngraph::Shape shape = ng_input->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower;
@@ -943,7 +945,8 @@ namespace nnfusion
                     upper.push_back(shape[i]);
                 }
                 std::vector<int> split_dim_vec;
-                assert(GetValueFromNGraphOp<int>(ng_split_dim, &split_dim_vec) == true);
+                status = GetValueFromNGraphOp<int>(ng_split_dim, &split_dim_vec);
+                CHECK(status);
                 int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
                 int size = shape[split_dim] / num_split;
                 int cursor = 0;
@@ -981,22 +984,22 @@ namespace nnfusion
                 auto ng_split_dim = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int> lengths;
-                assert(GetValueFromNGraphOp<int>(ng_length_op, &lengths) == true);
+                bool status = GetValueFromNGraphOp<int>(ng_length_op, &lengths);
+                CHECK(status);
                 ngraph::Shape shape = ng_input->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower(rank, 0);
                 std::vector<size_t> upper(shape);
 
                 std::vector<int64> split_dim_vec;
-                assert(GetValueFromNGraphOp<int64>(ng_split_dim, &split_dim_vec) == true);
+                status = GetValueFromNGraphOp<int64>(ng_split_dim, &split_dim_vec);
+                CHECK(status);
                 // there should be at least one element specified as axis and not more than
                 // one as axis is 0-D
-                if (split_dim_vec.size() != 1)
-                {
-                    std::cerr << "split_dim_tensor must have exactly one element.";
-                    assert(false);
-                }
-                assert(CheckAxisDimInRange(split_dim_vec, rank));
+                CHECK(split_dim_vec.size() == 1)
+                    << "split_dim_tensor must have exactly one element.";
+                status = CheckAxisDimInRange(split_dim_vec, rank);
+                CHECK(status);
 
                 int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
 
@@ -1013,16 +1016,10 @@ namespace nnfusion
                     }
                     else
                     {
-                        if (has_one_neg)
-                        {
-                            std::cerr << "size_splits can only have one -1";
-                            assert(false);
-                        }
-                        else
-                        {
-                            idx = i;
-                            has_one_neg = true;
-                        }
+                        CHECK(!has_one_neg) << "size_splits can only have one -1";
+
+                        idx = i;
+                        has_one_neg = true;
                     }
                 }
 
@@ -1032,13 +1029,11 @@ namespace nnfusion
                     lengths[idx] = shape[split_dim] - length;
                 }
 
-                if ((!has_one_neg && length != shape[split_dim]) ||
-                    (has_one_neg && lengths[idx] < 0))
-                {
-                    std::cerr << "The length of size_splits must sum to the value of the dimension "
-                                 "along split_dim";
-                    assert(false);
-                }
+                CHECK((!has_one_neg && length == shape[split_dim]) &&
+                      (has_one_neg && lengths[idx] >= 0))
+                    << "The length of size_splits must sum to the value of the dimension along "
+                       "split_dim";
+
                 int cursor = 0;
                 std::vector<std::shared_ptr<ngraph::Node>> ng_split_op_list;
                 if (lengths.size() != 1)
@@ -1093,9 +1088,11 @@ namespace nnfusion
                 int rank = shape.size();
 
                 std::vector<int64> mean_axes;
-                assert(GetValueFromNGraphOp<int64>(ng_axes_op, &mean_axes) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_axes_op, &mean_axes);
+                CHECK(status);
 
-                assert(CheckAxisDimInRange(mean_axes, rank));
+                status = CheckAxisDimInRange(mean_axes, rank);
+                CHECK(status);
 
                 std::vector<size_t> ng_reduction_axes_vect(mean_axes.size());
                 std::transform(mean_axes.begin(),
@@ -1138,16 +1135,14 @@ namespace nnfusion
 
                 std::vector<int64> lower_vec;
                 std::vector<int64> size_vec;
-                assert(GetValueFromNGraphOp<int64>(ng_begin, &lower_vec) == true);
-                assert(GetValueFromNGraphOp<int64>(ng_size, &size_vec) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_begin, &lower_vec);
+                CHECK(status);
+                status = GetValueFromNGraphOp<int64>(ng_size, &size_vec);
+                CHECK(status);
 
-                if (lower_vec.size() != size_vec.size())
-                {
-                    std::cerr << "Cannot translate sliceop: Size of lower = " << lower_vec.size()
-                              << ", size of size_vec = " << size_vec.size()
-                              << ". Expected them to match.";
-                    assert(false);
-                }
+                CHECK(lower_vec.size() == size_vec.size())
+                    << "Cannot translate sliceop: Size of lower = " << lower_vec.size()
+                    << ", size of size_vec = " << size_vec.size() << ". Expected them to match.";
 
                 std::vector<int> upper_vec(lower_vec.size());
                 const auto ng_input_shape = ng_input->get_shape();
@@ -1183,13 +1178,9 @@ namespace nnfusion
                     }
 
                     err_msg = err_stream.str();
-                    if (!err_msg.empty())
-                    {
-                        std::cerr << "Cannot translate sliceop at position " << i << " of "
-                                  << size_vec.size() << ". The reasons are:\n"
-                                  << err_msg;
-                        assert(false);
-                    }
+                    CHECK(err_msg.empty()) << "Cannot translate sliceop at position " << i << " of "
+                                           << size_vec.size() << ". The reasons are:\n"
+                                           << err_msg;
                 }
 
                 std::vector<size_t> l(lower_vec.begin(), lower_vec.end());
@@ -1209,7 +1200,8 @@ namespace nnfusion
                 auto ng_permutation_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> permutation;
-                assert(GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation);
+                CHECK(status);
 
                 ngraph::AxisVector ng_axis_order;
                 ng_axis_order.reserve(permutation.size());
@@ -1241,7 +1233,8 @@ namespace nnfusion
                 auto ng_permutation_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> permutation;
-                assert(GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation);
+                CHECK(status);
 
                 // Check to make sure that the permutation requested for transpose
                 // is valid for example:
@@ -1259,11 +1252,7 @@ namespace nnfusion
                 }
                 for (int i = 0; i < ng_input_rank; i++)
                 {
-                    if (!count[i])
-                    {
-                        std::cerr << i << " is missing from {" << join(permutation) << "}.";
-                        assert(false);
-                    }
+                    CHECK(count[i]) << i << " is missing from {" << join(permutation) << "}.";
                 }
 
                 ngraph::AxisVector ng_axis_order;
@@ -1293,38 +1282,36 @@ namespace nnfusion
                 auto ng_features_rank = ng_features_shape.size();
 
                 std::vector<int> depth;
-                assert(GetValueFromNGraphOp<int>(ng_depth_op, &depth) == true);
-                if (depth.size() != 1)
-                {
-                    std::cerr << "OneHot Op: depth of one hot dimension must be scalar "
-                              << depth.size();
-                    assert(false);
-                }
+                bool status = GetValueFromNGraphOp<int>(ng_depth_op, &depth);
+                CHECK(status);
+                CHECK(depth.size() == 1) << "OneHot Op: depth of one hot dimension must be scalar "
+                                         << depth.size();
+
                 std::vector<float> on_value;
-                assert(GetValueFromNGraphOp<float>(ng_on, &on_value) == true);
-                if (on_value.size() != 1)
-                {
-                    std::cerr << "OneHot Op: on value of one hot dimension must be scalar "
-                              << on_value.size();
-                    assert(false);
-                }
+                status = GetValueFromNGraphOp<float>(ng_on, &on_value);
+                CHECK(status);
+                CHECK(on_value.size() == 1)
+                    << "OneHot Op: on value of one hot dimension must be scalar "
+                    << on_value.size();
+
                 std::vector<float> off_value;
-                assert(GetValueFromNGraphOp<float>(ng_off, &off_value) == true);
-                if (off_value.size() != 1)
-                {
-                    std::cerr << "OneHot Op: off value of one hot dimension must be scalar "
-                              << off_value.size();
-                    assert(false);
-                }
+                status = GetValueFromNGraphOp<float>(ng_off, &off_value);
+                CHECK(status);
+                CHECK(off_value.size() == 1)
+                    << "OneHot Op: off value of one hot dimension must be scalar "
+                    << off_value.size();
 
                 int one_hot_axis;
-                assert(GetNodeAttr(node.attr(), "axis", one_hot_axis) == true);
+                status = GetNodeAttr(node.attr(), "axis", one_hot_axis);
+                CHECK(status);
                 tensorflow::DataType dtype;
-                assert(GetNodeAttr(node.attr(), "T", dtype) == true);
+                status = GetNodeAttr(node.attr(), "T", dtype);
+                CHECK(status);
                 ngraph::element::Type ng_et;
-                assert(TFDataTypeToNGraphElementType(dtype, &ng_et) == true);
+                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                CHECK(status);
 
-                assert(ng_et == ngraph::element::f32);
+                CHECK(ng_et == ngraph::element::f32);
 
                 ngraph::op::OpConfig::any myConfig;
                 myConfig["axis"] = one_hot_axis;
@@ -1374,13 +1361,11 @@ namespace nnfusion
                 auto ng_axis_op = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> tf_axis;
-                assert(GetValueFromNGraphOp<int64>(ng_axis_op, &tf_axis) == true);
-                if (tf_axis.size() > 1)
-                {
-                    std::cerr << "Found axis in GatherV2 op (" << node.name()
-                              << ") translation to be non scalar, of size " << tf_axis.size();
-                    assert(false);
-                }
+                bool status = GetValueFromNGraphOp<int64>(ng_axis_op, &tf_axis);
+                CHECK(status);
+                CHECK(tf_axis.size() == 1) << "Found axis in GatherV2 op (" << node.name()
+                                           << ") translation to be non scalar, of size "
+                                           << tf_axis.size();
 
                 ngraph::op::OpConfig::any myConfig;
                 myConfig["axis"] = tf_axis[0];
@@ -1428,14 +1413,13 @@ namespace nnfusion
                                             ngraph::op::ParameterVector& parameters)
             {
                 const int input_cnt = node.input_size();
-                if (input_cnt < 1)
-                {
-                    std::cerr << "\"" << node.name() << "\" requires at least 1 inputs, got "
-                              << input_cnt << " instead";
-                    assert(false);
-                }
+                CHECK(input_cnt >= 1) << "\"" << node.name()
+                                      << "\" requires at least 1 inputs, got " << input_cnt
+                                      << " instead";
+
                 int pack_axis = 0;
-                assert(GetNodeAttr(node.attr(), "axis", pack_axis) == true);
+                bool status = GetNodeAttr(node.attr(), "axis", pack_axis);
+                CHECK(status);
 
                 ngraph::NodeVector ng_args;
                 for (int i = 0; i < input_cnt; i++)
@@ -1483,8 +1467,7 @@ namespace nnfusion
                 else
                 {
                     // TODO: option2, implement pack kernel
-                    std::cerr << "Pack kernel not implemented yet";
-                    assert(false);
+                    CHECK_FAIL() << "Pack kernel not implemented yet";
 
                     ngraph::op::OpConfig::any myConfig;
                     myConfig["axis"] = pack_axis;
@@ -1507,16 +1490,15 @@ namespace nnfusion
                 auto ng_axis_op = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int> tf_axis;
-                assert(GetValueFromNGraphOp<int>(ng_axis_op, &tf_axis) == true);
-                if (tf_axis.size() > 1)
-                {
-                    std::cerr << "Found axis in All op (" << node.name()
-                              << ") translation to be non scalar, of size " << tf_axis.size();
-                    assert(false);
-                }
+                bool status = GetValueFromNGraphOp<int>(ng_axis_op, &tf_axis);
+                CHECK(status);
+                CHECK(tf_axis.size() == 1) << "Found axis in All op (" << node.name()
+                                           << ") translation to be non scalar, of size "
+                                           << tf_axis.size();
 
                 bool keep_dims = false;
-                assert(GetNodeAttr(node.attr(), "keep_dims", keep_dims) == true);
+                status = GetNodeAttr(node.attr(), "keep_dims", keep_dims);
+                CHECK(status);
 
                 ngraph::op::OpConfig::any myConfig;
                 if (tf_axis.size() > 0)
@@ -1544,7 +1526,8 @@ namespace nnfusion
                 size_t input_dims = ng_input->get_shape().size();
 
                 std::vector<int32> tf_axis;
-                assert(GetNodeAttr(node.attr(), "squeeze_dims", tf_axis) == true);
+                bool status = GetNodeAttr(node.attr(), "squeeze_dims", tf_axis);
+                CHECK(status);
 
                 // If input dimension is negative, make it positive
                 for (int i = 0; i < tf_axis.size(); i++)
@@ -1573,16 +1556,10 @@ namespace nnfusion
                         bool skip = false;
                         if (axis_set.find(i) != axis_set.end())
                         {
-                            if (input_shape[i] == 1)
-                            {
-                                skip = true;
-                            }
-                            else
-                            {
-                                std::cerr << "Tried to explicitly squeeze dimension " << i
-                                          << " but dimension was not 1: " << input_shape[i];
-                                assert(false);
-                            }
+                            CHECK(input_shape[i] == 1)
+                                << "Tried to explicitly squeeze dimension " << i
+                                << " but dimension was not 1: " << input_shape[i];
+                            skip = true;
                         }
                         if (!skip)
                         {
@@ -1615,13 +1592,10 @@ namespace nnfusion
                 auto ng_dim = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> dim_vec;
-                assert(GetValueFromNGraphOp<int64>(ng_dim, &dim_vec) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_dim, &dim_vec);
+                CHECK(status);
 
-                if (dim_vec.size() != 1)
-                {
-                    std::cerr << "The size of argument dim is not 1 for ExpandDims";
-                    assert(false);
-                }
+                CHECK(dim_vec.size() == 1) << "The size of argument dim is not 1 for ExpandDims";
 
                 auto& shape = ng_input->get_shape();
                 auto shape_size = shape.size();
@@ -1760,26 +1734,34 @@ namespace nnfusion
                 auto ng_stride_op = GetInputNode(all_ng_nodes, node, 3);
 
                 std::vector<int64> begin_vec;
-                assert(GetValueFromNGraphOp<int64>(ng_begin_op, &begin_vec) == true);
+                bool status = GetValueFromNGraphOp<int64>(ng_begin_op, &begin_vec);
+                CHECK(status);
                 std::vector<int64> end_vec;
-                assert(GetValueFromNGraphOp<int64>(ng_end_op, &end_vec) == true);
+                status = GetValueFromNGraphOp<int64>(ng_end_op, &end_vec);
+                CHECK(status);
                 std::vector<int64> stride_vec;
-                assert(GetValueFromNGraphOp<int64>(ng_stride_op, &stride_vec) == true);
+                status = GetValueFromNGraphOp<int64>(ng_stride_op, &stride_vec);
+                CHECK(status);
 
                 int tf_shrink_axis_mask;
-                assert(GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask) == true);
+                status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
+                CHECK(status);
 
                 int tf_end_mask;
-                assert(GetNodeAttr(node.attr(), "end_mask", tf_end_mask) == true);
+                status = GetNodeAttr(node.attr(), "end_mask", tf_end_mask);
+                CHECK(status);
 
                 int tf_begin_mask;
-                assert(GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask) == true);
+                status = GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask);
+                CHECK(status);
 
                 int tf_new_axis_mask;
-                assert(GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask) == true);
+                status = GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask);
+                CHECK(status);
 
                 int tf_ellipsis_mask;
-                assert(GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask) == true);
+                status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
+                CHECK(status);
 
                 auto& input_shape = ng_input->get_shape();
 
@@ -1975,12 +1957,9 @@ namespace nnfusion
                 auto dim_vec = ng_input->get_shape();
                 auto in_rank = dim_vec.size();
 
-                if (begin_vec.size() > in_rank)
-                {
-                    std::cerr << "Index out of range using input dim " << begin_vec.size()
-                              << "; input has only " << in_rank << " dims";
-                    assert(false);
-                }
+                CHECK(begin_vec.size() <= in_rank) << "Index out of range using input dim "
+                                                   << begin_vec.size() << "; input has only "
+                                                   << in_rank << " dims";
 
                 // TODO/Note/Question: Are begin, end and stride vectors are of equal length
 
@@ -2044,18 +2023,14 @@ namespace nnfusion
                         else
                         {
                             // TODO: must it equal 1 or can it be 0 too?
-                            if (ng_end_vec[i] - ng_begin_vec[i] > 1)
-                            {
-                                std::cerr
-                                    << "Trying to shrink specification " << i
-                                    << "where tf begin, end, strides are: " << begin_vec[i] << ":"
-                                    << end_vec[i] << ":" << stride_vec[i]
-                                    << ". nGraph begin, end, stride are: " << ng_begin_vec[i] << ":"
-                                    << ng_end_vec[i] << ":" << ng_stride_vec[i]
-                                    << ". nGraph's begin and end have difference greater than "
-                                       "1";
-                                assert(false);
-                            }
+                            CHECK(ng_end_vec[i] - ng_begin_vec[i] <= 1)
+                                << "Trying to shrink specification " << i
+                                << "where tf begin, end, strides are: " << begin_vec[i] << ":"
+                                << end_vec[i] << ":" << stride_vec[i]
+                                << ". nGraph begin, end, stride are: " << ng_begin_vec[i] << ":"
+                                << ng_end_vec[i] << ":" << ng_stride_vec[i]
+                                << ". nGraph's begin and end have difference greater than "
+                                   "1";
                         }
                         shrink_axis_mask >>= 1;
                     }
@@ -2097,19 +2072,24 @@ namespace nnfusion
                     std::make_shared<ngraph::op::Constant>(element::i32, x_shape, x_value);
 
                 int tf_shrink_axis_mask;
-                assert(GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask) == true);
+                bool status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
+                CHECK(status);
 
                 int tf_end_mask;
-                assert(GetNodeAttr(node.attr(), "end_mask", tf_end_mask) == true);
+                status = GetNodeAttr(node.attr(), "end_mask", tf_end_mask);
+                CHECK(status);
 
                 int tf_begin_mask;
-                assert(GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask) == true);
+                status = GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask);
+                CHECK(status);
 
                 int tf_new_axis_mask;
-                assert(GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask) == true);
+                status = GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask);
+                CHECK(status);
 
                 int tf_ellipsis_mask;
-                assert(GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask) == true);
+                status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
+                CHECK(status);
 
                 ngraph::op::OpConfig::any myConfig;
                 myConfig["begin_mask"] = tf_begin_mask;
@@ -2194,11 +2174,8 @@ namespace nnfusion
                 auto ng_input_shape = ng_input->get_shape();
                 ngraph::AxisSet ng_axes_softmax;
                 auto shape_size = ng_input_shape.size();
-                if (shape_size < 1)
-                {
-                    std::cerr << "TF Softmax logits must be >=1 dimension";
-                    assert(false);
-                }
+                CHECK(shape_size >= 1) << "TF Softmax logits must be >=1 dimension";
+
                 auto rank = ng_input->get_shape().size();
                 ng_axes_softmax.insert(rank - 1);
 
@@ -2229,11 +2206,8 @@ namespace nnfusion
                 auto ng_input2 = GetInputNode(all_ng_nodes, node, 1);
                 auto ng_input3 = GetInputNode(all_ng_nodes, node, 2);
 
-                if (ng_input2->get_shape() != ng_input3->get_shape())
-                {
-                    std::cerr << "Input tensors 2 and 3 should have same shape";
-                    assert(false);
-                }
+                CHECK(ng_input2->get_shape() == ng_input3->get_shape())
+                    << "Input tensors 2 and 3 should have same shape";
 
                 auto ng_input1_shape = ng_input1->get_shape();
                 auto ng_input2_shape = ng_input2->get_shape();
@@ -2241,16 +2215,12 @@ namespace nnfusion
                 auto ng_input1_rank = ng_input1->get_shape().size();
                 auto ng_input2_rank = ng_input2->get_shape().size();
 
-                if (!((ng_input1_shape == ng_input2_shape) ||
-                      ((ng_input1_rank == 1) && (ng_input2_rank > ng_input1_rank) &&
-                       (ng_input2_shape[0] == ng_input1_shape[0]))))
-                {
-                    std::cerr
-                        << "Input tensor may have the same shape as condition. If condition is "
-                        << "rank 1, input may have higher rank, but its first dimension must "
-                        << "match the size of condition.";
-                    assert(false);
-                }
+                CHECK(((ng_input1_shape == ng_input2_shape) ||
+                       ((ng_input1_rank == 1) && (ng_input2_rank > ng_input1_rank) &&
+                        (ng_input2_shape[0] == ng_input1_shape[0]))))
+                    << "Input tensor may have the same shape as condition. If condition is "
+                    << "rank 1, input may have higher rank, but its first dimension must "
+                    << "match the size of condition.";
 
                 int length = 0;
                 shared_ptr<ngraph::Node> ng_input_new;
@@ -2357,8 +2327,8 @@ namespace nnfusion
             {
                 int32 num_partitions;
                 std::vector<std::shared_ptr<Node>> input_nodes;
-
-                assert(GetNodeAttr(node.attr(), "N", num_partitions) == true);
+                bool status = GetNodeAttr(node.attr(), "N", num_partitions);
+                CHECK(status);
 
                 for (int i = 0; i < num_partitions * 2; i++)
                 {
@@ -2528,7 +2498,7 @@ namespace nnfusion
             GraphConvert::GraphConvert(const tensorflow::GraphDef& proto)
                 : tf_graph_proto{&proto}
             {
-                LOG(INFO) << "Converting Tensorflow Graph" << std::endl;
+                LOG(INFO) << "Converting Tensorflow Graph";
 
                 m_ngraph = std::make_shared<nnfusion::graph::Graph>();
                 std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>
@@ -2552,12 +2522,9 @@ namespace nnfusion
                         std::shared_ptr<nnfusion::graph::GNode> src_node;
 
                         auto iter = gnode_map.find(input_tensor.first);
-                        if (iter == gnode_map.end())
-                        {
-                            std::cerr << "Node " << node_proto.name()
-                                      << " has Un-Converted input node: " << input_tensor.first;
-                            assert(false);
-                        }
+                        CHECK(iter != gnode_map.end())
+                            << "Node " << node_proto.name()
+                            << " has Un-Converted input node: " << input_tensor.first;
                         if (src_index == nnfusion::graph::Graph::kControlSlot)
                         {
                             in_control_dependence = true;
@@ -2569,12 +2536,9 @@ namespace nnfusion
                         }
                         else
                         {
-                            if (in_control_dependence)
-                            {
-                                std::cerr << "Control dependencies must come after regular "
-                                             "dependencies.";
-                                assert(false);
-                            }
+                            CHECK(!in_control_dependence)
+                                << "Control dependencies must come after regular "
+                                   "dependencies.";
                             src_node = iter->second.at(src_index);
                             inputs.emplace_back(input_tensor.first, src_node, 0);
                         }
@@ -2645,12 +2609,8 @@ namespace nnfusion
                             gnode = node2gnode_map[node.second];
                             if (gnode->get_name() != node.first)
                             {
-                                if ((*gnode)["Alias"].is_valid())
-                                {
-                                    std::cerr << "node " << gnode->get_name()
-                                              << " has more than one alias.";
-                                    assert(false);
-                                }
+                                CHECK(!(*gnode)["Alias"].is_valid()) << "node " << gnode->get_name()
+                                                                     << " has more than one alias.";
                                 (*gnode)["Alias"] = node.first;
                             }
                         }
@@ -2664,14 +2624,10 @@ namespace nnfusion
 
                         for (size_t input_idx = 0; input_idx < inputs.size(); input_idx++)
                         {
-                            if (inputs[input_idx].node == nullptr)
-                            {
-                                // todo: back edge
-                                std::cerr << "Back edge is not supported now.";
-                                assert(false);
-                            }
-                            else if (inputs[input_idx].index ==
-                                     nnfusion::graph::Graph::kControlSlot)
+                            CHECK_NOT_NULLPTR(inputs[input_idx].node)
+                                << "Back edge is not supported now.";
+
+                            if (inputs[input_idx].index == nnfusion::graph::Graph::kControlSlot)
                             {
                                 m_ngraph->add_control_edge(inputs[input_idx].node, gnode);
                                 node.second->add_control_dependency(
@@ -2696,7 +2652,7 @@ namespace nnfusion
                 }
 
                 m_ngraph->set_outputs(m_graph_outputs);
-                LOG(INFO) << "convert graph done" << endl;
+                LOG(INFO) << "convert graph done";
             }
 
             void GraphConvert::generate_topology()
@@ -2720,12 +2676,10 @@ namespace nnfusion
                         TensorId input_tensor(ParseTensorName(input_name));
 
                         auto iter = tensorflow_name2nodeIdx_map.find(input_tensor.first);
-                        if (iter == tensorflow_name2nodeIdx_map.end())
-                        {
-                            std::cerr << "Node " << node_proto.name()
-                                      << " has Unknown input node: " << input_name;
-                            assert(false);
-                        }
+                        CHECK(iter != tensorflow_name2nodeIdx_map.end())
+                            << "Node " << node_proto.name()
+                            << " has Unknown input node: " << input_name;
+
                         tf_node_outputs_[iter->second].push_back(n);
                     }
                     if (pending_count == 0)
@@ -2755,8 +2709,6 @@ namespace nnfusion
                 }
                 else
                 {
-                    // std::cerr << "Unsupport operator: " << node.op() << std::endl;
-                    // return NamedNodeVector{};
                     ret = TranslateGenericNoAttrOp(node, m_ng_node, m_parameters);
                 }
                 //LOG(INFO) << ">> -- Managing TF_IMPORT node " << node.name();

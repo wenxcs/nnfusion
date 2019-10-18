@@ -8,7 +8,7 @@
 #define REGISTER_OP(op_x)                                                                          \
     static ngraph::op::OpConfig __register_op_##op_x = ngraph::op::build_op_config(#op_x)
 #define GENERIC_OP_LOGGING()                                                                       \
-//  std::cout << "[GENERIC_OP_LOGGING] " << __FILE__ << ": " << __PRETTY_FUNCTION__ << std::endl;
+    LOG(DEBUG) << "[GENERIC_OP_LOGGING] " << __FILE__ << ": " << __PRETTY_FUNCTION__;
 
 namespace ngraph
 {
@@ -53,7 +53,7 @@ namespace ngraph
 
             OpConfig& show()
             {
-                std::cout << getRoot() << std::endl;
+                LOG(INFO) << getRoot();
                 return *this;
             }
 

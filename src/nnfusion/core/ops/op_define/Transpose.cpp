@@ -7,7 +7,7 @@ REGISTER_OP(Transpose)
     .infershape([](ngraph::op::GenericOp& target_op) -> void {
         auto& shape_0 = target_op.get_input_shape(0);
         auto& axes_order = target_op.localOpConfig.getRoot()["axes_order"];
-        assert(axes_order.size() == shape_0.size());
+        CHECK(axes_order.size() == shape_0.size());
         ngraph::Shape output_shape_0;
         for (int i = 0; i < axes_order.size(); ++i)
             output_shape_0.push_back(shape_0[axes_order[i]]);

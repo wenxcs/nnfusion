@@ -33,7 +33,7 @@ namespace nnfusion
                                      tensorflow::TensorShapeProto* const_tensor_shape,
                                      std::vector<VecT>* values)
             {
-                assert(node.op() == "Const");
+                CHECK(node.op() == "Const");
 
                 if (node.attr().at("dtype").type() != DataTypeToEnum<T>::value)
                 {
@@ -64,7 +64,7 @@ namespace nnfusion
                 // }
 
                 const auto tensor_content_size = tensor.tensor_content().size();
-                assert(0 == tensor_content_size % sizeof(VecT));
+                CHECK(0 == tensor_content_size % sizeof(VecT));
 
                 // If tensor_content_size is zero, we'll have to take the values from
                 // int_val, float_val, etc.
@@ -147,10 +147,11 @@ namespace nnfusion
                 tensorflow::TensorShapeProto shape_proto;
 
                 auto ret = ValuesFromConstNode<T, VecT>(op, &shape_proto, &const_values);
-                assert(ret);
+                CHECK(ret);
 
                 ngraph::Shape ng_shape;
-                assert(TFTensorShapeToNGraphShape(shape_proto, &ng_shape));
+                ret = TFTensorShapeToNGraphShape(shape_proto, &ng_shape);
+                CHECK(ret);
 
                 *ng_node = std::make_shared<ngraph::op::Constant>(et, ng_shape, const_values);
 
@@ -209,7 +210,7 @@ namespace nnfusion
             {
                 tensorflow::DataType dtype;
                 auto ret = GetNodeAttr(node.attr(), "dtype", dtype);
-                assert(ret == true);
+                CHECK(ret == true);
 
                 std::shared_ptr<ngraph::Node> ng_node;
 
@@ -217,14 +218,12 @@ namespace nnfusion
                 {
                     const auto& func_param = TF_NGRAPH_CONST_MAP().at(dtype);
                     auto ret = func_param.first(node, func_param.second, &ng_node);
-                    assert(ret);
+                    CHECK(ret);
                 }
                 catch (const std::out_of_range&)
                 {
-                    std::cerr << "Unsupported TensorFlow data type: "
-                              << tensorflow::DataType_Name(dtype) << std::endl;
-                    // return errors::Unimplemented("Unsupported TensorFlow data type: ",
-                    //                              tensorflow::DataType_Name(dtype));
+                    CHECK_FAIL_WITH_EXCEPTION(errors::NotSupported)
+                        << "Unsupported TensorFlow data type: " << tensorflow::DataType_Name(dtype);
                 }
 
                 ng_node->set_name(node.name());

@@ -11,7 +11,7 @@ bool ExtractFunctionSignature::extract_result(std::shared_ptr<TranslationUnit> t
         std::shared_ptr<ngraph::descriptor::Tensor> tv = op->get_output_tensor_ptr();
         CHECK_NOT_NULLPTR(tv);
         tu->output_names->insert(tv->get_name());
-        LOG(INFO) << "Result Tensor: " << tv->get_name() << endl;
+        LOG(INFO) << "Result Tensor: " << tv->get_name();
     }
     return true;
 }
@@ -28,7 +28,7 @@ bool ExtractFunctionSignature::extract_constants(std::shared_ptr<InterpreterCont
             CHECK_NOT_NULLPTR(tv);
             tu->constants->insert(tv);
 
-            LOG(INFO) << "Constant Tensor: " << tv->get_name() << endl;
+            LOG(INFO) << "Constant Tensor: " << tv->get_name();
         }
     }
     return true;
@@ -65,7 +65,7 @@ void ExtractFunctionSignature::propagate_in_place_input(std::shared_ptr<Interpre
                         ctx->m_variable_name_map[output_tensor.get_name()] = input_name;
 
                         LOG(INFO) << "GPU codegen: Forwarding " << input_name << " through "
-                                  << output_tensor.get_name() << endl;
+                                  << output_tensor.get_name();
                         stack.push_back(&c_op->get_outputs().at(output_index));
                     }
                 }
@@ -104,8 +104,8 @@ void ExtractFunctionSignature::propagate_in_place_output(std::shared_ptr<Interpr
                     if (input_tensor.get_pool_offset() == offset && !tmp_node->is_parameter() &&
                         !tmp_node->is_constant())
                     {
-                        LOG(INFO) << "Reusing " << output_name << " for " << input_tensor.get_name()
-                                  << endl;
+                        LOG(INFO) << "Reusing " << output_name << " for "
+                                  << input_tensor.get_name();
 
                         ctx->m_variable_name_map[input_tensor.get_name()] = output_name;
 
@@ -140,7 +140,7 @@ bool ExtractFunctionSignature::extract_args(std::shared_ptr<InterpreterContext> 
 
             arg_index++;
 
-            LOG(INFO) << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str() << endl;
+            LOG(INFO) << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str();
         }
     }
     return true;
@@ -177,8 +177,7 @@ bool ExtractFunctionSignature::extract_output(std::shared_ptr<InterpreterContext
             auto output_name = ss.str();
             ctx->m_variable_name_map[itv->get_name()] = output_name;
             propagate_in_place_output(ctx, &(res->get_inputs().at(0).get_output()), output_name);
-            LOG(INFO) << "Output Tensor:\t" << itv->get_name() << "\t with id:" << output_name
-                      << endl;
+            LOG(INFO) << "Output Tensor:\t" << itv->get_name() << "\t with id:" << output_name;
         }
     }
     return true;

@@ -115,9 +115,9 @@
             perror("backtrace_symbols");                                                           \
             exit(EXIT_FAILURE);                                                                    \
         }                                                                                          \
-        printf(" - Obtained %zd stack frames.\n", size);                                           \
+        LOG(INFO) << " - Obtained " + size + " stack frames.";                                     \
         for (int i = 0; i < size; i++)                                                             \
-            printf("    # %s\n", strings[i]);                                                      \
+            LOG(INFO) << "    # " + strings[i];                                                    \
         free(strings);                                                                             \
     }
 
@@ -136,7 +136,7 @@ namespace nnfusion
                 mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
                 if (-1 == mkdir_status)
                 {
-                    printf("Error creating directory: %s", (tar_path).c_str());
+                    LOG(INFO) << "Error creating directory: " + tar_path;
                     flag = false;
                 }
                 else
@@ -156,7 +156,8 @@ namespace nnfusion
             if (abs_path.size() == 0)
             {
                 char exepath[1024];
-                assert(readlink("/proc/self/exe", exepath, sizeof(exepath)) > 0);
+                auto ret = readlink("/proc/self/exe", exepath, sizeof(exepath));
+                CHECK(ret > 0);
                 for (int i = strlen(exepath) - 1; i >= 0; --i)
                     if (exepath[i] == '/')
                     {

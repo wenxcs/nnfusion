@@ -3,7 +3,7 @@
 #include "nnfusion/core/ops/generic_op.hpp"
 
 REGISTER_OP(GatherV2).attr<int>("axis", 0).infershape([](ngraph::op::GenericOp& target_op) -> void {
-    assert(target_op.get_input_size() == 2);
+    CHECK(target_op.get_input_size() == 2);
     const ngraph::Shape& input_shape_0 = target_op.get_input_shape(0);
     const ngraph::Shape& input_shape_1 = target_op.get_input_shape(1);
 

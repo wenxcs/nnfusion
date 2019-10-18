@@ -56,14 +56,14 @@ namespace nnfusion
                     for (int i = 2; i < input_shape_0.size(); ++i)
                         batch_0 *= input_shape_0[i], batch_1 *= input_shape_1[i];
 
-                    assert(input_shape_0.size() >= 2 && input_shape_1.size() >= 2);
-                    assert(batch_0 == batch_1);
+                    CHECK(input_shape_0.size() >= 2 && input_shape_1.size() >= 2);
+                    CHECK(batch_0 == batch_1);
                     input_shape_0.resize(2), input_shape_1.resize(2);
                     input_shape_0.push_back(batch_0), input_shape_1.push_back(batch_1);
                     std::reverse(input_shape_0.begin(), input_shape_0.end());
                     std::reverse(input_shape_1.begin(), input_shape_1.end());
 
-                    assert(input_shape_0[2] == input_shape_1[1]);
+                    CHECK(input_shape_0[2] == input_shape_1[1]);
 
                     std::string templ;
                     if (input_shape_0 == ngraph::Shape({16, 512, 512}) &&

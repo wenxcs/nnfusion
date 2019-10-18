@@ -46,7 +46,7 @@ namespace nnfusion
                         return nullptr;
 
                     std::vector<size_t> input_format, output_format = output_shape;
-                    assert(output_format.size() <= 4);
+                    CHECK(output_format.size() <= 4);
 
                     int shape_iter = 0;
                     for (int i = 0; i < output_shape.size(); ++i)
@@ -55,9 +55,9 @@ namespace nnfusion
                             input_format.push_back(1);
                         else
                         {
-                            assert(shape_iter < input_shape.size());
+                            CHECK(shape_iter < input_shape.size());
                             input_format.push_back(input_shape[shape_iter++]);
-                            assert(input_format.back() == output_format[input_format.size() - 1]);
+                            CHECK(input_format.back() == output_format[input_format.size() - 1]);
                         }
                     }
                     while (output_format.size() < 4)
@@ -66,8 +66,8 @@ namespace nnfusion
                         output_format.push_back(1);
                     }
 
-                    assert(m_context->dtypes[0] == "float");
-                    assert(m_context->dtypes[1] == "float");
+                    CHECK(m_context->dtypes[0] == "float");
+                    CHECK(m_context->dtypes[1] == "float");
 
                     std::string code = ngraph::op::create_code_from_template(
                         R"(

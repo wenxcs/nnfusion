@@ -45,9 +45,9 @@ namespace nnfusion
                     auto& cfg = generic_op->localOpConfig.getRoot();
 
                     int axis = cfg["axis"];
-                    assert(axis == -1);
-                    assert(std::string("bool") == m_context->dtypes[0]);
-                    // assert(axis >= 0 && axis < input_shape_0.size());
+                    CHECK(axis == -1);
+                    CHECK(std::string("bool") == m_context->dtypes[0]);
+                    // CHECK(axis >= 0 && axis < input_shape_0.size());
                     size_t size = 1;
                     for (int i = 0; i < input_shape_0.size(); ++i)
                         size *= input_shape_0[i];

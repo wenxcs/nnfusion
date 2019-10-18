@@ -25,13 +25,13 @@ namespace nnfusion
                     const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
 
                     int axis = generic_op->localOpConfig.getRoot()["axis"];
-                    assert(axis == -1);
+                    CHECK(axis == -1);
                     size_t groups = 1LU;
                     for (auto& it : input_shape_0)
                         groups *= it;
 
                     // TF reduce_all only support bool type
-                    assert(m_context->dtypes[0] == "bool");
+                    CHECK(m_context->dtypes[0] == "bool");
                     LanguageUnit lu(get_function_name());
 
                     auto code = ngraph::op::create_code_from_template(

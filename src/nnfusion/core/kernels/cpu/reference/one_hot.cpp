@@ -30,7 +30,7 @@ namespace nnfusion
                     int axis = cfg["axis"].is_null() ? -1 : (int)cfg["axis"];
                     if (axis < 0)
                         axis = input_shape_0.size() - 1;
-                    assert(axis == input_shape_0.size() - 1);
+                    CHECK(axis == input_shape_0.size() - 1);
                     size_t groups = 1LU;
                     for (int i = 0; i < input_shape_0.size(); ++i)
                         groups *= input_shape_0[i];

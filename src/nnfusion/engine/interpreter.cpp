@@ -90,7 +90,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
         shared_ptr<TranslationUnit> _tu(new TranslationUnit());
         auto current_function = p.first;
         _tus->emplace(p.first, _tu);
-        LOG(INFO) << "Translating function:\t" << current_function->get_name() << endl;
+        LOG(INFO) << "Translating function:\t" << current_function->get_name();
 
         _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_function = current_function;
@@ -187,7 +187,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
     {
         shared_ptr<TranslationUnit> _tu(new TranslationUnit());
         _tus->emplace(current_graph, _tu);
-        LOG(INFO) << "Translating graph:\t" << current_graph->get_name() << endl;
+        LOG(INFO) << "Translating graph:\t" << current_graph->get_name();
 
         _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_graph = current_graph;

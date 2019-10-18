@@ -26,7 +26,7 @@ namespace
             mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
             if (-1 == mkdir_status)
             {
-                printf("Error creating directory: %s", (tar_path).c_str());
+                LOG(INFO) << "Error creating directory: " + tar_path;
                 flag = false;
             }
             else

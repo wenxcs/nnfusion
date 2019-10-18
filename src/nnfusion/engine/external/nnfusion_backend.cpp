@@ -65,7 +65,7 @@ bool cuda_codegen::codegen(shared_ptr<graph::Graph> graph)
 // Unimplement Functions for codegen backend
 bool cuda_codegen::compile(shared_ptr<Function> func)
 {
-    LOG(INFO) << "Unimplemented function compile() for cuda_codegen backend;" << endl;
+    LOG(INFO) << "Unimplemented function compile() for cuda_codegen backend;";
     return this->codegen(func);
 }
 
@@ -73,7 +73,7 @@ bool cuda_codegen::call(shared_ptr<Function> func,
                         const vector<shared_ptr<runtime::Tensor>>& outputs,
                         const vector<shared_ptr<runtime::Tensor>>& inputs)
 {
-    LOG(INFO) << "Unimplemented function call() for cuda_codegen backend;" << endl;
+    LOG(INFO) << "Unimplemented function call() for cuda_codegen backend;";
     bool rc = true;
 
     validate_call(func, outputs, inputs);
@@ -90,7 +90,7 @@ bool cuda_codegen::call(shared_ptr<Function> func,
 shared_ptr<runtime::Tensor> cuda_codegen::create_tensor(const element::Type& element_type,
                                                         const Shape& shape)
 {
-    LOG(INFO) << "Unimplemented function create_tensor() for cuda_codegen backend;" << endl;
+    LOG(INFO) << "Unimplemented function create_tensor() for cuda_codegen backend;";
     return nullptr;
 }
 
@@ -98,6 +98,6 @@ shared_ptr<runtime::Tensor> cuda_codegen::create_tensor(const element::Type& ele
                                                         const Shape& shape,
                                                         void* memory_pointer)
 {
-    LOG(INFO) << "Unimplemented function create_tensor() for cuda_codegen backend;" << endl;
+    LOG(INFO) << "Unimplemented function create_tensor() for cuda_codegen backend;";
     return nullptr;
 }

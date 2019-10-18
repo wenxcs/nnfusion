@@ -43,11 +43,11 @@ namespace nnfusion
                 std::vector<char> one(const_op->get_data_size());
                 memcpy(one.data(), const_op->get_data_ptr(), one.size());
                 for (int i = 0; i < std::min(10LU, one.size()); ++i)
-                    printf("%u ", one[i]);
+                    LOG(INFO) << one[i];
                 puts("...");
                 auto& it = dict[ng_op];
                 it.push_back(std::move(one));
-                assert(one.size() == 0);
+                CHECK(one.size() == 0);
                 return it;
             }
             std::vector<std::vector<char>> _inputs, _outputs;
@@ -58,7 +58,7 @@ namespace nnfusion
                 for (auto& out : outs)
                 {
                     _inputs.emplace_back(std::move(out));
-                    assert(out.size() == 0);
+                    CHECK(out.size() == 0);
                 }
             }
 
@@ -102,7 +102,7 @@ namespace nnfusion
                     continue;
                 for (int j = 0; j < _outputs.size(); ++j)
                     for (int i = 0; i < std::min(10LU, _outputs[j].size()); ++i)
-                        printf("%u ", _outputs[j][i]);
+                        LOG(INFO) << _outputs[j][i];
                 puts("...");
 
                 LOG(INFO) << "  For node `" << ng_op->get_name()
@@ -246,7 +246,7 @@ namespace nnfusion
             template <typename T, typename S>
             void fill_values(std::vector<T>& dst, std::vector<char> src)
             {
-                assert(src.size() % sizeof(S) == 0);
+                CHECK(src.size() % sizeof(S) == 0);
                 dst.resize(src.size() / sizeof(S));
                 S* raw_data = (S*)src.data();
                 for (int i = 0; i < dst.size(); ++i)
@@ -259,8 +259,9 @@ namespace nnfusion
                 if (ng_op->description() != "Constant")
                 {
                     auto outs = get_node_outputs(ng_op);
-                    assert(outs.size() == 1);
+                    CHECK(outs.size() == 1);
                     auto out_type = ng_op->get_output_element_type(0);
+                    LOG(INFO) << "Asking for Constant value from op-type: " << ng_op->description();
                     LOG(INFO) << "Type of Output Value is " << out_type.c_type_string();
 
                     if (out_type == ngraph::element::f32)
@@ -273,14 +274,9 @@ namespace nnfusion
                         fill_values<T, unsigned>(*values, outs[0]);
                     else
                     {
-                        LOG(ERROR) << "Unsupport op-type conversion, op-type = " << out_type;
-                        assert(false);
+                        CHECK_FAIL() << "Unsupport op-type conversion, op-type = " << out_type;
                     }
                     return true;
-
-                    LOG(ERROR) << "Asking for Constant value from op-type: "
-                               << ng_op->description();
-                    assert(false);
                 }
                 auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);
                 auto ng_element_type = ng_constant_op->get_element_type();
@@ -391,8 +387,7 @@ namespace nnfusion
                               "Dimensions indices cannot be equal");
                 auto& s = ng_node->get_shape();
                 ngraph::Shape reshaped_shape{s[a], s[b], s[c], s[d]};
-                // std::cerr << "reshaping " << ngraph::join(s) << " to "
-                //                << ngraph::join(reshaped_shape);
+
                 ng_node = std::make_shared<ngraph::op::Reshape>(
                     ng_node, ngraph::AxisVector{a, b, c, d}, reshaped_shape);
             }
@@ -512,9 +507,6 @@ namespace nnfusion
                         ng_padding_above[i] = padding_rhs;
                     }
                 }
-
-                // std::cerr << "ng_padding_below: " << ngraph::join(ng_padding_below);
-                // std::cerr << "ng_padding_above: " << ngraph::join(ng_padding_above);
             }
 
             template <typename T>
@@ -544,8 +536,8 @@ namespace nnfusion
                 {
                     if (i < (int)-rank || i >= (int)rank)
                     {
-                        std::cerr << "Axis Dimension is out of range. Got " << i
-                                  << ", should be in range [-" << rank << ", " << rank << ")";
+                        LOG(ERROR) << "Axis Dimension is out of range. Got " << i
+                                   << ", should be in range [-" << rank << ", " << rank << ")";
                         return false;
                     }
                 }

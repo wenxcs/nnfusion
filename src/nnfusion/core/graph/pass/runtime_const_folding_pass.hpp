@@ -43,7 +43,7 @@ namespace nnfusion
                                 bool inferable = true;
                                 for (auto& in_edge : dst->get_in_edges())
                                 {
-                                    assert(in_edge->get_dst() == dst);
+                                    CHECK(in_edge->get_dst() == dst);
                                     auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
                                         in_edge->get_src()->get_op_ptr());
                                     if (!in_edge->get_src()->is_constant() ||
@@ -163,14 +163,14 @@ namespace nnfusion
                             raw_outputs.size() ==
                             1); // Only support single output; Multi-outputs lacks output-index properties in GNode.
 #if 0                           // For Debug only
-						printf("inputs = ");
+						LOG(INFO) << "inputs = ";
 						for (int i = 0; i < std::min(raw_inputs[0].size() / 4, 10LU); ++i)
-							printf("%f ", ((float*)raw_inputs[0].data())[i]);
+							LOG(INFO) << (float*)raw_inputs[0].data())[i];
 						puts("..");
 
-						printf("outputs = ");
+						LOG(INFO) << "outputs = ";
 						for (int i = 0; i < std::min(raw_outputs[0].size() / 4, 10LU); ++i)
-							printf("%f ", ((float*)raw_outputs[0].data())[i]);
+							LOG(INFO) << (float*)raw_outputs[0].data())[i];
 						puts("..");
 #endif
                         // Ensure output layout is as expected, replace eval_node with new_constant in place

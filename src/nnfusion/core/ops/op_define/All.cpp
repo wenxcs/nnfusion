@@ -6,7 +6,7 @@ REGISTER_OP(All)
     .attr<int>("axis", -1)
     .attr<bool>("keep_dims", false)
     .infershape([](ngraph::op::GenericOp& target_op) -> void {
-        assert(1 == target_op.get_input_size());
+        CHECK(1 == target_op.get_input_size());
         auto& shape_0 = target_op.get_input_shape(0);
         bool keep_dims = target_op.localOpConfig.getRoot()["keep_dims"];
         int axis = target_op.localOpConfig.getRoot()["axis"];

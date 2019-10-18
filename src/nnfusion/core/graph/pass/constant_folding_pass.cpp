@@ -142,7 +142,7 @@ void AddNodeToConstantGraph(
             auto it = node_map->find(src_node);
             if (it == node_map->end())
             {
-                std::cerr << node->get_name() << " <-" << src_node->get_name();
+                LOG(ERROR) << node->get_name() << " <-" << src_node->get_name();
                 return;
             }
 

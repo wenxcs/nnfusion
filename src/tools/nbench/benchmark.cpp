@@ -153,7 +153,7 @@ static void random_init(shared_ptr<runtime::Tensor> tv)
     }
     else
     {
-        throw runtime_error("unsupported type");
+        throw nnfusion::errors::NotSupported("unsupported type");
     }
 }
 

@@ -40,11 +40,11 @@ namespace nnfusion
             const string op_name() { return m_op_name; }
             void debug_string() const
             {
-                std::cout << "m_op_name: " << m_op_name << "\n"
+                LOG(INFO) << "m_op_name: " << m_op_name << "\n"
                           << "m_device_type: " << m_device_type << "\n"
                           << "m_data_type: " << m_data_type << "\n"
                           << "m_tag: " << m_tag << "\n"
-                          << "m_factory: " << m_factory << std::endl;
+                          << "m_factory: " << m_factory;
             }
 
         public:

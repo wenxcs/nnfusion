@@ -10,7 +10,7 @@ REGISTER_OP(StridedSliceGrad)
     .attr<int>("new_axis_mask", 0)
     .attr<int>("shrink_axis_mask", 0)
     .infershape([](ngraph::op::GenericOp& target_op) -> void {
-        assert(target_op.get_input_size() == 5);
+        CHECK(target_op.get_input_size() == 5);
 
         int begin_mask = target_op.localOpConfig.getRoot()["begin_mask"];
         int end_mask = target_op.localOpConfig.getRoot()["end_mask"];
