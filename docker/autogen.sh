@@ -9,7 +9,7 @@ if [[ "$@" != "--direct" ]]; then
 	exit 0
 fi
 
-DEB_PACKAGES="build-essential cmake clang-3.9 clang-format-3.9 git curl zlib1g zlib1g-dev libtinfo-dev unzip autoconf automake libtool ca-certificates"
+DEB_PACKAGES="build-essential cmake clang-3.9 clang-format-3.9 git curl zlib1g zlib1g-dev libtinfo-dev unzip autoconf automake libtool ca-certificates gdb"
 
 if ! dpkg -L $DEB_PACKAGES >/dev/null 2>&1; then
 	if [[ "$(whoami)" != "root" ]]; then
@@ -32,10 +32,13 @@ make -j
 echo
 echo "[DONE] Enfusion Example:"
 echo
-echo "Tensorflow Graph:  $(pwd)/src/tools/nnfusion/nnfusion ./NNFusion/test/models/tensorflow/frozen_op_graph/frozen_add_graph.pb -f tensorflow -b nnfusion"
-echo "   ONNX    Graph:  $(pwd)/src/tools/nnfusion/nnfusion ./NNFusion/build/src/tools/nnfusion/nnfusion ./NNFusion/test/models/onnx/softmax.onnx -f onnx -b nnfusion"
+# echo "Tensorflow Graph:  $(pwd)/src/tools/nnfusion/nnfusion ./NNFusion/test/models/tensorflow/frozen_op_graph/frozen_add_graph.pb -f tensorflow -b nnfusion -m graph"
+# echo "   ONNX    Graph:  $(pwd)/src/tools/nnfusion/nnfusion ./NNFusion/build/src/tools/nnfusion/nnfusion ./NNFusion/test/models/onnx/softmax.onnx -f onnx -b nnfusion"
 echo
 
 if [[ "$EXEC_BASH" == "1" ]];then
+	echo "Tensorflow Graph:  $(pwd)/src/tools/nnfusion/nnfusion ./frozen_bert_train_bs_1.layer_2.len_512.const_folded.pb -f tensorflow -b nnfusion -m graph"
+	cd /root
+	curl -LO ftp://nnfusion:nnfusion@10.190.174.54/nnfusion/frozen_models/bert_large_final.unfolded/frozen_bert_train_bs_1.layer_2.len_512.const_folded.pb
 	exec bash
 fi
