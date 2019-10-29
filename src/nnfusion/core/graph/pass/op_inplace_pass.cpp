@@ -20,7 +20,7 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
             auto output_shape_product = shape_size(op->get_output_shape(0));
             if (reduce_axes.empty() || input_shape_product == output_shape_product)
             {
-                AddInplace(op, 0, 0);
+                AddInplace(op, 0, 0, true);
             }
         }
 
@@ -32,13 +32,13 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
 
             if (!op->get_is_transpose() || result_shape_product < 2)
             {
-                AddInplace(op, 0, 0);
+                AddInplace(op, 0, 0, true);
             }
         }
 
         else if (auto op = std::dynamic_pointer_cast<ngraph::op::Result>(node->get_op_ptr()))
         {
-            AddInplace(op, 0, 0);
+            AddInplace(op, 0, 0, true);
         }
 
         else if (auto op = std::dynamic_pointer_cast<ngraph::op::Broadcast>(node->get_op_ptr()))
@@ -49,7 +49,7 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
 
             if (broadcast_axes.empty() || input_shape_product == output_shape_product)
             {
-                AddInplace(op, 0, 0);
+                AddInplace(op, 0, 0, true);
             }
         }
 
@@ -60,55 +60,38 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
             auto output_shape_product = shape_size(op->get_output_shape(0));
             if (reduce_axes.empty() || input_shape_product == output_shape_product)
             {
-                AddInplace(op, 0, 0);
+                AddInplace(op, 0, 0, true);
             }
         }
 
-        else if (!OpInplacePass::shared_in_nodes(node))
+        if (auto op = std::dynamic_pointer_cast<ngraph::op::util::UnaryElementwiseArithmetic>(
+                node->get_op_ptr()))
         {
-            if (auto op = std::dynamic_pointer_cast<ngraph::op::util::UnaryElementwiseArithmetic>(
-                    node->get_op_ptr()))
-            {
-                AddInplace(op, 0, 0);
-            }
+            AddInplace(op, 0, 0, true);
+        }
 
-            else if (auto op =
-                         std::dynamic_pointer_cast<ngraph::op::util::BinaryElementwiseArithmetic>(
-                             node->get_op_ptr()))
-            {
-                AddInplace(op, 0, 0);
-            }
+        else if (auto op = std::dynamic_pointer_cast<ngraph::op::util::BinaryElementwiseArithmetic>(
+                     node->get_op_ptr()))
+        {
+            AddInplace(op, 0, 0, true);
+        }
 
-            else if (auto op = std::dynamic_pointer_cast<ngraph::op::Select>(node->get_op_ptr()))
-            {
-                AddInplace(op, 0, 1);
-            }
+        else if (auto op = std::dynamic_pointer_cast<ngraph::op::Select>(node->get_op_ptr()))
+        {
+            AddInplace(op, 0, 1, true);
+        }
 
-            else if (node->get_op_type() == "AddN")
-            {
-                auto op = std::dynamic_pointer_cast<ngraph::op::GenericOp>(node->get_op_ptr());
-                AddInplace(op, 0, 0);
-            }
+        else if (node->get_op_type() == "AddN")
+        {
+            auto op = std::dynamic_pointer_cast<ngraph::op::GenericOp>(node->get_op_ptr());
+            AddInplace(op, 0, 0, true);
+        }
 
-            else if (node->get_op_type() == "ApplyGradient")
-            {
-                auto op = std::dynamic_pointer_cast<ngraph::op::GenericOp>(node->get_op_ptr());
-                AddInplace(op, 1, 0);
-            }
+        else if (node->get_op_type() == "ApplyGradient")
+        {
+            auto op = std::dynamic_pointer_cast<ngraph::op::GenericOp>(node->get_op_ptr());
+            AddInplace(op, 0, 0, true);
         }
     }
     return true;
-}
-
-bool OpInplacePass::shared_in_nodes(std::shared_ptr<GNode>& node)
-{
-    for (auto& edge : node->get_in_edges())
-    {
-        auto in_node = edge->get_src();
-        if (in_node->get_output_size() > 1)
-        {
-            return true;
-        }
-    }
-    return false;
 }
