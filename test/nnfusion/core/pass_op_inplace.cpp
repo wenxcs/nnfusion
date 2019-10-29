@@ -910,83 +910,83 @@ TEST(nnfusion_op, sigmoidbackprop)
     EXPECT_TRUE(check_inplace_oi_pair(node));
 }
 
-TEST(nnfusion_op, shared_UnaryElementwiseArithmetic)
-{
-    // Prepare inputs
-    Shape shape_a{2, 3};
-    auto A = make_shared<op::Parameter>(element::f32, shape_a);
-    auto args = shared_ptr<ngraph::Node>(A);
+// TEST(nnfusion_op, shared_UnaryElementwiseArithmetic)
+// {
+//     // Prepare inputs
+//     Shape shape_a{2, 3};
+//     auto A = make_shared<op::Parameter>(element::f32, shape_a);
+//     auto args = shared_ptr<ngraph::Node>(A);
 
-    // Create node
-    auto nodeA = std::make_shared<ngraph::op::Tan>(args);
-    auto nodeB = std::make_shared<ngraph::op::Sqrt>(args);
+//     // Create node
+//     auto nodeA = std::make_shared<ngraph::op::Tan>(args);
+//     auto nodeB = std::make_shared<ngraph::op::Sqrt>(args);
 
-    // Create graph
-    ngraph::NodeVector res{nodeA, nodeB};
-    ngraph::op::ParameterVector parameters{A};
-    std::string name = "UnaryElementwiseArithmetic";
-    auto func = make_shared<ngraph::Function>(res, parameters, name);
-    auto graph = make_shared<nnfusion::graph::Graph>(func, name);
+//     // Create graph
+//     ngraph::NodeVector res{nodeA, nodeB};
+//     ngraph::op::ParameterVector parameters{A};
+//     std::string name = "UnaryElementwiseArithmetic";
+//     auto func = make_shared<ngraph::Function>(res, parameters, name);
+//     auto graph = make_shared<nnfusion::graph::Graph>(func, name);
 
-    run(graph);
+//     run(graph);
 
-    EXPECT_FALSE(check_inplace_oi_pair(nodeA));
-    EXPECT_FALSE(check_inplace_oi_pair(nodeB));
-}
+//     EXPECT_FALSE(check_inplace_oi_pair(nodeA));
+//     EXPECT_FALSE(check_inplace_oi_pair(nodeB));
+// }
 
-TEST(nnfusion_op, shared_BinaryElementwiseArithmetic)
-{
-    // Prepare inputs
-    Shape shape_a{2, 3};
-    auto A = make_shared<op::Parameter>(element::f32, shape_a);
-    auto args0 = shared_ptr<ngraph::Node>(A);
-    auto B = make_shared<op::Parameter>(element::f32, shape_a);
-    auto args1 = shared_ptr<ngraph::Node>(B);
+// TEST(nnfusion_op, shared_BinaryElementwiseArithmetic)
+// {
+//     // Prepare inputs
+//     Shape shape_a{2, 3};
+//     auto A = make_shared<op::Parameter>(element::f32, shape_a);
+//     auto args0 = shared_ptr<ngraph::Node>(A);
+//     auto B = make_shared<op::Parameter>(element::f32, shape_a);
+//     auto args1 = shared_ptr<ngraph::Node>(B);
 
-    // Create node
-    auto nodeA = std::make_shared<ngraph::op::Power>(args0, args1);
-    auto nodeB = std::make_shared<ngraph::op::Subtract>(args0, args1);
+//     // Create node
+//     auto nodeA = std::make_shared<ngraph::op::Power>(args0, args1);
+//     auto nodeB = std::make_shared<ngraph::op::Subtract>(args0, args1);
 
-    // Create graph
-    ngraph::NodeVector res{nodeA, nodeB};
-    ngraph::op::ParameterVector parameters{A, B};
-    std::string name = "BinaryElementwiseArithmetic";
-    auto func = make_shared<ngraph::Function>(res, parameters, name);
-    auto graph = make_shared<nnfusion::graph::Graph>(func, name);
+//     // Create graph
+//     ngraph::NodeVector res{nodeA, nodeB};
+//     ngraph::op::ParameterVector parameters{A, B};
+//     std::string name = "BinaryElementwiseArithmetic";
+//     auto func = make_shared<ngraph::Function>(res, parameters, name);
+//     auto graph = make_shared<nnfusion::graph::Graph>(func, name);
 
-    run(graph);
+//     run(graph);
 
-    EXPECT_FALSE(check_inplace_oi_pair(nodeA));
-    EXPECT_FALSE(check_inplace_oi_pair(nodeB));
-}
+//     EXPECT_FALSE(check_inplace_oi_pair(nodeA));
+//     EXPECT_FALSE(check_inplace_oi_pair(nodeB));
+// }
 
-TEST(nnfusion_op, shared_select_andn)
-{
-    // Prepare inputs
-    Shape shape_a{2, 3};
-    auto A = make_shared<op::Parameter>(element::boolean, shape_a);
-    auto args0 = shared_ptr<ngraph::Node>(A);
-    auto B = make_shared<op::Parameter>(element::f32, shape_a);
-    auto args1 = shared_ptr<ngraph::Node>(B);
-    auto C = make_shared<op::Parameter>(element::f32, shape_a);
-    auto args2 = shared_ptr<ngraph::Node>(C);
-    auto inputs = vector<shared_ptr<ngraph::Node>>{B, C};
+// TEST(nnfusion_op, shared_select_andn)
+// {
+//     // Prepare inputs
+//     Shape shape_a{2, 3};
+//     auto A = make_shared<op::Parameter>(element::boolean, shape_a);
+//     auto args0 = shared_ptr<ngraph::Node>(A);
+//     auto B = make_shared<op::Parameter>(element::f32, shape_a);
+//     auto args1 = shared_ptr<ngraph::Node>(B);
+//     auto C = make_shared<op::Parameter>(element::f32, shape_a);
+//     auto args2 = shared_ptr<ngraph::Node>(C);
+//     auto inputs = vector<shared_ptr<ngraph::Node>>{B, C};
 
-    // Create node
-    string node_type("AddN");
-    auto nodeA = std::make_shared<ngraph::op::Select>(args0, args1, args2);
-    ngraph::op::OpConfig::any myConfig;
-    auto nodeB = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
+//     // Create node
+//     string node_type("AddN");
+//     auto nodeA = std::make_shared<ngraph::op::Select>(args0, args1, args2);
+//     ngraph::op::OpConfig::any myConfig;
+//     auto nodeB = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
 
-    // Create graph
-    ngraph::NodeVector res{nodeA, nodeB};
-    ngraph::op::ParameterVector parameters{A, B, C};
-    std::string name = "Select_AddN";
-    auto func = make_shared<ngraph::Function>(res, parameters, name);
-    auto graph = make_shared<nnfusion::graph::Graph>(func, name);
+//     // Create graph
+//     ngraph::NodeVector res{nodeA, nodeB};
+//     ngraph::op::ParameterVector parameters{A, B, C};
+//     std::string name = "Select_AddN";
+//     auto func = make_shared<ngraph::Function>(res, parameters, name);
+//     auto graph = make_shared<nnfusion::graph::Graph>(func, name);
 
-    run(graph);
+//     run(graph);
 
-    EXPECT_FALSE(check_inplace_oi_pair(nodeA));
-    EXPECT_FALSE(check_inplace_oi_pair(nodeB));
-}
+//     EXPECT_FALSE(check_inplace_oi_pair(nodeA));
+//     EXPECT_FALSE(check_inplace_oi_pair(nodeB));
+// }

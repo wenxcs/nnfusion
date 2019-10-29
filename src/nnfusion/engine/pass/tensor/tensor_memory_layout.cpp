@@ -98,8 +98,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                 node->get_inputs().at(oi_pair.input).get_output().get_node();
 
                             // should not overwrite constant tensor
-                            if (std::dynamic_pointer_cast<op::Constant>(input_node))
-                                continue;
+                            // if (std::dynamic_pointer_cast<op::Constant>(input_node))
+                            //     continue;
 
                             if (!is_same_dev(input, output))
                             {
@@ -111,7 +111,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                             // For destructive kernel, this should be the last use
                             // Non-destructive kernels can pass through if memory sharing is disabled
                             if ((node->liveness_free_list.count(input) != 0 ||
-                                 (m_disable_memory_sharing && !oi_pair.destructive)) &&
+                                 (m_disable_memory_sharing && !oi_pair.destructive &&
+                                  !input_node->is_parameter() && !input_node->is_constant())) &&
                                 node->liveness_new_list.count(output) != 0)
                             {
                                 in_place_outputs.insert({output, input});

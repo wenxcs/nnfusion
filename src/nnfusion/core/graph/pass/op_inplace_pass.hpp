@@ -19,19 +19,19 @@ namespace nnfusion
                 bool shared_in_nodes(std::shared_ptr<GNode>& node);
 
                 template <class T>
-                void AddInplace(T op, size_t output, size_t input)
+                void AddInplace(T op, size_t output, size_t input, bool destructive)
                 {
                     auto op_annotations = op->get_op_annotations();
                     if (op_annotations)
                     {
                         // pass-through
-                        op_annotations->add_in_place_oi_pair({output, input, false});
+                        op_annotations->add_in_place_oi_pair({output, input, destructive});
                     }
                     else
                     {
                         op_annotations = std::make_shared<ngraph::op::util::OpAnnotations>();
                         // pass-through
-                        op_annotations->add_in_place_oi_pair({output, input, false});
+                        op_annotations->add_in_place_oi_pair({output, input, destructive});
                         op->set_op_annotations(op_annotations);
                     }
                 }
