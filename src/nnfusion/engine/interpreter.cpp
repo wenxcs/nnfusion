@@ -45,7 +45,7 @@ Interpreter::Interpreter()
     m_passes->push_back(make_shared<CreateFusionBlock>());
     m_passes->push_back(make_shared<ElementwiseKernelFusion>());
     m_passes->push_back(make_shared<TensorLivenessAnalysis>());
-    m_passes->push_back(make_shared<HostTensorAllocation>());
+    // m_passes->push_back(make_shared<HostTensorAllocation>());
     m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
 
     switch (default_device)

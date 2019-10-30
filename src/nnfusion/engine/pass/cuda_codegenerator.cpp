@@ -251,7 +251,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (matched_kernel)
                 {
                     block_kernels.push_back(matched_kernel);
-
                     LanguageUnit m;
                     if ((*ins)["memcpy_pair"].is_valid())
                     {
