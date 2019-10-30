@@ -41,12 +41,30 @@ GNode::GNode(const std::shared_ptr<ngraph::Node> op_ptr)
     initialize(op_ptr);
 }
 
-void GNode::initialize(const std::shared_ptr<ngraph::Node> op_ptr)
+void GNode::construct_from_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
 {
     m_op_ptr = op_ptr;
     m_op_type = op_ptr->description();
     m_name = op_ptr->get_friendly_name();
 
+    m_inputs.clear();
+    for (ngraph::descriptor::Input& op_input : op_ptr->get_inputs())
+    {
+        std::shared_ptr<Input> input =
+            std::make_shared<Input>(op_input.get_element_type(), op_input.get_shape());
+        m_inputs.push_back(input);
+    }
+    m_outputs.clear();
+    for (ngraph::descriptor::Output& op_output : op_ptr->get_outputs())
+    {
+        std::shared_ptr<Output> output = std::make_shared<Output>(op_output.get_tensor_ptr());
+        m_outputs.push_back(output);
+    }
+}
+
+void GNode::initialize(const std::shared_ptr<ngraph::Node> op_ptr)
+{
+    construct_from_op_ptr(op_ptr);
     m_in_edges.clear();
     m_out_edges.clear();
 }
@@ -75,19 +93,9 @@ GNode::~GNode()
 {
 }
 
-const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_in_edges() const
-{
-    return m_in_edges;
-}
-
 void GNode::add_in_edge(std::shared_ptr<Edge> edge)
 {
     m_in_edges.insert(edge);
-}
-
-const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_out_edges() const
-{
-    return m_out_edges;
 }
 
 void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
@@ -95,14 +103,27 @@ void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
     m_out_edges.insert(edge);
 }
 
-void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& node)
+std::vector<std::shared_ptr<nnfusion::graph::Edge>> GNode::get_output_users(size_t i)
 {
-    // Todo: handle other relations with upstream nodes (get_inputs() & control dependencies);
+    std::vector<std::shared_ptr<nnfusion::graph::Edge>> output_users;
+    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
+                                << m_outputs.size() << " outputs.";
+    auto edges = this->get_out_edges();
+    for (auto edge : edges)
+    {
+        if (edge->get_src_output() == i)
+        {
+            output_users.push_back(edge);
+        }
+    }
+    return output_users;
+}
 
-    this->m_op_ptr = node;
-    this->m_op_type = node->description();
-    this->m_name = node->get_name();
+void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
+{
+    construct_from_op_ptr(op_ptr);
 
+    // TODO: to be removed once gnode input is used and node input deprecated
     auto edges = this->get_out_edges();
     for (auto& edge : edges)
     {
@@ -141,6 +162,8 @@ void GNode::Clear()
 {
     m_in_edges.clear();
     m_out_edges.clear();
+    m_inputs.clear();
+    m_outputs.clear();
     m_op_ptr = nullptr;
     m_id = -1;
     m_name.clear();

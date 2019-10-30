@@ -26,7 +26,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
         {
             std::string alias = (*node)["Alias"].as<std::string>();
             std::string expected_const_name = alias.substr(alias.find_first_of('/') + 1);
-            auto gradient_shape = node->get_op_ptr()->get_output_shape(0);
+            auto gradient_shape = node->get_outputs().at(0)->get_shape();
             std::shared_ptr<GNode> weight_node = nullptr;
             for (auto const_node : const_nodes)
             {
@@ -35,7 +35,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                                                   ? const_node->get_name()
                                                   : const_node->get_name().substr(0, found_pos);
                 if (const_node_name == expected_const_name &&
-                    const_node->get_op_ptr()->get_output_shape(0) == gradient_shape)
+                    const_node->get_outputs().at(0)->get_shape() == gradient_shape)
                 {
                     weight_node = const_node;
                     break;

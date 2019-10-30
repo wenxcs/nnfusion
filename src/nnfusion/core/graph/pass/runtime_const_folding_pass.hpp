@@ -25,6 +25,7 @@ namespace nnfusion
 
                     // Find nodes with all constant upstream nodes
                     for (auto& it : nodes)
+                    {
                         if (it->is_constant())
                         {
                             const_nodes.insert(it);
@@ -57,12 +58,13 @@ namespace nnfusion
                                     down_streams.insert(dst);
                             }
                         }
+                    }
 
                     for (auto& it : down_streams)
                     {
                         auto eval_node = it->get_op_ptr();
                         LOG(INFO) << ">> Found constant downstream node: " << it->get_name()
-                                  << ", Op Type = " << eval_node->description();
+                                  << ", Op Type = " << it->get_op_type();
 
                         bool const_infer_success = false;
                         std::vector<std::vector<char>> raw_inputs, raw_outputs;
@@ -76,7 +78,7 @@ namespace nnfusion
                             auto const_node = input->get_src();
                             LOG(INFO)
                                 << "  Input of constant downstream node: " << const_node->get_name()
-                                << ", Op Type = " << const_node->get_op_ptr()->description() << "/"
+                                << ", Op Type = " << const_node->get_op_type() << "/"
                                 << const_node->get_op_type();
 
                             CHECK(input->get_dst() == it);
@@ -106,17 +108,17 @@ namespace nnfusion
                             runtime = nnfusion::profiler::RocmDefaultRuntime::Runtime();
                             CHECK(runtime->check_env());
                             kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                                eval_node->description(), ROCM_GPU, DT_FLOAT);
+                                it->get_op_type(), ROCM_GPU, DT_FLOAT);
                             if (kernel_regs.size() == 0)
                                 kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                                    eval_node->description(), CUDA_GPU, DT_FLOAT);
+                                    it->get_op_type(), CUDA_GPU, DT_FLOAT);
                         }
                         else if (backend == "CUDA")
                         {
                             runtime = nnfusion::profiler::CudaDefaultRuntime::Runtime();
                             CHECK(runtime->check_env());
                             kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                                eval_node->description(), CUDA_GPU, DT_FLOAT);
+                                it->get_op_type(), CUDA_GPU, DT_FLOAT);
                         }
                         else if (backend == "CPU")
                         {
@@ -145,7 +147,7 @@ namespace nnfusion
                             if (!prof.mixed_type_execute(raw_inputs, raw_outputs))
                                 continue;
 
-                            LOG(INFO) << "  For node `" << eval_node->get_name()
+                            LOG(INFO) << "  For node `" << it->get_name()
                                       << "`: get runtime output results of size "
                                       << raw_outputs.size();
                             const_infer_success = true;
@@ -153,16 +155,15 @@ namespace nnfusion
                         }
                         if (!const_infer_success)
                         {
-                            LOG(INFO) << "  For node `" << eval_node->get_name()
+                            LOG(INFO) << "  For node `" << it->get_name()
                                       << "`: Cannot infer outputs, going to blacklist this node.";
                             blocklist_nodes.insert(it);
                             continue;
                         }
 
-                        CHECK(
-                            raw_outputs.size() ==
-                            1); // Only support single output; Multi-outputs lacks output-index properties in GNode.
-#if 0                           // For Debug only
+                        // Only support single output; Multi-outputs lacks output-index properties in GNode.
+                        CHECK(raw_outputs.size() == 1);
+#if 0 // For Debug only
 						LOG(INFO) << "inputs = ";
 						for (int i = 0; i < std::min(raw_inputs[0].size() / 4, 10LU); ++i)
 							LOG(INFO) << (float*)raw_inputs[0].data())[i];
@@ -173,12 +174,12 @@ namespace nnfusion
 							LOG(INFO) << (float*)raw_outputs[0].data())[i];
 						puts("..");
 #endif
-                        // Ensure output layout is as expected, replace eval_node with new_constant in place
-                        CHECK(raw_outputs.size() == eval_node->get_output_size());
-                        for (int i = 0; i < eval_node->get_output_size(); ++i)
+                        // Ensure output layout is as expected, replace node with new_constant in place
+                        CHECK(raw_outputs.size() == it->get_output_size());
+                        for (int i = 0; i < it->get_output_size(); ++i)
                         {
-                            auto& shape = eval_node->get_output_shape(i);
-                            auto& dtype = eval_node->get_output_element_type(i);
+                            auto& shape = it->get_outputs().at(i)->get_shape();
+                            auto& dtype = it->get_outputs().at(i)->get_element_type();
                             size_t memory = dtype.size();
                             for (auto& it : shape)
                                 memory *= it;
@@ -186,7 +187,7 @@ namespace nnfusion
 
                             auto new_constant = std::make_shared<ngraph::op::Constant>(
                                 dtype, shape, raw_outputs[i].data());
-                            // new_constant->set_name("Constant_" + eval_node->get_name()); // not working?
+                            // new_constant->set_name("Constant_" + it->get_name()); // not working?
 
                             // 1. remove upstream edges
                             auto upstream_edges = it->get_in_edges();
@@ -202,14 +203,13 @@ namespace nnfusion
                                 if (node->get_out_edges().size() == 0)
                                     graph->remove_node(node);
 
-                            // 3. replace eval_node in place
+                            // 3. replace node in place
                             it->reset_op_ptr(new_constant);
 
                             ++folding_cnt;
                             LOG(INFO) << "  Finish folding " << folding_cnt
                                       << "th node: name = " << it->get_unique_name() << "/"
-                                      << it->get_op_ptr()->get_name()
-                                      << ", type = " << it->get_op_ptr()->description();
+                                      << it->get_name() << ", type = " << it->get_op_type();
                             LOG(INFO) << "";
                         }
                     }

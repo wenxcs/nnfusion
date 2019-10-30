@@ -48,8 +48,6 @@ namespace ngraph
         class Result;
     }
 
-    class Edge;
-
     void replace_node_users_arguments(std::shared_ptr<Node> target,
                                       std::shared_ptr<Node> replacement);
 
@@ -175,18 +173,6 @@ namespace ngraph
             m_control_dependencies.erase(node);
         }
 
-        /// Get in edges
-        const std::set<std::shared_ptr<Edge>>& get_in_edges() const;
-
-        void add_in_edge(std::shared_ptr<Edge> edge);
-
-        void remove_in_edge(std::shared_ptr<Edge> edge) { m_in_edges.erase(edge); }
-        /// Get out edges
-        const std::set<std::shared_ptr<Edge>>& get_out_edges() const;
-
-        void add_out_edge(std::shared_ptr<Edge> edge);
-
-        void remove_out_edge(std::shared_ptr<Edge> edge) { m_out_edges.erase(edge); }
         void Clear();
 
         /// Returns the number of outputs on the for the node.
@@ -280,9 +266,6 @@ namespace ngraph
         std::deque<descriptor::Output> m_outputs;
         std::unordered_map<Node*, autodiff::Adjoints> m_adjoint_map;
         Placement m_placement = Placement::DEFAULT;
-
-        std::set<std::shared_ptr<Edge>> m_in_edges;
-        std::set<std::shared_ptr<Edge>> m_out_edges;
     };
 
     class NodeValidationError : public AssertionFailure

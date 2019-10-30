@@ -73,6 +73,7 @@ bool Interpreter::translate(TranslationUnit::Pointer tu)
     return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
 }
 
+// TODO: Deprecate
 shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Function> function)
 {
     /*  Run original Ngraph Passes */
@@ -175,7 +176,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
     CHECK(graph_passes.run(graph));
     shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
     graph_tu->m_graph = graph;
-    // todo: multi graph???
+    // TODO : how about multi graph
     m_trans_ctx->m_graphs.insert(graph);
 
     // Iterator through all nodes

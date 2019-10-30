@@ -362,7 +362,7 @@ void Graph::set_default_outputs()
     m_output_nodes.clear();
     for (auto node : m_nodes)
     {
-        if (node != nullptr && node->get_output_size() == 0)
+        if (node != nullptr && node->get_out_edges().size() == 0)
         {
             m_output_nodes.push_back(node);
         }

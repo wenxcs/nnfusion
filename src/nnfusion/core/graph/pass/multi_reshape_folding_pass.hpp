@@ -46,13 +46,13 @@ namespace nnfusion
 
                     // Find tail nodes exactly after reshape node
                     for (auto& it : graph->get_nodes())
-                        if (it->get_op_ptr()->description() != "Reshape")
+                        if (it->get_op_type() != "Reshape")
                         {
                             for (auto edge : it->get_in_edges())
                             {
                                 if (edge->is_control_edge())
                                     continue;
-                                if (edge->get_src()->get_op_ptr()->description() == "Reshape")
+                                if (edge->get_src()->get_op_type() == "Reshape")
                                 {
                                     if (!is_transpose(edge->get_src()))
                                         continue;
@@ -67,13 +67,12 @@ namespace nnfusion
                         std::vector<std::shared_ptr<GNode>> chain;
                         auto node = get_in_edge(tail_op[i], tail_op_idx[i])->get_src();
                         CHECK_NOT_NULLPTR(node);
-                        CHECK(node->get_op_ptr()->description() == "Reshape");
+                        CHECK(node->get_op_type() == "Reshape");
                         chain.push_back(node);
                         while (true)
                         {
                             node = get_in_edge(node, 0)->get_src();
-                            if (node->get_op_ptr()->description() == "Reshape" &&
-                                is_transpose(node))
+                            if (node->get_op_type() == "Reshape" && is_transpose(node))
                                 chain.push_back(node);
                             else
                                 break;
@@ -115,7 +114,7 @@ namespace nnfusion
                         ng_op->get_op_ptr()->get_inputs()[0].replace_output(node->get_op_ptr(), 0);
 
                         // for (auto &it: order) printf("%d ", (int)it); puts("");
-                        // printf("%s (%d) => %zd\n", tail_op[i]->get_op_ptr()->description().c_str(), tail_op_idx[i], chain.size());
+                        // printf("%s (%d) => %zd\n", tail_op[i]->get_op_type().c_str(), tail_op_idx[i], chain.size());
                     }
 
                     LOG(INFO) << "";

@@ -32,7 +32,7 @@ namespace nnfusion
 
                     // Find nodes with all constant upstream nodes
                     for (auto& it : nodes)
-                        if (it->get_op_ptr()->description() == "Dot")
+                        if (it->get_op_type() == "Dot")
                         {
                             auto dot = std::dynamic_pointer_cast<ngraph::op::Dot>(it->get_op_ptr());
                             CHECK_NOT_NULLPTR(dot);

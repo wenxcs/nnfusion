@@ -2,12 +2,8 @@
 
 set(SRC
     assign_layout_pass.cpp
-    constant_folding_pass.cpp
-    liveness_pass.cpp
-    memory_layout_pass.cpp
     kernel_fusion_pass.cpp
     op_inplace_pass.cpp
-    generate_result_op_pass.cpp
     graph_pass.cpp
     manager.cpp
     gradient_weight_mapping_pass.cpp
