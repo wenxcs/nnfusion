@@ -60,6 +60,10 @@ namespace nnfusion
                         }
                         width *= input_shape[i];
                     }
+                    // `is_row_reduction` is not working on ROCm, using old implementation
+                    if (getenv("NNFUSION_ENABLE_DEVICE") &&
+                        std::string(getenv("NNFUSION_ENABLE_DEVICE")) == "ROCm")
+                        is_row_reduction = false;
                     if (is_row_reduction)
                         expected_block_size =
                             width > 512

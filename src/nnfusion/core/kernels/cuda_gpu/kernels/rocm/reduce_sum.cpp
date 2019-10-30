@@ -42,6 +42,8 @@ namespace nnfusion
                     {
                         blockY = input_shape[0];
                         lda_offset = "blockIdx.y * dataSize + ";
+                        // cancel fixing this branch
+                        return nullptr;
                     }
                     else
                         return nullptr;
