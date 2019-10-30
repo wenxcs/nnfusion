@@ -172,7 +172,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Functio
 shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> graph)
 {
     // run graph passes
-    nnfusion::graph::pass::GraphPass graph_passes;
+    nnfusion::pass::graph::GraphPass graph_passes;
     CHECK(graph_passes.run(graph));
     shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
     graph_tu->m_graph = graph;

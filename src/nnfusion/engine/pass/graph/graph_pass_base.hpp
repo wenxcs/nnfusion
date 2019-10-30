@@ -6,14 +6,14 @@
 
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class GraphPassBase
             {
             public:
-                virtual bool run_on_graph(std::shared_ptr<Graph>& graph) = 0;
+                virtual bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) = 0;
             };
         }
     }

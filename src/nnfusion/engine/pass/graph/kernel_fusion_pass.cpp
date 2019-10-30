@@ -2,15 +2,15 @@
 
 #include "kernel_fusion_pass.hpp"
 #include <queue>
-#include "../gnode.hpp"
-#include "../graph.hpp"
 #include "ngraph/op/broadcast.hpp"
 #include "ngraph/op/reshape.hpp"
 #include "ngraph/op/util/binary_elementwise_arithmetic.hpp"
 #include "ngraph/op/util/unary_elementwise_arithmetic.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 
 using namespace nnfusion::graph;
-using namespace nnfusion::graph::pass;
+using namespace nnfusion::pass::graph;
 using namespace ngraph::op::util;
 
 const static int DEFAULT_GROUP_ID = -1;
@@ -275,7 +275,7 @@ private:
                 elem_ready.pop_front();
                 tn = m_nodes[node_id];
 
-                size_t tensor_size = shape_size(tn->node->get_op_ptr()->get_output_shape(0));
+                size_t tensor_size = shape_size(tn->node->get_outputs().at(0)->get_shape());
                 if (cur_elemgroup && cur_elemgroup->output_size != tensor_size)
                 {
                     AppendElementGroup();
@@ -355,9 +355,9 @@ private:
                                              std::dynamic_pointer_cast<ngraph::op::Reshape>(op))
                                 {
                                     if (!(rs->get_is_transpose()) &&
-                                        (shape_size(op->get_output_shape(0)) ==
+                                        (shape_size(input_node->get_outputs().at(0)->get_shape()) ==
                                          shape_size(
-                                             elem_tn->node->get_op_ptr()->get_output_shape(0))))
+                                             elem_tn->node->get_outputs().at(0)->get_shape())))
                                         fusable_input_nodes.push_back(input_node->get_id());
                                 }
                                 else

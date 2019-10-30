@@ -2,7 +2,8 @@
 
 #include "manager.hpp"
 
-using namespace nnfusion::graph::pass;
+using namespace nnfusion::graph;
+using namespace nnfusion::pass::graph;
 using namespace std;
 
 GraphPassManager::GraphPassManager()

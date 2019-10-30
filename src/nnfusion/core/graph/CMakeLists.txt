@@ -1,7 +1,5 @@
 # Microsoft (c) 2019, NNFusion Team
 
-add_subdirectory(pass)
-
 set(SRC
     graph.cpp
     gnode.cpp

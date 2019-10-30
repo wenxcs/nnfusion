@@ -5,14 +5,14 @@
 #include <string>
 #include <vector>
 
-#include "../src/nnfusion/core/graph/pass/graph_pass.hpp"
-#include "../src/nnfusion/core/graph/pass/manager.hpp"
-#include "../src/nnfusion/core/graph/pass/op_inplace_pass.hpp"
 #include "gtest/gtest.h"
 #include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/engine/pass/graph/graph_pass.hpp"
+#include "nnfusion/engine/pass/graph/manager.hpp"
+#include "nnfusion/engine/pass/graph/op_inplace_pass.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
-using namespace nnfusion::graph::pass;
+using namespace nnfusion::pass::graph;
 using namespace std;
 using namespace nnfusion::profiler;
 

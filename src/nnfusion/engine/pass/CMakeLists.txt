@@ -1,5 +1,6 @@
 # Microsoft (c) 2019, Wenxiang Hu
 
+add_subdirectory(graph)
 add_subdirectory(op)
 
 set(SRC

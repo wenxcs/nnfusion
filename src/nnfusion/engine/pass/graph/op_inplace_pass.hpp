@@ -6,17 +6,17 @@
 
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class OpInplacePass : public GraphPassBase
             {
             public:
-                bool run_on_graph(std::shared_ptr<Graph>& graph) override;
+                bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
 
             private:
-                bool shared_in_nodes(std::shared_ptr<GNode>& node);
+                bool shared_in_nodes(std::shared_ptr<nnfusion::graph::GNode>& node);
 
                 template <class T>
                 void AddInplace(T op, size_t output, size_t input, bool destructive)

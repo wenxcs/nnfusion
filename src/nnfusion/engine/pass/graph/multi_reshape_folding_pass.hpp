@@ -6,11 +6,13 @@
 #include "ngraph/op/constant.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
+using namespace nnfusion::graph;
+
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class MultiReshapeFoldingPass : public GraphPassBase
             {
@@ -80,7 +82,9 @@ namespace nnfusion
                         if (chain.size() <= 1)
                             continue;
                         AxisVector order, mirror;
-                        for (int i = 0; i < node->get_op_ptr()->get_shape().size(); ++i)
+                        CHECK(node->get_output_size() == 1) << node->get_op_type()
+                                                            << "must has exactly one output.";
+                        for (int i = 0; i < node->get_outputs().at(0)->get_shape().size(); ++i)
                             order.push_back(i);
                         for (int i = chain.size() - 1; i >= 0; --i)
                         {
@@ -95,23 +99,27 @@ namespace nnfusion
 
                             // for (auto &it: chord) printf("%d ", (int)it); puts("");
                         }
-                        auto top_shape = node->get_op_ptr()->get_shape(), out_shape = top_shape;
+                        auto top_shape = node->get_outputs().at(0)->get_shape(),
+                             out_shape = top_shape;
                         CHECK(top_shape.size() == order.size());
                         for (int i = 0; i < top_shape.size(); ++i)
                         {
                             out_shape[i] = top_shape[order[i]];
                         }
-                        auto ng_op = std::make_shared<GNode>();
-                        ng_op->initialize(std::make_shared<ngraph::op::Reshape>(
-                            node->get_op_ptr(), order, out_shape));
+                        auto reshape_op = std::make_shared<ngraph::op::Reshape>(
+                            node->get_op_ptr(), order, out_shape);
 
-                        graph->add_node(ng_op);
+                        auto reshape_node = graph->add_node(reshape_op);
                         graph->remove_edge(get_in_edge(tail_op[i], tail_op_idx[i]));
-                        graph->add_edge(ng_op, 0, tail_op[i], tail_op_idx[i]);
+                        graph->add_edge(reshape_node, 0, tail_op[i], tail_op_idx[i]);
+                        graph->add_edge(node, 0, reshape_node, 0);
+
+                        // TODO : to be removed once gnode input is used
                         tail_op[i]->get_op_ptr()->get_inputs()[tail_op_idx[i]].replace_output(
-                            ng_op->get_op_ptr(), 0);
-                        graph->add_edge(node, 0, ng_op, 0);
-                        ng_op->get_op_ptr()->get_inputs()[0].replace_output(node->get_op_ptr(), 0);
+                            reshape_node->get_op_ptr(), 0);
+                        reshape_node->get_op_ptr()->get_inputs()[0].replace_output(
+                            node->get_op_ptr(), 0);
+                        // end TODO
 
                         // for (auto &it: order) printf("%d ", (int)it); puts("");
                         // printf("%s (%d) => %zd\n", tail_op[i]->get_op_type().c_str(), tail_op_idx[i], chain.size());

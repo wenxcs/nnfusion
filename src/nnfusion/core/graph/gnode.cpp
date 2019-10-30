@@ -156,6 +156,7 @@ void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
         }
         edge->get_dst()->get_op_ptr()->get_inputs() = std::move(m_inputs);
     }
+    // end TODO
 }
 
 void GNode::Clear()

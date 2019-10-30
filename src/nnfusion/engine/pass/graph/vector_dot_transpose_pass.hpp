@@ -8,14 +8,14 @@
 
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class VectorDotTransposePass : public GraphPassBase
             {
             public:
-                bool run_on_graph(std::shared_ptr<Graph>& graph) override
+                bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override
                 {
                     bool using_pass = getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE")
                                           ? atoi(getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE"))
@@ -38,42 +38,47 @@ namespace nnfusion
                             CHECK_NOT_NULLPTR(dot);
                             if (dot->get_transpose_B())
                                 continue;
-                            std::vector<std::shared_ptr<nnfusion::graph::Edge>> inputs;
+                            std::vector<std::shared_ptr<nnfusion::graph::Edge>> in_edges;
                             for (auto& edge : it->get_in_edges())
                                 if (!edge->is_control_edge())
-                                    inputs.push_back(edge);
-                            CHECK(inputs.size() == 2);
-                            std::sort(inputs.begin(),
-                                      inputs.end(),
+                                    in_edges.push_back(edge);
+                            CHECK(in_edges.size() == 2);
+                            std::sort(in_edges.begin(),
+                                      in_edges.end(),
                                       [](const std::shared_ptr<nnfusion::graph::Edge>& a,
                                          const std::shared_ptr<nnfusion::graph::Edge>& b) {
                                           return (size_t)a->get_dst_input() <
                                                  (size_t)b->get_dst_input(); // put -1 to the end
                                       });
                             auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
-                                inputs[1]->get_src()->get_op_ptr());
-                            if (!inputs[1]->get_src()->is_constant() || p_const->is_parameter())
+                                in_edges[1]->get_src()->get_op_ptr());
+                            if (!in_edges[1]->get_src()->is_constant() || p_const->is_parameter())
                                 continue;
-                            auto x = inputs[0]->get_src()->get_op_ptr()->get_shape();
-                            if (x.size() != 2 || x[0] != 1)
+                            CHECK(in_edges[0]->get_src()->get_output_size() == 1)
+                                << in_edges[0]->get_src()->get_op_type()
+                                << "must has exactly one output.";
+                            auto input0_shape =
+                                in_edges[0]->get_src()->get_outputs().at(0)->get_shape();
+                            if (input0_shape.size() != 2 || input0_shape[0] != 1)
                                 continue;
-                            auto y = std::dynamic_pointer_cast<ngraph::op::Constant>(
-                                inputs[1]->get_src()->get_op_ptr());
-                            size_t dtype_size = y->get_output_element_type(0).size();
+
+                            auto output_tensor = in_edges[1]->get_src()->get_outputs().at(0);
+                            size_t dtype_size = output_tensor->get_element_type().size();
                             if (dtype_size != 4)
                                 continue;
-                            Shape new_shape = {y->get_shape()[1], y->get_shape()[0]};
+                            Shape new_shape = {output_tensor->get_shape()[1],
+                                               output_tensor->get_shape()[0]};
                             std::vector<int> values(new_shape[0] * new_shape[1]);
                             for (int i = 0; i < new_shape[0]; ++i)
                                 for (int j = 0; j < new_shape[1]; ++j)
                                     values[i * new_shape[1] + j] =
-                                        ((int*)y->get_data_ptr())[i + j * new_shape[0]];
+                                        ((int*)p_const->get_data_ptr())[i + j * new_shape[0]];
 
                             dot->get_transpose_B() = true;
-                            CHECK(y->get_shape().size() == 2);
+                            CHECK(output_tensor->get_shape().size() == 2);
                             auto new_constant = std::make_shared<ngraph::op::Constant>(
-                                y->get_output_element_type(0), new_shape, values.data());
-                            inputs[1]->get_src()->reset_op_ptr(new_constant);
+                                output_tensor->get_element_type(), new_shape, values.data());
+                            in_edges[1]->get_src()->reset_op_ptr(new_constant);
                         }
 
                     LOG(INFO) << "";

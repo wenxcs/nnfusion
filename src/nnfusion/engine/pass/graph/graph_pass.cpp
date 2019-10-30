@@ -11,7 +11,7 @@
 #include "runtime_const_folding_pass.hpp"
 #include "vector_dot_transpose_pass.hpp"
 
-using namespace nnfusion::graph::pass;
+using namespace nnfusion::pass::graph;
 using namespace std;
 
 bool GraphPass::run(std::shared_ptr<Graph> graph)

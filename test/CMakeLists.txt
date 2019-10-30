@@ -105,7 +105,7 @@ if (NGRAPH_GPU_ENABLE)
 endif()
 
 if (NNFUSION_ENABLE)
-    target_link_libraries(unit-test PRIVATE nnfusion_backend nnfusion_engine_profiler)
+    target_link_libraries(unit-test PRIVATE nnfusion_backend nnfusion_engine_profiler nnfusion_engine_pass_graph)
 endif()
 
 target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})

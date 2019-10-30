@@ -9,8 +9,8 @@ set(SRC
     gradient_weight_mapping_pass.cpp
 )
 
-add_library(nnfusion_graph_pass STATIC ${SRC})
-target_include_directories(nnfusion_graph_pass SYSTEM PUBLIC
+add_library(nnfusion_engine_pass_graph STATIC ${SRC})
+target_include_directories(nnfusion_engine_pass_graph SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}
 )
-target_compile_options(nnfusion_graph_pass PRIVATE "-fPIC")
+target_compile_options(nnfusion_engine_pass_graph PRIVATE "-fPIC")

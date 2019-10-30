@@ -1,6 +1,6 @@
 #include "nnfusion/core/graph/gedge.hpp"
 #include "nnfusion/core/graph/graph.hpp"
-#include "nnfusion/core/graph/pass/manager.hpp"
+#include "nnfusion/engine/pass/graph/manager.hpp"
 
 #include "../test_util/common.hpp"
 

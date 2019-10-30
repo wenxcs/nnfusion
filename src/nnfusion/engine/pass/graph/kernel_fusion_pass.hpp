@@ -6,14 +6,14 @@
 
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class KernelFusionPass : public GraphPassBase
             {
             public:
-                bool run_on_graph(std::shared_ptr<Graph>& graph) override;
+                bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
             };
         }
     }

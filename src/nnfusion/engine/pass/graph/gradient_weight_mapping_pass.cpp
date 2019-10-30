@@ -1,12 +1,12 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "gradient_weight_mapping_pass.hpp"
-#include "../gnode.hpp"
-#include "../graph.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
 
 using namespace nnfusion::graph;
-using namespace nnfusion::graph::pass;
+using namespace nnfusion::pass::graph;
 
 bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {

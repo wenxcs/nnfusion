@@ -6,14 +6,14 @@
 
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class GraphPass
             {
             public:
-                bool run(std::shared_ptr<Graph> graph);
+                bool run(std::shared_ptr<nnfusion::graph::Graph> graph);
             };
         } //namespace pass
     }     // namespace graph

@@ -6,11 +6,13 @@
 #include "ngraph/op/constant.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
+using namespace nnfusion::graph;
+
 namespace nnfusion
 {
-    namespace graph
+    namespace pass
     {
-        namespace pass
+        namespace graph
         {
             class RuntimeConstantFoldingPass : public GraphPassBase
             {
