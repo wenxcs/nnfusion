@@ -7,6 +7,16 @@ namespace nnfusion
 {
     namespace interpreter
     {
+        struct NodeOut
+        {
+            explicit NodeOut(std::shared_ptr<nnfusion::graph::GNode> n, int i)
+                : node(n)
+                , index(i)
+            {
+            }
+            std::shared_ptr<nnfusion::graph::GNode> node;
+            int index;
+        };
         class ExtractGraphSignature : public IInterpreterPass
         {
         public:
@@ -18,11 +28,11 @@ namespace nnfusion
                                    std::shared_ptr<graph::Graph> graph);
 
             void propagate_in_place_input(std::shared_ptr<InterpreterContext> ctx,
-                                          ngraph::descriptor::Output* output,
+                                          NodeOut nodeOutput,
                                           std::string input_name);
 
             void propagate_in_place_output(std::shared_ptr<InterpreterContext> ctx,
-                                           ngraph::descriptor::Output* res_src_output,
+                                           NodeOut nodeOutput,
                                            std::string output_name);
 
             bool extract_args(std::shared_ptr<InterpreterContext> ctx,

@@ -93,30 +93,10 @@ GNode::~GNode()
 {
 }
 
-void GNode::add_in_edge(std::shared_ptr<Edge> edge)
+size_t GNode::set_id(size_t id)
 {
-    m_in_edges.insert(edge);
-}
-
-void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
-{
-    m_out_edges.insert(edge);
-}
-
-std::vector<std::shared_ptr<nnfusion::graph::Edge>> GNode::get_output_users(size_t i)
-{
-    std::vector<std::shared_ptr<nnfusion::graph::Edge>> output_users;
-    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
-                                << m_outputs.size() << " outputs.";
-    auto edges = this->get_out_edges();
-    for (auto edge : edges)
-    {
-        if (edge->get_src_output() == i)
-        {
-            output_users.push_back(edge);
-        }
-    }
-    return output_users;
+    m_id = id;
+    return m_id;
 }
 
 void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
@@ -157,6 +137,69 @@ void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
         edge->get_dst()->get_op_ptr()->get_inputs() = std::move(m_inputs);
     }
     // end TODO
+}
+
+const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_in_edges() const
+{
+    return m_in_edges;
+};
+
+const std::shared_ptr<nnfusion::graph::Edge> GNode::get_in_edge(size_t i) const
+{
+    CHECK(i < m_inputs.size()) << "Input index " << i << " is out of range. GNode only has "
+                               << m_inputs.size() << " inputs.";
+    std::shared_ptr<nnfusion::graph::Edge> found_in_edge = nullptr;
+    for (auto in_edge : m_in_edges)
+    {
+        if (in_edge->get_dst_input() == i)
+        {
+            CHECK(found_in_edge == nullptr)
+                << "There are more than one edges connect to Input index " << i;
+            found_in_edge = in_edge;
+        }
+    }
+    return found_in_edge;
+}
+
+void GNode::add_in_edge(std::shared_ptr<Edge> edge)
+{
+    m_in_edges.insert(edge);
+}
+
+void GNode::remove_in_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
+{
+    m_in_edges.erase(edge);
+}
+
+const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_out_edges() const
+{
+    return m_out_edges;
+};
+
+std::vector<std::shared_ptr<nnfusion::graph::Edge>> GNode::get_output_users(size_t i)
+{
+    std::vector<std::shared_ptr<nnfusion::graph::Edge>> output_users;
+    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
+                                << m_outputs.size() << " outputs.";
+    auto edges = this->get_out_edges();
+    for (auto edge : edges)
+    {
+        if (edge->get_src_output() == i)
+        {
+            output_users.push_back(edge);
+        }
+    }
+    return output_users;
+}
+
+void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
+{
+    m_out_edges.insert(edge);
+}
+
+void GNode::remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
+{
+    m_out_edges.erase(edge);
 }
 
 void GNode::Clear()

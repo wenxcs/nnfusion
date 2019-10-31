@@ -40,11 +40,8 @@ namespace nnfusion
             void initialize(const std::shared_ptr<ngraph::Node> op_ptr);
             size_t get_instance_id() const { return m_instance_id; }
             size_t get_id() const { return m_id; }
-            size_t set_id(size_t id)
-            {
-                m_id = id;
-                return m_id;
-            }
+            size_t set_id(size_t id);
+
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
             std::shared_ptr<ngraph::Node> get_op_ptr() const { return m_op_ptr; }
@@ -53,34 +50,25 @@ namespace nnfusion
             void set_name(const std::string& name);
             void reset_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr);
 
-            /// Get in edges
-            const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_in_edges() const
-            {
-                return m_in_edges;
-            };
+            /// in edges
+            const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_in_edges() const;
+            const std::shared_ptr<nnfusion::graph::Edge> get_in_edge(size_t i) const;
+
             void add_in_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
-            void remove_in_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
-            {
-                m_in_edges.erase(edge);
-            }
-            /// Get out edges
-            const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_out_edges() const
-            {
-                return m_out_edges;
-            };
+            void remove_in_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
+
+            ///  out edges
+            const std::set<std::shared_ptr<nnfusion::graph::Edge>>& get_out_edges() const;
+            std::vector<std::shared_ptr<nnfusion::graph::Edge>> get_output_users(size_t i);
+
             void add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
-            void remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
-            {
-                m_out_edges.erase(edge);
-            }
+            void remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
 
             std::vector<std::shared_ptr<Input>>& get_inputs() { return m_inputs; }
             const std::vector<std::shared_ptr<Input>>& get_inputs() const { return m_inputs; }
             std::vector<std::shared_ptr<Output>>& get_outputs() { return m_outputs; }
             const std::vector<std::shared_ptr<Output>>& get_outputs() const { return m_outputs; }
             size_t get_output_size() const { return m_outputs.size(); }
-            std::vector<std::shared_ptr<nnfusion::graph::Edge>> get_output_users(size_t i);
-
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
