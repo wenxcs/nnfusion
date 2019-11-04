@@ -347,6 +347,42 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     decleard_function_LU[func_key] = fu->name_unit;
                 }
+
+                std::string sig = fu->get_specialized_signature();
+                int pos = sig.find(" __global__ "), next;
+                if (pos >= 0)
+                {
+                    while (pos < sig.size() && sig[pos] == ' ')
+                        ++pos;
+                    sig = sig.substr(pos + 12);
+                    pos = sig.find("(");
+                    if (pos >= 0)
+                    {
+                        std::string args = sig.substr(pos);
+                        assert(args.size() > 0 && args[args.size() - 1] == ')');
+                        args[args.size() - 1] = ',';
+
+                        sig.insert(pos, "_Call");
+                        sig.insert(pos + 6,
+                                   "const dim3 &grids, const dim3 &blocks, unsigned mem, "
+                                   "cudaStream_t stream, ");
+                        def << "\n" << sig << "\n{\n";
+                        def << "    return " << fu->name_unit->get_code()
+                            << "<<<grids, blocks, mem, stream>>>(";
+
+                        std::vector<std::string> params;
+                        for (pos = 0; next = args.find(',', pos), next >= 0; pos = next + 1)
+                        {
+                            int start = next - 1;
+                            while (start >= 0 && (isalpha(args[start]) || isdigit(args[start]) ||
+                                                  args[start] == '_'))
+                                --start;
+                            params.push_back(args.substr(start + 1, next - start - 1));
+                        }
+                        def << join(params, ", ") << ");\n";
+                        def << "}\n";
+                    }
+                }
             }
             else
             {
@@ -564,7 +600,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                     << "\n";
                     // Put memcpy here
                     lu_kernel_entry << kernel_memcpy[kernel.get()];
-                    lu_kernel_entry << fu->get_specialized_funciton_call(func_name);
+
+                    std::string function_call = fu->get_specialized_funciton_call(func_name);
+                    int pos_left = function_call.find("<<<"),
+                        pos_right = function_call.find(">>>(");
+                    if (pos_left >= 0 && pos_right >= 0)
+                    {
+                        std::string builder = function_call.substr(0, pos_left) + "_Call(";
+                        builder +=
+                            function_call.substr(pos_left + 3, pos_right - pos_left - 3) + ", ";
+                        builder += function_call.substr(pos_right + 4);
+                        function_call = std::move(builder);
+                    }
+                    lu_kernel_entry << function_call;
 
                     if (enable_debug)
                     {
