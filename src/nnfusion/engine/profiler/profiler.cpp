@@ -142,7 +142,7 @@ IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(DeviceType de
     switch (dev_t)
     {
     case CUDA_GPU: ip = CudaDefaultRuntime::Runtime(); break;
-    case ROCM_GPU: ip = CudaDefaultRuntime::Runtime(); break;
+    case ROCM_GPU: ip = RocmDefaultRuntime::Runtime(); break;
     case GENERIC_CPU: ip = ReferenceRuntime::Runtime(); break;
     }
     if (ip != nullptr && ip->check_env())
