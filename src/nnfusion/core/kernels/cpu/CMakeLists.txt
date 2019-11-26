@@ -9,12 +9,14 @@ file(GLOB eigen_kernels eigen/*.cpp)
 file(GLOB mkl_kernels mkl/*.cpp)
 file(GLOB reference_kernels reference/*.cpp)
 file(GLOB general_kernels general/*.cpp)
+file(GLOB mlas_kernels mlas/*.cpp)
 
 set(KERNELS
     ${eigen_kernels}
     ${mkl_kernels}
     ${reference_kernels}
     ${general_kernels}
+    ${mlas_kernels}
 )
 
 add_library(kernels_cpu STATIC ${SRC} ${KERNELS})

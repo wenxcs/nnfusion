@@ -1,5 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
+#include <libgen.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -141,7 +143,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(header::sstream);
         re.require(header::fstream);
         re.require(header::thread);
-        re.require(declaration::typedef_int);
+        //re.require(declaration::typedef_int);
 
         for (auto kernel : kernels)
         {
@@ -316,6 +318,12 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                 "Eigen::ThreadPoolDevice(global_thread_pool, "
                                 "global_thread_pool->NumThreads());";
             }
+            if (global_required.count("declaration::mlas_global_thread_pool") > 0)
+            {
+                lu_main_init << "int thread_count = std::thread::hardware_concurrency() >> 1;\n"
+                             << "mlas_global_thread_pool = new MLAS_THREADPOOL(\"mlas\", "
+                                "thread_count ? thread_count : 1);\n";
+            }
 
             for (auto kernel : kernels)
             {
@@ -327,6 +335,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
+                    lu_kernel_entry << fu->name_unit->get_code();
                     lu_kernel_entry << fu->call_unit->get_code();
                 }
             }
@@ -410,8 +419,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                         << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
                         << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << " * "
-                        << tensor.get_element_type().size() << ");\n";
+                        << tensor.get_tensor_layout()->get_size() << ");\n ";
             }
 
             vector<string> params;
@@ -463,6 +471,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     //generate include header file
     lu_include << "// Microsoft (c) 2019\n";
     lu_include << "#pragma once\n";
+    lu_include << declaration::typedef_int->get_code() << "\n";
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cpu_init();\n";
     lu_include << "extern \"C\" void cpu_free();\n";
@@ -475,7 +484,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     if (global_required.count("declaration::eigen_global_thread_pool_device") > 0 ||
         global_required.count("header::eigen_utils") > 0 ||
-        global_required.count("header::eigen_tensor") > 0)
+        global_required.count("header::eigen_tensor") > 0 ||
+        global_required.count("header::mlas") > 0)
     {
         lu_cmake << "# need to specify the correct path of eigen\n"
                  << "set(EIGEN_DIR \"/usr/include/eigen3\")\n"
@@ -501,15 +511,56 @@ endforeach()
              << "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n";
     if (global_required.count("header::cblas") > 0)
     {
-        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n";
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n\n";
     }
     else
     {
-        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread)\n";
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread)\n\n";
     }
+
+    if (global_required.count("header::mlas") > 0)
+    {
+        lu_cmake << "find_package(Threads REQUIRED)\n";
+        lu_cmake << "include(mlas/mlas.cmake)\n";
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt Threads::Threads mlas)\n\n";
+
+        char exe_path[PATH_MAX];
+        size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
+        const char* path;
+        if (count != -1)
+        {
+            path = dirname(exe_path);
+        }
+        else
+        {
+            throw std::runtime_error("Failed to get the directory of executable file.\n");
+        }
+        std::string mlas_path = std::string(path) + std::string("/mlas");
+        std::string cmd = std::string("cp -R ") + mlas_path + std::string(" .");
+        if (0 != system(cmd.c_str()))
+        {
+            throw std::runtime_error("Failed to copy mlas source files.\n");
+        }
+    }
+
     lu_cmake << "target_compile_options(nnfusion_cpu_rt PRIVATE \"-fPIC\")\n"
              << "add_executable(main_test main_test.cpp)\n"
              << "target_link_libraries(main_test nnfusion_cpu_rt)\n";
+
+    if (global_required.count("header::mlas") > 0)
+    {
+        lu_cmake << "target_link_libraries(main_test mlas)\n";
+    }
+
+    lu_cmake << R"(
+if(EXISTS "${CMAKE_BINARY_DIR}/Constant")
+else()
+add_custom_command(
+    TARGET nnfusion_cpu_rt
+    POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/Constant ${CMAKE_BINARY_DIR}/Constant
+)
+endif()
+)";
 
     projgen();
 

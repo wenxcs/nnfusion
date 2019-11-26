@@ -43,6 +43,15 @@ namespace nnfusion
                 std::string emit_eigen_matrix(const TensorWrapper& tw, const string& name = "");
             };
 
+            class MlasKernelEmitter : public CpuKernelEmitter
+            {
+            public:
+                MlasKernelEmitter(shared_ptr<KernelContext> ctx)
+                    : CpuKernelEmitter(ctx)
+                {
+                }
+            };
+
         } // namespace cpu
     }     // namespace kernels
 } // namespace nnfusion
