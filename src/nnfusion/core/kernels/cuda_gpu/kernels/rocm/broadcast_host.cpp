@@ -3,6 +3,8 @@
 #include "../../cuda_langunit.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
 
+DECLARE_bool(frocm_candidate_kernels);
+
 namespace nnfusion
 {
     namespace kernels
@@ -19,9 +21,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    bool using_fixed = getenv("NNFUSION_ENABLE_CANDIDATE")
-                                           ? bool(atoi(getenv("NNFUSION_ENABLE_CANDIDATE")))
-                                           : 1;
+                    bool using_fixed = FLAGS_frocm_candidate_kernels;
                     if (!using_fixed)
                         return nullptr;
 

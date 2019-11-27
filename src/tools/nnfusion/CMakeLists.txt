@@ -21,7 +21,6 @@ set (SRC
 add_executable(nnfusion ${SRC})
 add_dependencies(nnfusion ngraph)
 target_include_directories(nnfusion PRIVATE ${TFPROTO_INCLUDE})
-target_link_libraries(nnfusion ngraph)
 target_link_libraries(nnfusion ${CMAKE_DL_LIBS})
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_link_libraries(nnfusion tensorflow_import_interface tensorflow_import tensorflow_proto)
@@ -47,6 +46,7 @@ endif()
 if (NNFUSION_ENABLE)
     target_link_libraries(nnfusion nnfusion_backend nnfusion_engine_pass_graph)
 endif()
+target_link_libraries(nnfusion ngraph gflags)
 
 install(TARGETS nnfusion RUNTIME DESTINATION ${NGRAPH_INSTALL_BIN})
 

@@ -67,7 +67,7 @@ if not(os.path.exists(pbfile) and os.path.exists(nnfusion_cli)):
 
 os.system("rm -rf nnfusion_rt")
 logging.info("Compiling " + pbfile)
-os.system("NNFUSION_ENABLE_DEVICE=ROCm %s %s -f tensorflow -m graph -b nnfusion >> nnfusion.log" %
+os.system("%s %s -f tensorflow -m graph -b nnfusion -fdefault_device=ROCm >> nnfusion.log" %
             (nnfusion_cli, pbfile))
 if not os.path.exists("nnfusion_rt/rocm_codegen/nnfusion_rt.cpp"):
     logging.error("Failed at nnfusion compiling phase.")

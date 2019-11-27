@@ -8,6 +8,8 @@
 
 using namespace nnfusion::graph;
 
+DEFINE_bool(ffold_reshape_op, true, "Folding Reshape operators.");
+
 namespace nnfusion
 {
     namespace pass
@@ -19,9 +21,7 @@ namespace nnfusion
             public:
                 bool run_on_graph(std::shared_ptr<Graph>& graph) override
                 {
-                    bool using_pass = getenv("NNFUSION_ENABLE_RESHAPE_FOLDING")
-                                          ? atoi(getenv("NNFUSION_ENABLE_RESHAPE_FOLDING"))
-                                          : 1;
+                    bool using_pass = FLAGS_ffold_reshape_op;
                     if (!using_pass)
                         return true;
 

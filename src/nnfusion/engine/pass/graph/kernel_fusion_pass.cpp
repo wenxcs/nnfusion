@@ -9,9 +9,13 @@
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 
+#include "gflags/gflags.h"
+
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 using namespace ngraph::op::util;
+
+DEFINE_int32(fkernel_fusion_level, 2, "");
 
 const static int DEFAULT_GROUP_ID = -1;
 
@@ -70,9 +74,7 @@ public:
 
     bool Optimize()
     {
-        int fusion_level = getenv("NNFUSION_KERNEL_FUSION_LEVEL")
-                               ? atoi(getenv("NNFUSION_KERNEL_FUSION_LEVEL"))
-                               : 2;
+        int fusion_level = FLAGS_fkernel_fusion_level;
         if (fusion_level > 0)
         {
             std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> fuse_groups =

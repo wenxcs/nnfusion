@@ -18,13 +18,16 @@
 
 using namespace nnfusion::pass;
 
+DEFINE_string(fdefault_device,
+              "CUDA",
+              "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
+
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
     , m_passes(new vector<shared_ptr<IInterpreterPass>>())
 {
     // Todo: find another way
-    auto dev_name = getenv("NNFUSION_ENABLE_DEVICE") ? string(getenv("NNFUSION_ENABLE_DEVICE"))
-                                                     : string("CUDA");
+    auto dev_name = FLAGS_fdefault_device;
     DeviceType default_device;
     if (dev_name == "ROCm")
         default_device = ROCM_GPU;

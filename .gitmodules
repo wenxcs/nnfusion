@@ -4,3 +4,6 @@
 [submodule "thirdparty/googletest"]
 	path = thirdparty/googletest
 	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.googletest
+[submodule "thirdparty/gflags"]
+	path = thirdparty/gflags
+	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.gflags

@@ -25,6 +25,6 @@ target_include_directories(kernels_cuda SYSTEM PUBLIC
 )
 target_compile_options(kernels_cuda PRIVATE "-fPIC")
 
-target_link_libraries(kernels_cuda  PRIVATE
-    kernels_registration
+target_link_libraries(kernels_cuda PRIVATE
+    kernels_registration gflags
 )

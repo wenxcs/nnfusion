@@ -8,6 +8,10 @@
 
 using namespace nnfusion::graph;
 
+DEFINE_string(fconst_folding_backend,
+              "",
+              "Choose which backend will be used in Constant folding pass. Disable when not set.");
+
 namespace nnfusion
 {
     namespace pass
@@ -221,9 +225,7 @@ namespace nnfusion
             public:
                 bool run_on_graph(std::shared_ptr<Graph>& graph) override
                 {
-                    this->backend = getenv("NNFUSION_ENABLE_FOLDING_BACKEND")
-                                        ? getenv("NNFUSION_ENABLE_FOLDING_BACKEND")
-                                        : "";
+                    this->backend = FLAGS_fconst_folding_backend;
                     if (this->backend == "")
                         return true;
 
@@ -231,8 +233,6 @@ namespace nnfusion
                     if (!has_warning)
                     {
                         has_warning = true;
-                        LOG(INFO) << "To disable Runtime Constant Folding: export "
-                                     "NNFUSION_ENABLE_FOLDING_BACKEND=''";
                     }
 
                     LOG(INFO) << "Runtime Constant Folding Pass starts up for Graph: "

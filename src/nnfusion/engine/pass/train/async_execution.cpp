@@ -3,6 +3,8 @@
 
 using namespace nnfusion;
 
+DECLARE_bool(fadd_allreduce);
+
 bool TrainningAsyncExecution::run(std::shared_ptr<InterpreterContext> ctx,
                                   std::shared_ptr<TranslationUnit> tu)
 {
@@ -10,9 +12,7 @@ bool TrainningAsyncExecution::run(std::shared_ptr<InterpreterContext> ctx,
     // default; d2h; h2d; allreduce;
     // allreduce waits for default stream reduce_start;
     //
-    bool allreduce_enable = getenv("NNFUSION_ENABLE_ALLREDUCE")
-                                ? bool(atoi(getenv("NNFUSION_ENABLE_ALLREDUCE")))
-                                : false;
+    bool allreduce_enable = FLAGS_fadd_allreduce;
     if (!allreduce_enable)
         return true;
 

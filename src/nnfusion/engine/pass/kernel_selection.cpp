@@ -11,6 +11,9 @@ using namespace nnfusion::profiler;
 // Register_Tag(Kernel_Selection_Device, DeviceType);
 // Register_Tag(Kernel_Selection_Result, vector<pair<DeviceType, KernelEmitter>>);
 
+DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
+DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
+
 pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::profiling_best(
     shared_ptr<ngraph::Node> node, DeviceType devtype, IProfilingRuntime::Pointer runtime)
 {
@@ -66,8 +69,7 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
 bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                                        std::shared_ptr<TranslationUnit> tu)
 {
-    bool enable_tuning =
-        getenv("NNFUSION_ENABLE_TUNING") ? bool(atoi(getenv("NNFUSION_ENABLE_TUNING"))) : false;
+    bool enable_tuning = FLAGS_fkernel_tunning;
     if (!enable_tuning)
         return true;
 

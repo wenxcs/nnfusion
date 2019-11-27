@@ -4,6 +4,8 @@
 #include "../../cuda_langunit.hpp"
 #include "nnfusion/core/ops/generic_op.hpp"
 
+DEFINE_bool(frocm_fixed_kernels, true, "Enable Fixed kernel in ROCm codegen.");
+
 namespace nnfusion
 {
     namespace kernels
@@ -24,9 +26,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    bool using_fixed = getenv("NNFUSION_ENABLE_FIXED")
-                                           ? bool(atoi(getenv("NNFUSION_ENABLE_FIXED")))
-                                           : 1;
+                    bool using_fixed = FLAGS_frocm_fixed_kernels;
                     if (!using_fixed)
                         return nullptr;
 

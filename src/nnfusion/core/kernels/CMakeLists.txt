@@ -29,16 +29,3 @@ target_compile_options(kernels_registration PRIVATE "-fPIC")
 
 add_subdirectory(cuda_gpu)
 add_subdirectory(cpu)
-
-#-------kernel_test----------
-set(TEST
-    main.cpp
-)
-add_executable(kernel_test ${TEST})
-
-target_link_libraries(kernel_test 
-    kernels_registration
-    ${WholeArchiveFlag}
-    kernels_cuda 
-    ${NoWholeArchiveFlag}
-)

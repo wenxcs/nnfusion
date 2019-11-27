@@ -30,7 +30,11 @@ if (NNFUSION_ENABLE)
         kernels_cuda 
         kernels_cpu
         nnfusion_engine_profiler
-        ${NoWholeArchiveFlag}
+        ${NoWholeArchiveFlag} 
+    )
+
+    target_link_libraries(nnfusion_backend PUBLIC
+        gflags
     )
 
     set_target_properties(nnfusion_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})

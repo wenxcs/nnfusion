@@ -6,6 +6,8 @@
 #include "ngraph/op/constant.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
+DEFINE_bool(ftranspose_vecdot, false, "Enable vectdot transpose.");
+
 namespace nnfusion
 {
     namespace pass
@@ -17,9 +19,7 @@ namespace nnfusion
             public:
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override
                 {
-                    bool using_pass = getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE")
-                                          ? atoi(getenv("NNFUSION_ENABLE_VECDOT_TRANPOSE"))
-                                          : 0;
+                    bool using_pass = FLAGS_ftranspose_vecdot;
                     if (!using_pass)
                         return true;
 

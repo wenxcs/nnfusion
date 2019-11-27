@@ -197,6 +197,7 @@ using namespace std;
 using namespace nnfusion;
 
 #include "code_writer.hpp"
+#include "gflags/gflags.h"
 #include "nlohmann/json.hpp"
 #include "nnfusion/util/util.hpp"
 #include "type_info.hpp"

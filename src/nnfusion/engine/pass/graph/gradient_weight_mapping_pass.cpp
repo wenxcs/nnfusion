@@ -8,12 +8,11 @@
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 
+DEFINE_bool(fadd_allreduce, false, "Add Allreduce operater after ApplyGradient operator.");
+
 bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
-    bool allreduce_enable = getenv("NNFUSION_ENABLE_ALLREDUCE")
-                                ? bool(atoi(getenv("NNFUSION_ENABLE_ALLREDUCE")))
-                                : false;
-
+    bool allreduce_enable = FLAGS_fadd_allreduce;
     std::vector<std::shared_ptr<GNode>> result_nodes;
 
     auto const_nodes = graph->get_const_nodes();

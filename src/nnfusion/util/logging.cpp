@@ -11,10 +11,13 @@
 #include <mutex>
 #include <thread>
 
+#include "gflags/gflags.h"
 #include "logging.hpp"
 
 using namespace std;
 using namespace nnfusion;
+
+DECLARE_int32(min_log_level);
 
 bool LogHelper::flag_save_to_file = false;
 std::string LogHelper::log_path = "";
@@ -89,7 +92,7 @@ int LogLevelStrToInt(const char* env_var_val)
 
 int MinLogLevelFromEnv()
 {
-    const char* tf_env_var_val = getenv("MIN_LOG_LEVEL");
+    const char* tf_env_var_val = (const char*)&FLAGS_min_log_level;
     return LogLevelStrToInt(tf_env_var_val);
 }
 

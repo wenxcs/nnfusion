@@ -36,6 +36,7 @@ set(NGRAPH_INCLUDE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
 )
+
 # Suppress an OS X-specific warning.
 if (POLICY CMP0042)
     cmake_policy(SET CMP0042 OLD)
@@ -316,6 +317,7 @@ add_definitions(-DPROJECT_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(thirdparty)
 add_subdirectory(src)
+message(STATUS "${NGRAPH_INCLUDE_PATH}") 
 
 if (NGRAPH_UNIT_TEST_ENABLE)
     add_subdirectory(test)

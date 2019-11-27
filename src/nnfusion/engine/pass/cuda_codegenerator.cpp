@@ -11,6 +11,9 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
+DEFINE_bool(fcodegen_debug, false, "Add debug functions in Codegen-ed project.");
+DEFINE_bool(fcodegen_timing, false, "Add timing functions in Codegen-ed project.");
+
 namespace
 {
     bool create_dir(std::string tar_path)
@@ -407,10 +410,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << def.collect_code() << "\n";
     }
 
-    bool enable_debug =
-        getenv("NNFUSION_ENABLE_DEBUG") ? bool(atoi(getenv("NNFUSION_ENABLE_DEBUG"))) : 0;
-    bool enable_timing =
-        getenv("NNFUSION_ENABLE_TIMING") ? bool(atoi(getenv("NNFUSION_ENABLE_TIMING"))) : 0;
+    bool enable_debug = FLAGS_fcodegen_debug;
+    bool enable_timing = FLAGS_fcodegen_timing;
 
     // Generate graph configs
     {

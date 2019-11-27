@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 
+#include "gflags/gflags.h"
 #include "ngraph/except.hpp"
 #include "ngraph/file_util.hpp"
 #include "ngraph/frontend/onnx_import/onnx.hpp"
@@ -15,12 +16,20 @@
 #include "ngraph/runtime/backend.hpp"
 #include "ngraph/serializer.hpp"
 #include "ngraph/util.hpp"
-#include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 
 #include "nnfusion/core/graph/graph.hpp"
+#include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 
 using namespace std;
 using namespace ngraph;
+
+DEFINE_string(format, "ngraph", "-f, Model file format (ngraph(default) or tensorflow)");
+DEFINE_string(backend,
+              "CPU",
+              "-b, Backend to use (CPU(default), GPU, CUDA_CODEGEN[:naive_graphtest])");
+DEFINE_string(model_format, "graph", "-m, Import tensorflow model as function(default), graph");
+DEFINE_bool(statistics, false, "-s, Display op stastics");
+DEFINE_bool(visualize, false, "-v, Visualize a model (WARNING: requires GraphViz installed)");
 
 element::Type get_op_element_type(const Node& op)
 {
@@ -52,26 +61,20 @@ DESCRIPTION
     Generate optimized code for ngraph json model with given backend.
 
 SYNOPSIS
-        nnfusion <filename> [-f <format>] [-b <backend>] [-m <function>] [-s] [-v]
+        nnfusion <filename> [--format <format>] [--backend <backend>] [--model_format <function>] [--statistics] [--visualize] [other ...]
 
 OPTIONS
-        -f|--format               Model file format (ngraph(default) or tensorflow)
-        -b|--backend              Backend to use (CPU(default), GPU, CUDA_CODEGEN[:naive_graphtest])
-        -m|--model_format         Import tensorflow model as function(default), graph
-        -s|--statistics           Display op stastics
-        -v|--visualize            Visualize a model (WARNING: requires GraphViz installed)
 )###";
 }
 
 int main(int argc, char** argv)
 {
-    string model;
-    string format = "ngraph";
-    string backend = "CPU";
-    string model_format = "function";
     bool failed = false;
-    bool statistics = false;
-    bool visualize = false;
+    string model, format, backend, model_format;
+    bool statistics, visualize;
+
+    model = format = backend = model_format = "##UNSET##";
+    statistics = visualize = false;
 
     if (argc > 1)
     {
@@ -80,37 +83,49 @@ int main(int argc, char** argv)
     else
     {
         display_help();
+        GFLAGS_NAMESPACE::ShowUsageWithFlags(argv[0]);
         return 1;
     }
+
+    // To support abbreviation along Gflags;
     for (size_t i = 2; i < argc; i++)
     {
         string arg = argv[i];
-        if (arg == "-f" || arg == "--format")
+        if (arg == "-f")
         {
             format = argv[++i];
         }
-        else if (arg == "-b" || arg == "--backend")
+        else if (arg == "-b")
         {
             backend = argv[++i];
         }
-        else if (arg == "-m" || arg == "--model_format")
+        else if (arg == "-m")
         {
             model_format = argv[++i];
         }
-        else if (arg == "-s" || arg == "--statistics")
+        else if (arg == "-s")
         {
             statistics = true;
         }
-        else if (arg == "-v" || arg == "--visualize")
+        else if (arg == "-v")
         {
             visualize = true;
         }
-        else
-        {
-            cout << "Unknown option: " << arg << endl;
-            failed = true;
-        }
     }
+
+    google::SetUsageMessage(argv[0]);
+    google::AllowCommandLineReparsing();
+    google::ParseCommandLineFlags(&argc, &argv, true);
+
+    if (format == "##UNSET##")
+        format = FLAGS_format;
+    if (backend == "##UNSET##")
+        backend = FLAGS_backend;
+    if (model_format == "##UNSET##")
+        model_format = FLAGS_model_format;
+    statistics = statistics || FLAGS_statistics;
+    visualize = visualize || FLAGS_visualize;
+
     if (!model.empty() && !file_util::exists(model))
     {
         cout << "File " << model << " not found\n";
