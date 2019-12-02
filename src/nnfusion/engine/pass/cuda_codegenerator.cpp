@@ -7,6 +7,7 @@
 #include "cuda_codegenerator.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/memory_allocator.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -203,6 +204,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 {
     setpwd();
 
+    auto allocator_list = MemoryAllocatorFactory::get_allocator_list();
+
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cu"));
     this->lu_header = LanguageUnit_p(new LanguageUnit("nnfusion_rt.h"));
@@ -313,10 +316,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     }
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
-    lu << "char* _memory_pool;\n\n";
-    if (tu->program.m_context.host_memory_pool_size > 0)
-        lu << "char* host_memory_pool;\n\n";
-
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
     // Collect Function Definition
     {
@@ -485,59 +484,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_kernel_entry.block_begin();
 
         //Planning
+        for (auto allocator : allocator_list)
         {
-            // CHECK(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
-            lu_main_init << "CUDA_SAFE_CALL(cudaMalloc((void**)&_memory_pool, "
-                         << tu->program.m_context.memory_pool_size << "));\n";
-
-            // Should make memory pool more feature and united;
-            if (tu->program.m_context.host_memory_pool_size > 0)
-                lu_main_init << "host_memory_pool = new char["
-                             << tu->program.m_context.host_memory_pool_size << "];\n";
-
-            lu_main_init << "CUDA_SAFE_CALL(cudaMemset((void*)_memory_pool, 0, "
-                         << tu->program.m_context.memory_pool_size << "));\n";
-
-            for (auto kernel : kernels)
-            {
-                for (auto& it : kernel->m_context->inputs)
-                {
-                    if (allocated.count(it.get_name()) > 0)
-                        continue;
-                    allocated.insert(it.get_name());
-
-                    lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    string pool_name = it.is_host() ? "host_memory_pool" : "_memory_pool";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(" << pool_name
-                                 << "+" << it.get_offset() << ");\n";
-                }
-
-                for (auto& it : kernel->m_context->outputs)
-                {
-                    if (allocated.count(it.get_name()) > 0)
-                        continue;
-                    allocated.insert(it.get_name());
-
-                    lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    string pool_name = it.is_host() ? "host_memory_pool" : "_memory_pool";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(" << pool_name
-                                 << "+" << it.get_offset() << ");\n";
-                }
-
-                for (auto& it : kernel->m_context->tensors)
-                {
-                    if (allocated.count(it.get_name()) > 0)
-                        continue;
-                    allocated.insert(it.get_name());
-
-                    lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    string pool_name = it.is_host() ? "host_memory_pool" : "_memory_pool";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(" << pool_name
-                                 << "+" << it.get_offset() << ");\n";
-                }
-            }
+            lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
+            lu_main_init << allocator.second->emit_memory_alloc()->get_code();
         }
-
+   
         //Function Call
         {
             if (global_required.count("declaration::global_cublas_handle") > 0)
@@ -673,8 +625,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
         }
-
-        lu_main_free << "CUDA_SAFE_CALL(cudaFree(_memory_pool));\n";
+        for (auto allocator : allocator_list)
+        {
+            lu_main_free << allocator.second->emit_memory_free()->get_code();
+        }
 
         lu_kernel_entry << "return 0;\n";
         lu_kernel_entry.block_end();

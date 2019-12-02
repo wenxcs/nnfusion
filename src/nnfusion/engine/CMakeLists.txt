@@ -9,7 +9,8 @@ if (NNFUSION_ENABLE)
     # This is the source file shared by devices
     set(ENGINE
         interpreter.cpp
-        op.cpp 
+        op.cpp
+        memory_allocator.cpp
         external/nnfusion_backend.cpp
     )
 

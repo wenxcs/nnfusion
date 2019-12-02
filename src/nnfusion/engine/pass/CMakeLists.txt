@@ -15,7 +15,6 @@ set(SRC
     elementwise_kernel_fusion.cpp
     # tensor related
     tensor/tensor_memory_layout.cpp
-    tensor/host_tensor_allocation.cpp
     tensor/liveness_analysis.cpp
     # train related
     train/async_execution.cpp

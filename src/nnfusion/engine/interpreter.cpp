@@ -11,7 +11,6 @@
 #include "nnfusion/engine/pass/ngraph_function_pass.hpp"
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
-#include "pass/tensor/host_tensor_allocation.hpp"
 #include "pass/tensor/liveness_analysis.hpp"
 #include "pass/tensor/tensor_memory_layout.hpp"
 #include "pass/train/async_execution.hpp"
