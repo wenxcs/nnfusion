@@ -24,7 +24,7 @@ using namespace std;
 descriptor::Tensor::Tensor(const element::Type& element_type,
                            const PartialShape& pshape,
                            const std::string& name,
-                           bool is_persistant,
+                           bool is_persistent,
                            bool is_constant,
                            bool is_RDMA_tensor,
                            size_t group_id,
@@ -34,7 +34,7 @@ descriptor::Tensor::Tensor(const element::Type& element_type,
     , m_shape(pshape.is_static() ? pshape.to_shape() : Shape{})
     , m_partial_shape(pshape)
     , m_name(name)
-    , m_persistent(is_persistant)
+    , m_persistent(is_persistent)
     , m_constant(is_constant)
     , m_RDMA(is_RDMA_tensor)
     , m_group_id(group_id)

@@ -484,7 +484,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_kernel_entry.block_begin();
 
         //Planning
-        for (auto allocator : allocator_list)
+        for (auto allocator : *allocator_list)
         {
             lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
             lu_main_init << allocator.second->emit_memory_alloc()->get_code();
@@ -625,7 +625,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
         }
-        for (auto allocator : allocator_list)
+        for (auto allocator : *allocator_list)
         {
             lu_main_free << allocator.second->emit_memory_free()->get_code();
         }

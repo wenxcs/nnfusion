@@ -52,7 +52,7 @@ namespace ngraph
             Tensor(const element::Type& element_type,
                    const PartialShape& pshape,
                    const std::string& name,
-                   bool is_persistant = false,
+                   bool is_persistent = false,
                    bool is_constant = false,
                    bool is_RDMA_tensor = false,
                    size_t group_id = -1,
@@ -75,7 +75,7 @@ namespace ngraph
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
             size_t size() const;
-            // Persistant tensors exist in all iterations, and do not reuse any memory space.
+            // persistent tensors exist in all iterations, and do not reuse any memory space.
             bool is_persistent() const { return m_persistent; }
             // Constant tensors contain immutable data.
             bool is_constant() const { return m_constant; }
