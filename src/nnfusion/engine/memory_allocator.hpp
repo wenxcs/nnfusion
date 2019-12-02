@@ -57,7 +57,8 @@ namespace nnfusion
         std::list<node>::const_iterator end() const { return m_node_list.cend(); }
         const std::list<node>& get_node_list() const { return m_node_list; }
         size_t max_allocated() const { return m_max_allocated; }
-        void set_no_reuse() { m_scheme = allocation_scheme::NO_REUSE; }
+        void set_alloc_scheme(allocation_scheme alloc_schem) { m_scheme = alloc_schem; }
+        allocation_scheme get_alloc_scheme() const { return m_scheme; }
         void set_alignment(size_t alignment) { m_alignment = alignment; }
         size_t get_alignment() const { return m_alignment; }
         virtual std::string get_name();
