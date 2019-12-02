@@ -44,11 +44,12 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
             auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
                                        .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-            auto emitter_iter = find_if(emitted_kernels.begin(),
-                                        emitted_kernels.end(),
-                                        [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
-                                            return i.first == CUDA_GPU;
-                                        });
+            auto emitter_iter =
+                find_if(emitted_kernels.begin(),
+                        emitted_kernels.end(),
+                        [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
+                            return (i.first == CUDA_GPU || i.first == DeviceType::ROCM_GPU);
+                        });
 
             KernelEmitter::Pointer kernel = nullptr;
 

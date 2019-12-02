@@ -80,9 +80,9 @@ namespace ngraph
             // Constant tensors contain immutable data.
             bool is_constant() const { return m_constant; }
             bool is_RDMA_tensor() const { return m_RDMA; }
-            void set_persistent() { m_persistent = true; }
-            void set_constant() { m_constant = true; }
-            void set_RDMA() { m_RDMA = true; }
+            void set_persistent(bool value = true) { m_persistent = value; }
+            void set_constant(bool value = true) { m_constant = value; }
+            void set_RDMA(bool value = true) { m_RDMA = value; }
             //The default group_id is -1, which means the tensor does not belong to any specific group.
             void set_group_id(size_t group_id) { m_group_id = group_id; }
             size_t get_group_id() const { return m_group_id; }

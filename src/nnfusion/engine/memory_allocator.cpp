@@ -308,7 +308,7 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descrip
         {
             auto t_device_type = tensor->get_device_type();
             DeviceType a_device_type =
-                (DeviceType[]){CUDA_GPU, ROCM_GPU, GENERIC_CPU}[t_device_type];
+                (const DeviceType[]){CUDA_GPU, ROCM_GPU, GENERIC_CPU}[t_device_type];
             RDMAMemoryAllocator* allocator = new RDMAMemoryAllocator(
                 m_alignment, m_disable_reuse, a_device_type, tensor->get_device_id());
             m_allocator_list[device_name] = allocator;
