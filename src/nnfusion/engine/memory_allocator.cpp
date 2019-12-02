@@ -230,14 +230,14 @@ LanguageUnit_p nnfusion::MemoryAllocator::emit_memory_alloc()
     if (m_max_allocated > 0)
     {
         lu << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << this->pool_name() << "," << m_max_allocated
-        << "));\n";
+           << "));\n";
         lu << "CUDA_SAFE_CALL(cudaMemset((void*)" << this->pool_name() << ", 0, " << m_max_allocated
-        << "));\n";
-    
+           << "));\n";
+
         for (auto tensor : m_allocated_tensors)
         {
-            lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string() << "*)("
-            << this->pool_name() << "+" << tensor->get_pool_offset() << ");\n";
+            lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string()
+               << "*)(" << this->pool_name() << "+" << tensor->get_pool_offset() << ");\n";
         }
     }
     return _lu;
@@ -277,8 +277,8 @@ LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_alloc()
         lu << this->pool_name() << " = new char[" << m_max_allocated << "];\n";
         for (auto tensor : m_allocated_tensors)
         {
-            lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string() << "*)("
-               << this->pool_name() << "+" << tensor->get_pool_offset() << ");\n";
+            lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string()
+               << "*)(" << this->pool_name() << "+" << tensor->get_pool_offset() << ");\n";
         }
     }
     return _lu;
@@ -292,7 +292,8 @@ nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory(size_t alignment, bool 
     CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
 }
-std::unordered_map<std::string, MemoryAllocator*> nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory::m_allocator_list;
+std::unordered_map<std::string, MemoryAllocator*>
+    nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory::m_allocator_list;
 
 MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descriptor::Tensor* tensor)
 {
@@ -306,7 +307,8 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descrip
         if (tensor->is_RDMA_tensor())
         {
             auto t_device_type = tensor->get_device_type();
-            DeviceType a_device_type = (DeviceType []){CUDA_GPU, ROCM_GPU, GENERIC_CPU}[t_device_type];
+            DeviceType a_device_type =
+                (DeviceType[]){CUDA_GPU, ROCM_GPU, GENERIC_CPU}[t_device_type];
             RDMAMemoryAllocator* allocator = new RDMAMemoryAllocator(
                 m_alignment, m_disable_reuse, a_device_type, tensor->get_device_id());
             m_allocator_list[device_name] = allocator;
@@ -335,9 +337,7 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descrip
                     m_alignment, m_disable_reuse, GENERIC_CPU, tensor->get_device_id());
                 break;
             }
-            default: 
-                LOG(ERROR) << "No valid allocator found: " << device_name; 
-                break;
+            default: LOG(ERROR) << "No valid allocator found: " << device_name; break;
             }
             if (allocator != nullptr)
                 m_allocator_list[device_name] = allocator;
@@ -356,6 +356,7 @@ std::string nnfusion::MemoryAllocatorFactory::get_device_name(ngraph::descriptor
     {
         device_name << "RDMA_";
     }
-    device_name << (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type] << "_" << device_id;
+    device_name << (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type] << "_"
+                << device_id;
     return device_name.str();
 }

@@ -489,7 +489,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
             lu_main_init << allocator.second->emit_memory_alloc()->get_code();
         }
-   
+
         //Function Call
         {
             if (global_required.count("declaration::global_cublas_handle") > 0)

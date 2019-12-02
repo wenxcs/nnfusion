@@ -14,8 +14,8 @@
 #include "ngraph/pass/manager.hpp"
 #include "ngraph/pass/memory_layout.hpp"
 #include "ngraph/util.hpp"
-#include "nnfusion/engine/profiler/profiler.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
+#include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -27,13 +27,14 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                    std::shared_ptr<TranslationUnit> tu)
 {
     MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
-   
+
     auto is_same_dev = [](const descriptor::Tensor* a, const descriptor::Tensor* b) {
-        return (a->get_device_type() == b->get_device_type()) && (a->get_device_id() == b->get_device_id());
+        return (a->get_device_type() == b->get_device_type()) &&
+               (a->get_device_id() == b->get_device_id());
     };
 
     std::unordered_set<descriptor::Tensor*> persistent_tensors;
-    
+
     auto& p = tu->program;
     for (auto iterator : p)
     {

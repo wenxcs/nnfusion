@@ -15,10 +15,8 @@ namespace nnfusion
         /// KernelSelected -> AssignTensorMemoryLayout -> Codegen
         class AssignTensorMemoryLayout : public IInterpreterPass
         {
-            
         public:
-            AssignTensorMemoryLayout(size_t alignment = 64,
-                                     bool disable_memory_sharing = false)
+            AssignTensorMemoryLayout(size_t alignment = 64, bool disable_memory_sharing = false)
                 : m_alignment(alignment)
                 , m_disable_memory_sharing(disable_memory_sharing)
             {

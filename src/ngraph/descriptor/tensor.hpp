@@ -33,7 +33,7 @@ namespace ngraph
         namespace layout
         {
             class TensorLayout;
-        }       
+        }
 
         /// \brief Compile-time descriptor of a first-class value that is a view of a tensor.
         class Tensor

@@ -49,7 +49,7 @@ namespace nnfusion
         virtual LanguageUnit_p emit_memory_init();
         virtual LanguageUnit_p emit_memory_alloc();
         virtual LanguageUnit_p emit_memory_free();
-        
+
         static size_t align(size_t x, size_t alignment);
 
         std::list<node>::iterator begin() { return m_node_list.begin(); }
