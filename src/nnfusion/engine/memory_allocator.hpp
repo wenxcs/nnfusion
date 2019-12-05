@@ -136,9 +136,9 @@ namespace nnfusion
         MemoryAllocator* get_allocator(ngraph::descriptor::Tensor* tensor);
         std::string get_device_name(ngraph::descriptor::Tensor* tensor);
         size_t get_alignment() const { return m_alignment; }
-        static std::unordered_map<std::string, MemoryAllocator*> const* get_allocator_list()
+        static const std::unordered_map<std::string, MemoryAllocator*>& get_allocator_list()
         {
-            return &m_allocator_list;
+            return m_allocator_list;
         }
 
     private:

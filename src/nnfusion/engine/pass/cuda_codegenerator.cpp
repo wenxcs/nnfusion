@@ -204,7 +204,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 {
     setpwd();
 
-    auto allocator_list = MemoryAllocatorFactory::get_allocator_list();
+    auto& allocator_list = MemoryAllocatorFactory::get_allocator_list();
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cu"));
@@ -484,7 +484,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_kernel_entry.block_begin();
 
         //Planning
-        for (auto allocator : *allocator_list)
+        for (const auto& allocator : allocator_list)
         {
             lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
             lu_main_init << allocator.second->emit_memory_alloc()->get_code();
@@ -625,7 +625,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
         }
-        for (auto allocator : *allocator_list)
+        for (const auto& allocator : allocator_list)
         {
             lu_main_free << allocator.second->emit_memory_free()->get_code();
         }
