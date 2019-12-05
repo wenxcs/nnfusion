@@ -45,11 +45,11 @@ namespace nnfusion
         ///\todo multi-i/o BasicBlock;
 
         ///\brief The context which we store runtime data/configuration.
-        struct ProgramContext
-        {
-            size_t host_memory_pool_size = -1;
-            size_t memory_pool_size = -1;
-        };
+        // struct ProgramContext
+        // {
+        //     size_t host_memory_pool_size = -1;
+        //     size_t memory_pool_size = -1;
+        // };
 
         ///\brief The Program is a set of Basic blocks.
         class Program : public std::vector<BasicBlock::Pointer>, public Tagable
@@ -64,7 +64,7 @@ namespace nnfusion
             BasicBlock::Pointer get_entry();
             BasicBlock::Pointer get_exit();
 
-            ProgramContext m_context;
+            //ProgramContext m_context;
 
         private:
             BasicBlock::Pointer entry, exit;

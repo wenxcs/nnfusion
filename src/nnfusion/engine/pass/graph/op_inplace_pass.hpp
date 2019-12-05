@@ -16,8 +16,6 @@ namespace nnfusion
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
 
             private:
-                bool shared_in_nodes(std::shared_ptr<nnfusion::graph::GNode>& node);
-
                 template <class T>
                 void AddInplace(T op, size_t output, size_t input, bool destructive)
                 {
