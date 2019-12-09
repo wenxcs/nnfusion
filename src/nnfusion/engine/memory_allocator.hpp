@@ -12,7 +12,7 @@ namespace nnfusion
         enum class block_state
         {
             FREE,
-            ALLOCATED,
+            ALLOCATED
         };
 
         enum class allocation_scheme

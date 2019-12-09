@@ -39,6 +39,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *iterator)
         {
             auto node = ins->operatorDef();
+            // do not allocate parameter tensors.
             if (node->is_parameter())
                 continue;
             auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
@@ -103,8 +104,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                 continue;
                             }
 
-                            // For destructive kernel, this should be the last use
-                            // Non-destructive kernels can pass through if memory sharing is disabled
+                            // memory of persistent tensors should not be reused.
                             if (node->liveness_free_list.count(input) != 0 &&
                                 node->liveness_new_list.count(output) != 0 &&
                                 !input->is_persistent())
@@ -117,11 +117,13 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
             unordered_set<descriptor::Tensor*> newlist(alloc_temp);
+            // The output of output nodes refers to the input, so there is NO need
+            // to allocate memory space for output of output nodes.
             if (!node->is_output())
                 newlist.insert(node->liveness_new_list.begin(), node->liveness_new_list.end());
             for (descriptor::Tensor* tensor : newlist)
             {
-                if (!tensor->is_persistent() && !tensor->is_parameter())
+                if (!tensor->is_persistent())
                 {
                     auto allocator = maf.get_allocator(tensor);
                     if (in_place_outputs.count(tensor))
@@ -134,7 +136,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                         allocator->allocate(tensor);
                     }
                 }
-                else if (tensor->is_persistent())
+                else
                 {
                     persistent_tensors.insert(tensor);
                 }

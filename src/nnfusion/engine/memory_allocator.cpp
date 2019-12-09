@@ -192,7 +192,7 @@ void nnfusion::MemoryAllocator::free(ngraph::descriptor::Tensor* tensor)
         }
         search_offset += it->m_size;
     }
-    CHECK(found) << "bad free" << tensor->get_name();
+    CHECK(found) << "bad free: " << tensor->get_name();
 }
 
 void nnfusion::MemoryAllocator::dump(ostream& out)
