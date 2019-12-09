@@ -32,16 +32,15 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         return (a->get_device_type() == b->get_device_type()) &&
                (a->get_device_id() == b->get_device_id());
     };
-
     std::unordered_set<descriptor::Tensor*> persistent_tensors;
-
     auto& p = tu->program;
     for (auto iterator : p)
     {
         for (auto ins : *iterator)
         {
             auto node = ins->operatorDef();
-
+            if (node->is_parameter())
+                continue;
             auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
                                        .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
             auto emitter_iter =
@@ -75,9 +74,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     // todo: make get_tensor() interface return un-const variable.
                     auto& tensor = (descriptor::Tensor&)tensorwrapper.get_tensor();
-                    if (tensor.is_persistent())
-                        persistent_tensors.insert(&tensor);
-                    else
+                    if (!tensor.is_persistent())
                         alloc_temp.insert(&tensor);
                 }
             }
@@ -95,10 +92,9 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                             auto input = &node->get_inputs().at(oi_pair.input).get_tensor();
                             auto input_node =
                                 node->get_inputs().at(oi_pair.input).get_output().get_node();
-
-                            // should not overwrite constant tensor
-                            // if (std::dynamic_pointer_cast<op::Constant>(input_node))
-                            //     continue;
+                            //should not overwrite constant tensor and parameter tensor
+                            if (input_node->is_parameter() || input_node->is_constant())
+                                continue;
 
                             if (!is_same_dev(input, output))
                             {
@@ -109,10 +105,9 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
                             // For destructive kernel, this should be the last use
                             // Non-destructive kernels can pass through if memory sharing is disabled
-                            if ((node->liveness_free_list.count(input) != 0 ||
-                                 (m_disable_memory_sharing && !oi_pair.destructive &&
-                                  !input_node->is_parameter() && !input_node->is_constant())) &&
-                                node->liveness_new_list.count(output) != 0)
+                            if (node->liveness_free_list.count(input) != 0 &&
+                                node->liveness_new_list.count(output) != 0 &&
+                                !input->is_persistent())
                             {
                                 in_place_outputs.insert({output, input});
                                 reused_inputs.insert(input);
@@ -121,20 +116,27 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
-
             unordered_set<descriptor::Tensor*> newlist(alloc_temp);
-            newlist.insert(node->liveness_new_list.begin(), node->liveness_new_list.end());
+            if (!node->is_output())
+                newlist.insert(node->liveness_new_list.begin(), node->liveness_new_list.end());
             for (descriptor::Tensor* tensor : newlist)
             {
-                auto allocator = maf.get_allocator(tensor);
-                if (in_place_outputs.count(tensor))
+                if (!tensor->is_persistent() && !tensor->is_parameter())
                 {
-                    size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
-                    allocator->allocate(tensor, offset);
+                    auto allocator = maf.get_allocator(tensor);
+                    if (in_place_outputs.count(tensor))
+                    {
+                        size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
+                        allocator->allocate(tensor, offset);
+                    }
+                    else
+                    {
+                        allocator->allocate(tensor);
+                    }
                 }
-                else
+                else if (tensor->is_persistent())
                 {
-                    allocator->allocate(tensor);
+                    persistent_tensors.insert(tensor);
                 }
             }
 
@@ -144,7 +146,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 freelist.insert(node->liveness_free_list.begin(), node->liveness_free_list.end());
                 for (descriptor::Tensor* tensor : freelist)
                 {
-                    if (reused_inputs.count(tensor) == 0)
+                    if (reused_inputs.count(tensor) == 0 && !tensor->is_persistent() &&
+                        !tensor->is_parameter())
                     {
                         auto allocator = maf.get_allocator(tensor);
                         allocator->free(tensor);
@@ -152,6 +155,13 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
         }
+    }
+
+    for (auto tensor : persistent_tensors)
+    {
+        auto allocator = maf.get_allocator(tensor);
+        allocator->set_alloc_scheme(nnfusion::MemoryAllocator::allocation_scheme::NO_REUSE);
+        allocator->allocate(tensor);
     }
     return true;
 }
