@@ -292,6 +292,14 @@ LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_alloc()
     return _lu;
 }
 
+LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_free()
+{
+    LanguageUnit_p _lu(new LanguageUnit(this->get_name() + "_free"));
+    auto& lu = *_lu;
+    lu << "delete[] " << this->get_name() + "_memory_pool;\n";
+    return _lu;
+}
+
 std::string nnfusion::RDMAMemoryAllocator::get_name()
 {
     std::stringstream m_name;

@@ -101,6 +101,7 @@ namespace nnfusion
         {
         }
         LanguageUnit_p emit_memory_alloc() override;
+        LanguageUnit_p emit_memory_free() override;
     };
 
     class RocmMemoryAllocator : public MemoryAllocator

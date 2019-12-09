@@ -9,6 +9,7 @@
 #include "cpu_codegenerator.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/memory_allocator.hpp"
 // For reference kernels
 #include "nnfusion/core/kernels/cpu/reference/reference_common.hpp"
 
@@ -73,6 +74,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                            std::shared_ptr<TranslationUnit> tu)
 {
     setpwd();
+
+    auto& allocator_list = MemoryAllocatorFactory::get_allocator_list();
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cpp"));
@@ -274,34 +277,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_kernel_entry.block_begin();
 
         //Planning
+        for (const auto& allocator : allocator_list)
         {
-            // CHECK(tu->memory_pool_size > 0) << "GPU Memory pool size cannot be zero.";
-            lu_main_init << "memory_pool_ = (char *)malloc(" << tu->memory_pool_size << ");\n";
-
-            for (auto kernel : kernels)
-            {
-                for (auto& it : kernel->m_context->inputs)
-                {
-                    if (allocated.count(it.get_name()) > 0)
-                        continue;
-                    allocated.insert(it.get_name());
-
-                    lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(memory_pool_+"
-                                 << it.get_offset() << ");\n";
-                }
-
-                for (auto& it : kernel->m_context->outputs)
-                {
-                    if (allocated.count(it.get_name()) > 0)
-                        continue;
-                    allocated.insert(it.get_name());
-
-                    lu_mem_plan_init << it.get_type() << "* " << it.get_name() << ";\n";
-                    lu_main_init << it.get_name() << " = (" << it.get_type() << "*)(memory_pool_+"
-                                 << it.get_offset() << ");\n";
-                }
-            }
+            lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
+            lu_main_init << allocator.second->emit_memory_alloc()->get_code();
         }
 
         //Function Call
@@ -341,14 +320,21 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
         }
 
-        lu_main_free << "free(memory_pool_);\n";
+        for (const auto& allocator : allocator_list)
+        {
+            lu_main_free << allocator.second->emit_memory_free()->get_code();
+        }
         if (global_required.count("declaration::eigen_global_thread_pool") > 0)
         {
-            lu_main_free << "free(global_thread_pool);\n";
+            lu_main_free << "delete global_thread_pool;\n";
         }
         if (global_required.count("declaration::eigen_global_thread_pool_device") > 0)
         {
-            lu_main_free << "free(global_thread_pool_device);\n";
+            lu_main_free << "delete global_thread_pool_device;\n";
+        }
+        if (global_required.count("declaration::mlas_global_thread_pool") > 0)
+        {
+            lu_main_free << "delete mlas_global_thread_pool;\n";
         }
 
         lu_kernel_entry << "\nreturn 0;\n";
