@@ -20,6 +20,11 @@ nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
     CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
     m_node_list.emplace_back(numeric_limits<size_t>::max(), block_state::FREE);
+    if (record_trace)
+    {
+        m_trace << this->get_name() << ": \n";
+        m_trace << "memory allocation trace: \n";
+    }
 }
 
 void nnfusion::MemoryAllocator::allocate(std::vector<ngraph::descriptor::Tensor*>& tensors)
@@ -38,13 +43,16 @@ void nnfusion::MemoryAllocator::allocate(std::vector<ngraph::descriptor::Tensor*
     case allocation_scheme::BEST_FIT: rc = best_fit(total_size); break;
     case allocation_scheme::NO_REUSE: rc = no_reuse_allocator(total_size); break;
     }
-
     for (auto tensor : tensors)
     {
         tensor->set_pool_offset(rc);
         // add tensor allocated by this allocator
         m_allocated_tensors.push_back(tensor);
         rc += tensor->size();
+        if (record_trace)
+        {
+            this->record("[allocate]", tensor);
+        }
     }
 }
 
@@ -60,16 +68,23 @@ void nnfusion::MemoryAllocator::allocate(ngraph::descriptor::Tensor* tensor)
     case allocation_scheme::BEST_FIT: rc = best_fit(size); break;
     case allocation_scheme::NO_REUSE: rc = no_reuse_allocator(size); break;
     }
-
     tensor->set_pool_offset(rc);
     // add tensor allocated by this allocator
     m_allocated_tensors.push_back(tensor);
+    if (record_trace)
+    {
+        this->record("[allocate]", tensor);
+    }
 }
 
 void nnfusion::MemoryAllocator::allocate(ngraph::descriptor::Tensor* tensor, size_t offset)
 {
     tensor->set_pool_offset(offset);
     m_allocated_tensors.push_back(tensor);
+    if (record_trace)
+    {
+        this->record("[allocate]", tensor);
+    }
 }
 
 size_t nnfusion::MemoryAllocator::no_reuse_allocator(size_t size)
@@ -192,17 +207,32 @@ void nnfusion::MemoryAllocator::free(ngraph::descriptor::Tensor* tensor)
         }
         search_offset += it->m_size;
     }
+    if (record_trace)
+    {
+        this->record("[free]", tensor);
+    }
     CHECK(found) << "bad free";
 }
 
-void nnfusion::MemoryAllocator::dump(ostream& out)
+void nnfusion::MemoryAllocator::dump(ofstream& out)
 {
+    out << m_trace.str();
+    out << "max allocated memory:\n" << m_max_allocated << "\n";
+    out << "current allocated memory:\n" << this->cur_allocated() << "\n";
+    out << "current memory in use: \n" << this->memory_in_use() << "\n";
+    out << "memory block state: \n";
     for (const node& n : m_node_list)
     {
         out << "size=" << n.m_size << ", ";
         out << (n.m_state == block_state::FREE ? "FREE" : "ALLOCATED");
         out << "\n";
     }
+}
+
+void nnfusion::MemoryAllocator::record(string symbol, ngraph::descriptor::Tensor* tensor)
+{
+    m_trace << symbol << " name: " << tensor->get_name()
+            << "  offset: " << tensor->get_pool_offset() << "  size: " << tensor->size() << "\n";
 }
 
 LanguageUnit_p nnfusion::MemoryAllocator::emit_memory_init()
@@ -275,6 +305,23 @@ std::string nnfusion::MemoryAllocator::get_name()
     return m_name.str();
 }
 
+size_t nnfusion::MemoryAllocator::cur_allocated()
+{
+    return (prev(m_node_list.end())->m_state == block_state::FREE)
+               ? numeric_limits<size_t>::max() - prev(m_node_list.end())->m_size
+               : numeric_limits<size_t>::max();
+}
+
+size_t nnfusion::MemoryAllocator::memory_in_use()
+{
+    size_t allocated = 0;
+    for (const node& n : m_node_list)
+    {
+        if (n.m_state == block_state::ALLOCATED)
+            allocated += n.m_size;
+    }
+    return allocated;
+}
 LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_alloc()
 {
     LanguageUnit_p _lu(new LanguageUnit(this->get_name() + "_alloc"));

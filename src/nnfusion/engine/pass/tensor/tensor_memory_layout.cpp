@@ -23,9 +23,19 @@ using namespace nnfusion;
 using namespace nnfusion::pass;
 using namespace nnfusion::kernels;
 
+DEFINE_bool(fmem_trace, false, "Record and dump memory trace.");
+DEFINE_string(fmem_log_path, "memory.log", "The file path of memory log.");
+
 bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                    std::shared_ptr<TranslationUnit> tu)
 {
+    bool dump_trace = FLAGS_fmem_trace;
+    string mem_log_path = FLAGS_fmem_log_path;
+
+    // Open memory log file.
+    std::ofstream mem_log;
+    mem_log.open(mem_log_path);
+
     MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
 
     auto is_same_dev = [](const descriptor::Tensor* a, const descriptor::Tensor* b) {
@@ -36,6 +46,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
     std::unordered_set<descriptor::Tensor*> persistent_tensors;
 
     auto& p = tu->program;
+
     for (auto iterator : p)
     {
         for (auto ins : *iterator)
@@ -151,7 +162,19 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
+            //dump memory trace at the time scale of node.
+            if (dump_trace)
+            {
+                mem_log << node->get_name() << "\n";
+                for (auto allocator : MemoryAllocatorFactory::get_allocator_list())
+                {
+                    allocator.second->dump(mem_log);
+                }
+                mem_log << "\n";
+            }
         }
     }
+    // close memory log file.
+    mem_log.close();
     return true;
 }
