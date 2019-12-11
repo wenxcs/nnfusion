@@ -328,7 +328,7 @@ LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_alloc()
     auto& lu = *_lu;
     if (m_max_allocated > 0)
     {
-        lu << this->get_name() << "_memory_pool = new char[" << m_max_allocated << "];\n";
+        lu << this->get_name() << "_memory_pool = (char *)malloc(" << m_max_allocated << ");\n";
         for (auto tensor : m_allocated_tensors)
         {
             lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string()

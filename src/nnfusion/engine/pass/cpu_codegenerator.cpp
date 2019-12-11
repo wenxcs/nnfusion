@@ -342,7 +342,6 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     }
 
     lu << "\n";
-    lu << "char* memory_pool_;\n";
     {
         lu << lu_mem_plan_init.get_code();
         lu << "\nextern \"C\" void cpu_init()";
