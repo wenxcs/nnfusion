@@ -165,7 +165,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             //dump memory trace at the time scale of node.
             if (dump_trace)
             {
-                mem_log << node->get_name() << "\n";
+                mem_log << gnode->get_name() << "\n";
                 for (auto allocator : MemoryAllocatorFactory::get_allocator_list())
                 {
                     allocator.second->dump(mem_log);
