@@ -8,8 +8,8 @@ using namespace nnfusion::kernels;
 cuda::BatchNorm::BatchNorm(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    // ngraph::op::BatchNormInferece <-> nnfusion::ir::BatchNorm
-    auto bn_op = static_pointer_cast<ngraph::op::BatchNormInference>(ctx->node);
+    // nnfusion::op::BatchNormInferece <-> nnfusion::ir::BatchNorm
+    auto bn_op = static_pointer_cast<nnfusion::op::BatchNormInference>(ctx->gnode->get_op_ptr());
     dtype = ngraph::element::Type(ctx->outputs[0].get_element_type());
     // <todo> need to check the index
     tensor_shape = ngraph::Shape(ctx->inputs[2].get_shape());

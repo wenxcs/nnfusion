@@ -201,11 +201,11 @@ bool ReferenceRuntime::compile(const ProfilingContext::Pointer& ke)
 double ReferenceRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
 {
     // Replacing Existed Kernel with Reference Kenel
-    auto& node = ke->kernel->m_context->node;
+    auto& gnode = ke->kernel->m_context->gnode;
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
         KernelRegistry::Global()->FindKernelRegistrations(
-            node->description(), GENERIC_CPU, DT_FLOAT);
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+            gnode->get_op_type(), GENERIC_CPU, DT_FLOAT);
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     bool has_valid_kernel = false;
     for (auto kernel_reg : kernel_regs)

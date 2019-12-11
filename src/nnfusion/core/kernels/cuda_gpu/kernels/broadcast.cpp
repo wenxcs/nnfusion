@@ -14,7 +14,8 @@ namespace nnfusion
                 Broadcast(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
                 {
-                    auto _op = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
+                    auto _op =
+                        static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
                     CHECK_NOT_NULLPTR(_op) << "Node type is not Broadcast.";
                     auto& axes = _op->get_broadcast_axes();
                     if (axes.empty())
@@ -136,7 +137,7 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                shared_ptr<ngraph::op::Pad> _op;
+                shared_ptr<nnfusion::op::Pad> _op;
 
                 // calculate strides
                 ngraph::NVShape strides;

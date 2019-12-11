@@ -32,6 +32,8 @@ namespace nnfusion
 {
     namespace profiler
     {
+        IProfilingRuntime::Pointer get_default_runtime(DeviceType dev_t);
+
         ///\brief Profiler will profile a operator or a subgraph. This Profiler class should be treated as interface for Host.
         //Profiler will use the Runtime to run the subject.
         ///\todo To support a subgraph
@@ -195,22 +197,121 @@ namespace nnfusion
         class GraphEvaluate
         {
         public:
-            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph)
+            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph, DeviceType dev_t)
                 : gctx(GraphEvaluationContext(graph))
+                , dev_type(dev_t)
             {
-                rt = ReferenceRuntime::Runtime();
+                rt = get_default_runtime(dev_t);
             }
+            template <typename T, typename T1>
+            unordered_map<string, vector<vector<T1>>> eval(const vector<vector<T>>& inputs)
+            {
+                auto parameters = gctx.graph->get_parameters();
 
-            unordered_map<string, ProfilingContext::Pointer> eval();
+                CHECK(inputs.size() == parameters.size())
+                    << "The input size does not match graph's Parameter count";
+                for (size_t i = 0; i < parameters.size(); i++)
+                {
+                    parameter_map[parameters[i]] = i;
+                }
+                auto ordered_ops = gctx.graph->get_ordered_ops();
+                for (auto& op : ordered_ops)
+                {
+                    create_profiling_contexts(op);
+                }
+
+                for (auto& op : ordered_ops)
+                {
+                    connect_nodes(op, inputs);
+                }
+
+                int i = 0;
+                for (auto& node : ordered_ops)
+                {
+                    if (node->get_op_ptr()->is_parameter() || node->get_op_ptr()->is_constant())
+                    {
+                        continue;
+                    }
+                    auto pctx = gctx.get_profiling_context(node);
+
+                    rt->execute(pctx,
+                                pctx->kernel_memory->unsafe_inputs(),
+                                pctx->kernel_memory->unsafe_outputs());
+                }
+
+                unordered_map<string, vector<vector<T1>>> result;
+                for (auto& outnode : gctx.graph->get_outputs())
+                {
+                    auto pctx = gctx.get_profiling_context(outnode);
+                    result[outnode->get_unique_name()] = pctx->kernel_memory->save_outputs<T1>();
+                }
+
+                // The result data ptr is like result["nodename"]->kernel_memory->unsafe_output(0);
+                return move(result);
+            }
 
         private:
             GraphEvaluationContext gctx;
-            ReferenceRuntime::Pointer rt;
+            IProfilingRuntime::Pointer rt;
+            DeviceType dev_type;
+            std::unordered_map<std::shared_ptr<GNode>, int> parameter_map;
 
             void create_profiling_contexts(shared_ptr<GNode> node);
-            void connect_nodes(shared_ptr<GNode> node);
-        };
 
-        IProfilingRuntime::Pointer get_default_runtime(DeviceType dev_t);
+            template <typename T>
+            void connect_nodes(shared_ptr<GNode> gnode, const vector<vector<T>>& inputs)
+            {
+                if (gnode->get_op_ptr()->is_parameter())
+                {
+                    for (auto& edge : gnode->get_out_edges())
+                    {
+                        // Skip control edge
+                        if (edge->is_control_edge())
+                            continue;
+                        auto dstnode = edge->get_dst();
+                        auto dstpctx = gctx.get_profiling_context(dstnode);
+                        size_t _size = ngraph::shape_size(gnode->get_shape()) *
+                                       gnode->get_element_type().size();
+                        // This statments will remove some allocated memory.
+                        dstpctx->kernel_memory->load_input_from(
+                            edge->get_dst_input(),
+                            (void*)inputs[parameter_map[gnode]].data(),
+                            _size);
+                    }
+                }
+                else if (gnode->get_op_ptr()->is_constant())
+                {
+                    auto const_node = static_pointer_cast<op::Constant>(gnode->get_op_ptr());
+
+                    for (auto& edge : gnode->get_out_edges())
+                    {
+                        // Skip control edge
+                        if (edge->is_control_edge())
+                            continue;
+                        auto dstnode = edge->get_dst();
+                        auto dstpctx = gctx.get_profiling_context(dstnode);
+                        // This statments will remove some allocated memory.
+                        dstpctx->kernel_memory->load_input_from(edge->get_dst_input(),
+                                                                const_node->get_data_ptr(),
+                                                                const_node->get_data_size());
+                    }
+                }
+                else
+                {
+                    auto pctx = gctx.get_profiling_context(gnode);
+                    for (auto& edge : gnode->get_out_edges())
+                    {
+                        // Skip control edge
+                        if (edge->is_control_edge())
+                            continue;
+                        auto dstnode = edge->get_dst();
+                        auto dstpctx = gctx.get_profiling_context(dstnode);
+                        // This statments will remove some allocated memory.
+                        pctx->kernel_memory->forward(
+                            edge->get_src_output(), dstpctx->kernel_memory, edge->get_dst_input());
+                    }
+                }
+            }
+        };
     };
 }

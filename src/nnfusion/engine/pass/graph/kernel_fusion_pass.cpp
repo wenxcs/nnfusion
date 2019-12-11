@@ -2,18 +2,16 @@
 
 #include "kernel_fusion_pass.hpp"
 #include <queue>
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/reshape.hpp"
-#include "ngraph/op/util/binary_elementwise_arithmetic.hpp"
-#include "ngraph/op/util/unary_elementwise_arithmetic.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
+#include "nnfusion/core/operators/op_define/broadcast.hpp"
+#include "nnfusion/core/operators/op_define/reshape.hpp"
+#include "nnfusion/core/operators/util/elementwise_arithmetic.hpp"
 
 #include "gflags/gflags.h"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
-using namespace ngraph::op::util;
 
 DEFINE_int32(fkernel_fusion_level, 2, "");
 
@@ -114,7 +112,7 @@ private:
                               std::deque<size_t>& fuse_ready,
                               std::deque<size_t>& elem_ready)
     {
-        std::shared_ptr<ngraph::Node> op = node->get_op_ptr();
+        auto op = node->get_op_ptr();
 
         if (op_blacklist.count(node->get_op_type()) > 0)
         {
@@ -122,8 +120,7 @@ private:
             return;
         }
 
-        if (std::dynamic_pointer_cast<BinaryElementwiseArithmetic>(op) ||
-            std::dynamic_pointer_cast<UnaryElementwiseArithmetic>(op))
+        if (std::dynamic_pointer_cast<nnfusion::op::ElementwiseArithmetic>(op))
         {
             elem_ready.push_front(node->get_id());
         }
@@ -277,7 +274,7 @@ private:
                 elem_ready.pop_front();
                 tn = m_nodes[node_id];
 
-                size_t tensor_size = shape_size(tn->node->get_outputs().at(0)->get_shape());
+                size_t tensor_size = shape_size(tn->node->get_output_shape(0));
                 if (cur_elemgroup && cur_elemgroup->output_size != tensor_size)
                 {
                     AppendElementGroup();
@@ -343,7 +340,8 @@ private:
                             while (input_node)
                             {
                                 auto op = input_node->get_op_ptr();
-                                if (auto bc = std::dynamic_pointer_cast<ngraph::op::Broadcast>(op))
+                                if (auto bc =
+                                        std::dynamic_pointer_cast<nnfusion::op::Broadcast>(op))
 
                                 {
                                     if (bc->is_inner_broadcast() || bc->is_outer_broadcast())
@@ -354,12 +352,11 @@ private:
                                     }
                                 }
                                 else if (auto rs =
-                                             std::dynamic_pointer_cast<ngraph::op::Reshape>(op))
+                                             std::dynamic_pointer_cast<nnfusion::op::Reshape>(op))
                                 {
                                     if (!(rs->get_is_transpose()) &&
-                                        (shape_size(input_node->get_outputs().at(0)->get_shape()) ==
-                                         shape_size(
-                                             elem_tn->node->get_outputs().at(0)->get_shape())))
+                                        (shape_size(input_node->get_output_shape(0)) ==
+                                         shape_size(elem_tn->node->get_output_shape(0))))
                                         fusable_input_nodes.push_back(input_node->get_id());
                                 }
                                 else

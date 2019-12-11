@@ -98,13 +98,13 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     {
         for (auto ins : *iterator)
         {
-            string op_name = ins->operatorDef()->description();
+            string op_name = ins->getGNode()->get_op_type();
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
             std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
                 KernelRegistry::Global()->FindKernelRegistrations(op_name, GENERIC_CPU, DT_FLOAT);
 
-            shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+            shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
             bool has_valid_kernel = false;
             if (kernel_regs.size() > 0)
             {

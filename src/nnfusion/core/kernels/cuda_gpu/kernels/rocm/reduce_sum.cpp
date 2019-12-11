@@ -2,7 +2,7 @@
 
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -51,7 +51,7 @@ namespace nnfusion
                     m_gridDim = dim3(1, blockY, 1);
                     m_blockDim = dim3(64, 1, 1);
 
-                    auto templ = ngraph::op::create_code_from_template(
+                    auto templ = nnfusion::op::create_code_from_template(
                         R"(
     constexpr unsigned int gridDimX = 1;
     constexpr unsigned int blockSize = 64;
@@ -113,6 +113,6 @@ using namespace nnfusion::kernels;
 #define REGISTER_GPU_KERNEL(KEY, OP_NAME)                                                          \
     REGISTER_KERNEL_EMITTER(KEY,                                                                   \
                             Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("PRIORITY_2" #OP_NAME),  \
-                            cuda::RocmReduce<ngraph::op::OP_NAME>)
+                            cuda::RocmReduce<nnfusion::op::OP_NAME>)
 
 REGISTER_GPU_KERNEL("Sum", Add)

@@ -11,7 +11,7 @@
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
 #include "ngraph/op/pad.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -33,10 +33,10 @@ TEST(nnfusion_core_kernels, unsorted_segment_sum)
     string node_type("UnsortedSegmentSum");
     ngraph::op::OpConfig::any myConfig;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
+    auto gnode = make_shared<GNode>(node);
 
     // Prepare test data
     auto IN = vector<int>{/*A*/ 1, 2, 3, 4, 5, 6, 7, 8, 4, 3, 2, 1, /*B*/ 0, 1, 0, /*C*/ 2};
     auto OUT = vector<int>{5, 5, 5, 5, 5, 6, 7, 8};
-
-    EXPECT_TRUE(nnfusion::test::check_kernel(node, CUDA_GPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel(gnode, CUDA_GPU, IN, OUT));
 }

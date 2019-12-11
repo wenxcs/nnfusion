@@ -7,27 +7,26 @@ namespace nnfusion
         {
             class __KernelUniqueClassName__ : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 __KernelUniqueClassName__(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
                     GENERIC_OP_LOGGING();
-                    generic_op->validate_and_infer_types();
 
-                    size_t num_in = generic_op->get_input_size(),
-                           num_out = generic_op->get_output_size();
+                    size_t num_in = m_context->inputs.size(), num_out = m_context->outputs.size();
                     std::vector<ngraph::Shape> input_shapes, output_shapes;
                     for (int i = 0; i < num_in; ++i)
-                        input_shapes.push_back(generic_op->get_input_shape(i));
+                        input_shapes.push_back(m_context->inputs[i].get_shape());
                     for (int i = 0; i < num_out; ++i)
-                        output_shapes.push_back(generic_op->get_output_shape(i));
+                        output_shapes.push_back(m_context->outputs[i].get_shape());
 
                     auto res = generate_kernel_code(
                         input_shapes, output_shapes, generic_op->localOpConfig.getRoot());

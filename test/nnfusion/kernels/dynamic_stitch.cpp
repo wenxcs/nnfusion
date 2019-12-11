@@ -10,7 +10,7 @@
 
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -34,10 +34,10 @@ TEST(nnfusion_core_kernels, dynamic_stitch)
     ngraph::op::OpConfig::any myConfig;
     myConfig["N"] = 2;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
-
+    auto gnode = make_shared<GNode>(node);
     // Prepare test data
     auto IN = vector<float>{/*A*/ 0, 1, /*B*/ 1, /*C*/ 256, 1024, /*D*/ 1};
     auto OUT = vector<float>{/*tensor(2, 3)*/ 256, 1};
 
-    // EXPECT_TRUE(nnfusion::test::check_kernel(node, CUDA_GPU, IN, OUT));
+    // EXPECT_TRUE(nnfusion::test::check_kernel(gnode, CUDA_GPU, IN, OUT));
 }

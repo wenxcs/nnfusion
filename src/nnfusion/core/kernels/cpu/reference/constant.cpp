@@ -5,7 +5,7 @@
 #include "nnfusion/common/languageunit.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -19,7 +19,7 @@ namespace nnfusion
                 Constant(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "cpu")
                 {
-                    op = static_pointer_cast<ngraph::op::Constant>(ctx->node);
+                    op = static_pointer_cast<nnfusion::op::Constant>(ctx->gnode->get_op_ptr());
                     CHECK_NOT_NULLPTR(op) << "Node type is not Constant.";
 
                     folder = "./Constant/";
@@ -55,7 +55,7 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                shared_ptr<ngraph::op::Constant> op;
+                shared_ptr<nnfusion::op::Constant> op;
                 string folder;
                 string const_name;
             };

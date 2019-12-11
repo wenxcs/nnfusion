@@ -2,7 +2,7 @@
 
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DECLARE_bool(frocm_fixed_kernels);
 
@@ -14,12 +14,13 @@ namespace nnfusion
         {
             class GemmFixed : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 GemmFixed(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     GENERIC_OP_LOGGING();
                 }
@@ -37,7 +38,7 @@ namespace nnfusion
                     auto& arg1_shape = ctx->inputs[1].get_shape();
                     auto& out_shape = ctx->outputs[0].get_shape();
 
-                    auto gemm = static_pointer_cast<ngraph::op::Dot>(ctx->node);
+                    auto gemm = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
                     auto reduction_axes = gemm->get_reduction_axes_count();
                     auto& dtype = ctx->outputs[0].get_element_type().c_type_string();
                     if (gemm->get_transpose_A())
@@ -78,7 +79,7 @@ namespace nnfusion
                             m_gridDim.y = arg1_shape[1];
                         }
 
-                        templ = ngraph::op::create_code_from_template(
+                        templ = nnfusion::op::create_code_from_template(
                             R"(
 	constexpr unsigned int gridDimX = @gridDimX@;
     constexpr unsigned int gridDimY = @gridDimY@;

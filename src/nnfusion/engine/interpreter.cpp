@@ -5,10 +5,8 @@
 #include "nnfusion/engine/pass/cuda_codegenerator.hpp"
 #include "nnfusion/engine/pass/device_dispatcher.hpp"
 #include "nnfusion/engine/pass/elementwise_kernel_fusion.hpp"
-#include "nnfusion/engine/pass/extract_function_signature.hpp"
 #include "nnfusion/engine/pass/extract_graph_signature.hpp"
 #include "nnfusion/engine/pass/kernel_selection.hpp"
-#include "nnfusion/engine/pass/ngraph_function_pass.hpp"
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
 #include "pass/tensor/liveness_analysis.hpp"
@@ -75,115 +73,18 @@ bool Interpreter::translate(TranslationUnit::Pointer tu)
     return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
 }
 
-// TODO: Deprecate
-shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<ngraph::Function> function)
-{
-    /*  Run original Ngraph Passes */
-    static interpreter::NgraphFunctionPass ngraph_passes;
-    static interpreter::ExtractFunctionSignature extract_global;
-    shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
-    shared_ptr<TranslationUnit> ngraph_tu(new TranslationUnit());
-    ngraph_tu->m_function = function;
-    CHECK(ngraph_passes.run(m_trans_ctx, ngraph_tu));
-    // Iterator through all functions
-
-    // Deal with translation unit's program
-    for (const auto& p : m_trans_ctx->m_function_ordered_ops)
-    {
-        shared_ptr<TranslationUnit> _tu(new TranslationUnit());
-        auto current_function = p.first;
-        _tus->emplace(p.first, _tu);
-        LOG(INFO) << "Translating function:\t" << current_function->get_name();
-
-        _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
-        _tu->m_function = current_function;
-        auto bb_main = _tu->program.get_entry();
-
-        CHECK(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
-
-        // Translate the Node
-        for (shared_ptr<Node> node : m_trans_ctx->m_function_ordered_ops.at(current_function))
-        {
-            // Generate Translated OP
-            // <todo> not sure translated
-            auto it = m_trans_ctx->m_node_inter_map.find(node);
-            if (it == m_trans_ctx->m_node_inter_map.end())
-            {
-                nnfusion::ir::Instruction::Pointer ir(new nnfusion::ir::Instruction);
-                ir->setOperatorDef(node);
-                // Attribute example
-                {
-                    auto& attr = ir->Attr();
-                    vector<TensorWrapper> in;
-                    for (const descriptor::Input& input : node->get_inputs())
-                    {
-                        const descriptor::Output& output = input.get_output();
-                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        CHECK_NOT_NULLPTR(tv);
-                        in.push_back(TensorWrapper(tv, tv->get_name()));
-                    }
-                    vector<TensorWrapper> out;
-                    for (const descriptor::Output& output : node->get_outputs())
-                    {
-                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        CHECK_NOT_NULLPTR(tv);
-                        out.push_back(TensorWrapper(tv, tv->get_name()));
-                    }
-
-                    // attr.ts_("INPUT", std::move(in))->ts_("OUTPUT", std::move(out));
-                }
-
-                // Tag example
-                {
-                    auto& INS = *ir;
-                    INS["DEBUG"] = 1;
-                    auto res = INS["DEBUG"].as<int>();
-                }
-                ir->setName(node->get_name());
-                bb_main->push_back(ir);
-            }
-        }
-
-        /*
-        for (auto& ins : *bb_main)
-        {
-            std::stringstream ss;
-            ss << ins->name() << "\t { ";
-            ss << "INPUT:{";
-            for(auto& in: ins->Attr().ts("INPUT"))
-            {
-                ss << in.get_name() << ", ";
-            }
-            ss << "}, ";
-            ss << "OUTPUT:{";
-            for(auto& in: ins->Attr().ts("OUTPUT"))
-            {
-                ss << in.get_name() << ", ";
-            }
-            ss << "}, (tag:)";
-            ss << " DEBUG : " << ins->Tag().Get<int>("DEBUG") << " }";
-            LOG(INFO) << ss.str();
-        }
-        */
-
-        translate(_tu);
-    }
-    return _tus;
-}
-
-shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> graph)
+shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> graph)
 {
     // run graph passes
     nnfusion::pass::graph::GraphPass graph_passes;
     CHECK(graph_passes.run(graph));
-    shared_ptr<TranslationUnit> graph_tu(new TranslationUnit());
-    graph_tu->m_graph = graph;
-    // TODO : how about multi graph
+
+    // TODO : multi graph ?
     m_trans_ctx->m_graphs.insert(graph);
 
     // Iterator through all nodes
     static interpreter::ExtractGraphSignature extract_global;
-    shared_ptr<GraphTranslationUnitMap> _tus(new GraphTranslationUnitMap());
+    shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
 
     // Deal with translation unit's program
     for (const auto& current_graph : m_trans_ctx->m_graphs)
@@ -196,6 +97,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
         _tu->m_graph = current_graph;
         auto bb_main = _tu->program.get_entry();
 
+        // extract output_names/constants/arg/out for _tu, m_variable_name_map for m_trans_ctx
         CHECK(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
 
         // Translate the Node
@@ -203,27 +105,25 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
         {
             // Generate Translated OP
             // <todo> not sure translated
-            auto node = gnode->get_op_ptr();
-            auto it = m_trans_ctx->m_node_inter_map.find(node);
+            auto it = m_trans_ctx->m_node_inter_map.find(gnode);
             if (it == m_trans_ctx->m_node_inter_map.end())
             {
                 nnfusion::ir::Instruction::Pointer ir(new nnfusion::ir::Instruction);
-                ir->setOperatorDef(node);
-                // Attribute example
+                ir->setGNode(gnode);
+                // Attribute example code
                 {
                     auto& attr = ir->Attr();
                     vector<TensorWrapper> in;
-                    for (const descriptor::Input& input : node->get_inputs())
+                    for (int i = 0; i < gnode->get_input_size(); i++)
                     {
-                        const descriptor::Output& output = input.get_output();
-                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                        shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
                         CHECK_NOT_NULLPTR(tv);
                         in.push_back(TensorWrapper(tv, tv->get_name()));
                     }
                     vector<TensorWrapper> out;
-                    for (const descriptor::Output& output : node->get_outputs())
+                    for (int i = 0; i < gnode->get_output_size(); i++)
                     {
-                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                        shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
                         CHECK_NOT_NULLPTR(tv);
                         out.push_back(TensorWrapper(tv, tv->get_name()));
                     }
@@ -244,7 +144,7 @@ shared_ptr<GraphTranslationUnitMap> Interpreter::translate(shared_ptr<graph::Gra
                     ir->copy_tags_from(*gnode);
                 }
 
-                ir->setName(node->get_name());
+                ir->setName(gnode->get_name());
                 bb_main->push_back(ir);
             }
         }

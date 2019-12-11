@@ -6,7 +6,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -16,7 +16,7 @@ namespace nnfusion
         {
             class Tile : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
                 ngraph::element::Type dtype;
                 ngraph::Shape strides, reduced_strides, in_shape, out_shape;
@@ -25,7 +25,8 @@ namespace nnfusion
             public:
                 Tile(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     out_shape = m_context->outputs.front().get_shape();
                     in_shape = m_context->inputs.front().get_shape();
@@ -62,13 +63,13 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
 
-                    lu << ngraph::op::expand_vector("strides", strides, "size_t")
-                       << ngraph::op::expand_vector("stride_magic", stride_magic, "int")
-                       << ngraph::op::expand_vector("stride_shift", stride_shift, "int")
-                       << ngraph::op::expand_vector("reduced_magic", reduced_magic, "int")
-                       << ngraph::op::expand_vector("reduced_shift", reduced_shift, "int")
-                       << ngraph::op::expand_vector("reduced_strides", reduced_strides, "size_t")
-                       << ngraph::op::expand_vector("reduced_shape", in_shape, "size_t") << "\n";
+                    lu << nnfusion::op::expand_vector("strides", strides, "size_t")
+                       << nnfusion::op::expand_vector("stride_magic", stride_magic, "int")
+                       << nnfusion::op::expand_vector("stride_shift", stride_shift, "int")
+                       << nnfusion::op::expand_vector("reduced_magic", reduced_magic, "int")
+                       << nnfusion::op::expand_vector("reduced_shift", reduced_shift, "int")
+                       << nnfusion::op::expand_vector("reduced_strides", reduced_strides, "size_t")
+                       << nnfusion::op::expand_vector("reduced_shape", in_shape, "size_t") << "\n";
 
                     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
                     lu << "if(tid < " << threads << ")\n";

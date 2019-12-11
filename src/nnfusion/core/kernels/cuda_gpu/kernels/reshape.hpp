@@ -23,7 +23,7 @@ namespace nnfusion
                 size_t arg_rank;
                 ngraph::Shape result_shape;
                 ngraph::AxisVector input_order;
-                shared_ptr<ngraph::op::Reshape> reshape;
+                shared_ptr<nnfusion::op::Reshape> reshape;
                 bool is_memcpy;
                 bool is_noop;
             };
@@ -85,7 +85,7 @@ namespace nnfusion
                 size_t arg_rank;
                 ngraph::Shape result_shape;
                 ngraph::AxisVector input_order;
-                shared_ptr<ngraph::op::Reshape> reshape;
+                shared_ptr<nnfusion::op::Reshape> reshape;
                 bool is_memcpy;
                 bool is_noop;
             };

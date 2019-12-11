@@ -2,7 +2,7 @@
 #include "nnfusion/common/languageunit.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 //Classes
 namespace nnfusion
@@ -16,17 +16,17 @@ namespace nnfusion
             public:
                 BatchMatMulRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
-                    const ngraph::Shape& input_shape_1 = generic_op->get_input_shape(1);
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
+                    const ngraph::Shape& input_shape_1 = m_context->inputs[1].get_shape();
 
                     // Check conditions that pair of inputs must satisfy to run BatchMatMul
-                    generic_op->validate_and_infer_types();
 
                     bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
                     bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
@@ -68,7 +68,7 @@ namespace nnfusion
                     CHECK(dtype == m_context->dtypes[1]);
                     CHECK(dtype == m_context->dtypes[2]);
                     LanguageUnit lu(get_function_name());
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
 	for (long STEP = 0; STEP < @batch@; ++STEP) {
 		@T@ (*x)[@X1@] = decltype(x)(((@T@*)input0) + STEP * @n@ * @k@);
@@ -106,7 +106,7 @@ namespace nnfusion
                 }
 
             private:
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
             };
 
             REGISTER_KERNEL_EMITTER(

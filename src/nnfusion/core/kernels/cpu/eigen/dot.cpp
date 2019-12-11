@@ -8,7 +8,7 @@ using namespace nnfusion::kernels;
 cpu::Dot::Dot(shared_ptr<KernelContext> ctx)
     : EigenKernelEmitter(ctx)
 {
-    auto dot_op = static_pointer_cast<ngraph::op::Dot>(ctx->node);
+    auto dot_op = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
     arg0_shape = ngraph::Shape(ctx->inputs[0].get_shape());

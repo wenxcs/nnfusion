@@ -11,7 +11,7 @@
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
 #include "ngraph/op/pad.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -30,10 +30,10 @@ TEST(nnfusion_core_kernels, tile)
     string node_type("Tile");
     ngraph::op::OpConfig::any myConfig;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
-
+    auto gnode = make_shared<GNode>(node);
     // Prepare test data
     auto IN = vector<int>{/*A*/ 1, 2, 3, 4, /*B*/ 2};
     auto OUT = vector<int>{1, 2, 3, 4, 1, 2, 3, 4};
 
-    EXPECT_TRUE(nnfusion::test::check_kernel<int>(node, CUDA_GPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel<int>(gnode, CUDA_GPU, IN, OUT));
 }

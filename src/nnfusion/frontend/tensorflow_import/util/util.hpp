@@ -16,10 +16,9 @@
 #endif
 
 #include "../tensorflow_base.hpp"
-#include "ngraph/function.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/reshape.hpp"
 
+#include "nnfusion/core/operators/op_define/constant.hpp"
+#include "nnfusion/core/operators/op_define/reshape.hpp"
 #include "nnfusion/util/util.hpp"
 
 #include "nnfusion/engine/profiler/profiler.hpp"
@@ -29,32 +28,33 @@ namespace nnfusion
     namespace
     {
         std::vector<std::vector<char>>
-            get_node_outputs(std::shared_ptr<Node> ng_op, int depth = 0, int arg_idx = 0)
+            get_node_outputs(std::shared_ptr<GNode> gnode, int depth = 0, int arg_idx = 0)
         {
             LOG(INFO) << "[" << depth << ":" << arg_idx
-                      << "] Working for node: " << ng_op->get_name();
-            static std::map<std::shared_ptr<Node>, std::vector<std::vector<char>>> dict;
-            auto it = dict.find(ng_op);
+                      << "] Working for node: " << gnode->get_name();
+            static std::map<std::shared_ptr<GNode>, std::vector<std::vector<char>>> dict;
+            auto it = dict.find(gnode);
             if (it != dict.end())
                 return it->second;
-            if (ng_op->description() == "Constant")
+            if (gnode->get_op_type() == "Constant")
             {
-                auto const_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);
+                auto const_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
                 std::vector<char> one(const_op->get_data_size());
                 memcpy(one.data(), const_op->get_data_ptr(), one.size());
                 for (int i = 0; i < std::min(10LU, one.size()); ++i)
                     LOG(INFO) << one[i];
                 puts("...");
-                auto& it = dict[ng_op];
+                auto& it = dict[gnode];
                 it.push_back(std::move(one));
                 CHECK(one.size() == 0);
                 return it;
             }
             std::vector<std::vector<char>> _inputs, _outputs;
             int arg_cnt = 0;
-            for (auto args : ng_op->get_arguments())
+            for (auto in_edge : gnode->get_in_edges())
             {
-                auto outs = get_node_outputs(args, depth + 1, arg_cnt++);
+                auto input_node = in_edge->get_src();
+                auto outs = get_node_outputs(input_node, depth + 1, arg_cnt++);
                 for (auto& out : outs)
                 {
                     _inputs.emplace_back(std::move(out));
@@ -70,21 +70,21 @@ namespace nnfusion
             if (runtime->check_env())
             {
                 kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                    ng_op->description(), ROCM_GPU, DT_FLOAT);
+                    gnode->get_op_type(), ROCM_GPU, DT_FLOAT);
                 if (kernel_regs.size() == 0)
                     kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                        ng_op->description(), CUDA_GPU, DT_FLOAT);
+                        gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
             }
             else
             {
                 runtime = nnfusion::profiler::CudaDefaultRuntime::Runtime();
                 CHECK(runtime->check_env());
                 kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                    ng_op->description(), CUDA_GPU, DT_FLOAT);
+                    gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
             }
 
             bool const_infer_success = false;
-            shared_ptr<KernelContext> ctx(new KernelContext(ng_op));
+            shared_ptr<KernelContext> ctx(new KernelContext(gnode));
             for (auto& kernel_reg : kernel_regs)
             {
                 auto kernel = kernel_reg->m_factory(ctx);
@@ -105,12 +105,12 @@ namespace nnfusion
                         LOG(INFO) << _outputs[j][i];
                 puts("...");
 
-                LOG(INFO) << "  For node `" << ng_op->get_name()
+                LOG(INFO) << "  For node `" << gnode->get_name()
                           << "`: get runtime output results of size " << _outputs.size();
                 const_infer_success = true;
                 break;
             }
-            return dict[ng_op] = _outputs;
+            return dict[gnode] = _outputs;
         }
     } // namespace
 
@@ -218,18 +218,20 @@ namespace nnfusion
             bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
                                             ngraph::Shape* ng_shape);
 
-            std::shared_ptr<ngraph::Node> GetInputNode(const NodeMap& all_ng_nodes,
-                                                       const tensorflow::NodeDef& node,
-                                                       size_t input_idx);
+            std::shared_ptr<GNode> GetInputNode(const NodeMap& all_ng_nodes,
+                                                const tensorflow::NodeDef& node,
+                                                size_t input_idx);
 
-            std::vector<std::shared_ptr<ngraph::Node>>
-                GetAllInputNode(const NodeMap& all_ng_nodes, const tensorflow::NodeDef& node);
+            GNodeVector GetAllInputNode(const NodeMap& all_ng_nodes,
+                                        const tensorflow::NodeDef& node);
 
             TensorId ParseTensorName(const std::string& name);
 
+            size_t GetNumElements(const ngraph::Shape& shape,
+                                  const ngraph::AxisSet& reduction_axes);
+
             template <typename T, typename VecT = T>
-            std::vector<VecT>
-                GetValueFromConstOp(std::shared_ptr<ngraph::op::Constant> ng_constant_op)
+            std::vector<VecT> GetValueFromConstOp(std::shared_ptr<op::Constant> ng_constant_op)
             {
                 // the data type of ngraph::shape is size_t
                 std::vector<VecT> dst_values;
@@ -254,14 +256,14 @@ namespace nnfusion
             }
 
             template <typename T>
-            bool GetValueFromNGraphOp(std::shared_ptr<ngraph::Node> ng_op, std::vector<T>* values)
+            bool GetValueFromNGraphOp(std::shared_ptr<GNode> gnode, std::vector<T>* values)
             {
-                if (ng_op->description() != "Constant")
+                if (gnode->get_op_type() != "Constant")
                 {
-                    auto outs = get_node_outputs(ng_op);
+                    auto outs = get_node_outputs(gnode);
                     CHECK(outs.size() == 1);
-                    auto out_type = ng_op->get_output_element_type(0);
-                    LOG(INFO) << "Asking for Constant value from op-type: " << ng_op->description();
+                    auto out_type = gnode->get_output_element_type(0);
+                    LOG(INFO) << "Asking for Constant value from op-type: " << gnode->get_op_type();
                     LOG(INFO) << "Type of Output Value is " << out_type.c_type_string();
 
                     if (out_type == ngraph::element::f32)
@@ -278,8 +280,8 @@ namespace nnfusion
                     }
                     return true;
                 }
-                auto ng_constant_op = std::dynamic_pointer_cast<ngraph::op::Constant>(ng_op);
-                auto ng_element_type = ng_constant_op->get_element_type();
+                auto ng_constant_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
+                auto ng_element_type = gnode->get_output_element_type(0);
                 if (ng_element_type == ngraph::element::f32)
                 {
                     *values = GetValueFromConstOp<float, T>(ng_constant_op);
@@ -379,17 +381,22 @@ namespace nnfusion
 #undef DEFINE_GET_ATTR
 
             template <size_t a, size_t b, size_t c, size_t d>
-            void Reshape(std::shared_ptr<ngraph::Node>& ng_node)
+            std::shared_ptr<GNode> Reshape(const std::shared_ptr<GNode> old_gnode)
             {
                 static_assert(a < 4 && b < 4 && c < 4 && d < 4,
                               "Number of dimensions cannot exceed 4");
                 static_assert(a != b && a != c && a != d && b != c && b != d && c != d,
                               "Dimensions indices cannot be equal");
-                auto& s = ng_node->get_shape();
+                CHECK(old_gnode->get_output_size() == 1);
+                auto& s = old_gnode->get_output_shape(0);
                 ngraph::Shape reshaped_shape{s[a], s[b], s[c], s[d]};
 
-                ng_node = std::make_shared<ngraph::op::Reshape>(
-                    ng_node, ngraph::AxisVector{a, b, c, d}, reshaped_shape);
+                auto reshape_op = std::make_shared<nnfusion::op::Reshape>(
+                    ngraph::AxisVector{a, b, c, d}, reshaped_shape);
+                auto reshape_gnode = std::make_shared<GNode>(reshape_op, GNodeVector({old_gnode}));
+                reshape_op->revalidate_and_infer_types(reshape_gnode->shared_from_this());
+
+                return reshape_gnode;
             }
 
             namespace detail
@@ -401,9 +408,10 @@ namespace nnfusion
                     dst[1] = src[2];
                 }
 
-                static inline void NhwcToNGraph(std::shared_ptr<ngraph::Node>& ng_node)
+                static inline std::shared_ptr<GNode>
+                    NhwcToNGraph(const std::shared_ptr<GNode> old_gnode)
                 {
-                    Reshape<0, 3, 1, 2>(ng_node);
+                    return Reshape<0, 3, 1, 2>(old_gnode);
                 }
 
                 template <typename T>
@@ -423,11 +431,16 @@ namespace nnfusion
                 }
             } // namespace detail
 
-            static inline void BatchToNGraph(bool is_nhwc, std::shared_ptr<ngraph::Node>& ng_input)
+            static inline std::shared_ptr<GNode>
+                BatchToNGraph(bool is_nhwc, const std::shared_ptr<GNode> input_gnode)
             {
                 if (is_nhwc)
                 {
-                    detail::NhwcToNGraph(ng_input);
+                    return detail::NhwcToNGraph(input_gnode);
+                }
+                else
+                {
+                    return nullptr;
                 }
             }
 
@@ -461,14 +474,14 @@ namespace nnfusion
                 }
             }
 
-            static inline void BatchToTensorflow(bool is_nhwc,
-                                                 std::shared_ptr<ngraph::Node>& ng_node)
+            static inline std::shared_ptr<GNode>
+                BatchToTensorflow(bool is_nhwc, const std::shared_ptr<GNode> old_gnode)
             {
                 if (!is_nhwc)
                 {
-                    return;
+                    return nullptr;
                 }
-                Reshape<0, 2, 3, 1>(ng_node);
+                return Reshape<0, 2, 3, 1>(old_gnode);
             }
 
             template <typename T>

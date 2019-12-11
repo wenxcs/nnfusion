@@ -27,6 +27,7 @@
 #include "ngraph/runtime/tensor.hpp"
 #include "ngraph/serializer.hpp"
 
+#include "nnfusion/engine/profiler/profiler.hpp"
 namespace ngraph
 {
     class Node;
@@ -132,6 +133,30 @@ std::vector<std::vector<T1>> execute(const std::shared_ptr<ngraph::Function>& fu
     for (auto rt : result_tensors)
     {
         result_vectors.push_back(read_vector<T1>(rt));
+    }
+    return result_vectors;
+}
+
+template <typename T, typename T1 = T>
+std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Graph>& graph,
+                                     std::vector<std::vector<T>> args,
+                                     const std::string& backend_id)
+{
+    auto parms_gnodes = graph->get_parameters();
+
+    CHECK(parms_gnodes.size() == args.size()) << "number of parameters and arguments don't match";
+
+    auto graph_evaluate = make_shared<nnfusion::profiler::GraphEvaluate>(graph, CUDA_GPU);
+    auto res = graph_evaluate->eval<T, T1>(args);
+
+    auto output_gnodes = graph->get_outputs();
+    CHECK(output_gnodes.size() == res.size()) << "number of outputs and results don't match";
+
+    std::vector<std::vector<T1>> result_vectors;
+    for (auto kv : res)
+    {
+        CHECK(kv.second.size() == 1);
+        result_vectors.push_back((kv.second[0]));
     }
     return result_vectors;
 }

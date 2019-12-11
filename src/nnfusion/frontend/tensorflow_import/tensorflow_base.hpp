@@ -6,8 +6,9 @@
 #pragma once
 
 #include "graph.pb.h"
-#include "ngraph/function.hpp"
-#include "ngraph/op/parameter_vector.hpp"
+
+#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 
 namespace nnfusion
 {
@@ -15,11 +16,14 @@ namespace nnfusion
     {
         namespace tensorflow_import
         {
-            using NamedNode = std::pair<std::string, std::shared_ptr<ngraph::Node>>;
+            using NamedNode = std::pair<std::string, std::shared_ptr<nnfusion::graph::GNode>>;
             using NamedNodeVector = std::vector<NamedNode>;
-            using NodeMap = std::map<std::string, std::vector<std::shared_ptr<ngraph::Node>>>;
-            using ConvertFunc = std::function<NamedNodeVector(
-                const tensorflow::NodeDef&, const NodeMap&, ngraph::op::ParameterVector&)>;
+            using NodeMap =
+                std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>;
+            using ConvertFunc =
+                std::function<NamedNodeVector(const tensorflow::NodeDef&,
+                                              const NodeMap&,
+                                              std::shared_ptr<nnfusion::graph::Graph> graph)>;
 
             typedef signed char int8;
             typedef short int16;

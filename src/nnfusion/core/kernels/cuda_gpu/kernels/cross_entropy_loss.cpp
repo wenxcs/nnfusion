@@ -6,16 +6,17 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 #define __KernelOpType__ "CrossEntropyAvgLossWithLabels"
 #define __KernelUniqueClassName__ CrossEntropyAvgLossWithLabels_impl0
 
 namespace
 {
-    ngraph::op::OpConfig::any generate_kernel_code(const std::vector<ngraph::Shape>& input_shapes,
-                                                   const std::vector<ngraph::Shape>& output_shapes,
-                                                   const ngraph::op::OpConfig::any& config)
+    nnfusion::op::OpConfig::any
+        generate_kernel_code(const std::vector<ngraph::Shape>& input_shapes,
+                             const std::vector<ngraph::Shape>& output_shapes,
+                             const nnfusion::op::OpConfig::any& config)
     {
         // e.g: inputs_shapes = {{64, 10}, {64}}, output_shapes = {{64}}
 
@@ -25,7 +26,7 @@ namespace
         auto src = "output0[threadIdx.x] = -log(input0[threadIdx.x * " +
                    std::to_string(input_shapes[0][1]) + " + (int)input1[threadIdx.x]]);";
 
-        return ngraph::op::OpConfig::any({
+        return nnfusion::op::OpConfig::any({
             {"block_dim", {input_shapes[1][0], 1, 1}},
             {"grid_dim", {1, 1, 1}},
             {"source_code", std::move(src)},

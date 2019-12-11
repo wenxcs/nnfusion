@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "gather_1d.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::Gather1D::Gather1D(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto gather = static_pointer_cast<ngraph::op::GenericOp>(ctx->node);
+    auto gather = static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
     input_shape_0 = ngraph::Shape(ctx->inputs[0].get_shape());
     input_shape_1 = ngraph::Shape(ctx->inputs[1].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
