@@ -6,24 +6,23 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-KernelContext::KernelContext(shared_ptr<Node> node)
-    : node(node)
+KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
+    : gnode(gnode)
     , gpu_num_sm(20)
 {
     // extract input tensors
-    for (const descriptor::Input& input : node->get_inputs())
+    for (size_t i = 0; i < gnode->get_input_size(); ++i)
     {
-        const descriptor::Output& output = input.get_output();
-        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+        shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
         inputs.push_back(TensorWrapper(tv, tv->get_name()));
         input_names.push_back(tv->get_name());
     }
 
     // extract output tensors
-    for (const descriptor::Output& output : node->get_outputs())
+    for (size_t i = 0; i < gnode->get_output_size(); ++i)
     {
-        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+        shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
         outputs.push_back(TensorWrapper(tv, tv->get_name()));
         output_names.push_back(tv->get_name());
@@ -58,8 +57,9 @@ LanguageUnit_p KernelEmitter::emit_function_name()
     LanguageUnit_p _lu(new LanguageUnit("function_name"));
     auto& lu = *_lu;
 
-    lu << m_context->node->description() << "_" << join(m_context->dtypes, "_") << "_"
-       << m_kernel_type << "_" << m_context->node->get_name(); //<< custom_tag;
+    lu << m_context->gnode->get_op_type() << "_" << join(m_context->dtypes, "_") << "_"
+       << m_kernel_type << "_"
+       << m_context->gnode->get_op_ptr()->get_unique_name(); //<< custom_tag;
 
     return _lu;
 }
@@ -117,8 +117,8 @@ LanguageUnit_p KernelEmitter::emit_comments()
 {
     LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_comments"));
     auto& lu = *_lu;
-    lu << "// Node name:\t" << m_context->node->get_name() << "\n";
-    lu << "// Description:\t" << m_context->node->description() << "\n";
+    lu << "// Node name:\t" << m_context->gnode->get_op_ptr()->get_unique_name() << "\n";
+    lu << "// Description:\t" << m_context->gnode->get_op_type() << "\n";
     lu << "// Input:\n";
     for (auto& in : m_context->inputs)
     {
@@ -214,7 +214,7 @@ const TensorWrapper& KernelEmitter::allocate_tensor(
     // Generate tensor name
     if (name.empty())
     {
-        name = m_context->node->get_name();
+        name = m_context->gnode->get_op_ptr()->get_unique_name();
         name = name + "_" + wrapper_name;
     }
     TensorWrapper temp_tensor(

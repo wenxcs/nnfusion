@@ -31,7 +31,7 @@ namespace nnfusion
         };
 
         void ReverseDFS(const Graph* graph,
-                        const std::vector<std::shared_ptr<GNode>>& start,
+                        const GNodeVector& start,
                         const std::function<void(std::shared_ptr<GNode>)>& enter,
                         const std::function<void(std::shared_ptr<GNode>)>& leave,
                         const NodeComparator& stable_comparator);

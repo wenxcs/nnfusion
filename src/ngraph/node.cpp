@@ -114,7 +114,7 @@ bool Node::is_constant() const
     return false;
 }
 
-const std::string& Node::get_friendly_name() const
+const std::string& Node::get_name() const
 {
     if (m_name.empty())
     {
@@ -123,7 +123,7 @@ const std::string& Node::get_friendly_name() const
     return m_name;
 }
 
-const std::string& Node::get_name() const
+const std::string& Node::get_unique_name() const
 {
     return m_unique_name;
 }

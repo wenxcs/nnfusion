@@ -6,7 +6,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -16,13 +16,14 @@ namespace nnfusion
         {
             class ApplyGradient : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
 
             public:
                 ApplyGradient(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     threads = ctx->inputs[0].get_size();
                 }

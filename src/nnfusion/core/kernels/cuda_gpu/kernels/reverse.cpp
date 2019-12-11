@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "reverse.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::Reverse::Reverse(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto reverse = static_pointer_cast<ngraph::op::Reverse>(ctx->node);
+    auto reverse = static_pointer_cast<nnfusion::op::Reverse>(ctx->gnode->get_op_ptr());
 
     arg_shape = ctx->inputs[0].get_shape();
     arg_rank = arg_shape.size();
@@ -52,7 +52,7 @@ LanguageUnit_p cuda::Reverse::emit_function_body()
 
         // function signature:
         // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
-        auto code = ngraph::op::create_code_from_template(
+        auto code = nnfusion::op::create_code_from_template(
             R"(
 int input_shape[] = {@input_shape@};
 int reverse_axes[] = {@reverse_axes@};

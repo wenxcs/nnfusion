@@ -7,12 +7,12 @@
 
 #include "profiler.hpp"
 #include "nnfusion/core/graph/graph_util.hpp"
+#include "nnfusion/core/operators/op_define/constant.hpp"
 
 #include <chrono>
 #include <ctime>
 #include <ratio>
 
-using namespace ngraph;
 using namespace nnfusion;
 using namespace nnfusion::profiler;
 using namespace std::chrono;
@@ -66,16 +66,18 @@ bool Profiler::execute_all()
 
 void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
 {
-    auto node = gnode->get_op_ptr();
+    if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_constant())
+    {
+        return;
+    }
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(
-            node->description(), GENERIC_CPU, DT_FLOAT);
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), dev_type, DT_FLOAT);
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     for (auto kernel_reg : kernel_regs)
     {
-        if (kernel_reg->m_tag != "reference")
-            continue;
+        //if (kernel_reg->m_tag != "reference")
+        //    continue;
         auto kernel = kernel_reg->m_factory(ctx);
         if (kernel->get_or_emit_source())
         {
@@ -86,54 +88,8 @@ void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
         }
     }
 
-    LOG(ERROR) << "Invalid reference kenel for " << gnode->get_name() << ".";
-}
-
-void GraphEvaluate::connect_nodes(shared_ptr<GNode> gnode)
-{
-    auto pctx = gctx.get_profiling_context(gnode);
-    for (auto& edge : gnode->get_out_edges())
-    {
-        // Skip control edge
-        if (edge->is_control_edge())
-            continue;
-        auto dstnode = edge->get_dst();
-        auto dstpctx = gctx.get_profiling_context(dstnode);
-        // This statments will remove some allocated memory.
-        pctx->kernel_memory->forward(
-            edge->get_src_output(), dstpctx->kernel_memory, edge->get_dst_input());
-    }
-}
-
-unordered_map<string, ProfilingContext::Pointer> GraphEvaluate::eval()
-{
-    auto ordered_ops = gctx.graph->get_ordered_ops();
-    for (auto& op : ordered_ops)
-        create_profiling_contexts(op);
-    for (auto& op : ordered_ops)
-        connect_nodes(op);
-    for (auto& node : ordered_ops)
-    {
-        auto pctx = gctx.get_profiling_context(node);
-        // Constant
-        if (node->is_constant())
-        {
-            auto const_node = static_pointer_cast<op::Constant>(node->get_op_ptr());
-            pctx->kernel_memory->set_output_from(
-                0, const_node->get_data_ptr(), const_node->get_data_size());
-        }
-        else
-        {
-            rt->execute(
-                pctx, pctx->kernel_memory->unsafe_inputs(), pctx->kernel_memory->unsafe_outputs());
-        }
-    }
-
-    unordered_map<string, ProfilingContext::Pointer> result;
-    for (auto& outnode : gctx.graph->get_outputs())
-        result[outnode->get_unique_name()] = gctx.get_profiling_context(outnode);
-    // The result data ptr is like result["nodename"]->kernel_memory->unsafe_output(0);
-    return move(result);
+    LOG(ERROR) << "Invalid reference kenel for " << gnode->get_name()
+               << " (op type : " << gnode->get_op_type() << ").";
 }
 
 IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(DeviceType dev_t)

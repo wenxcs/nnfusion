@@ -2,7 +2,7 @@
 
 #include "convolution.hpp"
 #include "nnfusion/common/common.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -10,7 +10,7 @@ using namespace nnfusion::kernels;
 cpu::ConvolutionMlas::ConvolutionMlas(shared_ptr<KernelContext> ctx)
     : MlasKernelEmitter(ctx)
 {
-    auto conv = static_pointer_cast<ngraph::op::Convolution>(ctx->node);
+    auto conv = static_pointer_cast<op::Convolution>(ctx->gnode->get_op_ptr());
 
     input_shape = ctx->inputs[0].get_shape();
     filter_shape = ctx->inputs[1].get_shape();
@@ -69,7 +69,7 @@ LanguageUnit_p cpu::ConvolutionMlas::emit_function_body()
     size_t output_height = output_shape[2];
     size_t output_width = output_shape[3];
 
-    auto code = ngraph::op::create_code_from_template(
+    auto code = op::create_code_from_template(
         R"(
 int64_t batch_count = @batch_count@;
 int64_t group_count = 1;

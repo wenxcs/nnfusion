@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "../tensorflow_base.hpp"
-#include "ngraph/op/parameter_vector.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 #include "util.hpp"
@@ -28,23 +27,18 @@ namespace nnfusion
 
                 NamedNodeVector convert_node(const tensorflow::NodeDef& node);
 
-                std::vector<std::shared_ptr<ngraph::Function>> get_funcs();
-
-                std::shared_ptr<nnfusion::graph::Graph> get_graph() { return m_ngraph; }
+                std::shared_ptr<nnfusion::graph::Graph> get_graph() { return m_graph; }
             private:
                 void generate_topology();
 
                 const tensorflow::GraphDef* tf_graph_proto;
 
-                ngraph::op::ParameterVector m_parameters;
-                NodeVector m_outputs;
-                std::vector<std::shared_ptr<nnfusion::graph::GNode>> m_graph_outputs;
-                NodeMap m_ng_node;
+                GNodeVector m_graph_outputs;
+                GNodeVector m_graph_parameters;
 
-                std::shared_ptr<nnfusion::graph::Graph> m_ngraph;
-                std::unordered_map<std::shared_ptr<ngraph::Node>,
-                                   std::shared_ptr<nnfusion::graph::GNode>>
-                    node2gnode_map;
+                NodeMap m_node_map;
+
+                std::shared_ptr<nnfusion::graph::Graph> m_graph;
 
                 // node process topology
                 std::queue<uint32_t> tf_topology_;

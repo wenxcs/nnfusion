@@ -6,8 +6,6 @@
 #include <vector>
 #include "gedge.hpp"
 #include "gnode.hpp"
-#include "ngraph/function.hpp"
-#include "ngraph/op/parameter_vector.hpp"
 
 namespace nnfusion
 {
@@ -22,8 +20,6 @@ namespace nnfusion
 
             Graph(const std::string& name = "");
 
-            Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& name = "");
-
             ~Graph();
 
             static const int kControlSlot = -1;
@@ -37,17 +33,17 @@ namespace nnfusion
             // Returns nullptr and sets *status on error.
             void add_node(std::shared_ptr<GNode> node);
 
-            std::shared_ptr<GNode> add_node(const std::shared_ptr<ngraph::Node> node);
+            std::shared_ptr<GNode> add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
+                                                     const GNodeVector& input_gnodes);
 
             // Removes a node from this graph, including all edges from or to it.
             // *node should not be accessed after calling this function.
             // REQUIRES: node->IsOp()
             void remove_node(std::shared_ptr<GNode> node);
 
-            // Copies node, which may belong to another graph, to a new node,
-            // which is returned.  Does not copy any edges.  *this owns the
-            // returned instance.
-            std::shared_ptr<GNode> copy_node(const std::shared_ptr<GNode> node);
+            void replace_node(std::shared_ptr<GNode> old_node,
+                              std::shared_ptr<GNode> new_node,
+                              bool copy_in_edge = true);
 
             // The number of live nodes in the graph.
             //
@@ -63,9 +59,9 @@ namespace nnfusion
             // not yet been re-used). *this owns the returned instance.
             // REQUIRES: 0 <= id < get_max_node_id().
 
-            std::vector<std::shared_ptr<GNode>> get_nodes();
-            std::vector<std::shared_ptr<GNode>> get_ordered_ops(bool include_control_deps = true);
-            std::vector<std::shared_ptr<GNode>> get_const_nodes();
+            GNodeVector get_nodes();
+            GNodeVector get_ordered_ops(bool include_control_deps = true);
+            GNodeVector get_const_nodes();
 
             std::shared_ptr<GNode> find_node_id(size_t id) const { return m_nodes[id]; }
             // Adds an edge that connects the xth output of `source` to the yth input of
@@ -82,7 +78,6 @@ namespace nnfusion
             // NodeDef.
             // REQUIRES: The edge must exist.
             void remove_edge(const std::shared_ptr<Edge> edge);
-            void remove_control_edge(const std::shared_ptr<Edge> edge);
             // Updates the input to a node.  The existing edge to `dst` is removed and an
             // edge from `new_src` to `dst` is created. The NodeDef associated with `dst`
             // is also updated.
@@ -102,15 +97,15 @@ namespace nnfusion
             // not yet been re-used). *this owns the returned instance.
             // REQUIRES: 0 <= id < get_max_node_id().
             const std::shared_ptr<Edge> find_edge_id(size_t id) const { return m_edges[id]; }
-            std::vector<std::shared_ptr<GNode>> get_outputs();
+            GNodeVector get_outputs();
 
-            void set_outputs(std::vector<std::shared_ptr<GNode>> outputs);
+            void set_outputs(const GNodeVector& outputs);
             void set_default_outputs();
             const size_t get_output_size();
             /// Return the op that generates output i
             const std::shared_ptr<GNode> get_output_op(size_t i);
 
-            std::vector<std::shared_ptr<GNode>> get_parameters();
+            GNodeVector get_parameters();
             void set_default_parameters();
 
             size_t get_temporary_pool_size();
@@ -119,7 +114,7 @@ namespace nnfusion
         private:
             // Map from node ids to allocated nodes.  nodes_[id] may be nullptr if
             // the node with that id was removed from the graph.
-            std::vector<std::shared_ptr<GNode>> m_nodes;
+            GNodeVector m_nodes;
 
             // Number of nodes alive.
             size_t m_node_size = 0;
@@ -132,12 +127,12 @@ namespace nnfusion
             size_t m_edge_size = 0;
 
             // Allocated but free nodes and edges.
-            std::vector<std::shared_ptr<GNode>> m_free_nodes;
+            GNodeVector m_free_nodes;
             std::vector<std::shared_ptr<Edge>> m_free_edges;
 
             // TODO: Output nodes of this graph
-            std::vector<std::shared_ptr<GNode>> m_output_nodes;
-            std::vector<std::shared_ptr<GNode>> m_parameters;
+            GNodeVector m_output_nodes;
+            GNodeVector m_parameters;
             // For generating unique names.
             int name_counter_ = 0;
 

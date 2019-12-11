@@ -11,7 +11,6 @@
 
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
-#include "ngraph/op/pad.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -20,12 +19,14 @@ TEST(nnfusion_engine_profiler, basic_utils)
 {
     // Prepare
     auto node = nnfusion::inventory::create_object<op::Pad>(0);
-    EXPECT_TRUE(node != nullptr);
+    auto gnode = make_shared<GNode>(node);
+
+    EXPECT_TRUE(gnode != nullptr);
 
     // Filter out the kernels meeting the requirement;
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(node->description(), CUDA_GPU, DT_FLOAT);
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     // Gnerate Test data
 

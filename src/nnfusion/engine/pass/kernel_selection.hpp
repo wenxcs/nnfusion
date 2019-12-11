@@ -15,7 +15,7 @@ namespace nnfusion
                  std::shared_ptr<TranslationUnit> tu) override;
 
         pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
-            profiling_best(shared_ptr<ngraph::Node> node,
+            profiling_best(shared_ptr<graph::GNode> gnode,
                            DeviceType devtype,
                            nnfusion::profiler::IProfilingRuntime::Pointer runtime);
     };
@@ -26,8 +26,8 @@ namespace nnfusion
         bool run(std::shared_ptr<InterpreterContext> ctx,
                  std::shared_ptr<TranslationUnit> tu) override;
         pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
-            pick_first(shared_ptr<ngraph::Node> node, DeviceType devtype);
+            pick_first(shared_ptr<graph::GNode> gnode, DeviceType devtype);
         pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
-            pick_first_rocm(shared_ptr<ngraph::Node> node);
+            pick_first_rocm(shared_ptr<graph::GNode> gnode);
     };
 }

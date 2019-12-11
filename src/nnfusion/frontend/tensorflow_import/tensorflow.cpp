@@ -11,31 +11,7 @@ namespace nnfusion
 {
     namespace frontend
     {
-        std::vector<std::shared_ptr<ngraph::Function>> load_tensorflow_model(std::istream& sin)
-        {
-            tensorflow::GraphDef tensorflow_graph;
-            CHECK(tensorflow_graph.ParseFromIstream(&sin))
-                << "failure parsing data from the stream";
-
-            LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
-                      << "]";
-
-            auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
-
-            std::vector<std::shared_ptr<ngraph::Function>> output_functions =
-                graph_convert.get_funcs();
-            return output_functions;
-        }
-
-        std::vector<std::shared_ptr<ngraph::Function>>
-            load_tensorflow_model(const std::string& path)
-        {
-            std::ifstream ifs{path, std::ios::in | std::ios::binary};
-            CHECK(ifs.is_open()) << "failure opening file:" + path;
-            return load_tensorflow_model(ifs);
-        }
-
-        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(std::istream& sin)
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(std::istream& sin)
         {
             tensorflow::GraphDef tensorflow_graph;
             CHECK(tensorflow_graph.ParseFromIstream(&sin))
@@ -50,12 +26,11 @@ namespace nnfusion
             return graph;
         }
 
-        std::shared_ptr<nnfusion::graph::Graph>
-            load_tensorflow_model_as_graph(const std::string& path)
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(const std::string& path)
         {
             std::ifstream ifs{path, std::ios::in | std::ios::binary};
             CHECK(ifs.is_open()) << "failure opening file:" + path;
-            return load_tensorflow_model_as_graph(ifs);
+            return load_tensorflow_model(ifs);
         }
 
         // void register_operator(const std::string& name,

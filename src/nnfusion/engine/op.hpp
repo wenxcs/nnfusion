@@ -18,7 +18,7 @@ namespace nnfusion
             bool isTranslated;
 
         public:
-            shared_ptr<ngraph::Node> node;
+            shared_ptr<graph::GNode> gnode;
             vector<TensorWrapper> args;
             vector<string> arg_names;
             vector<TensorWrapper> out;
@@ -26,7 +26,7 @@ namespace nnfusion
             vector<string> dtypes;
 
             Operator();
-            Operator(shared_ptr<Node> node);
+            Operator(shared_ptr<graph::GNode> gnode);
             ~Operator(){};
         };
 

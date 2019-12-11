@@ -3,9 +3,13 @@
 #include "gradient_weight_mapping_pass.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
+#include "nnfusion/core/operators/op_define/allreduce.hpp"
+#include "nnfusion/core/operators/op_define/constant.hpp"
+#include "nnfusion/core/operators/op_define/result.hpp"
 
 using namespace nnfusion::graph;
+using namespace nnfusion::op;
 using namespace nnfusion::pass::graph;
 
 DEFINE_bool(fadd_allreduce, false, "Add Allreduce operater after ApplyGradient operator.");
@@ -25,7 +29,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
         {
             std::string alias = (*node)["Alias"].as<std::string>();
             std::string expected_const_name = alias.substr(alias.find_first_of('/') + 1);
-            auto gradient_shape = node->get_outputs().at(0)->get_shape();
+            auto gradient_shape = node->get_output_shape(0);
             std::shared_ptr<GNode> weight_node = nullptr;
             for (auto const_node : const_nodes)
             {
@@ -34,7 +38,7 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                                                   ? const_node->get_name()
                                                   : const_node->get_name().substr(0, found_pos);
                 if (const_node_name == expected_const_name &&
-                    const_node->get_outputs().at(0)->get_shape() == gradient_shape)
+                    const_node->get_output_shape(0) == gradient_shape)
                 {
                     weight_node = const_node;
                     break;
@@ -42,12 +46,11 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
             }
             if (weight_node != nullptr)
             {
-                ngraph::op::OpConfig::any myConfig;
+                OpConfig::any myConfig;
                 myConfig["learning_rate"] = 0.001;
 
-                auto p_const =
-                    std::dynamic_pointer_cast<ngraph::op::Constant>(weight_node->get_op_ptr());
-                p_const->is_parameter() = true;
+                auto const_op = std::dynamic_pointer_cast<Constant>(weight_node->get_op_ptr());
+                const_op->is_weight() = true;
 
                 if (allreduce_enable)
                 {
@@ -55,48 +58,36 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
                     //                                |
                     //                                V
                     // Result(node) -AllReduce-> ApplyGradient-> Parameter
-                    auto allreduce_op = std::make_shared<ngraph::op::AllReduce>(node->get_op_ptr());
-                    auto apply_gradient_op = std::make_shared<ngraph::op::GenericOp>(
-                        "apply_gradient_" + expected_const_name,
-                        "ApplyGradient",
-                        std::vector<std::shared_ptr<Node>>(
-                            {weight_node->get_op_ptr(), allreduce_op}),
-                        myConfig);
+                    auto allreduce_op = std::make_shared<AllReduce>();
+                    auto allreduce_gnode = graph->add_node_and_edge(allreduce_op, {node});
+                    auto apply_gradient_op = std::make_shared<GenericOp>(
+                        "apply_gradient_" + expected_const_name, "ApplyGradient", myConfig);
+                    auto apply_gradient_gnode =
+                        graph->add_node_and_edge(apply_gradient_op, {weight_node, allreduce_gnode});
 
-                    auto allreduce_node = graph->add_node(allreduce_op);
-                    auto apply_gradient_node = graph->add_node(apply_gradient_op);
                     // weight -> all reduce
-                    graph->add_edge(weight_node, 0, apply_gradient_node, 0);
-                    graph->add_edge(node, 0, allreduce_node, 0);
-                    graph->add_edge(allreduce_node, 0, apply_gradient_node, 1);
-                    update_node = apply_gradient_node;
+                    update_node = apply_gradient_gnode;
                     is_apply_gradient_op = true;
                 }
                 else
                 {
-                    auto apply_gradient_op = std::make_shared<ngraph::op::GenericOp>(
-                        "apply_gradient_" + expected_const_name,
-                        "ApplyGradient",
-                        std::vector<std::shared_ptr<Node>>(
-                            {weight_node->get_op_ptr(), node->get_op_ptr()}),
-                        myConfig);
+                    auto apply_gradient_op = std::make_shared<GenericOp>(
+                        "apply_gradient_" + expected_const_name, "ApplyGradient", myConfig);
 
-                    auto apply_gradient_node = graph->add_node(apply_gradient_op);
-                    graph->add_edge(weight_node, 0, apply_gradient_node, 0);
-                    graph->add_edge(node, 0, apply_gradient_node, 1);
-                    update_node = apply_gradient_node;
+                    auto apply_gradient_gnode =
+                        graph->add_node_and_edge(apply_gradient_op, {weight_node, node});
+                    update_node = apply_gradient_gnode;
                     is_apply_gradient_op = true;
                 }
             }
         }
 
-        auto result_op = std::make_shared<ngraph::op::Result>(update_node->get_op_ptr());
+        auto result_op = std::make_shared<Result>();
         if (is_apply_gradient_op)
         {
             result_op->set_needs_copy_to_host(false);
         }
-        auto result_node = graph->add_node(result_op);
-        graph->add_edge(update_node, 0, result_node, 0);
+        auto result_node = graph->add_node_and_edge(result_op, {update_node});
         result_nodes.emplace_back(result_node);
     }
     graph->set_outputs(result_nodes);

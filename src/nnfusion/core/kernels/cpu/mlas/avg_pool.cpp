@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "avg_pool.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cpu::AvgPoolMlas::AvgPoolMlas(shared_ptr<KernelContext> ctx)
     : MlasKernelEmitter(ctx)
 {
-    auto avg_pool = static_pointer_cast<ngraph::op::AvgPool>(ctx->node);
+    auto avg_pool = static_pointer_cast<op::AvgPool>(ctx->gnode->get_op_ptr());
 
     input_shape = ctx->inputs[0].get_shape();
     output_shape = ctx->outputs[0].get_shape();
@@ -49,7 +49,7 @@ LanguageUnit_p cpu::AvgPoolMlas::emit_function_body()
     size_t output_height = output_shape[2];
     size_t output_width = output_shape[3];
 
-    auto code = ngraph::op::create_code_from_template(
+    auto code = op::create_code_from_template(
         R"(
 int64_t batch_count = @batch_count@;
 int64_t input_channels = @input_channels@;

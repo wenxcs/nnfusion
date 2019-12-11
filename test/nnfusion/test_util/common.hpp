@@ -9,7 +9,6 @@
 #include "inventory.hpp"
 // #include "library.hpp"
 
-#include "ngraph/node.hpp"
 #include "nnfusion/common/common.hpp"
 
 #define EXPECT_POINTER_TYPE(pointer, type, new_pointer)                                            \
@@ -106,13 +105,13 @@ namespace nnfusion
         template <>
         bool all_close<int>(const std::vector<int>& a, const std::vector<int>& b);
 
-        bool check_kernel(shared_ptr<ngraph::Node> node,
+        bool check_kernel(shared_ptr<GNode> gnode,
                           DeviceType dev_t,
                           const vector<float>& IN,
                           const vector<float>& OUT);
 
         template <typename T = float>
-        bool check_kernel(shared_ptr<ngraph::Node> node,
+        bool check_kernel(shared_ptr<GNode> gnode,
                           DeviceType dev_t,
                           const vector<T>& IN,
                           const vector<T>& OUT)
@@ -120,8 +119,8 @@ namespace nnfusion
             auto rt = get_default_runtime(dev_t);
             std::vector<shared_ptr<const KernelRegistration>> available_kernels =
                 KernelRegistry::Global()->FindKernelRegistrations(
-                    node->description(), dev_t, DT_FLOAT);
-            shared_ptr<KernelContext> ctx(new KernelContext(node));
+                    gnode->get_op_type(), dev_t, DT_FLOAT);
+            shared_ptr<KernelContext> ctx(new KernelContext(gnode));
             bool kernel_found = false;
             for (auto& kernel_reg : available_kernels)
             {

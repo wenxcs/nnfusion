@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto slice_op = static_pointer_cast<ngraph::op::Slice>(ctx->node);
+    auto slice_op = static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());

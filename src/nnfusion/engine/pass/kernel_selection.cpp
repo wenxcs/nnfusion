@@ -5,6 +5,7 @@
 #include <utility>
 
 using namespace nnfusion;
+using namespace nnfusion::graph;
 using namespace nnfusion::profiler;
 
 // Register_Tag(Enable_Kernel_Selection, bool);
@@ -15,16 +16,16 @@ DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
 DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
 
 pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::profiling_best(
-    shared_ptr<ngraph::Node> node, DeviceType devtype, IProfilingRuntime::Pointer runtime)
+    shared_ptr<GNode> gnode, DeviceType devtype, IProfilingRuntime::Pointer runtime)
 {
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(node->description(), devtype, DT_FLOAT);
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
 
     // Skip since only one candidate or constant
-    if (kernel_regs.size() == 1 || node->is_constant())
+    if (kernel_regs.size() == 1 || gnode->is_constant())
         return std::make_pair(devtype, nullptr);
 
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     bool has_valid_kernel = false;
     LOG(INFO) << "Start profiling...";
@@ -84,9 +85,9 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
     {
         for (auto ins : *iterator)
         {
-            auto opname = ins->operatorDef()->get_name();
+            auto opname = ins->getGNode()->get_op_type();
             for (auto& rule : white_list)
-                if (opname.find(rule) < opname.size())
+                if (opname == rule)
                 {
                     (*ins)["Enable_Kernel_Selection"] = true;
                     if (!all_device)
@@ -114,7 +115,7 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
                         (*ins)["Kernel_Selection_Device"].as<DeviceType>() != t)
                         continue;
 
-                    auto ans = profiling_best(ins->operatorDef(), t, get_default_runtime(t));
+                    auto ans = profiling_best(ins->getGNode(), t, get_default_runtime(t));
 
                     if (ans.second != nullptr)
                         res.push_back(ans);
@@ -126,36 +127,36 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
 }
 
 pair<DeviceType, kernels::KernelEmitter::Pointer>
-    DefaultKernelSelector::pick_first(shared_ptr<ngraph::Node> node, DeviceType devtype)
+    DefaultKernelSelector::pick_first(shared_ptr<GNode> gnode, DeviceType devtype)
 {
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(node->description(), devtype, DT_FLOAT);
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     for (auto kernel_reg : kernel_regs)
     {
         auto kernel = kernel_reg->m_factory(ctx);
         // constant kernel emitter will write file to save weights, skip to do it when codegen.
-        if (node->is_constant() || kernel->get_or_emit_source())
+        if (gnode->is_constant() || kernel->get_or_emit_source())
         {
             // if(kernel->get_or_emit_source() != nullptr)
-            //    LOG(WARNING) << "Valid kernel found:" << node->get_name();
+            //    LOG(WARNING) << "Valid kernel found:" << gnode->get_name();
             return std::make_pair(devtype, kernel);
         }
     }
-    LOG(ERROR) << "No valid kernel found:" << node->get_name();
+    LOG(ERROR) << "No valid kernel found:" << gnode->get_name();
     return std::make_pair(devtype, nullptr);
 }
 
 pair<DeviceType, kernels::KernelEmitter::Pointer>
-    DefaultKernelSelector::pick_first_rocm(shared_ptr<ngraph::Node> node)
+    DefaultKernelSelector::pick_first_rocm(shared_ptr<GNode> gnode)
 {
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
     auto kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(node->description(), ROCM_GPU, DT_FLOAT);
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), ROCM_GPU, DT_FLOAT);
     if (!kernel_regs.size())
         kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-            node->description(), CUDA_GPU, DT_FLOAT);
+            gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
     else
     {
         auto priority = [](const std::string& tag) -> int {
@@ -184,12 +185,12 @@ pair<DeviceType, kernels::KernelEmitter::Pointer>
     for (auto kernel_reg : kernel_regs)
     {
         auto kernel = kernel_reg->m_factory(ctx);
-        if (node->is_constant() || kernel->get_or_emit_source())
+        if (gnode->is_constant() || kernel->get_or_emit_source())
         {
             return std::make_pair(ROCM_GPU, kernel);
         }
     }
-    LOG(ERROR) << "No valid kernel found:" << node->get_name();
+    LOG(ERROR) << "No valid kernel found:" << gnode->get_name();
     return std::make_pair(ROCM_GPU, nullptr);
 }
 
@@ -228,12 +229,12 @@ bool DefaultKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
 
                 if (t == ROCM_GPU)
                 {
-                    auto ans = pick_first_rocm(ins->operatorDef());
+                    auto ans = pick_first_rocm(ins->getGNode());
                     res.push_back(ans);
                 }
                 else
                 {
-                    auto ans = pick_first(ins->operatorDef(), t);
+                    auto ans = pick_first(ins->getGNode(), t);
                     res.push_back(ans);
                 }
             }

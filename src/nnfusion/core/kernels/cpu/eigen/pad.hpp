@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
 #include "../cpu_kernel_emitter.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -16,7 +16,7 @@ namespace nnfusion
                 Pad(shared_ptr<KernelContext> ctx)
                     : EigenKernelEmitter(ctx)
                 {
-                    auto pad = static_pointer_cast<ngraph::op::Pad>(ctx->node);
+                    auto pad = static_pointer_cast<nnfusion::op::Pad>(ctx->gnode->get_op_ptr());
                     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
                     padding_below = ngraph::Shape(pad->get_padding_below());
@@ -54,7 +54,7 @@ namespace nnfusion
                             padding.push_back(ss.str());
                         }
 
-                        auto code = ngraph::op::create_code_from_template(
+                        auto code = nnfusion::op::create_code_from_template(
                             R"(
 Eigen::array<Eigen::Index, @Rank@> out_dims({@out_dims@});
 Eigen::array<Eigen::Index, @Rank@> in_dims({@in_dims@});

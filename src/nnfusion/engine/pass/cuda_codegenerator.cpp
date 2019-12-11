@@ -232,17 +232,17 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         std::vector<shared_ptr<KernelEmitter>> block_kernels;
         for (auto ins : *iterator)
         {
-            string op_name = ins->operatorDef()->description();
+            string op_name = ins->getGNode()->get_op_type();
             if (op_name == "Parameter")
             {
                 continue;
             }
 
-            if (ins->operatorDef()->is_constant())
+            if (ins->getGNode()->is_constant())
             {
                 auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-                    ins->operatorDef()->description(), CUDA_GPU, DT_FLOAT);
-                shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+                    ins->getGNode()->get_op_type(), CUDA_GPU, DT_FLOAT);
+                shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                 auto kernel = kernel_reg->m_factory(ctx);
                 kernel->get_or_emit_source();
                 kernels.push_back(kernel);
@@ -277,7 +277,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                         "AnyOP", CUDA_GPU, DT_FLOAT);
                     CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
-                    shared_ptr<KernelContext> ctx(new KernelContext(ins->operatorDef()));
+                    shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                     auto kernel = kernel_reg->m_factory(ctx);
                     kernel->get_or_emit_source();
                     block_kernels.push_back(kernel);
@@ -546,8 +546,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
-                    const string node_name = (kernel->m_context->node)
-                                                 ? kernel->m_context->node->get_friendly_name()
+                    const string node_name = (kernel->m_context->gnode)
+                                                 ? kernel->m_context->gnode->get_name()
                                                  : "internal_node";
                     lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
                                     << "\n";

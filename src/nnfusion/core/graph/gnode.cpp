@@ -1,18 +1,4 @@
-//*****************************************************************************
-// Copyright 2017-2018 Intel Corporation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
+// Microsoft (c) 2019, NNFusion Team
 
 #include <memory>
 #include <sstream>
@@ -25,6 +11,7 @@
 
 using namespace std;
 using namespace nnfusion::graph;
+using namespace nnfusion::op;
 
 atomic<size_t> GNode::m_next_instance_id(0);
 
@@ -35,45 +22,61 @@ GNode::GNode()
 {
 }
 
-GNode::GNode(const std::shared_ptr<ngraph::Node> op_ptr)
+GNode::GNode(const std::shared_ptr<Op> op_ptr, const GNodeVector& input_gnodes, size_t output_size)
     : GNode()
 {
-    initialize(op_ptr);
+    initialize(op_ptr, input_gnodes, output_size);
 }
 
-void GNode::construct_from_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
+void GNode::construct_from_op_ptr(const std::shared_ptr<Op>& op_ptr)
 {
     m_op_ptr = op_ptr;
-    m_op_type = op_ptr->description();
-    m_name = op_ptr->get_friendly_name();
-
-    m_inputs.clear();
-    for (ngraph::descriptor::Input& op_input : op_ptr->get_inputs())
-    {
-        std::shared_ptr<Input> input =
-            std::make_shared<Input>(op_input.get_element_type(), op_input.get_shape());
-        m_inputs.push_back(input);
-    }
-    m_outputs.clear();
-    for (ngraph::descriptor::Output& op_output : op_ptr->get_outputs())
-    {
-        std::shared_ptr<Output> output = std::make_shared<Output>(op_output.get_tensor_ptr());
-        m_outputs.push_back(output);
-    }
+    m_op_type = op_ptr->get_op_type();
+    m_name = op_ptr->get_name();
 }
 
-void GNode::initialize(const std::shared_ptr<ngraph::Node> op_ptr)
+void GNode::initialize(const std::shared_ptr<Op> op_ptr,
+                       const GNodeVector& input_gnodes,
+                       size_t output_size)
 {
     construct_from_op_ptr(op_ptr);
+
     m_in_edges.clear();
     m_out_edges.clear();
+    m_inputs.clear();
+    m_outputs.clear();
+
+    for (size_t i = 0; i < input_gnodes.size(); ++i)
+    {
+        NGRAPH_ASSERT(input_gnodes.at(i)->get_output_size() == 1)
+            << "Argument " << i << input_gnodes.at(i)->get_op_type()
+            << " must produce exactly one value.";
+        m_inputs.emplace_back(
+            std::make_shared<Input>(input_gnodes.at(i)->get_outputs().at(0)->get_element_type(),
+                                    input_gnodes.at(i)->get_outputs().at(0)->get_partial_shape()));
+    }
+
+    set_output_size(output_size);
+}
+
+void GNode::set_output_size(size_t n)
+{
+    CHECK(n >= m_outputs.size()) << "shrinking " << m_outputs.size() << " to " << n;
+    for (size_t i = m_outputs.size(); i < n; ++i)
+    {
+        auto tensor =
+            make_shared<descriptor::Tensor>(element::dynamic,
+                                            PartialShape::dynamic(),
+                                            m_op_ptr->get_unique_name() + "_" + to_string(i));
+        m_outputs.emplace_back(make_shared<Output>(tensor));
+    }
 }
 
 const std::string& GNode::get_name() const
 {
     if (m_name.empty())
     {
-        return m_unique_name;
+        return get_unique_name();
     }
     return m_name;
 }
@@ -85,7 +88,6 @@ const std::string& GNode::get_unique_name() const
 
 void GNode::set_name(const string& name)
 {
-    CHECK(m_name.empty()) << "Node name may be set exactly once";
     m_name = name;
 }
 
@@ -99,44 +101,21 @@ size_t GNode::set_id(size_t id)
     return m_id;
 }
 
-void GNode::reset_op_ptr(const std::shared_ptr<ngraph::Node>& op_ptr)
+bool GNode::has_same_type(std::shared_ptr<const GNode> gnode) const
 {
-    construct_from_op_ptr(op_ptr);
-
-    // TODO: to be removed once gnode input is used and node input deprecated
-    auto edges = this->get_out_edges();
-    for (auto& edge : edges)
+    if (get_output_size() != gnode->get_output_size())
     {
-        CHECK(edge->get_src() == shared_from_this());
-        if (edge->is_control_edge())
-            continue;
-        std::vector<std::shared_ptr<nnfusion::graph::Edge>> ordered_edges;
-        for (auto& edge_2 : edge->get_dst()->get_in_edges())
-        {
-            ordered_edges.push_back(edge_2);
-        }
-        std::sort(ordered_edges.begin(),
-                  ordered_edges.end(),
-                  [](const std::shared_ptr<nnfusion::graph::Edge>& a,
-                     const std::shared_ptr<nnfusion::graph::Edge>& b) {
-                      return (size_t)a->get_dst_input() <
-                             (size_t)b->get_dst_input(); // put -1 to the end
-                  });
-
-        std::deque<descriptor::Input> m_inputs;
-        size_t i = 0;
-        for (auto& argument : ordered_edges)
-        {
-            if (argument->is_control_edge())
-                continue;
-            for (descriptor::Output& output : argument->get_src()->get_op_ptr()->get_outputs())
-            {
-                m_inputs.emplace_back(edge->get_dst()->get_op_ptr().get(), i++, output);
-            }
-        }
-        edge->get_dst()->get_op_ptr()->get_inputs() = std::move(m_inputs);
+        return false;
     }
-    // end TODO
+    for (size_t i = 0; i < get_output_size(); ++i)
+    {
+        if (m_outputs[i]->get_element_type() != gnode->get_outputs().at(i)->get_element_type() ||
+            m_outputs[i]->get_shape() != gnode->get_outputs().at(i)->get_shape())
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_in_edges() const
@@ -178,9 +157,10 @@ const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_out_edges() c
 
 std::vector<std::shared_ptr<nnfusion::graph::Edge>> GNode::get_output_users(size_t i)
 {
-    std::vector<std::shared_ptr<nnfusion::graph::Edge>> output_users;
     CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
                                 << m_outputs.size() << " outputs.";
+    std::vector<std::shared_ptr<nnfusion::graph::Edge>> output_users;
+
     auto edges = this->get_out_edges();
     for (auto edge : edges)
     {
@@ -200,6 +180,78 @@ void GNode::add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
 void GNode::remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
 {
     m_out_edges.erase(edge);
+}
+
+descriptor::Tensor& GNode::get_input_tensor(size_t i) const
+{
+    auto in_edge = get_in_edge(i);
+    return in_edge->get_src()->get_output_tensor(in_edge->get_src_output());
+}
+
+std::shared_ptr<descriptor::Tensor> GNode::get_input_tensor_ptr(size_t i) const
+{
+    auto in_edge = get_in_edge(i);
+    return in_edge->get_src()->get_output_tensor_ptr(in_edge->get_src_output());
+}
+
+descriptor::Tensor& GNode::get_output_tensor(size_t i) const
+{
+    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
+                                << m_outputs.size() << " outputs.";
+
+    return m_outputs.at(i)->get_tensor();
+}
+
+std::shared_ptr<descriptor::Tensor> GNode::get_output_tensor_ptr(size_t i) const
+{
+    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
+                                << m_outputs.size() << " outputs.";
+
+    return m_outputs.at(i)->get_tensor_ptr();
+}
+
+const ngraph::Shape& GNode::get_shape() const
+{
+    CHECK(get_output_size() == 1)
+        << "get_shape() must be called on a node with exactly one output.";
+    return m_outputs.at(0)->get_shape();
+}
+
+const ngraph::element::Type& GNode::get_element_type() const
+{
+    CHECK(get_output_size() == 1)
+        << "get_element_type() must be called on a node with exactly one output.";
+    return m_outputs.at(0)->get_element_type();
+}
+
+const ngraph::element::Type& GNode::get_output_element_type(size_t i) const
+{
+    return m_outputs.at(i)->get_element_type();
+}
+
+const ngraph::Shape& GNode::get_output_shape(size_t i) const
+{
+    return m_outputs.at(i)->get_shape();
+}
+
+const ngraph::PartialShape& GNode::get_output_partial_shape(size_t i) const
+{
+    return m_outputs.at(i)->get_partial_shape();
+}
+
+const ngraph::element::Type& GNode::get_input_element_type(size_t i) const
+{
+    return m_inputs.at(i)->get_element_type();
+}
+
+const ngraph::Shape& GNode::get_input_shape(size_t i) const
+{
+    return m_inputs.at(i)->get_shape();
+}
+
+const ngraph::PartialShape& GNode::get_input_partial_shape(size_t i) const
+{
+    return m_inputs.at(i)->get_partial_shape();
 }
 
 void GNode::Clear()

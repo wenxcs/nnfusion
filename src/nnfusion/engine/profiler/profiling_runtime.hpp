@@ -110,7 +110,7 @@ namespace nnfusion
 
             const KernelMemory& forward(int output_id, KernelMemory::Pointer& km, int input_id)
             {
-                if (output_id >= raw_output.size() || input_id >= km->raw_output.size())
+                if (output_id >= raw_output.size() || input_id >= km->raw_input.size())
                 {
                     LOG(WARNING) << "Invalid forward function.";
                     return *this;
@@ -312,17 +312,22 @@ namespace nnfusion
             void set_profiling_context(shared_ptr<GNode> gnode, ProfilingContext::Pointer kctx)
             {
                 // Need to check unique_name wether it works.
-                if (prof_cache.find(gnode->get_unique_name()) != prof_cache.end())
+                if (prof_cache.find(gnode->get_unique_name()) == prof_cache.end())
+                {
                     prof_cache[gnode->get_unique_name()] = kctx;
+                }
             }
 
             ProfilingContext::Pointer get_profiling_context(shared_ptr<GNode> gnode)
             {
                 if (prof_cache.find(gnode->get_unique_name()) != prof_cache.end())
+                {
                     return prof_cache[gnode->get_unique_name()];
+                }
                 else
                 {
-                    LOG(ERROR) << "No valid Profiling Context for this node.";
+                    LOG(ERROR) << "No valid Profiling Context for this node : " << gnode->get_name()
+                               << " (op type : " << gnode->get_op_type() << ").";
                     return nullptr;
                 }
             }

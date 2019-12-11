@@ -6,7 +6,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 /*********************************
 
@@ -24,12 +24,13 @@ namespace nnfusion
         {
             class Transpose : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 Transpose(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     GENERIC_OP_LOGGING();
                 }
@@ -38,9 +39,7 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
-
-                    generic_op->validate_and_infer_types();
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
 
                     std::vector<int> axes_order = generic_op->localOpConfig.getRoot()["axes_order"];
                     CHECK(axes_order.size() == input_shape_0.size());
@@ -79,7 +78,7 @@ namespace nnfusion
                     // for (int i = 0; i < 4; ++i)
                     //     printf("@@@@ %d, %d, %d\n", input_4d[i], st_in[i], st_out[i]);
 
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
 	int offset = blockIdx.x * blockDim.x + threadIdx.x;
 	int step = gridDim.x + blockDim.x;

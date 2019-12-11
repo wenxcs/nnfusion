@@ -6,15 +6,15 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 /*********************************
 
 REGISTER_OP(OneHot)
     .attr<int>("axis", -1)
     .attr<int>("depth")
-    .attr<ngraph::op::OpConfig::any>("off_value", 1.0f)
-    .attr<ngraph::op::OpConfig::any>("on_value", 0.0f)
+    .attr<nnfusion::op::OpConfig::any>("off_value", 1.0f)
+    .attr<nnfusion::op::OpConfig::any>("on_value", 0.0f)
     ...
 
 *********************************/
@@ -27,18 +27,19 @@ namespace nnfusion
         {
             class OneHot : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t groups;
 
             public:
                 OneHot(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                     , groups(1LU)
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
                     for (int i = 0; i < input_shape_0.size(); ++i)
                         groups *= input_shape_0[i];
                 }
@@ -47,9 +48,8 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
 
-                    generic_op->validate_and_infer_types();
                     auto& cfg = generic_op->localOpConfig.getRoot();
 
                     int axis = cfg["axis"].is_null() ? -1 : (int)cfg["axis"];
@@ -57,7 +57,7 @@ namespace nnfusion
                         axis = input_shape_0.size() - 1;
                     CHECK(axis == input_shape_0.size() - 1);
 
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= @groups@)

@@ -121,8 +121,8 @@ namespace ngraph
 
         /// The class name, must not contain spaces
         std::string description() const { return m_node_type; }
-        const std::string& get_friendly_name() const;
         const std::string& get_name() const;
+        const std::string& get_unique_name() const;
         void set_name(const std::string& name);
         /// Return true if this has the same implementing class as node. This
         /// will be used by the pattern matcher when comparing a pattern
@@ -137,7 +137,7 @@ namespace ngraph
                              const element::Type& element_type,
                              const PartialShape& pshape);
 
-        bool is_parameter() const;
+        virtual bool is_parameter() const;
         virtual bool is_output() const;
         virtual bool is_constant() const;
         virtual bool is_commutative() { return false; }

@@ -26,7 +26,8 @@ namespace nnfusion
                     auto& filter_shape = ctx->inputs[1].get_shape();
                     auto& output_shape = ctx->outputs[0].get_shape();
 
-                    auto conv = static_pointer_cast<ngraph::op::Convolution>(ctx->node);
+                    auto conv =
+                        static_pointer_cast<nnfusion::op::Convolution>(ctx->gnode->get_op_ptr());
                     auto& window_dilation_strides = conv->get_window_dilation_strides();
                     auto& window_movement_strides = conv->get_window_movement_strides();
                     auto& data_dilation_strides = conv->get_data_dilation_strides();

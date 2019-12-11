@@ -6,7 +6,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -16,7 +16,7 @@ namespace nnfusion
         {
             class UnsortedSegmentSum : public CudaLibEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t input_size, output_size;
                 string input0_t, input1_t, output0_t;
                 size_t input_outer_dim_size;
@@ -29,7 +29,8 @@ namespace nnfusion
             public:
                 UnsortedSegmentSum(shared_ptr<KernelContext> ctx)
                     : CudaLibEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     input_size = ctx->inputs[0].get_size();
                     output_size = ctx->outputs[0].get_size();
@@ -55,7 +56,7 @@ namespace nnfusion
                     reset_memory_kernel.reset(new LanguageUnit("declaration::reset_memory"));
                     auto& lu_reset_memory_kernel = *reset_memory_kernel;
 
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
 __global__ void @func_name@(@input0_t@* input0)
 {
@@ -75,7 +76,7 @@ input0[tid] = 0;
                         new LanguageUnit("declaration::unsorted_segment_sum"));
                     auto& lu_unsorted_seg_sum_kernel = *unsorted_segment_sum_kernel;
 
-                    code = ngraph::op::create_code_from_template(
+                    code = nnfusion::op::create_code_from_template(
                         R"(
 __global__ void @func_name@(@input0_t@* input0, @input1_t@* input1, @output0_t@* output0)
 {
@@ -108,7 +109,7 @@ atomicAdd(output0 + output_index, input0[tid]);
                     uint32_t block_size_x = 512;
 
                     size_t output_block_cnt = align_to_block_size(output_size, block_size_x);
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
 @func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1)>>>(output0);
 )",
@@ -118,7 +119,7 @@ atomicAdd(output0 + output_index, input0[tid]);
                     lu << code;
 
                     size_t input_block_cnt = align_to_block_size(input_size, block_size_x);
-                    code = ngraph::op::create_code_from_template(
+                    code = nnfusion::op::create_code_from_template(
                         R"(
 @func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1)>>>(input0, input1, output0);
 )",

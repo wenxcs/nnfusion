@@ -2,7 +2,7 @@ add_subdirectory(models)
 add_subdirectory(files)
 add_subdirectory(util)
 
-add_subdirectory(ngraph)
+#add_subdirectory(ngraph)
 set(SRC main.cpp)
 
 #Todo(wenxh): move this foreach into the subfolder;
@@ -38,11 +38,16 @@ if (NNFUSION_ENABLE)
     file(GLOB nnfusion_inventory_files nnfusion/inventory/*.cpp)
     file(GLOB nnfusion_kernels_files nnfusion/kernels/*.cpp)
     file(GLOB nnfusion_testutil_files nnfusion/testutil/*.cpp)
+    file(GLOB nnfusion_frontend_files nnfusion/frontend/*.cpp)
     list(APPEND SRC ${nnfusion_core_files}
-        ${nnfusion_engine_files}
-        ${nnfusion_inventory_files}
-        ${nnfusion_kernels_files}
-        ${nnfusion_testutil_files})
+        #${nnfusion_engine_files}
+        #${nnfusion_inventory_files}
+        #${nnfusion_kernels_files}
+        ${nnfusion_testutil_files}
+        ${nnfusion_frontend_files}
+        nnfusion/inventory/abs.cpp
+        nnfusion/kernels/batch_test.cpp
+        )
 endif()
 
 set_source_files_properties(includes.cpp PROPERTIES COMPILE_DEFINITIONS
@@ -71,7 +76,7 @@ endif()
 target_link_libraries(unit-test PRIVATE ngraph_test_util)
 target_link_libraries(unit-test PRIVATE ngraph libgtest Threads::Threads)
 target_link_libraries(unit-test PRIVATE ${CMAKE_DL_LIBS})
-target_link_libraries(unit-test PRIVATE op_registration)
+target_link_libraries(unit-test PRIVATE nnfusion_operators)
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
     target_compile_options(unit-test PRIVATE -Wno-undef -Wno-reserved-id-macro)

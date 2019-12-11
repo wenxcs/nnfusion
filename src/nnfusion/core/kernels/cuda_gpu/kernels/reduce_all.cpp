@@ -6,7 +6,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 /*********************************
 
@@ -25,12 +25,13 @@ namespace nnfusion
         {
             class All : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 All(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     GENERIC_OP_LOGGING();
                 }
@@ -39,9 +40,8 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
 
-                    generic_op->validate_and_infer_types();
                     auto& cfg = generic_op->localOpConfig.getRoot();
 
                     int axis = cfg["axis"];
@@ -52,7 +52,7 @@ namespace nnfusion
                     for (int i = 0; i < input_shape_0.size(); ++i)
                         size *= input_shape_0[i];
 
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
         int offset = threadIdx.x;
 		extern __shared__ bool cache[1024];

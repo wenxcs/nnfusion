@@ -50,6 +50,7 @@ namespace ngraph
             virtual std::shared_ptr<Node>
                 copy_with_new_args(const NodeVector& new_args) const override;
 
+            bool is_parameter() const override { return true; }
         protected:
             bool m_cacheable;
             PartialShape m_partial_shape;

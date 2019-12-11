@@ -9,7 +9,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 /*********************************
 >> For Config detail, please reference ../../../ops/op_define/BatchMatMul.cpp
@@ -33,12 +33,13 @@ namespace nnfusion
         {
             class BatchMatMul : public CudaLibEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 BatchMatMul(shared_ptr<KernelContext> ctx)
                     : CudaLibEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     GENERIC_OP_LOGGING();
                 }
@@ -47,11 +48,8 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = generic_op->get_input_shape(0);
-                    const ngraph::Shape& input_shape_1 = generic_op->get_input_shape(1);
-
-                    // Check conditions that pair of inputs must satisfy to run BatchMatMul
-                    generic_op->validate_and_infer_types();
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
+                    const ngraph::Shape& input_shape_1 = m_context->inputs[1].get_shape();
 
                     bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
                     bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
@@ -94,7 +92,7 @@ namespace nnfusion
                     }
 
                     float alpha = 1.0f, beta = 0.0f;
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
                         static const float alpha = @alpha@F, beta = @beta@F;
                         if (!@hCublas@)

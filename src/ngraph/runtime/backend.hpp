@@ -82,8 +82,7 @@ public:
     /// \brief Compiles a Function.
     /// \param func The function to compile
     /// \returns true if compile is successful, false otherwise
-    virtual bool compile(std::shared_ptr<Function> func) = 0;
-
+    virtual bool compile(std::shared_ptr<Function> func) { return false; }
     /// \brief Generate code for a Function.
     /// \param func The function for codegen
     /// \returns true if codegen is successful, false otherwise
@@ -100,7 +99,10 @@ public:
     /// \returns true if iteration is successful, false otherwise
     virtual bool call(std::shared_ptr<Function> func,
                       const std::vector<std::shared_ptr<runtime::Tensor>>& outputs,
-                      const std::vector<std::shared_ptr<runtime::Tensor>>& inputs) = 0;
+                      const std::vector<std::shared_ptr<runtime::Tensor>>& inputs)
+    {
+        return false;
+    }
 
     /// \brief Executes a single iteration of a Function. If func is not compiled the call will
     ///     compile it. Optionally validates the inputs and outputs against the function graph.

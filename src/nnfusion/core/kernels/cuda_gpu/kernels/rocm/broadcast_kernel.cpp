@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DEFINE_bool(frocm_candidate_kernels, true, "Enable some candidate kernels in ROCm.");
 
@@ -29,7 +29,8 @@ namespace nnfusion
                     auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
-                    auto node = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
+                    auto node =
+                        static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
                     auto axes = node->get_broadcast_axes();
 
 #if 0 // for Debug
@@ -110,7 +111,7 @@ namespace nnfusion
                         m_gridDim = dim3(out_size / threads / stride, 1, 1);
                         m_blockDim = dim3(threads, 1, 1);
 
-                        code = ngraph::op::create_code_from_template(
+                        code = nnfusion::op::create_code_from_template(
                             R"(
 		((@vec_type@*)output0)[blockIdx.x * @blockDim_x@ + threadIdx.x] = ((@vec_type@*)input0)[blockIdx.x * @blockDim_x@ + threadIdx.x];
 	)",
@@ -138,7 +139,7 @@ namespace nnfusion
                         m_gridDim = dim3(out_size / threads / 4, 1, 1);
                         m_blockDim = dim3(threads, 1, 1);
 
-                        code = ngraph::op::create_code_from_template(
+                        code = nnfusion::op::create_code_from_template(
                             R"(
 		((float4*)output0)[blockIdx.x * @blockDim_x@ + threadIdx.x] = make_float4(*input0, *input0, *input0, *input0);
 	)",
@@ -173,7 +174,7 @@ namespace nnfusion
 
                         if (blocks2 == 1)
                         {
-                            code = ngraph::op::create_code_from_template(
+                            code = nnfusion::op::create_code_from_template(
                                 R"(
 			((@vec_type@*)output0)[blockIdx.x * @blockDim_x@ + threadIdx.x] = ((@vec_type@*)input0)[threadIdx.x];
 		)",
@@ -181,7 +182,7 @@ namespace nnfusion
                         }
                         else
                         {
-                            code = ngraph::op::create_code_from_template(
+                            code = nnfusion::op::create_code_from_template(
                                 R"(
 			((@vec_type@*)output0)[blockIdx.x * @blockDim_x@ * @blockDim_y@ + blockIdx.y * @blockDim_x@ + threadIdx.x] = ((@vec_type@*)input0)[blockIdx.y * @blockDim_x@ + threadIdx.x];
 		)",
@@ -211,7 +212,7 @@ namespace nnfusion
                         m_gridDim = dim3(blocks, 1, 1);
                         m_blockDim = dim3(threads, 1, 1);
 
-                        code = ngraph::op::create_code_from_template(
+                        code = nnfusion::op::create_code_from_template(
                             R"(
 		((float4*)output0)[blockIdx.x * @blockDim_x@ + threadIdx.x] = make_float4(input0[blockIdx.x], input0[blockIdx.x], input0[blockIdx.x], input0[blockIdx.x]);
 	)",

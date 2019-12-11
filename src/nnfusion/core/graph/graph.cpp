@@ -10,86 +10,6 @@ using namespace nnfusion::graph;
 
 std::atomic<size_t> Graph::m_next_instance_id(0);
 
-// Graph
-void construct_graph_from_io_nodes(Graph* graph,
-                                   const std::vector<std::shared_ptr<ngraph::Node>>& io_nodes,
-                                   bool include_control_deps)
-{
-    // Stack of work to do.
-    struct Work
-    {
-        std::shared_ptr<ngraph::Node> node;
-        bool leave; // Are we entering or leaving node?
-    };
-
-    std::vector<Work> stack(io_nodes.size());
-
-    for (int i = 0; i < io_nodes.size(); ++i)
-    {
-        stack[i] = Work{io_nodes[i], false};
-    }
-
-    std::unordered_set<std::shared_ptr<ngraph::Node>> visited;
-    std::unordered_map<std::shared_ptr<ngraph::Node>, std::shared_ptr<GNode>> node_convert;
-    while (!stack.empty())
-    {
-        Work w = stack.back();
-        stack.pop_back();
-
-        auto node = w.node;
-
-        if (w.leave)
-        {
-            // TODO: add edge
-            int dst_output = 0;
-            for (auto arg : node->get_arguments())
-            {
-                graph->add_edge(node_convert[arg], 0, node_convert[node], dst_output);
-                dst_output++;
-            }
-
-            if (include_control_deps)
-            {
-                for (auto cdep : node->get_control_dependencies())
-                {
-                    graph->add_edge(node_convert[cdep], -1, node_convert[node], -1);
-                }
-            }
-            continue;
-        }
-
-        if (visited.count(node) > 0)
-        {
-            continue;
-        }
-        visited.insert(node);
-        auto gnode = graph->add_node(node);
-        node_convert[node] = gnode;
-        stack.push_back(Work{node, true});
-
-        auto add_work = [&visited, &stack](std::shared_ptr<ngraph::Node> in_node) {
-            if (visited.count(in_node) == 0)
-            {
-                // Note; we must not mark as visited until we actually process it.
-                stack.push_back(Work{in_node, false});
-            }
-        };
-
-        for (auto arg : node->get_arguments())
-        {
-            add_work(arg);
-        }
-
-        if (include_control_deps)
-        {
-            for (auto cdep : node->get_control_dependencies())
-            {
-                add_work(cdep);
-            }
-        }
-    }
-}
-
 Graph::Graph(const std::string& name)
     : m_instance_id(m_next_instance_id.fetch_add(1))
     , m_temporary_pool_size(0)
@@ -97,27 +17,6 @@ Graph::Graph(const std::string& name)
     , m_unique_name("Graph_" + std::to_string(m_instance_id))
 {
     // TODO: need add source to sink control edge??
-}
-
-Graph::Graph(const std::shared_ptr<ngraph::Function>& func, const std::string& name)
-    : m_instance_id(m_next_instance_id.fetch_add(1))
-    , m_temporary_pool_size(0)
-    , m_name(name)
-    , m_unique_name("Graph_" + std::to_string(m_instance_id))
-{
-    std::vector<std::shared_ptr<ngraph::Node>> nodes;
-
-    for (auto r : func->get_results())
-    {
-        nodes.push_back(r);
-    }
-
-    for (auto param : func->get_parameters())
-    {
-        nodes.push_back(param);
-    }
-
-    construct_graph_from_io_nodes(this, nodes, true /*include control dependencies*/);
 }
 
 Graph::~Graph()
@@ -154,30 +53,19 @@ void Graph::add_node(std::shared_ptr<GNode> node)
     ++m_node_size;
 }
 
-std::shared_ptr<GNode> Graph::add_node(const std::shared_ptr<ngraph::Node> node)
+std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
+                                                const GNodeVector& input_gnodes)
 {
-    std::shared_ptr<GNode> graph_node;
-    if (m_free_nodes.empty())
+    auto gnode = std::make_shared<GNode>(op, input_gnodes);
+
+    add_node(gnode);
+
+    for (size_t i = 0; i < input_gnodes.size(); i++)
     {
-        graph_node = std::make_shared<GNode>();
+        add_edge(input_gnodes[i], 0, gnode, i);
     }
-    else
-    {
-        graph_node = m_free_nodes.back();
-        m_free_nodes.pop_back();
-    }
-    graph_node->initialize(node);
-    add_node(graph_node);
-    return graph_node;
-}
-
-std::shared_ptr<GNode> Graph::copy_node(const std::shared_ptr<GNode> node)
-{
-    std::shared_ptr<GNode> copy = add_node(node->get_op_ptr());
-
-    // todo: how about edge???
-
-    return copy;
+    op->revalidate_and_infer_types(gnode->shared_from_this());
+    return gnode;
 }
 
 void Graph::remove_node(std::shared_ptr<GNode> node)
@@ -201,9 +89,45 @@ void Graph::remove_node(std::shared_ptr<GNode> node)
     --m_node_size;
 }
 
-std::vector<std::shared_ptr<GNode>> Graph::get_nodes()
+void Graph::replace_node(std::shared_ptr<GNode> old_node,
+                         std::shared_ptr<GNode> new_node,
+                         bool copy_in_edge)
 {
-    std::vector<std::shared_ptr<GNode>> valid_nodes;
+    add_node(new_node);
+
+    if (copy_in_edge)
+    {
+        for (auto& edge : old_node->get_in_edges())
+        {
+            if (edge->is_control_edge())
+            {
+                add_control_edge(edge->get_src(), new_node);
+            }
+            else
+            {
+                add_edge(edge->get_src(), edge->get_src_output(), new_node, edge->get_dst_input());
+            }
+        }
+    }
+
+    for (auto& edge : old_node->get_out_edges())
+    {
+        if (edge->is_control_edge())
+        {
+            add_control_edge(new_node, edge->get_dst());
+        }
+        else
+        {
+            add_edge(new_node, 0, edge->get_dst(), edge->get_dst_input());
+        }
+    }
+
+    remove_node(old_node);
+}
+
+GNodeVector Graph::get_nodes()
+{
+    GNodeVector valid_nodes;
     for (auto node : m_nodes)
     {
         if (node != nullptr)
@@ -214,16 +138,16 @@ std::vector<std::shared_ptr<GNode>> Graph::get_nodes()
     return valid_nodes;
 }
 
-std::vector<std::shared_ptr<GNode>> Graph::get_ordered_ops(bool include_control_deps)
+GNodeVector Graph::get_ordered_ops(bool include_control_deps)
 {
     // todo: stored ops instead of calculate each time
-    std::vector<std::shared_ptr<GNode>> nodes;
+    GNodeVector nodes;
     ReverseDFS(this,
                get_outputs(),
                nullptr,
                [&](std::shared_ptr<GNode> node) { nodes.push_back(node); },
                NodeComparatorName());
-    std::vector<std::shared_ptr<GNode>> update_nodes;
+    GNodeVector update_nodes;
     for (auto node : nodes)
     {
         if (node->get_op_type() == "Constant")
@@ -241,9 +165,9 @@ std::vector<std::shared_ptr<GNode>> Graph::get_ordered_ops(bool include_control_
     return update_nodes;
 }
 
-std::vector<std::shared_ptr<GNode>> Graph::get_const_nodes()
+GNodeVector Graph::get_const_nodes()
 {
-    std::vector<std::shared_ptr<GNode>> const_nodes;
+    GNodeVector const_nodes;
     for (auto node : get_nodes())
     {
         if (node->get_op_type() == "Constant")
@@ -335,6 +259,10 @@ void Graph::remove_edge(std::shared_ptr<Edge> edge)
 {
     //TF_DCHECK_OK(IsValidNode(e->src_)) << e->src_->DebugString();
     //TF_DCHECK_OK(IsValidNode(e->dst_)) << e->dst_->DebugString();
+    if (edge->is_control_edge())
+    {
+        // todo remove ^src from dst's node_def's input
+    }
     edge->get_src()->remove_out_edge(edge);
     edge->get_dst()->remove_in_edge(edge);
     CHECK(edge == m_edges[edge->m_id]);
@@ -351,12 +279,6 @@ void Graph::remove_edge(std::shared_ptr<Edge> edge)
     --m_edge_size;
 }
 
-void Graph::remove_control_edge(std::shared_ptr<Edge> edge)
-{
-    // todo remove ^src from dst's node_def's input
-    remove_edge(edge);
-}
-
 void Graph::set_default_outputs()
 {
     m_output_nodes.clear();
@@ -368,12 +290,12 @@ void Graph::set_default_outputs()
         }
     }
 }
-void Graph::set_outputs(std::vector<std::shared_ptr<GNode>> outputs)
+void Graph::set_outputs(const GNodeVector& outputs)
 {
     m_output_nodes = outputs;
 }
 
-std::vector<std::shared_ptr<GNode>> Graph::get_outputs()
+GNodeVector Graph::get_outputs()
 {
     return m_output_nodes;
 }
@@ -400,7 +322,7 @@ void Graph::set_default_parameters()
     }
 }
 
-std::vector<std::shared_ptr<GNode>> Graph::get_parameters()
+GNodeVector Graph::get_parameters()
 {
     if (m_parameters.empty())
     {

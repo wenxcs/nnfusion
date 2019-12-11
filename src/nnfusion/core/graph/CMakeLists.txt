@@ -5,6 +5,8 @@ set(SRC
     gnode.cpp
     gedge.cpp
     graph_util.cpp
+    util/autobroadcast.cpp
+    util/numpy_transpose.cpp
 )
 
 add_library(nnfusion_graph STATIC ${SRC})

@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "range.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::Range::Range(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto range = static_pointer_cast<ngraph::op::GenericOp>(ctx->node);
+    auto range = static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
     start = range->localOpConfig.getRoot()["start"];

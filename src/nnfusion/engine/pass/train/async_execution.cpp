@@ -36,9 +36,9 @@ bool TrainningAsyncExecution::run(std::shared_ptr<InterpreterContext> ctx,
             //     It will wait for Host Data ready signal.
             //     It will trigger Reduced signal.
             // For other memcpy operators, no stream assigned.
-            auto node = ins->operatorDef();
+            auto gnode = ins->getGNode();
 
-            if (node->description() != "ApplyGradient" && node->description() != "AllReduce")
+            if (gnode->get_op_type() != "ApplyGradient" && gnode->get_op_type() != "AllReduce")
                 continue;
 
             auto& emitted_kernels = (*ins)["Kernel_Selection_Result"]
@@ -62,12 +62,12 @@ bool TrainningAsyncExecution::run(std::shared_ptr<InterpreterContext> ctx,
             auto kernel_context = kernel->m_context;
             auto& async_info = kernel_context->async_info;
 
-            if (node->description() == "AllReduce")
+            if (gnode->get_op_type() == "AllReduce")
             {
                 async_info.execution_stream.number = 1;
                 async_info.execution_stream.name = kernel_context->output_names[0] + "_stream";
             }
-            else if (node->description() == "ApplyGradient")
+            else if (gnode->get_op_type() == "ApplyGradient")
             {
                 async_info.execution_stream.number = 2;
                 async_info.execution_stream.name = kernel_context->input_names[1] + "_stream";

@@ -8,7 +8,7 @@ using namespace nnfusion::kernels;
 cuda::Dot::Dot(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    auto dot_op = static_pointer_cast<ngraph::op::Dot>(ctx->node);
+    auto dot_op = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
     arg0_shape = ngraph::Shape(ctx->inputs[0].get_shape());
@@ -26,7 +26,7 @@ cuda::Dot::Dot(shared_ptr<KernelContext> ctx)
 LanguageUnit_p cuda::Dot::emit_function_body()
 {
     auto& ctx = m_context;
-    auto gemm = static_pointer_cast<ngraph::op::Dot>(ctx->node);
+    auto gemm = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
     auto trans_A = gemm->get_transpose_A();
     auto trans_B = gemm->get_transpose_B();
 
@@ -65,7 +65,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
 
                     CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
             }
@@ -143,7 +143,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
 
                     CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
             }
@@ -159,7 +159,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<ngraph::Shape> shape_vec{arg0_shape, out_shape};
 
                     CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
             }
@@ -175,7 +175,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<ngraph::Shape> shape_vec{arg1_shape, out_shape};
 
                     CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
-                                 << " respectively, at Node " << m_context->node->get_name()
+                                 << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
             }

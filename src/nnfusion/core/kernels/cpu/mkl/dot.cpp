@@ -8,7 +8,7 @@ using namespace nnfusion::kernels;
 cpu::DotMkl::DotMkl(shared_ptr<KernelContext> ctx)
     : MklKernelEmitter(ctx)
 {
-    auto dot_op = static_pointer_cast<ngraph::op::Dot>(ctx->node);
+    auto dot_op = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
     arg0_shape = ngraph::Shape(ctx->inputs[0].get_shape());

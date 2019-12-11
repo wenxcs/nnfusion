@@ -9,7 +9,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
     CHECK(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
-    reshape = static_pointer_cast<ngraph::op::Reshape>(ctx->node);
+    reshape = static_pointer_cast<nnfusion::op::Reshape>(ctx->gnode->get_op_ptr());
     is_memcpy = false;
     is_noop = false;
     //Noop
@@ -439,7 +439,7 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
     CHECK(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
-    reshape = static_pointer_cast<ngraph::op::Reshape>(ctx->node);
+    reshape = static_pointer_cast<nnfusion::op::Reshape>(ctx->gnode->get_op_ptr());
     is_memcpy = false;
     is_noop = false;
     //Noop

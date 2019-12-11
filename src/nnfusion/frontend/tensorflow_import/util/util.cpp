@@ -54,12 +54,12 @@ namespace nnfusion
                 return true;
             }
 
-            std::shared_ptr<ngraph::Node> GetInputNode(const NodeMap& all_ng_nodes,
-                                                       const tensorflow::NodeDef& node,
-                                                       size_t input_idx)
+            std::shared_ptr<GNode> GetInputNode(const NodeMap& all_ng_nodes,
+                                                const tensorflow::NodeDef& node,
+                                                size_t input_idx)
             {
                 TensorId input_tensor(ParseTensorName(node.input(input_idx)));
-                std::shared_ptr<ngraph::Node> result = nullptr;
+                std::shared_ptr<GNode> result = nullptr;
                 try
                 {
                     result = all_ng_nodes.at(input_tensor.first).at(input_tensor.second);
@@ -71,15 +71,25 @@ namespace nnfusion
                 return result;
             }
 
-            std::vector<std::shared_ptr<ngraph::Node>>
-                GetAllInputNode(const NodeMap& all_ng_nodes, const tensorflow::NodeDef& node)
+            GNodeVector GetAllInputNode(const NodeMap& all_ng_nodes,
+                                        const tensorflow::NodeDef& node)
             {
-                std::vector<std::shared_ptr<ngraph::Node>> nodes;
+                GNodeVector nodes;
                 for (size_t i = 0; i < node.input_size(); i++)
                 {
                     nodes.push_back(GetInputNode(all_ng_nodes, node, i));
                 }
                 return nodes;
+            }
+
+            size_t GetNumElements(const ngraph::Shape& shape, const ngraph::AxisSet& reduction_axes)
+            {
+                size_t N = 1;
+                for (auto a : reduction_axes)
+                {
+                    N *= shape[a];
+                }
+                return N;
             }
 
             TensorId ParseTensorName(const std::string& name)

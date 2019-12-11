@@ -3,7 +3,7 @@
 #pragma once
 
 #include "graph_pass_base.hpp"
-#include "ngraph/op/constant.hpp"
+#include "nnfusion/core/operators/op_define/constant.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::graph;
@@ -51,7 +51,7 @@ namespace nnfusion
                                 for (auto& in_edge : dst->get_in_edges())
                                 {
                                     CHECK(in_edge->get_dst() == dst);
-                                    auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
+                                    auto p_const = std::dynamic_pointer_cast<op::Constant>(
                                         in_edge->get_src()->get_op_ptr());
                                     if (!in_edge->get_src()->is_constant() ||
                                         p_const->is_parameter())
@@ -68,7 +68,6 @@ namespace nnfusion
 
                     for (auto& it : down_streams)
                     {
-                        auto eval_node = it->get_op_ptr();
                         LOG(INFO) << ">> Found constant downstream node: " << it->get_name()
                                   << ", Op Type = " << it->get_op_type();
 
@@ -91,8 +90,8 @@ namespace nnfusion
                             CHECK(const_node->is_constant());
                             upstream_nodes.insert(const_node);
 
-                            auto p_const = std::dynamic_pointer_cast<ngraph::op::Constant>(
-                                const_node->get_op_ptr());
+                            auto p_const =
+                                std::dynamic_pointer_cast<op::Constant>(const_node->get_op_ptr());
                             CHECK(p_const != nullptr);
                             const void* ptr = p_const->get_data_ptr();
                             size_t length = p_const->get_data_size();
@@ -139,7 +138,7 @@ namespace nnfusion
                         }
 
                         // Runtime node output inference
-                        shared_ptr<KernelContext> ctx(new KernelContext(eval_node));
+                        shared_ptr<KernelContext> ctx(new KernelContext(it));
                         for (auto& kernel_reg : kernel_regs)
                         {
                             auto kernel = kernel_reg->m_factory(ctx);
@@ -184,33 +183,31 @@ namespace nnfusion
                         CHECK(raw_outputs.size() == it->get_output_size());
                         for (int i = 0; i < it->get_output_size(); ++i)
                         {
-                            auto& shape = it->get_outputs().at(i)->get_shape();
-                            auto& dtype = it->get_outputs().at(i)->get_element_type();
+                            auto& shape = it->get_output_shape(i);
+                            auto& dtype = it->get_output_element_type(i);
                             size_t memory = dtype.size();
                             for (auto& it : shape)
                                 memory *= it;
                             CHECK(memory == raw_outputs[i].size());
 
-                            auto new_constant = std::make_shared<ngraph::op::Constant>(
-                                dtype, shape, raw_outputs[i].data());
-                            // new_constant->set_name("Constant_" + it->get_name()); // not working?
+                            // 1. create new constant node
+                            std::shared_ptr<op::Constant> new_constant_op;
+                            new_constant_op =
+                                std::make_shared<op::Constant>(dtype, shape, raw_outputs[i].data());
+                            //new_constant_op->set_name("Constant_" + it->get_name()); // not working?
+                            auto new_constant_gnode = std::make_shared<nnfusion::graph::GNode>(
+                                new_constant_op, GNodeVector());
 
-                            // 1. remove upstream edges
-                            auto upstream_edges = it->get_in_edges();
-                            for (auto& edge : upstream_edges)
-                            {
-                                if (edge->is_control_edge())
-                                    continue;
-                                graph->remove_edge(edge);
-                            }
+                            graph->replace_node(it, new_constant_gnode, false);
 
-                            // 2. remove upstream nodes with 0 out-degree
+                            // remove upstream nodes with 0 out-degree
                             for (auto& node : upstream_nodes)
+                            {
                                 if (node->get_out_edges().size() == 0)
+                                {
                                     graph->remove_node(node);
-
-                            // 3. replace node in place
-                            it->reset_op_ptr(new_constant);
+                                }
+                            }
 
                             ++folding_cnt;
                             LOG(INFO) << "  Finish folding " << folding_cnt

@@ -15,7 +15,7 @@ namespace nnfusion
                 Concat(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "cuda_sp")
                 {
-                    op = static_pointer_cast<ngraph::op::Concat>(ctx->node);
+                    op = static_pointer_cast<nnfusion::op::Concat>(ctx->gnode->get_op_ptr());
                     CHECK_NOT_NULLPTR(op) << "Node type is not Concat.";
 
                     this->axis = op->get_concatenation_axis();
@@ -215,7 +215,7 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                shared_ptr<ngraph::op::Concat> op;
+                shared_ptr<nnfusion::op::Concat> op;
 
                 size_t input_num, split_input_size, residue, concat_axis, split_input_stride_offset;
                 std::vector<uint32_t> inputs_strides, split_nthreads, split_output_strides,

@@ -19,12 +19,12 @@ namespace nnfusion
         public:
             using Pointer = shared_ptr<KernelContext>;
 
-            KernelContext(shared_ptr<ngraph::Node> node);
+            KernelContext(shared_ptr<graph::GNode> gnode);
 
             KernelContext(){};
 
             // The node this OpKernel corresponds to
-            shared_ptr<ngraph::Node> node;
+            shared_ptr<graph::GNode> gnode;
 
             // The input tensor descriptions
             vector<nnfusion::TensorWrapper> inputs;

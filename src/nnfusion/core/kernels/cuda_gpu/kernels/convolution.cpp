@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::ConvolutionCudnn::ConvolutionCudnn(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    auto conv = static_pointer_cast<ngraph::op::Convolution>(ctx->node);
+    auto conv = static_pointer_cast<nnfusion::op::Convolution>(ctx->gnode->get_op_ptr());
 
     input_shape = ctx->inputs[0].get_shape();
     filter_shape = ctx->inputs[1].get_shape();

@@ -2105,7 +2105,7 @@ namespace nnfusion
                 AbsRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Abs>(ctx->node);
+                    op = static_pointer_cast<op::Abs>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2143,7 +2143,7 @@ namespace nnfusion
                 AcosRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Acos>(ctx->node);
+                    op = static_pointer_cast<op::Acos>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2181,9 +2181,9 @@ namespace nnfusion
                 AddRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Add>(ctx->node);
+                    op = static_pointer_cast<op::Add>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
-                    tag << op->get_name();
+                    tag << ctx->gnode->get_name();
                     custom_tag = tag.str();
                 }
 
@@ -2219,7 +2219,7 @@ namespace nnfusion
                 AllReduceRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::AllReduce>(ctx->node);
+                    op = static_pointer_cast<op::AllReduce>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2258,7 +2258,7 @@ namespace nnfusion
                 AsinRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Asin>(ctx->node);
+                    op = static_pointer_cast<op::Asin>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2296,7 +2296,7 @@ namespace nnfusion
                 AtanRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Atan>(ctx->node);
+                    op = static_pointer_cast<op::Atan>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2334,7 +2334,7 @@ namespace nnfusion
                 BroadcastRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Broadcast>(ctx->node);
+                    op = static_pointer_cast<op::Broadcast>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2374,7 +2374,7 @@ namespace nnfusion
                 CeilingRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Ceiling>(ctx->node);
+                    op = static_pointer_cast<op::Ceiling>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2412,7 +2412,7 @@ namespace nnfusion
                 ConcatRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Concat>(ctx->node);
+                    op = static_pointer_cast<op::Concat>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2460,7 +2460,7 @@ namespace nnfusion
                 ConstantRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Constant>(ctx->node); std::stringstream tag; tag << op->get_name(); custom_tag = tag.str();
+                    op = static_pointer_cast<op::Constant>(ctx->gnode->get_op_ptr()); std::stringstream tag; tag << op->get_name(); custom_tag = tag.str();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -2496,7 +2496,7 @@ namespace nnfusion
                 ConvertRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Convert>(ctx->node);
+                    op = static_pointer_cast<op::Convert>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2506,7 +2506,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     auto in_type = m_context->inputs[0].get_type();
-                    auto out_type = op->get_element_type();
+                    auto out_type = m_context->outputs[0].get_element_type();
                     lu << "cpu_reference_convert<" << in_type << ", " << out_type
                        << ">(input0, output0," << m_context->outputs[0].get_size() << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
@@ -2536,7 +2536,7 @@ namespace nnfusion
                 ConvolutionRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Convolution>(ctx->node);
+                    op = static_pointer_cast<op::Convolution>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2581,7 +2581,7 @@ namespace nnfusion
                 CosRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Cos>(ctx->node);
+                    op = static_pointer_cast<op::Cos>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2619,7 +2619,7 @@ namespace nnfusion
                 CoshRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Cosh>(ctx->node);
+                    op = static_pointer_cast<op::Cosh>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2657,7 +2657,7 @@ namespace nnfusion
                 DivideRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Divide>(ctx->node);
+                    op = static_pointer_cast<op::Divide>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2695,7 +2695,7 @@ namespace nnfusion
                 EqualRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Equal>(ctx->node);
+                    op = static_pointer_cast<op::Equal>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2733,7 +2733,7 @@ namespace nnfusion
                 ExpRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Exp>(ctx->node);
+                    op = static_pointer_cast<op::Exp>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2771,7 +2771,7 @@ namespace nnfusion
                 FloorRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Floor>(ctx->node);
+                    op = static_pointer_cast<op::Floor>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2809,7 +2809,7 @@ namespace nnfusion
                 GreaterRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Greater>(ctx->node);
+                    op = static_pointer_cast<op::Greater>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2847,7 +2847,7 @@ namespace nnfusion
                 LessRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Less>(ctx->node);
+                    op = static_pointer_cast<op::Less>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2885,7 +2885,7 @@ namespace nnfusion
                 LogRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Log>(ctx->node);
+                    op = static_pointer_cast<op::Log>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2923,7 +2923,7 @@ namespace nnfusion
                 LRNRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::LRN>(ctx->node);
+                    op = static_pointer_cast<op::LRN>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -2963,7 +2963,7 @@ namespace nnfusion
                 MaxRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Max>(ctx->node);
+                    op = static_pointer_cast<op::Max>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3003,7 +3003,7 @@ namespace nnfusion
                 MaximumRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Maximum>(ctx->node);
+                    op = static_pointer_cast<op::Maximum>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3041,7 +3041,7 @@ namespace nnfusion
                 MinRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Min>(ctx->node);
+                    op = static_pointer_cast<op::Min>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3081,7 +3081,7 @@ namespace nnfusion
                 MinimumRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Minimum>(ctx->node);
+                    op = static_pointer_cast<op::Minimum>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3119,7 +3119,7 @@ namespace nnfusion
                 MultiplyRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Multiply>(ctx->node);
+                    op = static_pointer_cast<op::Multiply>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3157,7 +3157,7 @@ namespace nnfusion
                 PowerRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Power>(ctx->node);
+                    op = static_pointer_cast<op::Power>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3195,7 +3195,7 @@ namespace nnfusion
                 ProductRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Product>(ctx->node);
+                    op = static_pointer_cast<op::Product>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3235,7 +3235,7 @@ namespace nnfusion
                 ReluRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Relu>(ctx->node);
+                    op = static_pointer_cast<op::Relu>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3273,7 +3273,7 @@ namespace nnfusion
                 SelectRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Select>(ctx->node);
+                    op = static_pointer_cast<op::Select>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3312,7 +3312,7 @@ namespace nnfusion
                 SigmoidRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Sigmoid>(ctx->node);
+                    op = static_pointer_cast<op::Sigmoid>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3350,7 +3350,7 @@ namespace nnfusion
                 SignRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Sign>(ctx->node);
+                    op = static_pointer_cast<op::Sign>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3388,7 +3388,7 @@ namespace nnfusion
                 SinRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Sin>(ctx->node);
+                    op = static_pointer_cast<op::Sin>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3426,7 +3426,7 @@ namespace nnfusion
                 SinhRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Sinh>(ctx->node);
+                    op = static_pointer_cast<op::Sinh>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3464,7 +3464,7 @@ namespace nnfusion
                 SliceRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Slice>(ctx->node);
+                    op = static_pointer_cast<op::Slice>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3505,7 +3505,7 @@ namespace nnfusion
                 SoftmaxRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Softmax>(ctx->node);
+                    op = static_pointer_cast<op::Softmax>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3549,7 +3549,7 @@ namespace nnfusion
                 SqrtRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Sqrt>(ctx->node);
+                    op = static_pointer_cast<op::Sqrt>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3587,7 +3587,7 @@ namespace nnfusion
                 SubtractRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Subtract>(ctx->node);
+                    op = static_pointer_cast<op::Subtract>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3625,7 +3625,7 @@ namespace nnfusion
                 SumRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Sum>(ctx->node);
+                    op = static_pointer_cast<op::Sum>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3665,7 +3665,7 @@ namespace nnfusion
                 TanRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Tan>(ctx->node);
+                    op = static_pointer_cast<op::Tan>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3703,7 +3703,7 @@ namespace nnfusion
                 TanhRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Tanh>(ctx->node);
+                    op = static_pointer_cast<op::Tanh>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3741,7 +3741,7 @@ namespace nnfusion
                 BatchNormRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::BatchNormInference>(ctx->node);
+                    op = static_pointer_cast<op::BatchNormInference>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3780,7 +3780,7 @@ namespace nnfusion
                 AvgPoolRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::AvgPool>(ctx->node);
+                    op = static_pointer_cast<op::AvgPool>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3824,7 +3824,7 @@ namespace nnfusion
                 DotRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Dot>(ctx->node);
+                    op = static_pointer_cast<op::Dot>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3865,7 +3865,7 @@ namespace nnfusion
                 MaxPoolRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::MaxPool>(ctx->node);
+                    op = static_pointer_cast<op::MaxPool>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3908,7 +3908,7 @@ namespace nnfusion
                 PadRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Pad>(ctx->node);
+                    op = static_pointer_cast<op::Pad>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3950,7 +3950,7 @@ namespace nnfusion
                 ReshapeRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Reshape>(ctx->node);
+                    op = static_pointer_cast<op::Reshape>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -3990,7 +3990,7 @@ namespace nnfusion
                 ResultRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Result>(ctx->node);
+                    op = static_pointer_cast<op::Result>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -4000,7 +4000,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_result<float>(input0, output0,"
-                       << shape_size(op->get_shape()) << ");";
+                       << shape_size(m_context->outputs[0].get_shape()) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -4028,7 +4028,7 @@ namespace nnfusion
                 LessEqRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::LessEq>(ctx->node);
+                    op = static_pointer_cast<op::LessEq>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();
@@ -4066,7 +4066,7 @@ namespace nnfusion
                 ReverseRef(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "reference")
                 {
-                    op = static_pointer_cast<op::Reverse>(ctx->node);
+                    op = static_pointer_cast<op::Reverse>(ctx->gnode->get_op_ptr());
                     std::stringstream tag;
                     tag << op->get_name();
                     custom_tag = tag.str();

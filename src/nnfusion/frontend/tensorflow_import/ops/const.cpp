@@ -1,18 +1,4 @@
-//*****************************************************************************
-// Copyright 2017-2018 Intel Corporation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
+// Microsoft (c) 2019, NNFusion Team
 
 #include "const.hpp"
 #include "stdint.h"
@@ -141,7 +127,7 @@ namespace nnfusion
             template <typename T, typename VecT = T>
             static bool MakeConstOp(const tensorflow::NodeDef& op,
                                     ngraph::element::Type et,
-                                    std::shared_ptr<ngraph::Node>* ng_node)
+                                    std::shared_ptr<nnfusion::op::Op>* ng_node)
             {
                 std::vector<VecT> const_values;
                 tensorflow::TensorShapeProto shape_proto;
@@ -153,7 +139,7 @@ namespace nnfusion
                 ret = TFTensorShapeToNGraphShape(shape_proto, &ng_shape);
                 CHECK(ret);
 
-                *ng_node = std::make_shared<ngraph::op::Constant>(et, ng_shape, const_values);
+                *ng_node = std::make_shared<nnfusion::op::Constant>(et, ng_shape, const_values);
 
                 return true;
             }
@@ -161,15 +147,16 @@ namespace nnfusion
             const std::map<tensorflow::DataType,
                            std::pair<std::function<bool(const tensorflow::NodeDef&,
                                                         ngraph::element::Type,
-                                                        std::shared_ptr<ngraph::Node>*)>,
+                                                        std::shared_ptr<nnfusion::op::Op>*)>,
                                      const ngraph::element::Type>>&
                 TF_NGRAPH_CONST_MAP()
             {
-                static const std::map<tensorflow::DataType,
-                                      std::pair<std::function<bool(const tensorflow::NodeDef&,
-                                                                   ngraph::element::Type,
-                                                                   std::shared_ptr<ngraph::Node>*)>,
-                                                const ngraph::element::Type>>
+                static const std::map<
+                    tensorflow::DataType,
+                    std::pair<std::function<bool(const tensorflow::NodeDef&,
+                                                 ngraph::element::Type,
+                                                 std::shared_ptr<nnfusion::op::Op>*)>,
+                              const ngraph::element::Type>>
                     the_map = {
                         {tensorflow::DataType::DT_FLOAT,
                          std::make_pair(MakeConstOp<float>, ngraph::element::f32)},
@@ -205,30 +192,31 @@ namespace nnfusion
             }
 
             NamedNodeVector TranslateConstOp(const tensorflow::NodeDef& node,
-                                             const NodeMap&,
-                                             ngraph::op::ParameterVector& parameters)
+                                             const NodeMap& all_ng_nodes,
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 tensorflow::DataType dtype;
-                auto ret = GetNodeAttr(node.attr(), "dtype", dtype);
-                CHECK(ret == true);
+                auto result = GetNodeAttr(node.attr(), "dtype", dtype);
+                CHECK(result == true);
 
-                std::shared_ptr<ngraph::Node> ng_node;
+                std::shared_ptr<nnfusion::op::Op> ng_node;
 
                 try
                 {
                     const auto& func_param = TF_NGRAPH_CONST_MAP().at(dtype);
-                    auto ret = func_param.first(node, func_param.second, &ng_node);
-                    CHECK(ret);
+                    result = func_param.first(node, func_param.second, &ng_node);
+                    CHECK(result);
                 }
                 catch (const std::out_of_range&)
                 {
                     CHECK_FAIL_WITH_EXCEPTION(errors::NotSupported)
                         << "Unsupported TensorFlow data type: " << tensorflow::DataType_Name(dtype);
                 }
-
                 ng_node->set_name(node.name());
-                NamedNodeVector ret_nodes{{node.name(), ng_node}};
-                return ret_nodes;
+                auto gnode = m_graph->add_node_and_edge(ng_node, {});
+                NamedNodeVector ret{{node.name(), gnode}};
+
+                return ret;
             }
         } // namespace tensorflow_import
 

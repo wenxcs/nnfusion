@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DECLARE_bool(frocm_candidate_kernels);
 
@@ -29,7 +29,8 @@ namespace nnfusion
                     auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
-                    auto node = static_pointer_cast<ngraph::op::Broadcast>(ctx->node);
+                    auto node =
+                        static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
                     auto axes = node->get_broadcast_axes();
 
                     size_t in_size = 1;
@@ -69,7 +70,7 @@ namespace nnfusion
                     CHECK(m_context->dtypes[0] == "float");
                     CHECK(m_context->dtypes[1] == "float");
 
-                    std::string code = ngraph::op::create_code_from_template(
+                    std::string code = nnfusion::op::create_code_from_template(
                         R"(
     float alpha = 1.0f, beta = 0.0f;
     miopenTensorDescriptor_t in_desc, out_desc;
@@ -97,7 +98,7 @@ namespace nnfusion
                         size_t num_eles = 1;
                         for (auto& it : input_format)
                             num_eles *= it;
-                        code = ngraph::op::create_code_from_template(
+                        code = nnfusion::op::create_code_from_template(
                             R"(
 	CUDA_SAFE_CALL(hipMemcpyDtoD(output0, input0, @num_eles@LU));
 )",

@@ -2,7 +2,7 @@
 
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DEFINE_bool(frocm_fixed_kernels, true, "Enable Fixed kernel in ROCm codegen.");
 
@@ -14,12 +14,13 @@ namespace nnfusion
         {
             class BatchGemmFixed : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 BatchGemmFixed(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     GENERIC_OP_LOGGING();
                 }
@@ -33,9 +34,6 @@ namespace nnfusion
                     GENERIC_OP_LOGGING();
                     auto& ctx = m_context;
 
-                    // Check conditions that pair of inputs must satisfy to run BatchMatMul
-                    generic_op->validate_and_infer_types();
-
                     bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
                     bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
 
@@ -45,8 +43,8 @@ namespace nnfusion
                     if (ctx->outputs[0].get_element_type().c_type_string() != "float")
                         return nullptr;
 
-                    ngraph::Shape input_shape_0 = generic_op->get_input_shape(0);
-                    ngraph::Shape input_shape_1 = generic_op->get_input_shape(1);
+                    ngraph::Shape input_shape_0 = ctx->inputs[0].get_shape();
+                    ngraph::Shape input_shape_1 = ctx->inputs[1].get_shape();
                     if (input_shape_0.size() != input_shape_1.size())
                         return nullptr;
 
