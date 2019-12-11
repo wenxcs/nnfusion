@@ -8,37 +8,36 @@ unordered_map<string, LanguageUnit_p> ir::Function::definition_pool;
 Operator::Operator()
     : m_name("Null")
     , isTranslated(false)
-    , node(nullptr)
+    , gnode(nullptr)
 {
 }
 
-Operator::Operator(shared_ptr<Node> node)
+Operator::Operator(shared_ptr<graph::GNode> gnode)
     : Operator()
 {
     vector<TensorWrapper> in;
     vector<string> node_input_names;
     vector<string> node_output_names;
-    for (const descriptor::Input& input : node->get_inputs())
+    for (size_t i = 0; i < gnode->get_input_size(); i++)
     {
-        const descriptor::Output& output = input.get_output();
-        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+        shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
         in.push_back(TensorWrapper(tv, tv->get_name()));
         node_input_names.emplace_back(tv->get_name());
     }
     vector<TensorWrapper> out;
-    for (const descriptor::Output& output : node->get_outputs())
+    for (size_t i = 0; i < gnode->get_output_size(); i++)
     {
-        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+        shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
         out.push_back(TensorWrapper(tv, tv->get_name()));
         node_output_names.emplace_back(tv->get_name());
     }
 
     // Output debug info of node
-    if (!node->is_parameter() && !node->is_constant())
+    if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_constant())
     {
-        LOG(INFO) << "Node:\t" << node->get_name() << "\t(";
+        LOG(INFO) << "Node:\t" << gnode->get_name() << "\t(";
         vector<string> parameter_nodes = node_input_names;
         parameter_nodes.insert(
             parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
@@ -56,7 +55,7 @@ Operator::Operator(shared_ptr<Node> node)
         this->dtypes.push_back(ou.get_type());
     }
 
-    this->node = node;
+    this->gnode = gnode;
     this->args = in;
     this->arg_names = node_input_names;
     this->out = out;

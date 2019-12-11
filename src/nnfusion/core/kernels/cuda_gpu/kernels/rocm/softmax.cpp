@@ -2,7 +2,7 @@
 
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -26,7 +26,8 @@ namespace nnfusion
                     bool valid_inputs = true;
 
                     auto& ctx = m_context;
-                    auto node = static_pointer_cast<ngraph::op::Softmax>(ctx->node);
+                    auto node =
+                        static_pointer_cast<nnfusion::op::Softmax>(ctx->gnode->get_op_ptr());
                     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
@@ -61,7 +62,7 @@ namespace nnfusion
                     // function signature:
                     // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[1]* output0)
 
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
     float alpha = 1.0f, beta = 0.0f;
     miopenTensorDescriptor_t desc;

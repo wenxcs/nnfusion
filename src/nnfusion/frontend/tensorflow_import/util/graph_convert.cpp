@@ -6,42 +6,15 @@
 #include "graph_convert.hpp"
 #include "../ops/const.hpp"
 #include "ngraph/axis_vector.hpp"
-#include "ngraph/builder/autobroadcast.hpp"
-#include "ngraph/builder/numpy_transpose.hpp"
-#include "ngraph/builder/reduce_ops.hpp"
 #include "ngraph/coordinate_diff.hpp"
-#include "ngraph/op/abs.hpp"
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/avg_pool.hpp"
-#include "ngraph/op/batch_norm.hpp"
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/concat.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/convert.hpp"
-#include "ngraph/op/convolution.hpp"
-#include "ngraph/op/divide.hpp"
-#include "ngraph/op/dot.hpp"
-#include "ngraph/op/exp.hpp"
-#include "ngraph/op/floor.hpp"
-#include "ngraph/op/get_output_element.hpp"
-#include "ngraph/op/less_eq.hpp"
-#include "ngraph/op/max_pool.hpp"
-#include "ngraph/op/multiply.hpp"
-#include "ngraph/op/negative.hpp"
-#include "ngraph/op/pad.hpp"
-#include "ngraph/op/power.hpp"
-#include "ngraph/op/relu.hpp"
-#include "ngraph/op/reshape.hpp"
-#include "ngraph/op/reverse.hpp"
-#include "ngraph/op/slice.hpp"
-#include "ngraph/op/softmax.hpp"
-#include "ngraph/op/subtract.hpp"
-#include "ngraph/op/sum.hpp"
-#include "ngraph/op/tanh.hpp"
+#include "nnfusion/core/graph/util/autobroadcast.hpp"
+#include "nnfusion/core/graph/util/numpy_transpose.hpp"
+
 #include "util/bcast.hpp"
 
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
+// todo: add control edge ?
 namespace nnfusion
 {
     namespace frontend
@@ -49,52 +22,54 @@ namespace nnfusion
         namespace tensorflow_import
         {
             // Using this policy if no explict tf_import mapping exists
-            NamedNodeVector TranslateGenericNoAttrOp(const tensorflow::NodeDef& node,
-                                                     const NodeMap& all_ng_nodes,
-                                                     ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateGenericNoAttrOp(const tensorflow::NodeDef& node,
+                                         const NodeMap& all_ng_nodes,
+                                         std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                std::vector<std::shared_ptr<Node>> inputs;
+                GNodeVector input_gnodes;
                 size_t input_cnt = node.input_size();
                 for (int i = 0; i < input_cnt; i++)
-                    inputs.push_back(GetInputNode(all_ng_nodes, node, i));
+                    input_gnodes.push_back(GetInputNode(all_ng_nodes, node, i));
 
-                auto out_node = std::make_shared<ngraph::op::GenericOp>(
+                auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(),
                     node.op(), // select which existing kernels to use;
-                    inputs,
-                    ngraph::op::OpConfig::any{});
-                NamedNodeVector ret{{node.name(), out_node}};
+                    nnfusion::op::OpConfig::any{});
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnodes});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateIdentityOp(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 auto input_node = GetInputNode(all_ng_nodes, node, 0);
                 NamedNodeVector ret{{node.name(), input_node}};
                 return ret;
             }
 
-            NamedNodeVector TranslateInvertPermutationOp(const tensorflow::NodeDef& node,
-                                                         const NodeMap& all_ng_nodes,
-                                                         ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateInvertPermutationOp(const tensorflow::NodeDef& node,
+                                             const NodeMap& all_ng_nodes,
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto inputs = GetAllInputNode(all_ng_nodes, node);
-                ngraph::op::OpConfig::any myConfig;
+                auto input_gnodes = GetAllInputNode(all_ng_nodes, node);
+                nnfusion::op::OpConfig::any myConfig;
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(), node.op(), inputs, myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, input_gnodes);
+                NamedNodeVector ret{{node.name(), generic_gnode}};
 
                 return ret;
             }
 
             NamedNodeVector TranslateNoOp(const tensorflow::NodeDef& node,
                                           const NodeMap& all_ng_nodes,
-                                          ngraph::op::ParameterVector& parameters)
+                                          std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 NamedNodeVector ret;
                 size_t input_cnt = node.input_size();
@@ -113,34 +88,39 @@ namespace nnfusion
             template <typename T>
             NamedNodeVector TranslateUnaryOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto input_node = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_node = std::make_shared<T>(input_node);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto ng_node = std::make_shared<T>();
                 ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto gnode = m_graph->add_node_and_edge(ng_node, {input_gnode});
+                NamedNodeVector ret{{node.name(), gnode}};
                 return ret;
             }
 
             template <typename T>
             NamedNodeVector TranslateBinaryOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
-                std::tie(ng_lhs, ng_rhs) =
-                    ngraph::builder::numpy_broadcast(std::make_pair(ng_lhs, ng_rhs));
-                auto ng_node = std::make_shared<T>(ng_lhs, ng_rhs);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
+
+                std::tie(lhs_gnode, rhs_gnode) =
+                    graph::numpy_broadcast(std::make_pair(lhs_gnode, rhs_gnode), m_graph);
+
+                auto op = std::make_shared<T>();
+                op->set_name(node.name());
+                auto gnode = m_graph->add_node_and_edge(op, {lhs_gnode, rhs_gnode});
+
+                NamedNodeVector ret{{node.name(), gnode}};
                 return ret;
             }
 
             template <typename T>
             NamedNodeVector TranslateInputOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 tensorflow::DataType dtype;
                 auto status = GetNodeAttr(node.attr(), "dtype", dtype);
@@ -153,48 +133,47 @@ namespace nnfusion
                 status = TFTensorShapeToNGraphShape(tf_shape, &ng_shape);
                 CHECK(status);
 
-                auto ng_node = std::make_shared<T>(ng_et, ng_shape);
-                ng_node->set_name(node.name());
-                parameters.push_back(ng_node);
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto input_op = std::make_shared<T>(ng_et, ng_shape);
+                input_op->set_name(node.name());
+                auto input_gnode = m_graph->add_node_and_edge(input_op, {});
+                NamedNodeVector ret{{node.name(), input_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateSparseSoftmaxCrossEntropyWithLogitsOp(
                 const tensorflow::NodeDef& node,
                 const NodeMap& all_ng_nodes,
-                ngraph::op::ParameterVector& parameters)
+                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+                auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
 
-                ngraph::AxisSet ng_axes_softmax{ng_lhs->get_shape().size() - 1};
-                auto ng_softmax = std::make_shared<ngraph::op::Softmax>(ng_lhs, ng_axes_softmax);
+                ngraph::AxisSet ng_axes_softmax{lhs_gnode->get_shape().size() - 1};
+                auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {lhs_gnode});
 
-                auto loss_node = std::make_shared<ngraph::op::GenericOp>(
+                auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(),
                     "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
-                    std::vector<std::shared_ptr<Node>>({ng_softmax, ng_rhs}),
-                    ngraph::op::OpConfig::any{});
+                    nnfusion::op::OpConfig::any{});
+                auto loss_gnode = m_graph->add_node_and_edge(loss_op, {softmax_gnode, rhs_gnode});
 
-                auto bwd_node = std::make_shared<ngraph::op::GenericOp>(
+                auto bwd_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(),
                     "CrossEntropyFwdBwdWithSoftmaxBwd", // select which existing kernels to use;
-                    std::vector<std::shared_ptr<Node>>({ng_softmax, ng_rhs}),
-                    ngraph::op::OpConfig::any{});
+                    nnfusion::op::OpConfig::any{});
+                auto bwd_gnode = m_graph->add_node_and_edge(bwd_op, {softmax_gnode, rhs_gnode});
 
-                loss_node->set_name(node.name());
-                bwd_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), loss_node}, {node.name(), bwd_node}};
+                NamedNodeVector ret{{node.name(), loss_gnode}, {node.name(), bwd_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateMatMulOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+                auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
                 // Transpose arguments if requested.
                 bool transpose_a = false;
                 bool transpose_b = false;
@@ -204,27 +183,30 @@ namespace nnfusion
                 CHECK(status);
                 // if (transpose_a)
                 // {
-                //     ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
+                //     ng_lhs = nnfusion::graph::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
                 // }
                 // if (transpose_b)
                 // {
-                //     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
+                //     ng_rhs = nnfusion::graph::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
                 // }
 
-                auto ng_node = std::make_shared<ngraph::op::Dot>(
-                    ng_lhs, ng_rhs, 0, false, transpose_a, transpose_b);
-                ng_node->set_name(node.name());
+                auto dot_op =
+                    std::make_shared<nnfusion::op::Dot>(0, false, transpose_a, transpose_b);
                 //ng_node->set_transpose(transpose_a, transpose_b);
-                NamedNodeVector ret{{node.name(), ng_node}};
+
+                dot_op->set_name(node.name());
+                auto dot_gnode = m_graph->add_node_and_edge(dot_op, {lhs_gnode, rhs_gnode});
+
+                NamedNodeVector ret{{node.name(), dot_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateBatchMatMulOp(const tensorflow::NodeDef& node,
                                                    const NodeMap& all_ng_nodes,
-                                                   ngraph::op::ParameterVector& parameters)
+                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+                auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
                 // Transpose arguments if requested.
                 bool adj_x = false;
                 bool adj_y = false;
@@ -234,7 +216,7 @@ namespace nnfusion
                 status = GetNodeAttr(node.attr(), "adj_y", adj_y);
                 CHECK(status);
 
-                int input_dims = ng_lhs->get_output_shape(0).size();
+                int input_dims = lhs_gnode->get_output_shape(0).size();
                 ngraph::AxisVector ng_axis_order;
 
                 ng_axis_order.reserve(input_dims);
@@ -255,27 +237,25 @@ namespace nnfusion
                 //     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ng_axis_order);
                 // }
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["adj_x"]["b"] = adj_x;
                 myConfig["adj_y"]["b"] = adj_y;
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(),
                     "BatchMatMul", // select which existing kernels to use;
-                    std::vector<std::shared_ptr<Node>>({ng_lhs, ng_rhs}),
                     myConfig);
-
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {lhs_gnode, rhs_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateBiasAddOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_bias = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto bias_gnode = GetInputNode(all_ng_nodes, node, 1);
                 std::string tf_data_format;
                 bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
                 CHECK(status);
@@ -283,62 +263,70 @@ namespace nnfusion
                 CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "BiasAdd data format is neither NHWC nor NCHW";
 
-                auto ng_input_shape = ng_input->get_shape();
-                auto ng_bias_shape = ng_bias->get_shape();
+                auto input_shape = input_gnode->get_shape();
+                auto bias_shape = bias_gnode->get_shape();
 
-                CHECK(ng_bias_shape.size() == 1)
+                CHECK(bias_shape.size() == 1)
                     << "Bias argument to BiasAdd does not have one dimension";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
-                ngraph::AxisSet ng_broadcast_axes;
+                ngraph::AxisSet broadcast_axes;
 
                 if (is_nhwc)
                 {
-                    for (size_t i = 0; i < ng_input_shape.size() - 1; i++)
+                    for (size_t i = 0; i < input_shape.size() - 1; i++)
                     {
-                        ng_broadcast_axes.insert(i);
+                        broadcast_axes.insert(i);
                     }
                 }
                 else
                 {
-                    for (size_t i = 0; i < ng_input_shape.size(); i++)
+                    for (size_t i = 0; i < input_shape.size(); i++)
                     {
                         if (i != 1)
                         {
-                            ng_broadcast_axes.insert(i);
+                            broadcast_axes.insert(i);
                         }
                     }
                 }
 
-                auto ng_bias_broadcasted = std::make_shared<ngraph::op::Broadcast>(
-                    ng_bias, ng_input_shape, ng_broadcast_axes);
+                auto bias_broadcasted_op =
+                    std::make_shared<op::Broadcast>(input_shape, broadcast_axes);
 
-                auto ng_add = ng_input + ng_bias_broadcasted;
+                auto bias_broadcasted_gnode =
+                    m_graph->add_node_and_edge(bias_broadcasted_op, {bias_gnode});
 
-                ng_add->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_add}};
+                auto add_op = std::make_shared<op::Add>();
+                add_op->set_name(node.name());
+
+                auto add_gnode =
+                    m_graph->add_node_and_edge(add_op, {input_gnode, bias_broadcasted_gnode});
+
+                NamedNodeVector ret{{node.name(), add_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateReluGradOp(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_delta = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_arg = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_node = std::make_shared<ngraph::op::ReluBackprop>(ng_arg, ng_delta);
+                auto delta_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto arg_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto relu_grad_op = std::make_shared<op::ReluBackprop>();
+                relu_grad_op->set_name(node.name());
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto relu_grad_gnode =
+                    m_graph->add_node_and_edge(relu_grad_op, {arg_gnode, delta_gnode});
+                NamedNodeVector ret{{node.name(), relu_grad_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateBiasAddGradOp(const tensorflow::NodeDef& node,
                                                    const NodeMap& all_ng_nodes,
-                                                   ngraph::op::ParameterVector& parameters)
+                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 std::string tf_data_format;
                 bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
                 CHECK(status);
@@ -351,9 +339,9 @@ namespace nnfusion
                 CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "BiasAddGrad data format is neither NHWC nor NCHW";
 
-                auto ng_input_shape = ng_input->get_shape();
+                auto input_shape = input_gnode->get_shape();
 
-                CHECK(ng_input_shape.size() >= 2) << "Input tensor must be at least 2D";
+                CHECK(input_shape.size() >= 2) << "Input tensor must be at least 2D";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
@@ -361,7 +349,7 @@ namespace nnfusion
 
                 if (is_nhwc)
                 {
-                    for (size_t i = 0; i < ng_input_shape.size() - 1; i++)
+                    for (size_t i = 0; i < input_shape.size() - 1; i++)
                     {
                         ng_reduction_axes.insert(i);
                     }
@@ -369,7 +357,7 @@ namespace nnfusion
 
                 else
                 {
-                    for (size_t i = 0; i < ng_input_shape.size(); i++)
+                    for (size_t i = 0; i < input_shape.size(); i++)
                     {
                         if (i != 1)
                         {
@@ -378,27 +366,28 @@ namespace nnfusion
                     }
                 }
 
-                auto ng_bias_add_grad =
-                    std::make_shared<ngraph::op::Sum>(ng_input, ng_reduction_axes);
+                auto bias_add_grad_op = std::make_shared<op::Sum>(ng_reduction_axes);
+                bias_add_grad_op->set_name(node.name());
+                auto bias_add_grad_gnode =
+                    m_graph->add_node_and_edge(bias_add_grad_op, GNodeVector({input_gnode}));
 
-                ng_bias_add_grad->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_bias_add_grad}};
+                NamedNodeVector ret{{node.name(), bias_add_grad_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateReshapeOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_shape_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto shape_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> shape;
-                bool status = GetValueFromNGraphOp<int64>(ng_shape_op, &shape);
+                bool status = GetValueFromNGraphOp<int64>(shape_gnode, &shape);
                 CHECK(status);
 
                 size_t output_rank = shape.size();
-                size_t num_input_elements = ngraph::shape_size(ng_input->get_shape());
+                size_t num_input_elements = ngraph::shape_size(input_gnode->get_shape());
 
                 // If there is a single "-1" in the result shape, we have to auto-infer
                 // the length of that dimension.
@@ -427,7 +416,7 @@ namespace nnfusion
                     /*
                     if (num_input_elements % product_of_rest != 0)
                     {
-                        NGRAPH_VLOG(3) << "{" << ng::join(ng_input->get_shape()) << "}";
+                        NGRAPH_VLOG(3) << "{" << ng::join(input_gnode->get_shape()) << "}";
                         NGRAPH_VLOG(3) << "{" << ng::join(shape) << "}";
                         return errors::InvalidArgument(
                             "Product of known dimensions (", product_of_rest,
@@ -448,38 +437,40 @@ namespace nnfusion
                     ng_shape[i] = shape[i];
                 }
 
-                ngraph::AxisVector ng_axis_order(ng_input->get_shape().size());
+                ngraph::AxisVector ng_axis_order(input_gnode->get_shape().size());
                 std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
-                auto ng_node =
-                    std::make_shared<ngraph::op::Reshape>(ng_input, ng_axis_order, ng_shape);
+                auto reshape_op = std::make_shared<nnfusion::op::Reshape>(ng_axis_order, ng_shape);
+                reshape_op->set_name(node.name());
+                auto reshape_gnode = m_graph->add_node_and_edge(reshape_op, {input_gnode});
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                NamedNodeVector ret{{node.name(), reshape_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateCastOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
-                                            ngraph::op::ParameterVector& parameters)
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "DstT", dtype);
                 CHECK(status);
                 ngraph::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
                 CHECK(status);
-                auto ng_node = std::make_shared<ngraph::op::Convert>(ng_input, ng_et);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto cast_op = std::make_shared<op::Convert>(ng_et);
+                cast_op->set_name(node.name());
+                auto cast_gnode = m_graph->add_node_and_edge(cast_op, {input_gnode});
+
+                NamedNodeVector ret{{node.name(), cast_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateMaxPoolOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 std::vector<int32> tf_strides;
                 std::vector<int32> tf_ksize;
                 std::string tf_padding_type;
@@ -504,9 +495,18 @@ namespace nnfusion
                 ngraph::Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
-                BatchedOpParamToNGraph(is_nhwc, ng_input->get_shape(), ng_image_shape);
+                BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_ksize, ng_kernel_shape);
-                BatchToNGraph(is_nhwc, ng_input);
+                auto reshape_gnode = BatchToNGraph(is_nhwc, input_gnode);
+                if (reshape_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_gnode);
+                    m_graph->add_edge(input_gnode, 0, reshape_gnode, 0);
+                }
+                else
+                {
+                    reshape_gnode = input_gnode;
+                }
 
                 // TODO: change this once nGraph supports negative padding
                 // (CoordinateDiff) for MaxPool
@@ -522,19 +522,30 @@ namespace nnfusion
                             ng_padding_below,
                             ng_padding_above);
 
-                std::shared_ptr<ngraph::Node> ng_maxpool = std::make_shared<ngraph::op::MaxPool>(
-                    ng_input, ng_kernel_shape, ng_strides, ng_padding_below, ng_padding_above);
+                auto maxpool_op = std::make_shared<nnfusion::op::MaxPool>(
+                    ng_kernel_shape, ng_strides, ng_padding_below, ng_padding_above);
+                auto maxpool_gnode = m_graph->add_node_and_edge(maxpool_op, {reshape_gnode});
 
-                BatchToTensorflow(is_nhwc, ng_maxpool);
+                auto reshape_maxpool_gnode = BatchToTensorflow(is_nhwc, maxpool_gnode);
+                if (reshape_maxpool_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_maxpool_gnode);
+                    m_graph->add_edge(maxpool_gnode, 0, reshape_maxpool_gnode, 0);
+                }
+                else
+                {
+                    reshape_maxpool_gnode = maxpool_gnode;
+                }
+                reshape_maxpool_gnode->get_op_ptr()->set_name(node.name());
+                reshape_maxpool_gnode->set_name(node.name());
 
-                ng_maxpool->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_maxpool}};
+                NamedNodeVector ret{{node.name(), reshape_maxpool_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateConv2DOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 // <Todo: wenxh> Group Conv2D
                 std::vector<int> tf_strides;
@@ -542,8 +553,8 @@ namespace nnfusion
                 std::string tf_padding_type;
                 std::string tf_data_format;
                 // Make sure the order maters!
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_filter = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto filter_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 bool status;
                 status = GetNodeAttr(node.attr(), "strides", tf_strides);
@@ -564,14 +575,25 @@ namespace nnfusion
                 ngraph::Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
-                BatchedOpParamToNGraph(is_nhwc, ng_input->get_shape(), ng_image_shape);
+                BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_dilations, ng_dilations);
-                BatchToNGraph(is_nhwc, ng_input);
+                auto reshape_input_gnode = BatchToNGraph(is_nhwc, input_gnode);
+                if (reshape_input_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_input_gnode);
+                    m_graph->add_edge(input_gnode, 0, reshape_input_gnode, 0);
+                }
+                else
+                {
+                    reshape_input_gnode = input_gnode;
+                }
 
-                auto& ng_filter_shape = ng_filter->get_shape();
-                ng_kernel_shape[0] = ng_filter_shape[0];
-                ng_kernel_shape[1] = ng_filter_shape[1];
-                Reshape<3, 2, 0, 1>(ng_filter);
+                auto& filter_shape = filter_gnode->get_shape();
+                ng_kernel_shape[0] = filter_shape[0];
+                ng_kernel_shape[1] = filter_shape[1];
+                auto reshape_filter_gnode = Reshape<3, 2, 0, 1>(filter_gnode);
+                m_graph->add_node(reshape_filter_gnode);
+                m_graph->add_edge(filter_gnode, 0, reshape_filter_gnode, 0);
 
                 // Padding
                 ngraph::CoordinateDiff ng_padding_below{0, 0};
@@ -586,24 +608,32 @@ namespace nnfusion
                             ng_padding_above);
 
                 // Generate new op
-                std::shared_ptr<ngraph::Node> ng_conv =
-                    std::make_shared<ngraph::op::Convolution>(ng_input,
-                                                              ng_filter,
-                                                              ng_strides,
-                                                              ng_dilations,
-                                                              ng_padding_below,
-                                                              ng_padding_above);
-                BatchToTensorflow(is_nhwc, ng_conv);
-                ng_conv->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_conv}};
+                auto conv_op = std::make_shared<op::Convolution>(
+                    ng_strides, ng_dilations, ng_padding_below, ng_padding_above);
+                auto conv_gnode = m_graph->add_node_and_edge(
+                    conv_op, {reshape_input_gnode, reshape_filter_gnode});
+
+                auto reshape_conv_gnode = BatchToTensorflow(is_nhwc, conv_gnode);
+                if (reshape_conv_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_conv_gnode);
+                    m_graph->add_edge(conv_gnode, 0, reshape_conv_gnode, 0);
+                }
+                else
+                {
+                    reshape_conv_gnode = conv_gnode;
+                }
+                reshape_conv_gnode->get_op_ptr()->set_name(node.name());
+                reshape_conv_gnode->set_name(node.name());
+                NamedNodeVector ret{{node.name(), reshape_conv_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateAvgPoolOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 std::vector<int32> tf_strides;
                 std::vector<int32> tf_ksize;
                 std::string tf_padding_type;
@@ -628,9 +658,19 @@ namespace nnfusion
                 ngraph::Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
-                BatchedOpParamToNGraph(is_nhwc, ng_input->get_shape(), ng_image_shape);
+                BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_ksize, ng_kernel_shape);
-                BatchToNGraph(is_nhwc, ng_input);
+
+                auto reshape_gnode = BatchToNGraph(is_nhwc, input_gnode);
+                if (reshape_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_gnode);
+                    m_graph->add_edge(input_gnode, 0, reshape_gnode, 0);
+                }
+                else
+                {
+                    reshape_gnode = input_gnode;
+                }
 
                 // TODO: change this once nGraph supports negative padding
                 // (CoordinateDiff) for AvgPool
@@ -646,30 +686,36 @@ namespace nnfusion
                             ng_padding_below,
                             ng_padding_above);
 
-                std::shared_ptr<ngraph::Node> ng_avgpool =
-                    std::make_shared<ngraph::op::AvgPool>(ng_input,
-                                                          ng_kernel_shape,
-                                                          ng_strides,
-                                                          ng_padding_below,
-                                                          ng_padding_above,
-                                                          false);
+                auto avgpool_op = std::make_shared<op::AvgPool>(
+                    ng_kernel_shape, ng_strides, ng_padding_below, ng_padding_above, false);
+                auto avgpool_gnode = m_graph->add_node_and_edge(avgpool_op, {reshape_gnode});
 
-                BatchToTensorflow(is_nhwc, ng_avgpool);
+                auto reshape_avgpool_gnode = BatchToTensorflow(is_nhwc, avgpool_gnode);
+                if (reshape_avgpool_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_avgpool_gnode);
+                    m_graph->add_edge(avgpool_gnode, 0, reshape_avgpool_gnode, 0);
+                }
+                else
+                {
+                    reshape_avgpool_gnode = avgpool_gnode;
+                }
+                reshape_avgpool_gnode->get_op_ptr()->set_name(node.name());
+                reshape_avgpool_gnode->set_name(node.name());
 
-                ng_avgpool->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_avgpool}};
+                NamedNodeVector ret{{node.name(), reshape_avgpool_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateFillOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
-                                            ngraph::op::ParameterVector& parameters)
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_shape_op = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_value = GetInputNode(all_ng_nodes, node, 1);
+                auto shape_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto value_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<size_t> dims_vec;
-                bool status = GetValueFromNGraphOp<size_t>(ng_shape_op, &dims_vec);
+                bool status = GetValueFromNGraphOp<size_t>(shape_gnode, &dims_vec);
                 CHECK(status);
 
                 ngraph::Shape ng_output_shape(dims_vec.size());
@@ -680,23 +726,23 @@ namespace nnfusion
                     ng_axis_set.insert(i);
                 }
 
-                std::shared_ptr<ngraph::Node> ng_fill =
-                    std::make_shared<ngraph::op::Broadcast>(ng_value, ng_output_shape, ng_axis_set);
-                ng_fill->set_name(node.name());
+                auto fill_op = std::make_shared<op::Broadcast>(ng_output_shape, ng_axis_set);
+                fill_op->set_name(node.name());
+                auto fill_gnode = m_graph->add_node_and_edge(fill_op, {value_gnode});
 
-                NamedNodeVector ret{{node.name(), ng_fill}};
+                NamedNodeVector ret{{node.name(), fill_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslatePadOp(const tensorflow::NodeDef& node,
                                            const NodeMap& all_ng_nodes,
-                                           ngraph::op::ParameterVector& parameters)
+                                           std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_padding_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto padding_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> paddings;
-                bool status = GetValueFromNGraphOp<int64>(ng_padding_op, &paddings);
+                bool status = GetValueFromNGraphOp<int64>(padding_gnode, &paddings);
                 CHECK(status);
 
                 CHECK(paddings.size() % 2 == 0)
@@ -714,32 +760,37 @@ namespace nnfusion
                 }
 
                 // For PadV1 it seems the value is always zero.
-                auto ng_pad_val_op = std::make_shared<ngraph::op::Constant>(
-                    ng_input->get_element_type(), ngraph::Shape{}, std::vector<std::string>{"0"});
-                auto ng_pad = std::make_shared<ngraph::op::Pad>(
-                    ng_input, ng_pad_val_op, padding_below, padding_above, padding_interior);
+                auto pad_val_op = std::make_shared<op::Constant>(input_gnode->get_element_type(),
+                                                                 ngraph::Shape{},
+                                                                 std::vector<std::string>{"0"});
+                auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, {});
 
-                ng_pad->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_pad}};
+                auto pad_op =
+                    std::make_shared<op::Pad>(padding_below, padding_above, padding_interior);
+                pad_op->set_name(node.name());
+
+                auto pad_gnode = m_graph->add_node_and_edge(pad_op, {input_gnode, pad_val_gnode});
+
+                NamedNodeVector ret{{node.name(), pad_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslatePadV2Op(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_padding_op = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_constant_value_op = GetInputNode(all_ng_nodes, node, 2);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto padding_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto constant_value_gnode = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> paddings;
-                bool status = GetValueFromNGraphOp<int64>(ng_padding_op, &paddings);
+                bool status = GetValueFromNGraphOp<int64>(padding_gnode, &paddings);
                 CHECK(status);
 
-                CHECK(ng_constant_value_op->description() == "Constant");
-                auto ng_constant_op =
-                    std::dynamic_pointer_cast<ngraph::op::Constant>(ng_constant_value_op);
-                auto constant_values = ng_constant_op->get_value_strings();
+                CHECK(constant_value_gnode->get_op_type() == "Constant");
+                auto constant_value_op =
+                    std::dynamic_pointer_cast<op::Constant>(constant_value_gnode->get_op_ptr());
+                auto constant_values = constant_value_op->get_value_strings();
 
                 CHECK(paddings.size() % 2 == 0)
                     << "Constant node for paddings does not have an even number of elements";
@@ -755,20 +806,24 @@ namespace nnfusion
                     padding_interior[i] = 0;
                 }
 
-                // For PadV1 it seems the value is always zero.
-                auto ng_pad_val_op = std::make_shared<ngraph::op::Constant>(
-                    ng_input->get_element_type(), ngraph::Shape{}, constant_values);
-                auto ng_pad = std::make_shared<ngraph::op::Pad>(
-                    ng_input, ng_pad_val_op, padding_below, padding_above, padding_interior);
+                auto pad_val_op = std::make_shared<op::Constant>(
+                    input_gnode->get_element_type(), ngraph::Shape{}, constant_values);
 
-                ng_pad->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_pad}};
+                auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, {});
+
+                auto pad_op =
+                    std::make_shared<op::Pad>(padding_below, padding_above, padding_interior);
+                pad_op->set_name(node.name());
+
+                auto pad_gnode = m_graph->add_node_and_edge(pad_op, {input_gnode, pad_val_gnode});
+                NamedNodeVector ret{{node.name(), pad_gnode}};
                 return ret;
             }
 
-            NamedNodeVector TranslateFusedBatchNormOp(const tensorflow::NodeDef& node,
-                                                      const NodeMap& all_ng_nodes,
-                                                      ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateFusedBatchNormOp(const tensorflow::NodeDef& node,
+                                          const NodeMap& all_ng_nodes,
+                                          std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 bool tf_is_training;
                 if (!GetNodeAttr(node.attr(), "is_training", tf_is_training))
@@ -776,11 +831,11 @@ namespace nnfusion
                     LOG(INFO) << "is_training attribute not present, setting to true";
                     tf_is_training = true;
                 }
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_scale = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_offset = GetInputNode(all_ng_nodes, node, 2);
-                auto ng_mean = GetInputNode(all_ng_nodes, node, 3);
-                auto ng_variance = GetInputNode(all_ng_nodes, node, 4);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto scale_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto offset_gnode = GetInputNode(all_ng_nodes, node, 2);
+                auto mean_gnode = GetInputNode(all_ng_nodes, node, 3);
+                auto variance_gnode = GetInputNode(all_ng_nodes, node, 4);
 
                 std::string tf_data_format;
                 bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
@@ -797,80 +852,111 @@ namespace nnfusion
                     // TensorFlow default
                     tf_epsilon = 0.0001;
                 }
-                BatchToNGraph(is_nhwc, ng_input);
-                std::shared_ptr<ngraph::Node> ng_batch_norm =
-                    std::make_shared<ngraph::op::BatchNormInference>(
-                        tf_epsilon, ng_scale, ng_offset, ng_input, ng_mean, ng_variance);
-                BatchToTensorflow(is_nhwc, ng_batch_norm);
 
-                ng_batch_norm->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_batch_norm}};
+                auto reshape_gnode = BatchToNGraph(is_nhwc, input_gnode);
+                if (reshape_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_gnode);
+                    m_graph->add_edge(input_gnode, 0, reshape_gnode, 0);
+                }
+                else
+                {
+                    reshape_gnode = input_gnode;
+                }
+
+                auto batch_norm_op = std::make_shared<op::BatchNormInference>(tf_epsilon);
+                auto batch_norm_gnode = m_graph->add_node_and_edge(
+                    batch_norm_op,
+                    {scale_gnode, offset_gnode, reshape_gnode, mean_gnode, variance_gnode});
+                auto reshape_batch_norm_gnode = BatchToTensorflow(is_nhwc, batch_norm_gnode);
+
+                if (reshape_batch_norm_gnode != nullptr)
+                {
+                    m_graph->add_node(reshape_batch_norm_gnode);
+                    m_graph->add_edge(batch_norm_gnode, 0, reshape_batch_norm_gnode, 0);
+                }
+                else
+                {
+                    reshape_batch_norm_gnode = batch_norm_gnode;
+                }
+                reshape_batch_norm_gnode->get_op_ptr()->set_name(node.name());
+                reshape_batch_norm_gnode->set_name(node.name());
+
+                NamedNodeVector ret{{node.name(), reshape_batch_norm_gnode}};
 
                 return ret;
             }
 
             NamedNodeVector TranslateConcatV2Op(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 const int input_cnt = node.input_size();
                 CHECK(input_cnt >= 3) << "\"" << node.name()
                                       << "\" requires at least 3 inputs, got " << input_cnt
                                       << " instead";
 
-                ngraph::NodeVector ng_args;
+                GNodeVector arg_gnodes;
                 for (int i = 0; i < input_cnt - 1; i++)
                 {
-                    auto ng_arg = GetInputNode(all_ng_nodes, node, i);
-                    ng_args.push_back(ng_arg);
+                    auto arg_gnode = GetInputNode(all_ng_nodes, node, i);
+                    arg_gnodes.push_back(arg_gnode);
                 }
 
-                auto ng_concat_axis_op = GetInputNode(all_ng_nodes, node, input_cnt - 1);
+                auto concat_axis_gnode = GetInputNode(all_ng_nodes, node, input_cnt - 1);
                 std::vector<int> tf_concat_axis_vec;
-                bool status = GetValueFromNGraphOp<int>(ng_concat_axis_op, &tf_concat_axis_vec);
+                bool status = GetValueFromNGraphOp<int>(concat_axis_gnode, &tf_concat_axis_vec);
                 CHECK(status);
 
                 int64 concat_axis = tf_concat_axis_vec[0];
 
                 if (concat_axis < 0)
                 {
-                    concat_axis += int64(ng_args[0]->get_shape().size());
+                    concat_axis += int64(arg_gnodes[0]->get_shape().size());
                 }
-                std::shared_ptr<ngraph::Node> ng_concat_op =
-                    std::make_shared<ngraph::op::Concat>(ng_args, size_t(concat_axis));
-                ng_concat_op->set_name(node.name());
+                auto concat_op = std::make_shared<nnfusion::op::Concat>(size_t(concat_axis));
+                concat_op->set_name(node.name());
+                auto concat_gnode = m_graph->add_node_and_edge(concat_op, arg_gnodes);
 
-                NamedNodeVector ret{{node.name(), ng_concat_op}};
+                NamedNodeVector ret{{node.name(), concat_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateSigmoidOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto exp_op = std::make_shared<ngraph::op::Exp>(
-                    std::make_shared<ngraph::op::Negative>(ng_input));
-                auto constant_1 = std::make_shared<ngraph::op::Constant>(
-                    ng_input->get_element_type(),
-                    ng_input->get_shape(),
-                    std::vector<std::string>(ngraph::shape_size(ng_input->get_shape()), "1"));
-                auto denominator_op = std::make_shared<ngraph::op::Add>(constant_1, exp_op);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
 
-                auto ng_sigmoid_op =
-                    std::make_shared<ngraph::op::Divide>(constant_1, denominator_op);
-                ng_sigmoid_op->set_name(node.name());
+                auto negative_op = std::make_shared<op::Negative>();
+                auto negative_gnode = m_graph->add_node_and_edge(negative_op, {input_gnode});
+                auto exp_op = std::make_shared<op::Exp>();
+                auto exp_gnode = m_graph->add_node_and_edge(exp_op, {negative_gnode});
+                auto constant_op = std::make_shared<op::Constant>(
+                    input_gnode->get_element_type(),
+                    input_gnode->get_shape(),
+                    std::vector<std::string>(ngraph::shape_size(input_gnode->get_shape()), "1"));
+                auto constant_gnode = m_graph->add_node_and_edge(constant_op, {});
+                auto denominator_op = std::make_shared<op::Add>();
+                auto denominator_gnode =
+                    m_graph->add_node_and_edge(denominator_op, {constant_gnode, exp_gnode});
 
-                NamedNodeVector ret{{node.name(), ng_sigmoid_op}};
+                auto sigmoid_op = std::make_shared<op::Divide>();
+                sigmoid_op->set_name(node.name());
+
+                auto sigmoid_gnode =
+                    m_graph->add_node_and_edge(sigmoid_op, {constant_gnode, denominator_gnode});
+
+                NamedNodeVector ret{{node.name(), sigmoid_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateSumOp(const tensorflow::NodeDef& node,
                                            const NodeMap& all_ng_nodes,
-                                           ngraph::op::ParameterVector& parameters)
+                                           std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_axes_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto axes_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 bool tf_keep_dims;
                 if (GetNodeAttr(node.attr(), "keep_dims", tf_keep_dims) == false)
@@ -882,10 +968,10 @@ namespace nnfusion
                 }
 
                 std::vector<int64> sum_axes;
-                bool status = GetValueFromNGraphOp<int64>(ng_axes_op, &sum_axes);
+                bool status = GetValueFromNGraphOp<int64>(axes_gnode, &sum_axes);
                 CHECK(status);
 
-                ngraph::Shape input_shape = ng_input->get_shape();
+                ngraph::Shape input_shape = input_gnode->get_shape();
                 size_t input_rank = input_shape.size();
 
                 status = CheckAxisDimInRange(sum_axes, input_rank);
@@ -899,12 +985,13 @@ namespace nnfusion
                     [input_rank](int idx) { return idx + (idx < 0 ? (int)input_rank : 0); });
                 ngraph::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
 
-                std::shared_ptr<ngraph::Node> ng_sum_op =
-                    std::make_shared<ngraph::op::Sum>(ng_input, ng_reduction_axes);
+                auto sum_op = std::make_shared<op::Sum>(ng_reduction_axes);
+                NamedNodeVector ret;
                 // If keep_dims is specified we need to reshape to put back the reduced
                 // axes, with length 1.
                 if (tf_keep_dims)
                 {
+                    auto sum_gnode = m_graph->add_node_and_edge(sum_op, {input_gnode});
                     ngraph::Shape ng_result_shape_with_keep(input_rank);
 
                     for (size_t i = 0; i < input_rank; i++)
@@ -912,30 +999,37 @@ namespace nnfusion
                         ng_result_shape_with_keep[i] =
                             ng_reduction_axes.count(i) == 0 ? input_shape[i] : 1;
                     }
-                    ngraph::AxisVector ng_axis_order(ng_sum_op->get_shape().size());
+                    ngraph::AxisVector ng_axis_order(sum_gnode->get_shape().size());
                     std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
-                    ng_sum_op = std::make_shared<ngraph::op::Reshape>(
-                        ng_sum_op, ng_axis_order, ng_result_shape_with_keep);
+                    auto reshape_op =
+                        std::make_shared<op::Reshape>(ng_axis_order, ng_result_shape_with_keep);
+                    reshape_op->set_name(node.name());
+                    auto reshape_gnode = m_graph->add_node_and_edge(reshape_op, {sum_gnode});
+                    ret.push_back({node.name(), reshape_gnode});
                 }
-                ng_sum_op->set_name(node.name());
+                else
+                {
+                    sum_op->set_name(node.name());
+                    auto sum_gnode = m_graph->add_node_and_edge(sum_op, {input_gnode});
+                    ret.push_back({node.name(), sum_gnode});
+                }
 
-                NamedNodeVector ret{{node.name(), ng_sum_op}};
                 return ret;
             }
 
             NamedNodeVector TranslateSplitOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_split_dim = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_input = GetInputNode(all_ng_nodes, node, 1);
+                auto split_dim_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 // num_split : The number of ways to split. Must evenly divide
                 // value.shape[split_dim]
                 int32 num_split;
                 bool status = GetNodeAttr(node.attr(), "num_split", num_split);
                 CHECK(status);
-                ngraph::Shape shape = ng_input->get_shape();
+                ngraph::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower;
                 std::vector<size_t> upper;
@@ -945,54 +1039,49 @@ namespace nnfusion
                     upper.push_back(shape[i]);
                 }
                 std::vector<int> split_dim_vec;
-                status = GetValueFromNGraphOp<int>(ng_split_dim, &split_dim_vec);
+                status = GetValueFromNGraphOp<int>(split_dim_gnode, &split_dim_vec);
                 CHECK(status);
                 int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
                 int size = shape[split_dim] / num_split;
                 int cursor = 0;
 
-                std::vector<std::shared_ptr<ngraph::Node>> ng_split_op_list;
+                NamedNodeVector ret;
 
                 for (size_t i = 0; i < num_split; ++i)
                 {
                     lower[split_dim] = cursor;
                     cursor += size;
                     upper[split_dim] = cursor;
-                    auto ng_split_op = std::make_shared<ngraph::op::Slice>(ng_input, lower, upper);
-                    //ng_split_op->set_name(node.name());
-                    ng_split_op_list.push_back(ng_split_op);
-                }
-                NamedNodeVector ret;
-                for (int i = 0; i < ng_split_op_list.size(); i++)
-                {
-                    std::string node_name = node.name();
+                    auto split_op = std::make_shared<op::Slice>(lower, upper);
                     //if (i > 0)
                     //{
                     //    node_name.append("_").append(std::to_string(i));
                     //}
-                    ret.push_back({node_name, ng_split_op_list[i]});
+                    //ng_split_op->set_name(node.name());
+                    auto split_gnode = m_graph->add_node_and_edge(split_op, {input_gnode});
+                    ret.push_back({node.name(), split_gnode});
                 }
                 return ret;
             }
 
             NamedNodeVector TranslateSplitVOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_length_op = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_split_dim = GetInputNode(all_ng_nodes, node, 2);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto length_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto split_dim_gnode = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int> lengths;
-                bool status = GetValueFromNGraphOp<int>(ng_length_op, &lengths);
+                bool status = GetValueFromNGraphOp<int>(length_gnode, &lengths);
                 CHECK(status);
-                ngraph::Shape shape = ng_input->get_shape();
+                ngraph::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower(rank, 0);
                 std::vector<size_t> upper(shape);
 
                 std::vector<int64> split_dim_vec;
-                status = GetValueFromNGraphOp<int64>(ng_split_dim, &split_dim_vec);
+                status = GetValueFromNGraphOp<int64>(split_dim_gnode, &split_dim_vec);
                 CHECK(status);
                 // there should be at least one element specified as axis and not more than
                 // one as axis is 0-D
@@ -1029,13 +1118,14 @@ namespace nnfusion
                     lengths[idx] = shape[split_dim] - length;
                 }
 
-                CHECK((!has_one_neg && length == shape[split_dim]) &&
+                CHECK((!has_one_neg && length == shape[split_dim]) ||
                       (has_one_neg && lengths[idx] >= 0))
                     << "The length of size_splits must sum to the value of the dimension along "
                        "split_dim";
 
                 int cursor = 0;
-                std::vector<std::shared_ptr<ngraph::Node>> ng_split_op_list;
+                NamedNodeVector ret;
+
                 if (lengths.size() != 1)
                 {
                     for (int i = 0; i < lengths.size(); ++i)
@@ -1043,37 +1133,27 @@ namespace nnfusion
                         lower[split_dim] = cursor;
                         cursor += lengths[i];
                         upper[split_dim] = cursor;
-                        auto ng_split_op =
-                            std::make_shared<ngraph::op::Slice>(ng_input, lower, upper);
+                        auto split_op = std::make_shared<op::Slice>(lower, upper);
                         //ng_split_op->set_name(node.name());
-                        ng_split_op_list.push_back(ng_split_op);
+
+                        auto split_gnode = m_graph->add_node_and_edge(split_op, {input_gnode});
+                        ret.push_back({node.name(), split_gnode});
                     }
                 }
                 else
                 {
-                    ng_split_op_list.push_back(ng_input);
+                    ret.push_back({node.name(), input_gnode});
                 }
 
-                NamedNodeVector ret;
-                for (int i = 0; i < ng_split_op_list.size(); i++)
-                {
-                    std::string node_name = node.name();
-                    //if (i > 0)
-                    //{
-                    //    node_name.append("_").append(std::to_string(i));
-                    //}
-
-                    ret.push_back({node_name, ng_split_op_list[i]});
-                }
                 return ret;
             }
 
             NamedNodeVector TranslateMeanOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
-                                            ngraph::op::ParameterVector& parameters)
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_axes_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto axes_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 bool tf_keep_dims;
                 if (GetNodeAttr(node.attr(), "keep_dims", tf_keep_dims) == false)
@@ -1084,11 +1164,11 @@ namespace nnfusion
                     }
                 }
 
-                ngraph::Shape shape = ng_input->get_shape();
+                ngraph::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
 
                 std::vector<int64> mean_axes;
-                bool status = GetValueFromNGraphOp<int64>(ng_axes_op, &mean_axes);
+                bool status = GetValueFromNGraphOp<int64>(axes_gnode, &mean_axes);
                 CHECK(status);
 
                 status = CheckAxisDimInRange(mean_axes, rank);
@@ -1101,13 +1181,27 @@ namespace nnfusion
                                [rank](int idx) { return idx + (idx < 0 ? (int)rank : 0); });
                 ngraph::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
 
-                std::shared_ptr<ngraph::Node> ng_mean =
-                    ngraph::builder::mean(ng_input, ng_reduction_axes);
+                // todo: move to function ngraph::builder::mean?
+                //std::shared_ptr<ngraph::Node> ng_mean =
+                //    ngraph::builder::mean(input_gnode, ng_reduction_axes);
 
+                auto xsum_op = std::make_shared<op::Sum>(ng_reduction_axes);
+                auto xsum_gnode = m_graph->add_node_and_edge(xsum_op, {input_gnode});
+                auto N = GetNumElements(input_gnode->get_shape(), ng_reduction_axes);
+                const auto& et = xsum_gnode->get_element_type();
+
+                auto divisor_op = op::Constant::create(et, xsum_gnode->get_shape(), {N});
+                auto divisor_gnode = m_graph->add_node_and_edge(divisor_op, {});
+
+                auto mean_op = std::make_shared<op::Divide>();
+                NamedNodeVector ret;
                 // If keep_dims is specified we need to reshape to put back the reduced
                 // axes, with length 1.
                 if (tf_keep_dims)
                 {
+                    auto mean_gnode =
+                        m_graph->add_node_and_edge(mean_op, {xsum_gnode, divisor_gnode});
+
                     ngraph::Shape ng_result_shape_with_keep(rank);
                     for (size_t i = 0; i < rank; i++)
                     {
@@ -1115,29 +1209,39 @@ namespace nnfusion
                             ng_reduction_axes.count(i) == 0 ? shape[i] : 1;
                     }
 
-                    ngraph::AxisVector ng_axis_order(ng_mean->get_shape().size());
+                    ngraph::AxisVector ng_axis_order(mean_gnode->get_shape().size());
                     std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
-                    ng_mean = std::make_shared<ngraph::op::Reshape>(
-                        ng_mean, ng_axis_order, ng_result_shape_with_keep);
+                    auto reshape_mean_op =
+                        std::make_shared<op::Reshape>(ng_axis_order, ng_result_shape_with_keep);
+                    reshape_mean_op->set_name(node.name());
+                    auto reshape_mean_gnode =
+                        m_graph->add_node_and_edge(reshape_mean_op, {mean_gnode});
+                    ret.push_back({node.name(), reshape_mean_gnode});
                 }
-                ng_mean->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_mean}};
+                else
+                {
+                    mean_op->set_name(node.name());
+                    auto mean_gnode =
+                        m_graph->add_node_and_edge(mean_op, {xsum_gnode, divisor_gnode});
+                    ret.push_back({node.name(), mean_gnode});
+                }
+
                 return ret;
             }
 
             NamedNodeVector TranslateSliceOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_begin = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_size = GetInputNode(all_ng_nodes, node, 2);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto begin_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto size_gnode = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> lower_vec;
                 std::vector<int64> size_vec;
-                bool status = GetValueFromNGraphOp<int64>(ng_begin, &lower_vec);
+                bool status = GetValueFromNGraphOp<int64>(begin_gnode, &lower_vec);
                 CHECK(status);
-                status = GetValueFromNGraphOp<int64>(ng_size, &size_vec);
+                status = GetValueFromNGraphOp<int64>(size_gnode, &size_vec);
                 CHECK(status);
 
                 CHECK(lower_vec.size() == size_vec.size())
@@ -1145,7 +1249,7 @@ namespace nnfusion
                     << ", size of size_vec = " << size_vec.size() << ". Expected them to match.";
 
                 std::vector<int> upper_vec(lower_vec.size());
-                const auto ng_input_shape = ng_input->get_shape();
+                const auto input_shape = input_gnode->get_shape();
                 std::stringstream err_stream;
                 std::string err_msg;
                 for (size_t i = 0; i < size_vec.size(); i++)
@@ -1157,7 +1261,7 @@ namespace nnfusion
                     else
                     {
                         // support -1 for size_vec, to the end of the tensor
-                        upper_vec[i] = ng_input_shape[i];
+                        upper_vec[i] = input_shape[i];
                     }
 
                     // check for this condition: 0 <= begin[i] <= begin[i] + size[i] <= Di
@@ -1171,9 +1275,9 @@ namespace nnfusion
                         err_stream << "upper < lower: upper = " << upper_vec[i]
                                    << ", lower = " << lower_vec[i] << "\n";
                     }
-                    if (upper_vec[i] > ng_input_shape[i])
+                    if (upper_vec[i] > input_shape[i])
                     {
-                        err_stream << "dim < upper: dim = " << ng_input_shape[i]
+                        err_stream << "dim < upper: dim = " << input_shape[i]
                                    << ", upper = " << upper_vec[i] << "\n";
                     }
 
@@ -1185,22 +1289,23 @@ namespace nnfusion
 
                 std::vector<size_t> l(lower_vec.begin(), lower_vec.end());
                 std::vector<size_t> u(upper_vec.begin(), upper_vec.end());
-                auto ng_slice = std::make_shared<ngraph::op::Slice>(ng_input, l, u);
+                auto slice_op = std::make_shared<op::Slice>(l, u);
+                slice_op->set_name(node.name());
+                auto slice_gnode = m_graph->add_node_and_edge(slice_op, {input_gnode});
 
-                ng_slice->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_slice}};
+                NamedNodeVector ret{{node.name(), slice_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateTransposeOp(const tensorflow::NodeDef& node,
                                                  const NodeMap& all_ng_nodes,
-                                                 ngraph::op::ParameterVector& parameters)
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_permutation_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto permutation_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> permutation;
-                bool status = GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation);
+                bool status = GetValueFromNGraphOp<int64>(permutation_gnode, &permutation);
                 CHECK(status);
 
                 ngraph::AxisVector ng_axis_order;
@@ -1211,29 +1316,27 @@ namespace nnfusion
                     ng_axis_order.push_back(i);
                 }
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["axes_order"] = ng_axis_order;
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input}),
-                    myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
+                NamedNodeVector ret{{node.name(), input_gnode}};
                 return ret;
             }
 
-            NamedNodeVector TranslateTransposeToReshapeOp(const tensorflow::NodeDef& node,
-                                                          const NodeMap& all_ng_nodes,
-                                                          ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateTransposeToReshapeOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_permutation_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto permutation_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> permutation;
-                bool status = GetValueFromNGraphOp<int64>(ng_permutation_op, &permutation);
+                bool status = GetValueFromNGraphOp<int64>(permutation_gnode, &permutation);
                 CHECK(status);
 
                 // Check to make sure that the permutation requested for transpose
@@ -1241,16 +1344,16 @@ namespace nnfusion
                 // - it should not have duplicates,
                 // - it should have all the dimensions.
 
-                auto ng_input_rank = ng_input->get_shape().size();
-                vector<bool> count(ng_input_rank, false);
+                auto input_rank = input_gnode->get_shape().size();
+                vector<bool> count(input_rank, false);
                 for (auto p : permutation)
                 {
-                    if (0 <= p && p < ng_input_rank)
+                    if (0 <= p && p < input_rank)
                     {
                         count[p] = true;
                     }
                 }
-                for (int i = 0; i < ng_input_rank; i++)
+                for (int i = 0; i < input_rank; i++)
                 {
                     CHECK(count[i]) << i << " is missing from {" << join(permutation) << "}.";
                 }
@@ -1263,39 +1366,43 @@ namespace nnfusion
                     ng_axis_order.push_back(i);
                 }
 
-                auto ng_node = ngraph::builder::numpy_transpose(ng_input, ng_axis_order);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto trans_gnode = graph::numpy_transpose(input_gnode, ng_axis_order);
+                m_graph->add_node(trans_gnode);
+                m_graph->add_edge(input_gnode, 0, trans_gnode, 0);
+
+                trans_gnode->get_op_ptr()->set_name(node.name());
+                trans_gnode->set_name(node.name());
+                NamedNodeVector ret{{node.name(), trans_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateOneHotOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_features = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_depth_op = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_on = GetInputNode(all_ng_nodes, node, 2);
-                auto ng_off = GetInputNode(all_ng_nodes, node, 3);
+                auto features_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto depth_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto ong_gnode = GetInputNode(all_ng_nodes, node, 2);
+                auto off_gnode = GetInputNode(all_ng_nodes, node, 3);
 
-                auto ng_features_shape = ng_features->get_shape();
-                auto ng_features_rank = ng_features_shape.size();
+                auto features_shape = features_gnode->get_shape();
+                auto features_rank = features_shape.size();
 
                 std::vector<int> depth;
-                bool status = GetValueFromNGraphOp<int>(ng_depth_op, &depth);
+                bool status = GetValueFromNGraphOp<int>(depth_gnode, &depth);
                 CHECK(status);
                 CHECK(depth.size() == 1) << "OneHot Op: depth of one hot dimension must be scalar "
                                          << depth.size();
 
                 std::vector<float> on_value;
-                status = GetValueFromNGraphOp<float>(ng_on, &on_value);
+                status = GetValueFromNGraphOp<float>(ong_gnode, &on_value);
                 CHECK(status);
                 CHECK(on_value.size() == 1)
                     << "OneHot Op: on value of one hot dimension must be scalar "
                     << on_value.size();
 
                 std::vector<float> off_value;
-                status = GetValueFromNGraphOp<float>(ng_off, &off_value);
+                status = GetValueFromNGraphOp<float>(off_gnode, &off_value);
                 CHECK(status);
                 CHECK(off_value.size() == 1)
                     << "OneHot Op: off value of one hot dimension must be scalar "
@@ -1313,104 +1420,96 @@ namespace nnfusion
 
                 CHECK(ng_et == ngraph::element::f32);
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["axis"] = one_hot_axis;
                 myConfig["depth"] = depth[0];
                 myConfig["off_value"] = off_value[0];
                 myConfig["on_value"] = on_value[0];
                 myConfig["T"] = ng_et.c_type_string();
 
-                //ng_features->set_output_type(0, ng_et, ng_features->get_shape());
+                //features_gnode->set_output_type(0, ng_et, features_gnode->get_shape());
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_features}),
-                    myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {features_gnode});
+
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateStopGradientOp(const tensorflow::NodeDef& node,
                                                     const NodeMap& all_ng_nodes,
-                                                    ngraph::op::ParameterVector& parameters)
+                                                    std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input}),
-                    myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateGatherV2Op(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_input_coords = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_axis_op = GetInputNode(all_ng_nodes, node, 2);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto input_coords_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto axis_gnode = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int64> tf_axis;
-                bool status = GetValueFromNGraphOp<int64>(ng_axis_op, &tf_axis);
+                bool status = GetValueFromNGraphOp<int64>(axis_gnode, &tf_axis);
                 CHECK(status);
                 CHECK(tf_axis.size() == 1) << "Found axis in GatherV2 op (" << node.name()
                                            << ") translation to be non scalar, of size "
                                            << tf_axis.size();
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["axis"] = tf_axis[0];
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input, ng_input_coords}),
-                    myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {input_gnode, input_coords_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateAddNOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
-                                            ngraph::op::ParameterVector& parameters)
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 // Use this to get all the inputs of current node.
                 // Use GetInputNode(..., ..., id) to get the input identified by
                 // id.
-                auto inputs = GetAllInputNode(all_ng_nodes, node);
+                auto input_gnodes = GetAllInputNode(all_ng_nodes, node);
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
 
                 // Since Ngraph doesn't have AddN, so we use GenericOp to
                 // represent the AddN.
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(), // Node name, looks like "tf_model/add_n";
                     node.op(),   // Operator name, looks like "AddN";
-                    inputs,      // The inputs of nodes;
                     myConfig);   // The configuration we generated above;
 
-                ng_node->set_name(node.name()); // Set the node name;
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnodes});
                 // Return the node vecoter, this is one tf-node to one nnfusion-node case,
                 // if your code converts one tf-node into several nnfusion-nodes, you can
                 // refer BiasAdd, which is converted to Broadcast and Add;
-                NamedNodeVector ret{{node.name(), ng_node}};
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslatePackOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
-                                            ngraph::op::ParameterVector& parameters)
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 const int input_cnt = node.input_size();
                 CHECK(input_cnt >= 1) << "\"" << node.name()
@@ -1421,22 +1520,22 @@ namespace nnfusion
                 bool status = GetNodeAttr(node.attr(), "axis", pack_axis);
                 CHECK(status);
 
-                ngraph::NodeVector ng_args;
+                GNodeVector input_gnodes;
                 for (int i = 0; i < input_cnt; i++)
                 {
                     auto ng_arg = GetInputNode(all_ng_nodes, node, i);
-                    ng_args.push_back(ng_arg);
+                    input_gnodes.push_back(ng_arg);
                 }
 
                 if (pack_axis < 0)
                 {
-                    pack_axis += int64(ng_args[0]->get_shape().size() + 1);
+                    pack_axis += int64(input_gnodes[0]->get_shape().size() + 1);
                 }
 
                 if (true)
                 {
                     // option1, covert pack to combination of expand_dim and concat
-                    auto& input_shape = ng_args[0]->get_shape();
+                    auto& input_shape = input_gnodes[0]->get_shape();
                     auto input_shape_size = input_shape.size();
 
                     // expand_dim/reshape
@@ -1445,23 +1544,26 @@ namespace nnfusion
                     std::vector<size_t> shape_dimensions(input_shape_size);
                     std::iota(shape_dimensions.begin(), shape_dimensions.end(), 0);
 
-                    ngraph::NodeVector reshaped_ng_args;
+                    GNodeVector reshaped_input_gnodes;
 
-                    for (int i = 0; i < ng_args.size(); i++)
+                    for (int i = 0; i < input_gnodes.size(); i++)
                     {
-                        auto ng_arg = ng_args[i];
-                        auto ng_node = std::make_shared<ngraph::op::Reshape>(
-                            ng_arg, shape_dimensions, new_dim_shape);
-                        ng_node->set_name(node.name() + "_reshape_" + std::to_string(i));
-                        reshaped_ng_args.push_back(ng_node);
+                        auto input_gnode = input_gnodes[i];
+                        auto reshape_input_op =
+                            std::make_shared<op::Reshape>(shape_dimensions, new_dim_shape);
+                        reshape_input_op->set_name(node.name() + "_reshape_" + std::to_string(i));
+                        auto reshape_input_gnode =
+                            m_graph->add_node_and_edge(reshape_input_op, {input_gnode});
+                        reshaped_input_gnodes.push_back(reshape_input_gnode);
                     }
 
                     // concat
-                    std::shared_ptr<ngraph::Node> ng_concat_op =
-                        std::make_shared<ngraph::op::Concat>(reshaped_ng_args, size_t(pack_axis));
-                    ng_concat_op->set_name(node.name());
+                    auto concat_op = std::make_shared<op::Concat>(size_t(pack_axis));
 
-                    NamedNodeVector ret{{node.name(), ng_concat_op}};
+                    concat_op->set_name(node.name());
+                    auto concat_gnode =
+                        m_graph->add_node_and_edge(concat_op, reshaped_input_gnodes);
+                    NamedNodeVector ret{{node.name(), concat_gnode}};
                     return ret;
                 }
                 else
@@ -1469,28 +1571,27 @@ namespace nnfusion
                     // TODO: option2, implement pack kernel
                     CHECK_FAIL() << "Pack kernel not implemented yet";
 
-                    ngraph::op::OpConfig::any myConfig;
+                    nnfusion::op::OpConfig::any myConfig;
                     myConfig["axis"] = pack_axis;
 
-                    auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                        node.name(), node.op(), ng_args, myConfig);
+                    auto generic_op =
+                        std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                    ng_node->set_name(node.name());
-
-                    NamedNodeVector ret{{node.name(), ng_node}};
+                    auto generic_gnode = m_graph->add_node_and_edge(generic_op, input_gnodes);
+                    NamedNodeVector ret{{node.name(), generic_gnode}};
                     return ret;
                 }
             }
 
             NamedNodeVector TranslateAllOp(const tensorflow::NodeDef& node,
                                            const NodeMap& all_ng_nodes,
-                                           ngraph::op::ParameterVector& parameters)
+                                           std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_axis_op = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto axis_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int> tf_axis;
-                bool status = GetValueFromNGraphOp<int>(ng_axis_op, &tf_axis);
+                bool status = GetValueFromNGraphOp<int>(axis_gnode, &tf_axis);
                 CHECK(status);
                 CHECK(tf_axis.size() == 1) << "Found axis in All op (" << node.name()
                                            << ") translation to be non scalar, of size "
@@ -1500,30 +1601,27 @@ namespace nnfusion
                 status = GetNodeAttr(node.attr(), "keep_dims", keep_dims);
                 CHECK(status);
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 if (tf_axis.size() > 0)
                 {
                     myConfig["axis"] = tf_axis[0];
                 }
                 myConfig["keep_dims"] = keep_dims;
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input}),
-                    myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateSqueezeOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                size_t input_dims = ng_input->get_shape().size();
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                size_t input_dims = input_gnode->get_shape().size();
 
                 std::vector<int32> tf_axis;
                 bool status = GetNodeAttr(node.attr(), "squeeze_dims", tf_axis);
@@ -1536,7 +1634,7 @@ namespace nnfusion
                 }
 
                 std::set<int> axis_set(tf_axis.begin(), tf_axis.end());
-                ngraph::Shape input_shape = ng_input->get_shape();
+                ngraph::Shape input_shape = input_gnode->get_shape();
                 std::vector<int> dims;
 
                 if (axis_set.size() == 0)
@@ -1574,30 +1672,30 @@ namespace nnfusion
                     output_shape[i] = dims[i];
                 }
 
-                ngraph::AxisVector ng_axis_order(ng_input->get_shape().size());
+                ngraph::AxisVector ng_axis_order(input_gnode->get_shape().size());
                 std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
 
-                auto ng_node =
-                    std::make_shared<ngraph::op::Reshape>(ng_input, ng_axis_order, output_shape);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto reshape_op = std::make_shared<op::Reshape>(ng_axis_order, output_shape);
+                reshape_op->set_name(node.name());
+                auto reshape_gnode = m_graph->add_node_and_edge(reshape_op, {input_gnode});
+                NamedNodeVector ret{{node.name(), reshape_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateExpandDimsOp(const tensorflow::NodeDef& node,
                                                   const NodeMap& all_ng_nodes,
-                                                  ngraph::op::ParameterVector& parameters)
+                                                  std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_dim = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto dim_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> dim_vec;
-                bool status = GetValueFromNGraphOp<int64>(ng_dim, &dim_vec);
+                bool status = GetValueFromNGraphOp<int64>(dim_gnode, &dim_vec);
                 CHECK(status);
 
                 CHECK(dim_vec.size() == 1) << "The size of argument dim is not 1 for ExpandDims";
 
-                auto& shape = ng_input->get_shape();
+                auto& shape = input_gnode->get_shape();
                 auto shape_size = shape.size();
                 if (dim_vec[0] < 0)
                 {
@@ -1611,136 +1709,149 @@ namespace nnfusion
                 std::vector<size_t> shape_dimensions(shape.size());
                 std::iota(shape_dimensions.begin(), shape_dimensions.end(), 0);
 
-                auto ng_node =
-                    std::make_shared<ngraph::op::Reshape>(ng_input, shape_dimensions, out_shape);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto reshape_op = std::make_shared<op::Reshape>(shape_dimensions, out_shape);
+                reshape_op->set_name(node.name());
+
+                auto reshape_gnode =
+                    m_graph->add_node_and_edge(reshape_op, GNodeVector({input_gnode}));
+                NamedNodeVector ret{{node.name(), reshape_gnode}};
                 return ret;
             }
 
-            NamedNodeVector TranslateSquaredDifferenceOp(const tensorflow::NodeDef& node,
-                                                         const NodeMap& all_ng_nodes,
-                                                         ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateSquaredDifferenceOp(const tensorflow::NodeDef& node,
+                                             const NodeMap& all_ng_nodes,
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+                auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
 
-                std::tie(ng_lhs, ng_rhs) =
-                    ngraph::builder::numpy_broadcast(std::make_pair(ng_lhs, ng_rhs));
+                std::tie(lhs_gnode, rhs_gnode) =
+                    graph::numpy_broadcast(std::make_pair(lhs_gnode, rhs_gnode), m_graph);
 
-                auto ng_diff = std::make_shared<ngraph::op::Subtract>(ng_lhs, ng_rhs);
+                auto diff_op = std::make_shared<op::Subtract>();
+                auto diff_gnode = m_graph->add_node_and_edge(diff_op, {lhs_gnode, rhs_gnode});
 
-                auto ng_node = std::make_shared<ngraph::op::Multiply>(ng_diff, ng_diff);
-
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto multiply_op = std::make_shared<op::Multiply>();
+                multiply_op->set_name(node.name());
+                auto multiply_gnode =
+                    m_graph->add_node_and_edge(multiply_op, {diff_gnode, diff_gnode});
+                NamedNodeVector ret{{node.name(), multiply_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateRangeOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                std::vector<std::shared_ptr<Node>> input_nodes;
-                auto start_node = GetInputNode(all_ng_nodes, node, 0);
-                input_nodes.push_back(start_node);
-                auto limit_node = GetInputNode(all_ng_nodes, node, 1);
-                input_nodes.push_back(limit_node);
-                auto delta_node = GetInputNode(all_ng_nodes, node, 2);
-                input_nodes.push_back(delta_node);
+                GNodeVector input_gnodes;
+                auto starg_gnode = GetInputNode(all_ng_nodes, node, 0);
+                input_gnodes.push_back(starg_gnode);
+                auto limit_gnode = GetInputNode(all_ng_nodes, node, 1);
+                input_gnodes.push_back(limit_gnode);
+                auto delta_gnode = GetInputNode(all_ng_nodes, node, 2);
+                input_gnodes.push_back(delta_gnode);
 
                 std::vector<int64> start_vec;
-                CHECK(GetValueFromNGraphOp<int64>(start_node, &start_vec) == true);
+                CHECK(GetValueFromNGraphOp<int64>(starg_gnode, &start_vec) == true);
                 CHECK(start_vec.size() > 0);
                 std::vector<int64> limit_vec;
-                CHECK(GetValueFromNGraphOp<int64>(limit_node, &limit_vec) == true);
+                CHECK(GetValueFromNGraphOp<int64>(limit_gnode, &limit_vec) == true);
                 CHECK(limit_vec.size() > 0);
                 std::vector<int64> delta_vec;
-                CHECK(GetValueFromNGraphOp<int64>(delta_node, &delta_vec) == true);
+                CHECK(GetValueFromNGraphOp<int64>(delta_gnode, &delta_vec) == true);
                 CHECK(delta_vec.size() > 0);
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["start"] = start_vec[0];
                 myConfig["limit"] = limit_vec[0];
                 myConfig["delta"] = delta_vec[0];
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(), node.op(), input_nodes, myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, input_gnodes);
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateRsqrtOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
-                                             ngraph::op::ParameterVector& parameters)
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
 
                 // Create a constant tensor populated with the value -1/2.
                 // (1/sqrt(x) = x^(-1/2))
-                auto shape = ng_input->get_shape();
+                auto shape = input_gnode->get_shape();
                 std::vector<std::string> constant_values(ngraph::shape_size(shape), "-0.5");
 
-                auto ng_exponent = std::make_shared<ngraph::op::Constant>(
-                    ng_input->get_element_type(), shape, constant_values);
+                auto exponent_op = std::make_shared<op::Constant>(
+                    input_gnode->get_element_type(), shape, constant_values);
+                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, {});
 
                 // Raise each element of the input to the power -0.5.
-                auto ng_node = std::make_shared<ngraph::op::Power>(ng_input, ng_exponent);
+                auto power_op = std::make_shared<op::Power>();
+                power_op->set_name(node.name());
+                auto power_gnode =
+                    m_graph->add_node_and_edge(power_op, {input_gnode, exponent_gnode});
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                NamedNodeVector ret{{node.name(), power_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateRsqrtGradOp(const tensorflow::NodeDef& node,
                                                  const NodeMap& all_ng_nodes,
-                                                 ngraph::op::ParameterVector& parameters)
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto delta_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 //`grad = dy * -0.5 * y^3`, where `y = rsqrt(x)`, and `dy`
                 // Create a constant tensor populated with the value 3.
-                auto et = ng_input->get_element_type();
-                auto shape = ng_input->get_shape();
+                auto et = input_gnode->get_element_type();
+                auto shape = input_gnode->get_shape();
                 std::vector<std::string> constant_values(ngraph::shape_size(shape), "3");
 
-                auto ng_exponent =
-                    std::make_shared<ngraph::op::Constant>(et, shape, constant_values);
-
+                auto exponent_op = std::make_shared<op::Constant>(et, shape, constant_values);
+                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, {});
                 // Raise each element of the input to the power 3.
-                auto ng_pow = std::make_shared<ngraph::op::Power>(ng_input, ng_exponent);
+                auto pow_op = std::make_shared<op::Power>();
+                auto pow_gnode = m_graph->add_node_and_edge(pow_op, {input_gnode, exponent_gnode});
 
                 // Create a constant tensor populated with the value -1/2.
                 std::vector<std::string> constant_diff(ngraph::shape_size(shape), "-0.5");
-                auto ng_diff = std::make_shared<ngraph::op::Constant>(et, shape, constant_diff);
-                auto ng_multiply = std::make_shared<ngraph::op::Multiply>(ng_pow, ng_delta);
-                auto ng_node = std::make_shared<ngraph::op::Multiply>(ng_multiply, ng_diff);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto diff_op = std::make_shared<op::Constant>(et, shape, constant_diff);
+                auto diff_gnode = m_graph->add_node_and_edge(diff_op, {});
+
+                auto multiply_op = std::make_shared<op::Multiply>();
+                auto multiply_gnode =
+                    m_graph->add_node_and_edge(multiply_op, {pow_gnode, delta_gnode});
+                auto ret_op = std::make_shared<op::Multiply>();
+                ret_op->set_name(node.name());
+                auto ret_gnode = m_graph->add_node_and_edge(ret_op, {multiply_gnode, diff_gnode});
+                NamedNodeVector ret{{node.name(), ret_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateStridedSliceOp(const tensorflow::NodeDef& node,
                                                     const NodeMap& all_ng_nodes,
-                                                    ngraph::op::ParameterVector& parameters)
+                                                    std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 // TODO: implement new_axis_mask, ellipsis_mask
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_begin_op = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_end_op = GetInputNode(all_ng_nodes, node, 2);
-                auto ng_stride_op = GetInputNode(all_ng_nodes, node, 3);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto begin_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto end_gnode = GetInputNode(all_ng_nodes, node, 2);
+                auto stride_gnode = GetInputNode(all_ng_nodes, node, 3);
 
                 std::vector<int64> begin_vec;
-                bool status = GetValueFromNGraphOp<int64>(ng_begin_op, &begin_vec);
+                bool status = GetValueFromNGraphOp<int64>(begin_gnode, &begin_vec);
                 CHECK(status);
                 std::vector<int64> end_vec;
-                status = GetValueFromNGraphOp<int64>(ng_end_op, &end_vec);
+                status = GetValueFromNGraphOp<int64>(end_gnode, &end_vec);
                 CHECK(status);
                 std::vector<int64> stride_vec;
-                status = GetValueFromNGraphOp<int64>(ng_stride_op, &stride_vec);
+                status = GetValueFromNGraphOp<int64>(stride_gnode, &stride_vec);
                 CHECK(status);
 
                 int tf_shrink_axis_mask;
@@ -1763,7 +1874,7 @@ namespace nnfusion
                 status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
                 CHECK(status);
 
-                auto& input_shape = ng_input->get_shape();
+                auto& input_shape = input_gnode->get_shape();
 
                 // Summary: Convert tf indexes (-inf, inf) to clamped_begin_idx [0, d] and
                 // clamped_end_idx [-1, d], which are then converted to ngraph indexes [0, d]
@@ -1954,7 +2065,7 @@ namespace nnfusion
                     return (bit_mask & (1 << bit_location)) != 0;
                 };
 
-                auto dim_vec = ng_input->get_shape();
+                auto dim_vec = input_gnode->get_shape();
                 auto in_rank = dim_vec.size();
 
                 CHECK(begin_vec.size() <= in_rank) << "Index out of range using input dim "
@@ -1999,12 +2110,14 @@ namespace nnfusion
                 // atleast one stride was negative, in which case reverse the input
                 if (neg_strides.size() > 0)
                 {
-                    ng_input = std::make_shared<ngraph::op::Reverse>(ng_input, neg_strides);
+                    auto reverse_input_op = std::make_shared<op::Reverse>(neg_strides);
+                    input_gnode = m_graph->add_node_and_edge(reverse_input_op, {input_gnode});
                 }
 
-                std::shared_ptr<ngraph::Node> ng_strided_slice =
-                    std::make_shared<ngraph::op::Slice>(
-                        ng_input, ng_begin_vec, ng_end_vec, ng_stride_vec);
+                auto strided_slice_op =
+                    std::make_shared<op::Slice>(ng_begin_vec, ng_end_vec, ng_stride_vec);
+                auto strided_slice_gnode =
+                    m_graph->add_node_and_edge(strided_slice_op, {input_gnode});
 
                 if (tf_shrink_axis_mask)
                 {
@@ -2039,8 +2152,10 @@ namespace nnfusion
                     ngraph::AxisVector ng_axis_order(input_shape.size());
                     std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
 
-                    ng_strided_slice = std::make_shared<ngraph::op::Reshape>(
-                        ng_strided_slice, ng_axis_order, ng_final_shape);
+                    auto reshape_strided_slice_op =
+                        std::make_shared<op::Reshape>(ng_axis_order, ng_final_shape);
+                    strided_slice_gnode =
+                        m_graph->add_node_and_edge(reshape_strided_slice_op, {strided_slice_gnode});
                 }
 
                 // TODO: assert size in this dim was 1
@@ -2049,27 +2164,29 @@ namespace nnfusion
                 // TODO: tf_new_axis_mask can exceed rank
                 // Raise each element of the input to the power -0.5.
 
-                ng_strided_slice->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_strided_slice}};
+                strided_slice_gnode->set_name(node.name());
+                strided_slice_gnode->get_op_ptr()->set_name(node.name());
+                NamedNodeVector ret{{node.name(), strided_slice_gnode}};
                 return ret;
             }
 
-            NamedNodeVector TranslateStridedSliceGradOp(const tensorflow::NodeDef& node,
-                                                        const NodeMap& all_ng_nodes,
-                                                        ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateStridedSliceGradOp(const tensorflow::NodeDef& node,
+                                            const NodeMap& all_ng_nodes,
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto x = GetInputNode(all_ng_nodes, node, 0);
-                auto begin = GetInputNode(all_ng_nodes, node, 1);
-                auto end = GetInputNode(all_ng_nodes, node, 2);
-                auto strides = GetInputNode(all_ng_nodes, node, 3);
-                auto grad = GetInputNode(all_ng_nodes, node, 4);
+                auto x_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto begin_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto end_gnode = GetInputNode(all_ng_nodes, node, 2);
+                auto strides_gnode = GetInputNode(all_ng_nodes, node, 3);
+                auto grad_gnode = GetInputNode(all_ng_nodes, node, 4);
 
                 std::vector<int32> x_value;
-                CHECK(GetValueFromNGraphOp<int32>(x, &x_value))
+                CHECK(GetValueFromNGraphOp<int32>(x_gnode, &x_value))
                     << "StridedSliceGradOp currently do not support dynamic output tensor shape";
-                auto x_shape = x->get_shape();
-                auto x_const =
-                    std::make_shared<ngraph::op::Constant>(element::i32, x_shape, x_value);
+                auto x_shape = x_gnode->get_shape();
+                auto x_const_op = std::make_shared<op::Constant>(element::i32, x_shape, x_value);
+                auto x_const_gnode = m_graph->add_node_and_edge(x_const_op, {});
 
                 int tf_shrink_axis_mask;
                 bool status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
@@ -2091,7 +2208,7 @@ namespace nnfusion
                 status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
                 CHECK(status);
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["begin_mask"] = tf_begin_mask;
                 myConfig["end_mask"] = tf_end_mask;
                 myConfig["ellipsis_mask"] = tf_ellipsis_mask;
@@ -2099,22 +2216,20 @@ namespace nnfusion
                 myConfig["shrink_axis_mask"] = tf_shrink_axis_mask;
                 // TODO: change shape with mask
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
+                auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(), // Node name, looks like "tf_model/add_n";
                     node.op(),   // Operator name, looks like "AddN";
-                    std::vector<std::shared_ptr<Node>>(
-                        {x_const, begin, end, strides, grad}), // The inputs of nodes;
-                    myConfig); // The configuration we generated above;
+                    myConfig);   // The configuration we generated above;
 
-                ng_node->set_name(node.name()); // Set the node name;
-
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(
+                    generic_op, {x_const_gnode, begin_gnode, end_gnode, strides_gnode, grad_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateTileOp(const tensorflow::NodeDef& node,
                                             const NodeMap& all_ng_nodes,
-                                            ngraph::op::ParameterVector& parameters)
+                                            std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 /*
                 This operation creates a new tensor by replicating input multiples times.
@@ -2122,102 +2237,103 @@ namespace nnfusion
                 and the values of input are replicated multiples[i] times along the 'i'th dimension.
                 For example, tiling [a b c d] by [2] produces [a b c d a b c d].
                 */
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_multiples = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto multiples_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> in_value;
-                CHECK(GetValueFromNGraphOp<int64>(ng_multiples, &in_value))
+                CHECK(GetValueFromNGraphOp<int64>(multiples_gnode, &in_value))
                     << "TileOp currently do not support dynamic tensor shape";
-                auto ng_input_shape = ng_multiples->get_shape();
-                auto ng_const =
-                    std::make_shared<ngraph::op::Constant>(element::i64, ng_input_shape, in_value);
-
-                ngraph::op::OpConfig::any myConfig;
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input, ng_const}),
-                    myConfig);
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto input_shape = multiples_gnode->get_shape();
+                auto const_op = std::make_shared<op::Constant>(element::i64, input_shape, in_value);
+                auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                nnfusion::op::OpConfig::any myConfig;
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {input_gnode, const_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
-            NamedNodeVector TranslateUnsortedSegmentSumOp(const tensorflow::NodeDef& node,
-                                                          const NodeMap& all_ng_nodes,
-                                                          ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateUnsortedSegmentSumOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_seg_id = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_seg_num = GetInputNode(all_ng_nodes, node, 2);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto seg_id_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto seg_num_gnode = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int> in_value;
-                CHECK(GetValueFromNGraphOp<int>(ng_seg_num, &in_value))
+                CHECK(GetValueFromNGraphOp<int>(seg_num_gnode, &in_value))
                     << "We only accept the sgements number as Constant.";
-                auto ng_const = std::make_shared<ngraph::op::Constant>(
-                    element::i32, ng_seg_num->get_shape(), in_value);
+                auto const_op = std::make_shared<op::Constant>(
+                    element::i32, seg_num_gnode->get_shape(), in_value);
+                auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                nnfusion::op::OpConfig::any myConfig;
 
-                ngraph::op::OpConfig::any myConfig;
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(),
-                    node.op(),
-                    std::vector<std::shared_ptr<Node>>({ng_input, ng_seg_id, ng_const}),
-                    myConfig);
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto generic_gnode = m_graph->add_node_and_edge(
+                    generic_op, {input_gnode, seg_id_gnode, const_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateSoftmaxOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
-                                               ngraph::op::ParameterVector& parameters)
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_input_shape = ng_input->get_shape();
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto input_shape = input_gnode->get_shape();
                 ngraph::AxisSet ng_axes_softmax;
-                auto shape_size = ng_input_shape.size();
-                CHECK(shape_size >= 1) << "TF Softmax logits must be >=1 dimension";
+                auto rank = input_shape.size();
+                CHECK(rank >= 1) << "TF Softmax logits must be >=1 dimension";
 
-                auto rank = ng_input->get_shape().size();
                 ng_axes_softmax.insert(rank - 1);
 
-                auto ng_node = std::make_shared<ngraph::op::Softmax>(ng_input, ng_axes_softmax);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                softmax_op->set_name(node.name());
+                auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {input_gnode});
+                NamedNodeVector ret{{node.name(), softmax_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateAssertOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_node = std::make_shared<ngraph::op::Constant>(
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto constant_op = std::make_shared<nnfusion::op::Constant>(
                     ngraph::element::i32, ngraph::Shape{}, std::vector<int>{0});
+                constant_op->set_name(node.name());
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto constant_gnode = m_graph->add_node_and_edge(constant_op, GNodeVector());
+                m_graph->add_control_edge(input_gnode, constant_gnode);
+                NamedNodeVector ret{{node.name(), constant_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateSelectOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
-                                              ngraph::op::ParameterVector& parameters)
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input1 = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_input2 = GetInputNode(all_ng_nodes, node, 1);
-                auto ng_input3 = GetInputNode(all_ng_nodes, node, 2);
+                auto input1_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto input2_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto input3_gnode = GetInputNode(all_ng_nodes, node, 2);
 
-                CHECK(ng_input2->get_shape() == ng_input3->get_shape())
+                CHECK(input2_gnode->get_shape() == input3_gnode->get_shape())
                     << "Input tensors 2 and 3 should have same shape";
 
-                auto ng_input1_shape = ng_input1->get_shape();
-                auto ng_input2_shape = ng_input2->get_shape();
+                auto input1_shape = input1_gnode->get_shape();
+                auto input2_shape = input2_gnode->get_shape();
 
-                auto ng_input1_rank = ng_input1->get_shape().size();
-                auto ng_input2_rank = ng_input2->get_shape().size();
+                auto input1_rank = input1_shape.size();
+                auto input2_rank = input2_shape.size();
 
-                CHECK(((ng_input1_shape == ng_input2_shape) ||
-                       ((ng_input1_rank == 1) && (ng_input2_rank > ng_input1_rank) &&
-                        (ng_input2_shape[0] == ng_input1_shape[0]))))
+                CHECK(((input1_shape == input2_shape) ||
+                       ((input1_rank == 1) && (input2_rank > input1_rank) &&
+                        (input2_shape[0] == input1_shape[0]))))
                     << "Input tensor may have the same shape as condition. If condition is "
                     << "rank 1, input may have higher rank, but its first dimension must "
                     << "match the size of condition.";
@@ -2226,7 +2342,7 @@ namespace nnfusion
                 shared_ptr<ngraph::Node> ng_input_new;
 
                 // If input tensor has higher rank than condiiton, length will be > 0.
-                length = ng_input2_rank - ng_input1_rank;
+                length = input2_rank - input1_rank;
 
                 if (length != 0)
                 {
@@ -2238,42 +2354,47 @@ namespace nnfusion
                     // After Reshape, condition tensor will be [7, 1 ,1 ,1] for auto
                     // broadcast.
 
-                    std::vector<size_t> tmp_vector((ng_input2_rank), 1);
-                    tmp_vector[0] = ng_input1_shape[0];
+                    std::vector<size_t> tmp_vector((input2_rank), 1);
+                    tmp_vector[0] = input1_shape[0];
 
-                    ng_input_new = std::make_shared<ngraph::op::Reshape>(
-                        ng_input1, ngraph::AxisVector{0}, tmp_vector);
+                    auto reshape_input1_op =
+                        std::make_shared<op::Reshape>(ngraph::AxisVector{0}, tmp_vector);
+                    input1_gnode = m_graph->add_node_and_edge(reshape_input1_op, {input1_gnode});
                 }
 
-                std::tie(ng_input1, ng_input2) = ngraph::builder::numpy_broadcast(
-                    std::make_pair(length != 0 ? ng_input_new : ng_input1, ng_input2));
-                std::tie(ng_input2, ng_input3) =
-                    ngraph::builder::numpy_broadcast(std::make_pair(ng_input2, ng_input3));
+                std::tie(input1_gnode, input2_gnode) =
+                    graph::numpy_broadcast(std::make_pair(input1_gnode, input2_gnode), m_graph);
+                std::tie(input2_gnode, input3_gnode) =
+                    graph::numpy_broadcast(std::make_pair(input2_gnode, input3_gnode), m_graph);
 
-                auto ng_node =
-                    std::make_shared<ngraph::op::Select>(ng_input1, ng_input2, ng_input3);
+                auto select_op = std::make_shared<op::Select>();
+                select_op->set_name(node.name());
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto select_gnode = m_graph->add_node_and_edge(
+                    select_op, {input1_gnode, input2_gnode, input3_gnode});
+
+                NamedNodeVector ret{{node.name(), select_gnode}};
                 return ret;
             }
 
             NamedNodeVector
                 TranslateBroadcastGradientArgsOp(const tensorflow::NodeDef& node,
                                                  const NodeMap& all_ng_nodes,
-                                                 ngraph::op::ParameterVector& parameters)
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 std::vector<BCast::Vec> shapes;
+                GNodeVector input_gnodes;
                 for (int i = 0; i < 2; ++i)
                 {
-                    auto ng_input = GetInputNode(all_ng_nodes, node, i);
-                    auto ng_input_shape = ng_input->get_shape();
-                    CHECK(ng_input_shape.size() == 1) << "input" << i << "must be a vector";
+                    auto input_gnode = GetInputNode(all_ng_nodes, node, i);
+                    input_gnodes.push_back(input_gnode);
+                    auto input_shape = input_gnode->get_shape();
+                    CHECK(input_shape.size() == 1) << "input" << i << "must be a vector";
                     std::vector<int64> in_value;
-                    CHECK(GetValueFromNGraphOp<int64>(ng_input, &in_value));
+                    CHECK(GetValueFromNGraphOp<int64>(input_gnode, &in_value));
 
                     BCast::Vec vec;
-                    for (int64 i = 0; i < shape_size(ng_input_shape); ++i)
+                    for (int64 i = 0; i < shape_size(input_shape); ++i)
                     {
                         vec.push_back(in_value[i]);
                     }
@@ -2287,77 +2408,94 @@ namespace nnfusion
                 // "] vs. [", str_util::Join(shapes[1], ","), "]"));
                 const BCast::Vec& out0 = bcast.grad_x_reduce_idx();
                 const BCast::Vec& out1 = bcast.grad_y_reduce_idx();
-                auto ng_out_node_0 = std::make_shared<ngraph::op::Constant>(
-                    element::i64, ngraph::Shape({out0.size()}), out0);
-                auto ng_out_node_1 = std::make_shared<ngraph::op::Constant>(
-                    element::i64, ngraph::Shape({out1.size()}), out1);
 
-                ng_out_node_0->set_name(node.name() + "x");
-                ng_out_node_1->set_name(node.name() + "y");
-                NamedNodeVector ret{{node.name(), ng_out_node_0}, {node.name(), ng_out_node_1}};
+                // todo: name???
+                auto out_node_0_op = std::make_shared<op::Constant>(
+                    ngraph::element::i64, ngraph::Shape({out0.size()}), out0);
+                out_node_0_op->set_name(node.name() + "x");
+
+                auto out_node_0_gnode = m_graph->add_node_and_edge(out_node_0_op, GNodeVector());
+                m_graph->add_control_edge(input_gnodes[0], out_node_0_gnode);
+
+                auto out_node_1_op = std::make_shared<op::Constant>(
+                    ngraph::element::i64, ngraph::Shape({out1.size()}), out1);
+                out_node_1_op->set_name(node.name() + "y");
+                auto out_node_1_gnode = m_graph->add_node_and_edge(out_node_1_op, GNodeVector());
+                m_graph->add_control_edge(input_gnodes[1], out_node_1_gnode);
+
+                NamedNodeVector ret{{node.name(), out_node_0_gnode},
+                                    {node.name(), out_node_1_gnode}};
 
                 return ret;
             }
 
             NamedNodeVector TranslateFloorModOp(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input_1 = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_input_2 = GetInputNode(all_ng_nodes, node, 1);
+                auto input1_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto input2_gnode = GetInputNode(all_ng_nodes, node, 1);
 
-                std::tie(ng_input_1, ng_input_2) =
-                    ngraph::builder::numpy_broadcast(std::make_pair(ng_input_1, ng_input_2));
+                std::tie(input1_gnode, input2_gnode) =
+                    graph::numpy_broadcast(std::make_pair(input1_gnode, input2_gnode), m_graph);
 
-                std::shared_ptr<ngraph::Node> ng_floordiv_op = std::make_shared<ngraph::op::Floor>(
-                    std::make_shared<ngraph::op::Divide>(ng_input_1, ng_input_2));
+                auto div_op = std::make_shared<op::Divide>();
+                auto div_gnode = m_graph->add_node_and_edge(div_op, {input1_gnode, input2_gnode});
 
-                std::shared_ptr<ngraph::Node> ng_floormod_op =
-                    std::make_shared<ngraph::op::Subtract>(
-                        ng_input_1,
-                        std::make_shared<ngraph::op::Multiply>(ng_floordiv_op, ng_input_2));
+                auto floordiv_op = std::make_shared<op::Floor>();
+                auto floordiv_gnode = m_graph->add_node_and_edge(floordiv_op, {div_gnode});
 
-                ng_floormod_op->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_floormod_op}};
+                auto multiply_op = std::make_shared<op::Multiply>();
+                auto multiply_gnode =
+                    m_graph->add_node_and_edge(multiply_op, {floordiv_gnode, input2_gnode});
+
+                auto floormod_op = std::make_shared<op::Subtract>();
+                floormod_op->set_name(node.name());
+                auto floormod_gnode =
+                    m_graph->add_node_and_edge(floormod_op, {input1_gnode, multiply_gnode});
+
+                NamedNodeVector ret{{node.name(), floormod_gnode}};
                 return ret;
             }
-            NamedNodeVector TranslateDynamicStitchOp(const tensorflow::NodeDef& node,
-                                                     const NodeMap& all_ng_nodes,
-                                                     ngraph::op::ParameterVector& parameters)
+            NamedNodeVector
+                TranslateDynamicStitchOp(const tensorflow::NodeDef& node,
+                                         const NodeMap& all_ng_nodes,
+                                         std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 int32 num_partitions;
-                std::vector<std::shared_ptr<Node>> input_nodes;
+                GNodeVector input_gnodes;
                 bool status = GetNodeAttr(node.attr(), "N", num_partitions);
                 CHECK(status);
 
                 for (int i = 0; i < num_partitions * 2; i++)
                 {
-                    auto ng_input = GetInputNode(all_ng_nodes, node, i);
-                    auto ng_input_shape = ng_input->get_shape();
+                    auto input_gnode = GetInputNode(all_ng_nodes, node, i);
+                    auto input_shape = input_gnode->get_shape();
 
                     if (i < num_partitions)
                     {
                         std::vector<int64> in_value;
-                        CHECK(GetValueFromNGraphOp<int64>(ng_input, &in_value))
+                        CHECK(GetValueFromNGraphOp<int64>(input_gnode, &in_value))
                             << "DynamicStitch currently do not support dynamic tensor shape";
-                        auto ng_const = std::make_shared<ngraph::op::Constant>(
-                            element::i64, ng_input_shape, in_value);
-                        input_nodes.push_back(ng_const);
+                        auto const_op =
+                            std::make_shared<op::Constant>(element::i64, input_shape, in_value);
+                        auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                        input_gnodes.push_back(const_gnode);
                     }
                     else
                     {
-                        input_nodes.push_back(ng_input);
+                        input_gnodes.push_back(input_gnode);
                     }
                 }
 
-                ngraph::op::OpConfig::any myConfig;
+                nnfusion::op::OpConfig::any myConfig;
                 myConfig["N"] = num_partitions;
 
-                auto ng_node = std::make_shared<ngraph::op::GenericOp>(
-                    node.name(), node.op(), input_nodes, myConfig);
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnodes});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }
 
@@ -2366,50 +2504,59 @@ namespace nnfusion
             // where y = tanh(x) and dy is the corresponding input gradient
             NamedNodeVector TranslateTanhGradOp(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_input = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_delta = GetInputNode(all_ng_nodes, node, 1);
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto delta_gnode = GetInputNode(all_ng_nodes, node, 1);
 
-                auto et = ng_input->get_element_type();
-                auto input_shape = ng_input->get_shape();
+                auto et = input_gnode->get_element_type();
+                auto input_shape = input_gnode->get_shape();
 
-                auto ng_sq = std::make_shared<ngraph::op::Multiply>(ng_input, ng_input);
+                auto sq_op = std::make_shared<op::Multiply>();
+                auto sq_gnode = m_graph->add_node_and_edge(sq_op, {input_gnode, input_gnode});
 
                 std::vector<std::string> const_values(ngraph::shape_size(input_shape), "1");
 
-                auto ng_const =
-                    std::make_shared<ngraph::op::Constant>(et, input_shape, const_values);
+                auto const_op = std::make_shared<op::Constant>(et, input_shape, const_values);
+                auto const_gnode = m_graph->add_node_and_edge(const_op, {});
 
-                auto ng_sub = std::make_shared<ngraph::op::Subtract>(ng_const, ng_sq);
-                auto ng_node = std::make_shared<ngraph::op::Multiply>(ng_delta, ng_sub);
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto sub_op = std::make_shared<op::Subtract>();
+                auto sub_gnode = m_graph->add_node_and_edge(sub_op, {const_gnode, sq_gnode});
+
+                auto multiply_op = std::make_shared<op::Multiply>();
+                multiply_op->set_name(node.name());
+
+                auto multiply_gnode =
+                    m_graph->add_node_and_edge(multiply_op, {delta_gnode, sub_gnode});
+                NamedNodeVector ret{{node.name(), multiply_gnode}};
                 return ret;
             }
 
             NamedNodeVector TranslateFloorDivOp(const tensorflow::NodeDef& node,
                                                 const NodeMap& all_ng_nodes,
-                                                ngraph::op::ParameterVector& parameters)
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
-                auto ng_lhs = GetInputNode(all_ng_nodes, node, 0);
-                auto ng_rhs = GetInputNode(all_ng_nodes, node, 1);
+                auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
 
-                std::tie(ng_lhs, ng_rhs) =
-                    ngraph::builder::numpy_broadcast(std::make_pair(ng_lhs, ng_rhs));
+                std::tie(lhs_gnode, rhs_gnode) =
+                    graph::numpy_broadcast(std::make_pair(lhs_gnode, rhs_gnode), m_graph);
 
-                auto ng_div = std::make_shared<ngraph::op::Divide>(ng_lhs, ng_rhs);
+                auto div_op = std::make_shared<op::Divide>();
+                auto div_gnode = m_graph->add_node_and_edge(div_op, {lhs_gnode, rhs_gnode});
 
-                auto ng_node = std::make_shared<ngraph::op::Floor>(ng_div);
+                auto floor_op = std::make_shared<op::Floor>();
+                floor_op->set_name(node.name());
 
-                ng_node->set_name(node.name());
-                NamedNodeVector ret{{node.name(), ng_node}};
+                auto floor_gnode = m_graph->add_node_and_edge(floor_op, {div_gnode});
+
+                NamedNodeVector ret{{node.name(), floor_gnode}};
                 return ret;
             }
 
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
-                {"Abs", TranslateUnaryOp<ngraph::op::Abs>},
-                {"Add", TranslateBinaryOp<ngraph::op::Add>},
+                {"Abs", TranslateUnaryOp<op::Abs>},
+                {"Add", TranslateBinaryOp<op::Add>},
                 {"AddN", TranslateAddNOp},
                 {"All", TranslateAllOp},
                 {"Assert", TranslateAssertOp},
@@ -2423,10 +2570,10 @@ namespace nnfusion
                 {"Const", TranslateConstOp},
                 {"Conv2D", TranslateConv2DOp},
                 {"ConcatV2", TranslateConcatV2Op},
-                {"DivNoNan", TranslateBinaryOp<ngraph::op::DivNoNan>},
+                {"DivNoNan", TranslateBinaryOp<op::DivNoNan>},
                 {"DynamicStitch", TranslateDynamicStitchOp},
-                {"Equal", TranslateBinaryOp<ngraph::op::Equal>},
-                {"Exp", TranslateUnaryOp<ngraph::op::Exp>},
+                {"Equal", TranslateBinaryOp<op::Equal>},
+                {"Exp", TranslateUnaryOp<op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
                 {"Fill", TranslateFillOp},
                 {"FloorMod", TranslateFloorModOp},
@@ -2434,33 +2581,32 @@ namespace nnfusion
                 {"FusedBatchNorm", TranslateFusedBatchNormOp},
                 {"FusedBatchNormV2", TranslateFusedBatchNormOp},
                 {"GatherV2", TranslateGatherV2Op},
-                {"Identity", TranslateIdentityOp},
                 {"PreventGradient", TranslateIdentityOp},
                 {"StopGradient", TranslateIdentityOp},
                 {"NoOp", TranslateNoOp},
                 {"Identity", TranslateIdentityOp},
                 {"InvertPermutation", TranslateInvertPermutationOp},
                 {"MatMul", TranslateMatMulOp},
-                {"LessEqual", TranslateBinaryOp<ngraph::op::LessEq>},
-                {"Maximum", TranslateBinaryOp<ngraph::op::Maximum>},
+                {"LessEqual", TranslateBinaryOp<op::LessEq>},
+                {"Maximum", TranslateBinaryOp<op::Maximum>},
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
-                {"Mul", TranslateBinaryOp<ngraph::op::Multiply>},
-                {"Multiply", TranslateBinaryOp<ngraph::op::Multiply>},
-                {"Neg", TranslateUnaryOp<ngraph::op::Negative>},
+                {"Mul", TranslateBinaryOp<op::Multiply>},
+                {"Multiply", TranslateBinaryOp<op::Multiply>},
+                {"Neg", TranslateUnaryOp<op::Negative>},
                 {"OneHot", TranslateOneHotOp},
                 {"Pack", TranslatePackOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
-                {"Placeholder", TranslateInputOp<ngraph::op::Parameter>},
-                {"Pow", TranslateBinaryOp<ngraph::op::Power>},
+                {"Placeholder", TranslateInputOp<op::Parameter>},
+                {"Pow", TranslateBinaryOp<op::Power>},
                 {"Range", TranslateRangeOp},
-                {"Relu", TranslateUnaryOp<ngraph::op::Relu>},
+                {"Relu", TranslateUnaryOp<op::Relu>},
                 {"ReluGrad", TranslateReluGradOp},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateRsqrtOp},
                 {"RsqrtGrad", TranslateRsqrtGradOp},
-                {"RealDiv", TranslateBinaryOp<ngraph::op::Divide>},
+                {"RealDiv", TranslateBinaryOp<op::Divide>},
                 {"Select", TranslateSelectOp},
                 {"Sigmoid", TranslateSigmoidOp},
                 {"Slice", TranslateSliceOp},
@@ -2472,11 +2618,14 @@ namespace nnfusion
                 {"StridedSlice", TranslateStridedSliceOp},
                 {"SparseSoftmaxCrossEntropyWithLogits",
                  TranslateSparseSoftmaxCrossEntropyWithLogitsOp},
-                {"Sub", TranslateBinaryOp<ngraph::op::Subtract>},
+                //{"", TranslateStridedSliceGradOp}
+                //{"", TranslateStopGradientOp},
+                {"Sub", TranslateBinaryOp<op::Subtract>},
                 {"Sum", TranslateSumOp},
-                {"Tanh", TranslateUnaryOp<ngraph::op::Tanh>},
+                {"Tanh", TranslateUnaryOp<op::Tanh>},
                 {"TanhGrad", TranslateTanhGradOp},
                 {"Tile", TranslateTileOp},
+                //{"", TranslateTransposeOp},
                 {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
                 {"Transpose", TranslateTransposeToReshapeOp}};
 
@@ -2500,9 +2649,7 @@ namespace nnfusion
             {
                 LOG(INFO) << "Converting Tensorflow Graph";
 
-                m_ngraph = std::make_shared<nnfusion::graph::Graph>();
-                std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>
-                    gnode_map;
+                m_graph = std::make_shared<nnfusion::graph::Graph>();
 
                 generate_topology();
 
@@ -2521,8 +2668,8 @@ namespace nnfusion
 
                         std::shared_ptr<nnfusion::graph::GNode> src_node;
 
-                        auto iter = gnode_map.find(input_tensor.first);
-                        CHECK(iter != gnode_map.end())
+                        auto iter = m_node_map.find(input_tensor.first);
+                        CHECK(iter != m_node_map.end())
                             << "Node " << node_proto.name()
                             << " has Un-Converted input node: " << input_tensor.first;
                         if (src_index == nnfusion::graph::Graph::kControlSlot)
@@ -2544,84 +2691,14 @@ namespace nnfusion
                         }
                     }
 
-                    auto ng_nodes = convert_node(node_proto);
-                    gnode_map[node_proto.name()] = {};
-                    m_ng_node[node_proto.name()] = {};
-                    for (auto& node : ng_nodes)
+                    auto results = convert_node(node_proto);
+                    m_node_map[node_proto.name()] = {};
+                    for (auto& name_gnode_pair : results)
                     {
-                        m_ng_node[node.first].push_back(node.second);
-                        std::shared_ptr<nnfusion::graph::GNode> gnode = nullptr;
-                        if (node2gnode_map.find(node.second) == node2gnode_map.end())
-                        {
-                            gnode = m_ngraph->add_node(node.second);
-                            node2gnode_map[node.second] = gnode;
+                        auto gnode = name_gnode_pair.second;
+                        m_node_map[name_gnode_pair.first].push_back(gnode);
 
-                            std::queue<std::shared_ptr<ngraph::Node>> process_queue;
-                            process_queue.push(node.second);
-                            while (!process_queue.empty())
-                            {
-                                auto process_node = process_queue.front();
-                                process_queue.pop();
-                                std::shared_ptr<nnfusion::graph::GNode> process_gnode = nullptr;
-                                if (node2gnode_map.find(process_node) == node2gnode_map.end())
-                                {
-                                    process_gnode = m_ngraph->add_node(process_node);
-                                    node2gnode_map[process_node] = process_gnode;
-                                }
-                                else
-                                {
-                                    process_gnode = node2gnode_map[process_node];
-                                }
-                                for (auto& process_input : process_node->get_inputs())
-                                {
-                                    auto process_input_node = process_input.get_output().get_node();
-
-                                    std::shared_ptr<nnfusion::graph::GNode> process_input_gnode =
-                                        nullptr;
-                                    if (node2gnode_map.find(process_input_node) ==
-                                        node2gnode_map.end())
-                                    {
-                                        process_input_gnode =
-                                            m_ngraph->add_node(process_input_node);
-                                        node2gnode_map[process_input_node] = process_input_gnode;
-                                    }
-                                    else
-                                    {
-                                        process_input_gnode = node2gnode_map[process_input_node];
-                                    }
-
-                                    if (!m_ngraph->find_edge(process_input_gnode,
-                                                             process_input.get_output().get_index(),
-                                                             process_gnode,
-                                                             process_input.get_index()))
-                                    {
-                                        m_ngraph->add_edge(process_input_gnode,
-                                                           process_input.get_output().get_index(),
-                                                           process_gnode,
-                                                           process_input.get_index());
-                                        process_queue.push(process_input_node);
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            gnode = node2gnode_map[node.second];
-                            if (gnode->get_name() != node.first)
-                            {
-                                CHECK(!(*gnode)["Alias"].is_valid()) << "node " << gnode->get_name()
-                                                                     << " has more than one alias.";
-                                (*gnode)["Alias"] = node.first;
-                            }
-                        }
-                        gnode_map[node.first].push_back(gnode);
-
-                        if (tf_output_name_.find(node_proto.name()) != tf_output_name_.end())
-                        {
-                            m_outputs.emplace_back(node.second);
-                            m_graph_outputs.emplace_back(gnode);
-                        }
-
+                        // add control edge
                         for (size_t input_idx = 0; input_idx < inputs.size(); input_idx++)
                         {
                             CHECK_NOT_NULLPTR(inputs[input_idx].node)
@@ -2629,14 +2706,28 @@ namespace nnfusion
 
                             if (inputs[input_idx].index == nnfusion::graph::Graph::kControlSlot)
                             {
-                                m_ngraph->add_control_edge(inputs[input_idx].node, gnode);
-                                node.second->add_control_dependency(
-                                    inputs[input_idx].node->get_op_ptr());
+                                m_graph->add_control_edge(inputs[input_idx].node, gnode);
                             }
                             else
                             {
                                 // normal edge, do nothing
                             }
+                        }
+
+                        if (gnode->get_name() != name_gnode_pair.first)
+                        {
+                            CHECK(!(*gnode)["Alias"].is_valid()) << "node " << gnode->get_name()
+                                                                 << " has more than one alias.";
+                            (*gnode)["Alias"] = name_gnode_pair.first;
+                        }
+
+                        if (tf_output_name_.find(node_proto.name()) != tf_output_name_.end())
+                        {
+                            m_graph_outputs.emplace_back(gnode);
+                        }
+                        if (gnode->get_op_ptr()->is_parameter())
+                        {
+                            m_graph_parameters.emplace_back(gnode);
                         }
                     }
 
@@ -2651,7 +2742,8 @@ namespace nnfusion
                     }
                 }
 
-                m_ngraph->set_outputs(m_graph_outputs);
+                m_graph->set_outputs(m_graph_outputs);
+                m_graph->set_default_parameters();
                 LOG(INFO) << "convert graph done";
             }
 
@@ -2700,34 +2792,17 @@ namespace nnfusion
 
             NamedNodeVector GraphConvert::convert_node(const tensorflow::NodeDef& node)
             {
-                //LOG(INFO) << ">> ++ Managing TF_IMPORT node " << node.name();
                 NamedNodeVector ret;
                 auto func = TRANSLATE_OP_MAP.find(node.op());
                 if (func != TRANSLATE_OP_MAP.end())
                 {
-                    ret = func->second(node, m_ng_node, m_parameters);
+                    ret = func->second(node, m_node_map, m_graph);
                 }
                 else
                 {
-                    ret = TranslateGenericNoAttrOp(node, m_ng_node, m_parameters);
+                    ret = TranslateGenericNoAttrOp(node, m_node_map, m_graph);
                 }
-                //LOG(INFO) << ">> -- Managing TF_IMPORT node " << node.name();
                 return std::move(ret);
-            }
-
-            std::vector<std::shared_ptr<ngraph::Function>> GraphConvert::get_funcs()
-            {
-                std::vector<std::shared_ptr<Function>> output_functions;
-                for (const auto& output : m_outputs)
-                {
-                    output_functions.emplace_back(
-                        std::make_shared<ngraph::Function>(output, m_parameters));
-                }
-                if (output_functions.size() > 1)
-                    LOG(WARNING) << "Please note that NNFusion current only support single"
-                                 << " output graph. If your graph has more than one outputs, we "
-                                 << "ONLY generate the source code for the first one.";
-                return output_functions;
             }
         } // namespace tensorflow_import
     }     // namespace frontend

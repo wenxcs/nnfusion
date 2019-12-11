@@ -2,7 +2,7 @@
 #pragma once
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DECLARE_string(fdefault_device);
 
@@ -19,11 +19,13 @@ namespace nnfusion
                 Reduce(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
                 {
-                    if (auto reduce = dynamic_pointer_cast<ngraph::op::Reduce>(ctx->node))
+                    if (auto reduce =
+                            dynamic_pointer_cast<nnfusion::op::Reduce>(ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
                     }
-                    else if (auto reduce = dynamic_pointer_cast<ngraph::op::Sum>(ctx->node))
+                    else if (auto reduce =
+                                 dynamic_pointer_cast<nnfusion::op::Sum>(ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
                     }
@@ -138,7 +140,7 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
-                    auto code = ngraph::op::create_code_from_template(
+                    auto code = nnfusion::op::create_code_from_template(
                         R"(
 int width = @width@;
 int block_size = @block_size@;
@@ -464,11 +466,13 @@ if (thread_idx == 0) output0[block_idx] = val;
                 ReduceMemcpy(shared_ptr<KernelContext> ctx)
                     : CudaLibEmitter(ctx)
                 {
-                    if (auto reduce = dynamic_pointer_cast<ngraph::op::Reduce>(ctx->node))
+                    if (auto reduce =
+                            dynamic_pointer_cast<nnfusion::op::Reduce>(ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
                     }
-                    else if (auto reduce = dynamic_pointer_cast<ngraph::op::Sum>(ctx->node))
+                    else if (auto reduce =
+                                 dynamic_pointer_cast<nnfusion::op::Sum>(ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
                     }

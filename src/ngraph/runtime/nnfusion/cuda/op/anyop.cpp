@@ -58,6 +58,6 @@ cuda::CudaFunction_p cuda::Anyop::codegen(ir::Operator_p inter_op)
 {
     Anyop_p cop(new Anyop(inter_op));
     LOG_INFO << "Codegen for Anyop function:" << cop->codegen_function_name() << endl;
-    std::cerr << "WARNING: using Any op for " << cop->op->node->get_friendly_name() << endl;
+    std::cerr << "WARNING: using Any op for " << cop->op->node->get_name() << endl;
     return cop;
 }

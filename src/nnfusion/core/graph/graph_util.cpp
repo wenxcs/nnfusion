@@ -1,7 +1,7 @@
 #include "graph_util.hpp"
 
 void nnfusion::graph::ReverseDFS(const Graph* graph,
-                                 const std::vector<std::shared_ptr<GNode>>& start,
+                                 const GNodeVector& start,
                                  const std::function<void(std::shared_ptr<GNode>)>& enter,
                                  const std::function<void(std::shared_ptr<GNode>)>& leave,
                                  const NodeComparator& stable_comparator)
@@ -57,7 +57,7 @@ void nnfusion::graph::ReverseDFS(const Graph* graph,
 
         if (stable_comparator)
         {
-            std::vector<std::shared_ptr<GNode>> in_nodes_sorted;
+            GNodeVector in_nodes_sorted;
             for (auto in_edge : node->get_in_edges())
             {
                 in_nodes_sorted.emplace_back(in_edge->get_src());

@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::MaxPool1D::MaxPool1D(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto max_pool = static_pointer_cast<ngraph::op::MaxPool>(ctx->node);
+    auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
     window_shape = ngraph::Shape(max_pool->get_window_shape());
@@ -96,7 +96,7 @@ LanguageUnit_p cuda::MaxPool1D::emit_dependency()
 cuda::MaxPoolmD::MaxPoolmD(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    auto max_pool = static_pointer_cast<ngraph::op::MaxPool>(ctx->node);
+    auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
     window_shape = ngraph::Shape(max_pool->get_window_shape());

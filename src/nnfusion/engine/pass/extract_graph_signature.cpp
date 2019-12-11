@@ -8,8 +8,7 @@ bool ExtractGraphSignature::extract_result(std::shared_ptr<TranslationUnit> tu,
 {
     for (auto gnode : graph->get_outputs())
     {
-        std::shared_ptr<ngraph::descriptor::Tensor> tv =
-            gnode->get_outputs().at(0)->get_tensor_ptr();
+        std::shared_ptr<ngraph::descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
         CHECK_NOT_NULLPTR(tv);
         tu->output_names->insert(tv->get_name());
         LOG(INFO) << "Result Tensor: " << tv->get_name();
@@ -23,9 +22,9 @@ bool ExtractGraphSignature::extract_constants(std::shared_ptr<InterpreterContext
 {
     for (auto gnode : graph->get_nodes())
     {
-        if (dynamic_cast<ngraph::op::Constant*>(gnode->get_op_ptr().get()))
+        if (dynamic_cast<nnfusion::op::Constant*>(gnode->get_op_ptr().get()))
         {
-            shared_ptr<descriptor::Tensor> tv = gnode->get_outputs().at(0)->get_tensor_ptr();
+            shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
             CHECK_NOT_NULLPTR(tv);
             tu->constants->insert(tv);
 
@@ -49,7 +48,7 @@ void ExtractGraphSignature::propagate_in_place_input(std::shared_ptr<Interpreter
         for (auto edge : it.node->get_output_users(it.index))
         {
             auto out_node = edge->get_dst();
-            auto c_op = std::dynamic_pointer_cast<ngraph::op::Op>(out_node->get_op_ptr());
+            auto c_op = std::dynamic_pointer_cast<nnfusion::op::Op>(out_node->get_op_ptr());
             if (!c_op || c_op->is_output())
             {
                 continue;
@@ -62,8 +61,7 @@ void ExtractGraphSignature::propagate_in_place_input(std::shared_ptr<Interpreter
                     if (oi_pair.input == edge->get_src_output() && !oi_pair.destructive)
                     {
                         size_t output_index = oi_pair.output;
-                        auto& output_tensor =
-                            out_node->get_outputs().at(output_index)->get_tensor();
+                        auto& output_tensor = out_node->get_output_tensor(output_index);
 
                         ctx->m_variable_name_map[output_tensor.get_name()] = input_name;
 
@@ -77,22 +75,20 @@ void ExtractGraphSignature::propagate_in_place_input(std::shared_ptr<Interpreter
     }
 }
 
-// TODO:
 void ExtractGraphSignature::propagate_in_place_output(std::shared_ptr<InterpreterContext> ctx,
                                                       NodeOut nodeOutput,
                                                       std::string output_name)
 {
     // we start with a particular output
     // which is an argument to a given op::Result
-    size_t offset =
-        nodeOutput.node->get_outputs().at(nodeOutput.index)->get_tensor().get_pool_offset();
+    size_t offset = nodeOutput.node->get_output_tensor(nodeOutput.index).get_pool_offset();
     auto it = nodeOutput;
 
     bool propagate_further = false;
     do
     {
         propagate_further = false;
-        auto arg = std::dynamic_pointer_cast<ngraph::op::Op>(it.node->get_op_ptr());
+        auto arg = std::dynamic_pointer_cast<nnfusion::op::Op>(it.node->get_op_ptr());
         if (!arg)
         {
             break;
@@ -107,8 +103,7 @@ void ExtractGraphSignature::propagate_in_place_output(std::shared_ptr<Interprete
                     auto in_edge = it.node->get_in_edge(input_index);
                     CHECK_NOT_NULLPTR(in_edge);
                     auto tmp_node = in_edge->get_src();
-                    auto& input_tensor =
-                        tmp_node->get_outputs().at(in_edge->get_src_output())->get_tensor();
+                    auto& input_tensor = tmp_node->get_output_tensor(in_edge->get_src_output());
                     if (input_tensor.get_pool_offset() == offset &&
                         !tmp_node->get_op_ptr()->is_parameter() &&
                         !tmp_node->get_op_ptr()->is_constant())
@@ -136,7 +131,7 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
     {
         for (size_t i = 0; i < gnode->get_output_size(); ++i)
         {
-            auto tv = gnode->get_outputs().at(i)->get_tensor_ptr();
+            auto tv = gnode->get_output_tensor_ptr(i);
             CHECK_NOT_NULLPTR(tv);
             tu->arg.push_back(tv);
             const element::Type& et = tv->get_element_type();
@@ -163,13 +158,13 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
     {
         auto node = graph->get_output_op(i);
 
-        auto res = dynamic_pointer_cast<ngraph::op::Result>(node->get_op_ptr());
+        auto res = dynamic_pointer_cast<nnfusion::op::Result>(node->get_op_ptr());
         if (!res->needs_copy_to_host())
         {
             continue;
         }
 
-        shared_ptr<descriptor::Tensor> tv = node->get_outputs().at(0)->get_tensor_ptr();
+        shared_ptr<descriptor::Tensor> tv = node->get_output_tensor_ptr(0);
         CHECK_NOT_NULLPTR(tv);
 
         tu->out.push_back(tv);
@@ -187,7 +182,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         if (!input_node->get_op_ptr()->is_constant() && !input_node->get_op_ptr()->is_parameter())
         {
             shared_ptr<descriptor::Tensor> itv =
-                input_node->get_outputs().at(in_edge->get_src_output())->get_tensor_ptr();
+                input_node->get_output_tensor_ptr(in_edge->get_src_output());
             auto output_name = ss.str();
             ctx->m_variable_name_map[itv->get_name()] = output_name;
             propagate_in_place_output(

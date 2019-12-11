@@ -2,7 +2,7 @@
 
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DECLARE_bool(frocm_fixed_kernels);
 
@@ -14,12 +14,13 @@ namespace nnfusion
         {
             class ConvFwdFixed : public CudaEmitter
             {
-                shared_ptr<ngraph::op::GenericOp> generic_op;
+                shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 ConvFwdFixed(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
-                    , generic_op(static_pointer_cast<ngraph::op::GenericOp>(ctx->node))
+                    , generic_op(
+                          static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     GENERIC_OP_LOGGING();
                 }
@@ -37,7 +38,8 @@ namespace nnfusion
                     auto& filter_shape = ctx->inputs[1].get_shape();
                     auto& output_shape = ctx->outputs[0].get_shape();
 
-                    auto conv = static_pointer_cast<ngraph::op::Convolution>(ctx->node);
+                    auto conv =
+                        static_pointer_cast<nnfusion::op::Convolution>(ctx->gnode->get_op_ptr());
                     auto& window_dilation_strides = conv->get_window_dilation_strides();
                     auto& window_movement_strides = conv->get_window_movement_strides();
                     auto& data_dilation_strides = conv->get_data_dilation_strides();

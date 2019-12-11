@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "softmax.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -9,7 +9,7 @@ using namespace nnfusion::kernels;
 cuda::Softmax::Softmax(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    auto node = static_pointer_cast<ngraph::op::Softmax>(ctx->node);
+    auto node = static_pointer_cast<nnfusion::op::Softmax>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 }

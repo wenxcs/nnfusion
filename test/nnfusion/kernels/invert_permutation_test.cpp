@@ -8,7 +8,7 @@
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
 #include "ngraph/op/pad.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -23,9 +23,10 @@ TEST(nnfusion_core_kernels, InvertPermutation)
 
     ngraph::op::OpConfig::any myConfig;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
+    auto gnode = make_shared<GNode>(node);
 
     auto IN = vector<int>{3, 4, 0, 2, 1};
     auto OUT = vector<int>{2, 4, 3, 0, 1};
 
-    EXPECT_TRUE(nnfusion::test::check_kernel<int>(node, CUDA_GPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel<int>(gnode, CUDA_GPU, IN, OUT));
 }

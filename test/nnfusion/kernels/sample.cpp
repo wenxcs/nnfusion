@@ -17,12 +17,13 @@ TEST(nnfusion_core_kernels, sample)
 {
     // Prepare
     auto node = nnfusion::inventory::create_object<op::Pad>(0);
-    EXPECT_TRUE(node != nullptr);
+    auto gnode = make_shared<GNode>(node);
+    EXPECT_TRUE(gnode != nullptr);
 
     // Filter out the kernels meeting the requirement;
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(node->description(), CUDA_GPU, DT_FLOAT);
-    shared_ptr<KernelContext> ctx(new KernelContext(node));
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     EXPECT_GT(kernel_regs.size(), 0);
     bool has_valid_kernel = false;

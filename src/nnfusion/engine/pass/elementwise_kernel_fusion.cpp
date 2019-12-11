@@ -6,8 +6,8 @@
 #include <sstream>
 #include <utility>
 
-#include "ngraph/op/noop.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/core/operators/op_define/noop.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -28,8 +28,9 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
             DeviceType dev_type;
             for (auto ins : *block_iter)
             {
-                auto node = ins->operatorDef();
-                CHECK(!(node->is_parameter()) && !(node->is_constant()));
+                auto gnode = ins->getGNode();
+                CHECK(!(gnode->get_op_ptr()->is_parameter()) &&
+                      !(gnode->get_op_ptr()->is_constant()));
 
                 auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
                                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
@@ -46,7 +47,7 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
                     emitter_iter->second->get_or_emit_source() == nullptr)
                 {
                     LOG(WARNING) << "Kernel should be emitted before this pass:"
-                                 << node->get_name();
+                                 << gnode->get_name();
                     all_kernel_emitted = false;
                     break;
                 }
@@ -71,7 +72,9 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
                 nnfusion::ir::Instruction::Pointer ins(new nnfusion::ir::Instruction);
                 ins->setName("fused_kernel");
                 auto fused_op = std::make_shared<op::NoOp>("fused_kernel");
-                ins->setOperatorDef(fused_op);
+                auto fused_node = std::make_shared<nnfusion::graph::GNode>(
+                    fused_op, nnfusion::graph::GNodeVector());
+                ins->setGNode(fused_node);
                 (*ins)["Kernel_Selection_Result"] =
                     vector<pair<DeviceType, KernelEmitter::Pointer>>();
                 auto& res = (*ins)["Kernel_Selection_Result"]

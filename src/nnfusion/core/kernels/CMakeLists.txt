@@ -23,7 +23,7 @@ target_include_directories(kernels_registration SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}
 )
 target_link_libraries(kernels_registration PRIVATE
-    ngraph nnfusion_common nnfusion_util
+    ngraph nnfusion_common nnfusion_util nnfusion_graph nnfusion_operators
 )
 target_compile_options(kernels_registration PRIVATE "-fPIC")
 

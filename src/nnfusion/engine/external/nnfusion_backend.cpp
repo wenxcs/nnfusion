@@ -44,17 +44,6 @@ cuda_codegen::cuda_codegen()
 {
 }
 
-bool cuda_codegen::codegen(shared_ptr<Function> func)
-{
-    TranslationUnit& func_unit = m_function_map[func];
-    if (func_unit.m_is_translated == false)
-    {
-        auto tus = m_functrans->translate(func);
-        CHECK_NOT_NULLPTR(tus);
-    }
-    return true;
-}
-
 bool cuda_codegen::codegen(shared_ptr<graph::Graph> graph)
 {
     TranslationUnit& graph_unit = m_graph_map[graph];
@@ -64,31 +53,6 @@ bool cuda_codegen::codegen(shared_ptr<graph::Graph> graph)
         CHECK_NOT_NULLPTR(tus);
     }
     return true;
-}
-
-// Unimplement Functions for codegen backend
-bool cuda_codegen::compile(shared_ptr<Function> func)
-{
-    LOG(INFO) << "Unimplemented function compile() for cuda_codegen backend;";
-    return this->codegen(func);
-}
-
-bool cuda_codegen::call(shared_ptr<Function> func,
-                        const vector<shared_ptr<runtime::Tensor>>& outputs,
-                        const vector<shared_ptr<runtime::Tensor>>& inputs)
-{
-    LOG(INFO) << "Unimplemented function call() for cuda_codegen backend;";
-    bool rc = true;
-
-    validate_call(func, outputs, inputs);
-
-    TranslationUnit& func_unit = m_function_map[func];
-    if (func_unit.m_is_translated == false)
-    {
-        rc = compile(func);
-    }
-
-    return rc;
 }
 
 shared_ptr<runtime::Tensor> cuda_codegen::create_tensor(const element::Type& element_type,

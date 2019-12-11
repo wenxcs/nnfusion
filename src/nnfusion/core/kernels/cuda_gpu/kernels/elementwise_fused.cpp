@@ -22,11 +22,10 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
 
     for (auto kernel_emitter : ctx->kernels)
     {
-        auto node = kernel_emitter->m_context->node;
-        for (const descriptor::Input& input : node->get_inputs())
+        auto gnode = kernel_emitter->m_context->gnode;
+        for (size_t i = 0; i < gnode->get_input_size(); i++)
         {
-            const descriptor::Output& output = input.get_output();
-            shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+            auto tv = gnode->get_input_tensor_ptr(i);
             CHECK_NOT_NULLPTR(tv);
             auto iter = node_outputs.find(tv->get_name());
             if (iter == node_outputs.end())
@@ -41,12 +40,12 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
             }
         }
 
-        for (const descriptor::Output& output : node->get_outputs())
+        for (size_t i = 0; i < gnode->get_output_size(); i++)
         {
-            shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+            shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
             CHECK_NOT_NULLPTR(tv);
             CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
-            node_outputs[tv->get_name()] = node->get_outputs()[0].get_inputs().size();
+            node_outputs[tv->get_name()] = gnode->get_output_users(0).size();
             tensor_wrappers.insert(
                 std::make_pair(tv->get_name(), TensorWrapper(tv, tv->get_name())));
         }
@@ -121,9 +120,9 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
 
     for (auto kernel_emitter : m_context->kernels)
     {
-        auto node = kernel_emitter->m_context->node;
+        auto gnode = kernel_emitter->m_context->gnode;
         auto out_tw = kernel_emitter->m_context->outputs[0];
-        if (auto bc = std::dynamic_pointer_cast<ngraph::op::Broadcast>(node))
+        if (auto bc = std::dynamic_pointer_cast<nnfusion::op::Broadcast>(gnode->get_op_ptr()))
         {
             std::string index = "";
             if (bc->is_inner_broadcast())
@@ -142,7 +141,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
             lu << out_tw.get_type() << " " << local_tensors[out_tw.get_name()] << " = "
                << in_args[in_tw.get_name()] << index << ";\n";
         }
-        else if (auto rs = std::dynamic_pointer_cast<ngraph::op::Reshape>(node))
+        else if (auto rs = std::dynamic_pointer_cast<nnfusion::op::Reshape>(gnode->get_op_ptr()))
         {
             CHECK(rs->get_is_transpose() == false);
             auto& in_tw = kernel_emitter->m_context->inputs[0];
@@ -160,7 +159,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
         {
             auto cuda_kernel = std::dynamic_pointer_cast<CudaElementwiseEmitter>(kernel_emitter);
             CHECK_NOT_NULLPTR(cuda_kernel) << "kernel type:"
-                                           << kernel_emitter->m_context->node->description();
+                                           << kernel_emitter->m_context->gnode->get_op_type();
             auto op_kernel = cuda_kernel->get_op_kernel();
             if (op_kernel.second != nullptr)
             {
@@ -220,7 +219,7 @@ LanguageUnit_p ElementWiseFused::emit_function_name()
     std::vector<std::string> names;
     for (auto kernel : m_context->kernels)
     {
-        names.push_back(kernel->m_context->node->description());
+        names.push_back(kernel->m_context->gnode->get_op_type());
     }
 
     lu << "FusedKernel_" << join(m_context->dtypes, "_") << "_" << m_kernel_type << "_"

@@ -16,28 +16,11 @@ namespace nnfusion
 {
     namespace frontend
     {
-        // Registers TensorFlow custom operator
-        // void register_operator(const std::string& name,
-        //                        tensorflow_import::Operator fn);
-
-        // Convert on TensorFlow model to a vector of nGraph Functions (input stream)
-        std::vector<std::shared_ptr<ngraph::Function>> load_tensorflow_model(std::istream&);
-
-        // Convert an TensorFlow model to a vector of nGraph Functions
-        std::vector<std::shared_ptr<ngraph::Function>> load_tensorflow_model(const std::string&);
-
         // Convert an TensorFlow model to a nnfusion graph (input stream)
-        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(std::istream&);
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(std::istream&);
 
         // Convert an TensorFlow model to a nnfusion graph
-        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model_as_graph(const std::string&);
-
-        // // Convert the first output of an TensorFlow model to an nGraph Function (input stream)
-        // std::shared_ptr<ngraph::Function> import_onnx_function(std::istream&);
-
-        // // Convert the first output of an TensorFlow model to an nGraph Function
-        // std::shared_ptr<ngraph::Function> import_onnx_function(const std::string&);
-
+        std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(const std::string&);
     } // namespace tensorflow_import
 
 } // namespace nnfusion

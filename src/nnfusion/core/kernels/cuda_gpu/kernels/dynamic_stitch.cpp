@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "dynamic_stitch.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -9,7 +9,8 @@ using namespace nnfusion::kernels;
 cuda::DynamicStitch::DynamicStitch(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto dynamic_stitch_node = static_pointer_cast<ngraph::op::GenericOp>(ctx->node);
+    auto dynamic_stitch_node =
+        static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
 
     std::vector<std::vector<int64_t>> indices_inputs =
         dynamic_stitch_node->localOpConfig.getRoot()["indices_inputs"];

@@ -41,7 +41,7 @@ cuda::pooling_op_shape cuda::AvgPool1D::avgpool_shape(ngraph::Shape in,
 cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    auto avg_pool = static_pointer_cast<ngraph::op::AvgPool>(ctx->node);
+    auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
     window_shape = ngraph::Shape(avg_pool->get_window_shape());
@@ -256,7 +256,7 @@ LanguageUnit_p cuda::AvgPool1D::emit_dependency()
 cuda::AvgPoolmD::AvgPoolmD(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    auto avg_pool = static_pointer_cast<ngraph::op::AvgPool>(ctx->node);
+    auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
     window_shape = ngraph::Shape(avg_pool->get_window_shape());

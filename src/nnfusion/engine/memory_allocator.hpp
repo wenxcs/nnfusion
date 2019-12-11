@@ -4,6 +4,8 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/common/languageunit.hpp"
 
+DECLARE_bool(fmem_trace);
+
 namespace nnfusion
 {
     class MemoryAllocator
@@ -44,7 +46,8 @@ namespace nnfusion
         virtual void allocate(ngraph::descriptor::Tensor* tensor, size_t offset);
         virtual void free(ngraph::descriptor::Tensor* tensor);
 
-        void dump(std::ostream&);
+        void dump(std::ofstream&);
+        void record(string symbol, ngraph::descriptor::Tensor* tensor);
         virtual LanguageUnit_p emit_memory_init();
         virtual LanguageUnit_p emit_memory_alloc();
         virtual LanguageUnit_p emit_memory_free();
@@ -57,6 +60,8 @@ namespace nnfusion
         std::list<node>::const_iterator end() const { return m_node_list.cend(); }
         const std::list<node>& get_node_list() const { return m_node_list; }
         size_t max_allocated() const { return m_max_allocated; }
+        size_t cur_allocated();
+        size_t memory_in_use();
         void set_alloc_scheme(allocation_scheme alloc_schem) { m_scheme = alloc_schem; }
         allocation_scheme get_alloc_scheme() const { return m_scheme; }
         void set_alignment(size_t alignment) { m_alignment = alignment; }
@@ -76,6 +81,8 @@ namespace nnfusion
         size_t m_device_id;
         size_t m_max_allocated;
         std::vector<ngraph::descriptor::Tensor*> m_allocated_tensors;
+        std::stringstream m_trace;
+        bool record_trace = FLAGS_fmem_trace;
     };
 
     class CUDAMemoryAllocator : public MemoryAllocator
@@ -101,6 +108,7 @@ namespace nnfusion
         {
         }
         LanguageUnit_p emit_memory_alloc() override;
+        LanguageUnit_p emit_memory_free() override;
     };
 
     class RocmMemoryAllocator : public MemoryAllocator

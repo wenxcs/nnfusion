@@ -11,7 +11,7 @@
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
 #include "ngraph/op/pad.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -32,12 +32,12 @@ TEST(nnfusion_core_kernels, addn)
     // Create node for AddN
     ngraph::op::OpConfig::any myConfig;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
-
+    auto gnode = make_shared<GNode>(node);
     // Prepare test data
     auto IN = vector<float>{/*A*/ 1, 2, 3, 4, 5, 6, /*B*/ 0, 1, 2, 3, 4, 5, /*C*/ 2, 4, 5, 3, 1, 2};
     auto OUT = vector<float>{/*tensor(2, 3)*/ 3, 7, 10, 10, 10, 13};
 
-    EXPECT_TRUE(nnfusion::test::check_kernel<float>(node, CUDA_GPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel<float>(gnode, CUDA_GPU, IN, OUT));
 }
 
 TEST(nnfusion_core_kernels, addn_large)
@@ -54,10 +54,11 @@ TEST(nnfusion_core_kernels, addn_large)
     // Create node for AddN
     ngraph::op::OpConfig::any myConfig;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
+    auto gnode = make_shared<GNode>(node);
 
     // Prepare test data
     auto IN = vector<float>(102424 * 2, 1);
     auto OUT = vector<float>(102424, 2);
 
-    EXPECT_TRUE(nnfusion::test::check_kernel<float>(node, CUDA_GPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel<float>(gnode, CUDA_GPU, IN, OUT));
 }

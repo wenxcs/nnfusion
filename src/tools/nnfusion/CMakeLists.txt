@@ -44,7 +44,7 @@ if (NGRAPH_PLAIDML_ENABLE)
     target_link_libraries(nnfusion plaidml_backend)
 endif()
 if (NNFUSION_ENABLE)
-    target_link_libraries(nnfusion nnfusion_backend nnfusion_engine_pass_graph)
+    target_link_libraries(nnfusion nnfusion_backend nnfusion_engine_pass_graph nnfusion_operators)
 endif()
 target_link_libraries(nnfusion ngraph gflags)
 

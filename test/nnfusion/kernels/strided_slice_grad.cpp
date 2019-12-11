@@ -11,7 +11,7 @@
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
 #include "ngraph/op/pad.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;
@@ -37,11 +37,11 @@ TEST(nnfusion_core_kernels, strided_slice_grad)
     // Create node for StridedSliceGrad
     ngraph::op::OpConfig::any myConfig;
     auto node = std::make_shared<ngraph::op::GenericOp>(node_type, node_type, inputs, myConfig);
-
+    auto gnode = make_shared<GNode>(node);
     // Prepare test data
     auto IN =
         vector<int>{/*A*/ 1, 3, 3, /*B*/ 0, 0, 0, /*C*/ 0, 1, 0, /*D*/ 1, 1, 1, /*E*/ 4, 5, 6};
     auto OUT = vector<int>{/*tensor(1, 3, 3)*/ 4, 5, 6, 0, 0, 0, 0, 0, 0};
 
-    EXPECT_TRUE(nnfusion::test::check_kernel<int>(node, CUDA_GPU, IN, OUT));
+    EXPECT_TRUE(nnfusion::test::check_kernel<int>(gnode, CUDA_GPU, IN, OUT));
 }

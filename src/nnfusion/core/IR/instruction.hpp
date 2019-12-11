@@ -30,7 +30,7 @@ namespace nnfusion
             // Tags _tag;
             //std::vector<ngraph::descriptor::Tensor*> inputs_;
             //std::vector<ngraph::descriptor::Tensor*> outputs_;
-            std::shared_ptr<ngraph::Node> op_def;
+            std::shared_ptr<graph::GNode> gnode;
 
         public:
             bool has_name() { return has_name_; }
@@ -48,8 +48,8 @@ namespace nnfusion
                 doc_string_ = std::move(doc_string);
             }
 
-            void setOperatorDef(std::shared_ptr<ngraph::Node> op_def) { this->op_def = op_def; }
-            std::shared_ptr<ngraph::Node> operatorDef() { return op_def; }
+            void setGNode(std::shared_ptr<graph::GNode> gnode) { this->gnode = gnode; }
+            std::shared_ptr<graph::GNode> getGNode() { return gnode; }
             Attributes& Attr() { return _attr; }
             Tags& Tag() { return *this; }
         };

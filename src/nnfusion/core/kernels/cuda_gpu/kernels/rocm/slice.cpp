@@ -3,7 +3,7 @@
 #include "../../cuda_cudnn.hpp"
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -17,7 +17,8 @@ namespace nnfusion
                 MemcpySlice(shared_ptr<KernelContext> ctx)
                     : CudaLibEmitter(ctx)
                 {
-                    auto slice_op = static_pointer_cast<ngraph::op::Slice>(ctx->node);
+                    auto slice_op =
+                        static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 
                     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
@@ -37,7 +38,8 @@ namespace nnfusion
                     auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
                     auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
 
-                    auto op_config = static_pointer_cast<ngraph::op::Slice>(ctx->node);
+                    auto op_config =
+                        static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
                     auto lower_bounds = op_config->get_lower_bounds();
                     auto slice_strides = op_config->get_strides();
 #if 0 // for Debug
@@ -68,7 +70,7 @@ namespace nnfusion
 
                     size_t offset = num_out * lower_bounds[0];
 
-                    std::string code = ngraph::op::create_code_from_template(
+                    std::string code = nnfusion::op::create_code_from_template(
                         R"(
 	CUDA_SAFE_CALL(hipMemcpy(output0, input0 + @offset@LU, @size@, hipMemcpyDeviceToDevice));
 )",

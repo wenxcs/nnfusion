@@ -5,7 +5,7 @@
 
 #include "../cuda_emitter.hpp"
 #include "../cuda_langunit.hpp"
-#include "nnfusion/core/ops/generic_op.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
