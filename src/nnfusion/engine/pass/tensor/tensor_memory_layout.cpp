@@ -105,7 +105,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                             auto input_gnode = gnode->get_in_edge(oi_pair.input)->get_src();
 
                             //should not overwrite constant tensor and parameter tensor
-                            if (input_gnode->get_op_ptr()->is_parameter() || input_gnode->get_op_ptr()->is_constant())
+                            if (input_gnode->get_op_ptr()->is_parameter() ||
+                                input_gnode->get_op_ptr()->is_constant())
                                 continue;
 
                             if (!is_same_dev(input, output))

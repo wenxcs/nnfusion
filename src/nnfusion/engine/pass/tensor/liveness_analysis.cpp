@@ -97,7 +97,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto gnode = ins->getGNode();
                 if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_output() ||
-                gnode->is_constant())
+                    gnode->is_constant())
                 {
                     continue;
                 }
