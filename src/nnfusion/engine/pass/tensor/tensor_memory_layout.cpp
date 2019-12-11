@@ -34,7 +34,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
     // Open memory log file.
     std::ofstream mem_log;
-    mem_log.open(mem_log_path);
+    if (dump_trace)
+        mem_log.open(mem_log_path);
 
     MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
 
@@ -175,6 +176,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         }
     }
     // close memory log file.
-    mem_log.close();
+    if (dump_trace)
+        mem_log.close();
     return true;
 }
