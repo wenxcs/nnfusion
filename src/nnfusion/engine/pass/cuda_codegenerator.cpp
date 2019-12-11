@@ -14,6 +14,7 @@ using namespace nnfusion::kernels;
 
 DEFINE_bool(fcodegen_debug, false, "Add debug functions in Codegen-ed project.");
 DEFINE_bool(fcodegen_timing, false, "Add timing functions in Codegen-ed project.");
+DECLARE_bool(frt_const_folding);
 
 namespace
 {
@@ -411,6 +412,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     bool enable_debug = FLAGS_fcodegen_debug;
     bool enable_timing = FLAGS_fcodegen_timing;
+    bool enable_rt_const_folding = FLAGS_frt_const_folding;
 
     // Generate graph configs
     {
@@ -523,7 +525,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                    "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
                 lu_kernel_entry << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
             }
-
+            //const
+            set<string> constant_vals;
             size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
@@ -543,14 +546,40 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (func_name.compare(0, 9, "Constant_") == 0)
                 {
                     lu_main_init << func_name << fu->call_unit->get_code();
+                    if (enable_rt_const_folding)
+                    {
+                        for (auto& out : kernel->m_context->output_names)
+                            constant_vals.insert(out);
+                    }
                 }
                 else
                 {
+                    // Put constant-able node into cuda_init();
+                    bool const_inputs = true;
+                    for (auto& in : kernel->m_context->input_names)
+                    {
+                        if (constant_vals.find(in) == constant_vals.end())
+                        {
+                            const_inputs = false;
+                            break;
+                        }
+                    }
+                    if (const_inputs)
+                    {
+                        for (auto& out : kernel->m_context->output_names)
+                        {
+                            constant_vals.insert(out);
+                        }
+                    }
+
+                    auto& call_place = const_inputs ? lu_main_init : lu_kernel_entry;
+
                     const string node_name = (kernel->m_context->gnode)
                                                  ? kernel->m_context->gnode->get_name()
                                                  : "internal_node";
-                    lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
-                                    << "\n";
+                    if (!const_inputs)
+                        call_place << " // order=" << ++kernel_order << ", name=" << node_name
+                                   << "\n";
                     // Put memcpy here
                     lu_kernel_entry << kernel_memcpy[kernel.get()];
 
@@ -565,22 +594,22 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         builder += function_call.substr(pos_right + 4);
                         function_call = std::move(builder);
                     }
-                    lu_kernel_entry << function_call;
+                    call_place << function_call;
 
-                    if (enable_debug)
+                    if (enable_debug && !const_inputs)
                     {
                         for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                         {
                             if (kernel->m_context->outputs[i].get_type() != "float")
                                 continue;
                             auto out_name = kernel->m_context->output_names[i];
-                            lu_kernel_entry << "Debug(\"" << node_name << ", " << out_name << "\", "
-                                            << out_name << ", \""
-                                            << join(kernel->m_context->input_names) << "\", "
-                                            << kernel->m_context->outputs[i].get_size() << ");\n";
+                            call_place << "Debug(\"" << node_name << ", " << out_name << "\", "
+                                       << out_name << ", \"" << join(kernel->m_context->input_names)
+                                       << "\", " << kernel->m_context->outputs[i].get_size()
+                                       << ");\n";
                         }
                     }
-                    if (enable_timing)
+                    if (enable_timing && !const_inputs)
                     {
                         lu_kernel_entry << "if (!hEvents[eventCnt]) "
                                            "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";

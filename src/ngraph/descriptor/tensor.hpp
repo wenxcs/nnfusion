@@ -54,6 +54,7 @@ namespace ngraph
                    const std::string& name,
                    bool is_persistent = false,
                    bool is_constant = false,
+                   bool is_parameter = false,
                    bool is_RDMA_tensor = false,
                    size_t group_id = -1,
                    DeviceType device_type = CUDA_GPU,
@@ -75,13 +76,15 @@ namespace ngraph
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
             size_t size() const;
-            // persistent tensors exist in all iterations, and do not reuse any memory space.
+            // persistent tensors exist in all iterations, and do not reuse any memory space. Data in persistent tensors can be immutable or mutable.
             bool is_persistent() const { return m_persistent; }
             // Constant tensors contain immutable data.
             bool is_constant() const { return m_constant; }
+            bool is_parameter() const { return m_parameter; }
             bool is_RDMA_tensor() const { return m_RDMA; }
             void set_persistent(bool value = true) { m_persistent = value; }
             void set_constant(bool value = true) { m_constant = value; }
+            void set_parameter(bool value = true) { m_parameter = value; }
             void set_RDMA(bool value = true) { m_RDMA = value; }
             //The default group_id is -1, which means the tensor does not belong to any specific group.
             void set_group_id(size_t group_id) { m_group_id = group_id; }
@@ -105,6 +108,7 @@ namespace ngraph
             size_t m_pool_offset{0};
             bool m_persistent;
             bool m_constant;
+            bool m_parameter;
             bool m_RDMA;
             size_t m_group_id;
             DeviceType m_device_type;

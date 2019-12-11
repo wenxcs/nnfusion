@@ -42,9 +42,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         return (a->get_device_type() == b->get_device_type()) &&
                (a->get_device_id() == b->get_device_id());
     };
-
     std::unordered_set<descriptor::Tensor*> persistent_tensors;
-
     auto& p = tu->program;
 
     for (auto iterator : p)
@@ -52,7 +50,9 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *iterator)
         {
             auto gnode = ins->getGNode();
-
+            // do not allocate parameter tensors.
+            if (gnode->get_op_ptr()->is_parameter())
+                continue;
             auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
                                        .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
             auto emitter_iter =
@@ -86,9 +86,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     // todo: make get_tensor() interface return un-const variable.
                     auto& tensor = (descriptor::Tensor&)tensorwrapper.get_tensor();
-                    if (tensor.is_persistent())
-                        persistent_tensors.insert(&tensor);
-                    else
+                    if (!tensor.is_persistent())
                         alloc_temp.insert(&tensor);
                 }
             }
@@ -106,9 +104,10 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                             auto input = &gnode->get_input_tensor(oi_pair.input);
                             auto input_gnode = gnode->get_in_edge(oi_pair.input)->get_src();
 
-                            // should not overwrite constant tensor
-                            // if (std::dynamic_pointer_cast<op::Constant>(input_gnode))
-                            //     continue;
+                            //should not overwrite constant tensor and parameter tensor
+                            if (input_gnode->get_op_ptr()->is_parameter() ||
+                                input_gnode->get_op_ptr()->is_constant())
+                                continue;
 
                             if (!is_same_dev(input, output))
                             {
@@ -117,13 +116,10 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                 continue;
                             }
 
-                            // For destructive kernel, this should be the last use
-                            // Non-destructive kernels can pass through if memory sharing is disabled
-                            if ((gnode->liveness_free_list.count(input) != 0 ||
-                                 (m_disable_memory_sharing && !oi_pair.destructive &&
-                                  !input_gnode->get_op_ptr()->is_parameter() &&
-                                  !input_gnode->is_constant())) &&
-                                gnode->liveness_new_list.count(output) != 0)
+                            // memory of persistent tensors should not be reused.
+                            if (gnode->liveness_free_list.count(input) != 0 &&
+                                gnode->liveness_new_list.count(output) != 0 &&
+                                !input->is_persistent())
                             {
                                 in_place_outputs.insert({output, input});
                                 reused_inputs.insert(input);
@@ -132,20 +128,29 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
-
             unordered_set<descriptor::Tensor*> newlist(alloc_temp);
-            newlist.insert(gnode->liveness_new_list.begin(), gnode->liveness_new_list.end());
+            // The output of output nodes refers to the input, so there is NO need
+            // to allocate memory space for output of output nodes.
+            if (!gnode->get_op_ptr()->is_output())
+                newlist.insert(gnode->liveness_new_list.begin(), gnode->liveness_new_list.end());
             for (descriptor::Tensor* tensor : newlist)
             {
-                auto allocator = maf.get_allocator(tensor);
-                if (in_place_outputs.count(tensor))
+                if (!tensor->is_persistent())
                 {
-                    size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
-                    allocator->allocate(tensor, offset);
+                    auto allocator = maf.get_allocator(tensor);
+                    if (in_place_outputs.count(tensor))
+                    {
+                        size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
+                        allocator->allocate(tensor, offset);
+                    }
+                    else
+                    {
+                        allocator->allocate(tensor);
+                    }
                 }
                 else
                 {
-                    allocator->allocate(tensor);
+                    persistent_tensors.insert(tensor);
                 }
             }
 
@@ -155,7 +160,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 freelist.insert(gnode->liveness_free_list.begin(), gnode->liveness_free_list.end());
                 for (descriptor::Tensor* tensor : freelist)
                 {
-                    if (reused_inputs.count(tensor) == 0)
+                    if (reused_inputs.count(tensor) == 0 && !tensor->is_persistent() &&
+                        !tensor->is_parameter())
                     {
                         auto allocator = maf.get_allocator(tensor);
                         allocator->free(tensor);
@@ -174,8 +180,23 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             }
         }
     }
-    // close memory log file.
+    // allocate persistent tensors with NO_REUSE scheme.
+    for (auto tensor : persistent_tensors)
+    {
+        auto allocator = maf.get_allocator(tensor);
+        allocator->set_alloc_scheme(nnfusion::MemoryAllocator::allocation_scheme::NO_REUSE);
+        allocator->allocate(tensor);
+    }
+
     if (dump_trace)
+    {
+        mem_log << "----allocate persistent tensors----\n";
+        for (auto allocator : MemoryAllocatorFactory::get_allocator_list())
+        {
+            allocator.second->dump(mem_log);
+        }
+        // close memory log file.
         mem_log.close();
+    }
     return true;
 }

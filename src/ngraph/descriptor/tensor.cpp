@@ -26,6 +26,7 @@ descriptor::Tensor::Tensor(const element::Type& element_type,
                            const std::string& name,
                            bool is_persistent,
                            bool is_constant,
+                           bool is_parameter,
                            bool is_RDMA_tensor,
                            size_t group_id,
                            DeviceType device_type,
@@ -36,6 +37,7 @@ descriptor::Tensor::Tensor(const element::Type& element_type,
     , m_name(name)
     , m_persistent(is_persistent)
     , m_constant(is_constant)
+    , m_parameter(is_parameter)
     , m_RDMA(is_RDMA_tensor)
     , m_group_id(group_id)
     , m_device_type(device_type)
