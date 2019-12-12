@@ -17,11 +17,13 @@
 #include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/util/errors.hpp"
-//#include "ngraph/node.hpp"
+#include "gflags/gflags.h"
 
 //using namespace ngraph;
 using namespace std;
-
+DEFINE_string(fdefault_device,
+              "CUDA",
+              "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
 nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
                            const ngraph::PartialShape& pshape,
                            const std::string& name,
@@ -30,7 +32,6 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
                            bool is_parameter,
                            bool is_RDMA_tensor,
                            size_t group_id,
-                           DeviceType device_type,
                            size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : ngraph::Shape{})
@@ -41,9 +42,39 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
     , m_parameter(is_parameter)
     , m_RDMA(is_RDMA_tensor)
     , m_group_id(group_id)
-    , m_device_type(device_type)
     , m_device_id(device_id)
 {
+    auto default_device = FLAGS_fdefault_device;
+    if (default_device == "ROCm")
+        m_device_type = ROCM_GPU;
+    else if (default_device == "CPU")
+        m_device_type = GENERIC_CPU;
+    else
+        m_device_type = CUDA_GPU;
+}
+
+nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
+                           const ngraph::PartialShape& pshape,
+                           const std::string& name,
+                           DeviceType device_type,
+                           bool is_persistent,
+                           bool is_constant,
+                           bool is_parameter,
+                           bool is_RDMA_tensor,
+                           size_t group_id,
+                           size_t device_id)
+    : m_element_type(element_type)
+    , m_shape(pshape.is_static() ? pshape.to_shape() : ngraph::Shape{})
+    , m_partial_shape(pshape)
+    , m_name(name)
+    , m_device_type(device_type)
+    , m_persistent(is_persistent)
+    , m_constant(is_constant)
+    , m_parameter(is_parameter)
+    , m_RDMA(is_RDMA_tensor)
+    , m_group_id(group_id)
+    , m_device_id(device_id)
+{   
 }
 
 void nnfusion::descriptor::Tensor::set_tensor_type(const ngraph::element::Type& element_type,

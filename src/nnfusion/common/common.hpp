@@ -200,6 +200,7 @@ using namespace nnfusion;
 #include "nlohmann/json.hpp"
 #include "nnfusion/util/util.hpp"
 #include "type_info.hpp"
+#include "device_type.hpp"
 
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 
@@ -207,12 +208,12 @@ using namespace nnfusion;
 // #undef LOG(INFO)INFO
 // #define LOG(INFO)INFO std::cout
 
-namespace nnfusion
-{
-    enum DeviceType
-    {
-        CUDA_GPU,
-        ROCM_GPU,
-        GENERIC_CPU
-    };
-}
+// namespace nnfusion
+// {
+//     enum DeviceType
+//     {
+//         CUDA_GPU,
+//         ROCM_GPU,
+//         GENERIC_CPU
+//     };
+// }

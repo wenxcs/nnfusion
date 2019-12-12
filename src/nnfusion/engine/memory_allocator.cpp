@@ -378,11 +378,9 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(nnfusion::descr
     {
         if (tensor->is_RDMA_tensor())
         {
-            auto t_device_type = tensor->get_device_type();
-            DeviceType a_device_type =
-                (const DeviceType[]){CUDA_GPU, ROCM_GPU, GENERIC_CPU}[t_device_type];
+            auto device_type = tensor->get_device_type();
             RDMAMemoryAllocator* allocator = new RDMAMemoryAllocator(
-                m_alignment, m_disable_reuse, a_device_type, tensor->get_device_id());
+                m_alignment, m_disable_reuse, device_type, tensor->get_device_id());
             m_allocator_list[device_name] = allocator;
             return allocator;
         }
@@ -391,19 +389,19 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(nnfusion::descr
             MemoryAllocator* allocator = nullptr;
             switch (tensor->get_device_type())
             {
-            case nnfusion::descriptor::Tensor::DeviceType::CUDA_GPU:
+            case CUDA_GPU:
             {
                 allocator = new CUDAMemoryAllocator(
                     m_alignment, m_disable_reuse, CUDA_GPU, tensor->get_device_id());
                 break;
             }
-            case nnfusion::descriptor::Tensor::DeviceType::ROCM_GPU:
+            case ROCM_GPU:
             {
                 allocator = new RocmMemoryAllocator(
                     m_alignment, m_disable_reuse, ROCM_GPU, tensor->get_device_id());
                 break;
             }
-            case nnfusion::descriptor::Tensor::DeviceType::GENERIC_CPU:
+            case GENERIC_CPU:
             {
                 allocator = new HostMemoryAllocator(
                     m_alignment, m_disable_reuse, GENERIC_CPU, tensor->get_device_id());

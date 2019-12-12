@@ -21,9 +21,6 @@
 
 using namespace ngraph;
 using namespace std;
-DEFINE_string(fdefault_device,
-              "CUDA",
-              "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
 
 descriptor::Tensor::Tensor(const element::Type& element_type,
                            const PartialShape& pshape,
@@ -45,13 +42,13 @@ descriptor::Tensor::Tensor(const element::Type& element_type,
     , m_group_id(group_id)
     , m_device_id(device_id)
 {
-    auto default_device = FLAGS_fdefault_device;
-    if (default_device == "ROCm")
-        m_device_type = ROCM_GPU;
-    else if (default_device == "CPU")
-        m_device_type = GENERIC_CPU;
-    else
-        m_device_type = CUDA_GPU;
+    // auto default_device = FLAGS_fdefault_device;
+    // if (default_device == "ROCm")
+    //     m_device_type = ROCM_GPU;
+    // else if (default_device == "CPU")
+    //     m_device_type = GENERIC_CPU;
+    // else
+    //     m_device_type = CUDA_GPU;
 }
 
 descriptor::Tensor::Tensor(const element::Type& element_type,

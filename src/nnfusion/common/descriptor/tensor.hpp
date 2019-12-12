@@ -22,6 +22,7 @@
 #include "ngraph/partial_shape.hpp"
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"
+#include "nnfusion/common/device_type.hpp"
 
 namespace nnfusion
 {
@@ -41,13 +42,6 @@ namespace nnfusion
             Tensor& operator=(const Tensor&) = delete;
 
         public:
-            enum DeviceType
-            {
-                CUDA_GPU,
-                ROCM_GPU,
-                GENERIC_CPU
-            };
-
             Tensor(const ngraph::element::Type& element_type,
                    const ngraph::PartialShape& pshape,
                    const std::string& name,
@@ -56,8 +50,18 @@ namespace nnfusion
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
                    size_t group_id = -1,
-                   DeviceType device_type = CUDA_GPU,
                    size_t device_id = 0);
+            
+            Tensor(const ngraph::element::Type& element_type,
+            const ngraph::PartialShape& pshape,
+            const std::string& name,
+            DeviceType device_type,
+            bool is_persistent = false,
+            bool is_constant = false,
+            bool is_parameter = false,
+            bool is_RDMA_tensor = false,
+            size_t group_id = -1,
+            size_t device_id = 0);
 
             const std::string& get_name() const { return m_name; }
             void set_tensor_type(const ngraph::element::Type& element_type, const ngraph::PartialShape& pshape);
@@ -75,7 +79,8 @@ namespace nnfusion
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
             size_t size() const;
-            // persistent tensors exist in all iterations, and do not reuse any memory space. Data in persistent tensors can be immutable or mutable.
+            // persistent tensors exist in all iterations, and do not reuse any memory space. 
+            // Data in persistent tensors can be immutable or mutable.
             bool is_persistent() const { return m_persistent; }
             // Constant tensors contain immutable data.
             bool is_constant() const { return m_constant; }

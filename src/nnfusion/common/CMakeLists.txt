@@ -16,4 +16,4 @@ target_include_directories(nnfusion_common SYSTEM PUBLIC
 )
 
 target_compile_options(nnfusion_common PRIVATE "-fPIC")
-target_link_libraries(nnfusion_common PRIVATE ngraph nnfusion_util)
+target_link_libraries(nnfusion_common PRIVATE ngraph nnfusion_util gflags)
