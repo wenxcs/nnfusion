@@ -20,7 +20,10 @@ namespace nnfusion
             }
 
             nnfusion::descriptor::Tensor& get_tensor() const { return *m_tensor; }
-            std::shared_ptr<nnfusion::descriptor::Tensor> get_tensor_ptr() const { return m_tensor; }
+            std::shared_ptr<nnfusion::descriptor::Tensor> get_tensor_ptr() const
+            {
+                return m_tensor;
+            }
             void set_tensor_ptr(const std::shared_ptr<nnfusion::descriptor::Tensor>& tensor)
             {
                 m_tensor = tensor;

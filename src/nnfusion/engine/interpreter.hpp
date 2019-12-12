@@ -2,10 +2,10 @@
 #pragma once
 
 #include "nnfusion/common/common.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/IR/IR.hpp"
 #include "nnfusion/engine/pass/graph/graph_pass.hpp"
 #include "op.hpp"
-#include "nnfusion/common/descriptor/tensor.hpp"
 
 namespace nnfusion
 {

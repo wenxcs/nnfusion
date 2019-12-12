@@ -15,8 +15,8 @@
 //*****************************************************************************
 
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
-#include "nnfusion/common/descriptor/tensor.hpp"
 #include "ngraph/type/element_type.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 
 nnfusion::descriptor::layout::TensorLayout::TensorLayout(const descriptor::Tensor& tensor)
     : m_element_type(tensor.get_element_type())

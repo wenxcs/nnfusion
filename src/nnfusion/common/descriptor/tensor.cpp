@@ -15,9 +15,9 @@
 //*****************************************************************************
 
 #include "nnfusion/common/descriptor/tensor.hpp"
+#include "gflags/gflags.h"
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/util/errors.hpp"
-#include "gflags/gflags.h"
 
 //using namespace ngraph;
 using namespace std;
@@ -25,14 +25,14 @@ DEFINE_string(fdefault_device,
               "CUDA",
               "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
 nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
-                           const ngraph::PartialShape& pshape,
-                           const std::string& name,
-                           bool is_persistent,
-                           bool is_constant,
-                           bool is_parameter,
-                           bool is_RDMA_tensor,
-                           size_t group_id,
-                           size_t device_id)
+                                     const ngraph::PartialShape& pshape,
+                                     const std::string& name,
+                                     bool is_persistent,
+                                     bool is_constant,
+                                     bool is_parameter,
+                                     bool is_RDMA_tensor,
+                                     size_t group_id,
+                                     size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : ngraph::Shape{})
     , m_partial_shape(pshape)
@@ -54,15 +54,15 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
 }
 
 nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
-                           const ngraph::PartialShape& pshape,
-                           const std::string& name,
-                           DeviceType device_type,
-                           bool is_persistent,
-                           bool is_constant,
-                           bool is_parameter,
-                           bool is_RDMA_tensor,
-                           size_t group_id,
-                           size_t device_id)
+                                     const ngraph::PartialShape& pshape,
+                                     const std::string& name,
+                                     DeviceType device_type,
+                                     bool is_persistent,
+                                     bool is_constant,
+                                     bool is_parameter,
+                                     bool is_RDMA_tensor,
+                                     size_t group_id,
+                                     size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : ngraph::Shape{})
     , m_partial_shape(pshape)
@@ -74,11 +74,11 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
     , m_RDMA(is_RDMA_tensor)
     , m_group_id(group_id)
     , m_device_id(device_id)
-{   
+{
 }
 
 void nnfusion::descriptor::Tensor::set_tensor_type(const ngraph::element::Type& element_type,
-                                         const ngraph::PartialShape& pshape)
+                                                   const ngraph::PartialShape& pshape)
 {
     if (pshape.is_static())
     {
@@ -132,11 +132,13 @@ void nnfusion::descriptor::Tensor::set_tensor_layout(
 {
     if (tensor_layout->get_shape() != get_shape())
     {
-        throw nnfusion::errors::RuntimeError("Setting tensor's layout to a layout with a different shape.");
+        throw nnfusion::errors::RuntimeError(
+            "Setting tensor's layout to a layout with a different shape.");
     }
     if (tensor_layout->get_element_type() != get_element_type())
     {
-        throw nnfusion::errors::RuntimeError("Setting tensor's layout to a layout with a different element type.");
+        throw nnfusion::errors::RuntimeError(
+            "Setting tensor's layout to a layout with a different element type.");
     }
     m_tensor_layout = tensor_layout;
 }

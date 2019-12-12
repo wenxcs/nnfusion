@@ -196,11 +196,11 @@ using namespace std;
 using namespace nnfusion;
 
 #include "code_writer.hpp"
+#include "device_type.hpp"
 #include "gflags/gflags.h"
 #include "nlohmann/json.hpp"
 #include "nnfusion/util/util.hpp"
 #include "type_info.hpp"
-#include "device_type.hpp"
 
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 

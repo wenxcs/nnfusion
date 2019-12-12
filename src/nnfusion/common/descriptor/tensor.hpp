@@ -51,20 +51,21 @@ namespace nnfusion
                    bool is_RDMA_tensor = false,
                    size_t group_id = -1,
                    size_t device_id = 0);
-            
+
             Tensor(const ngraph::element::Type& element_type,
-            const ngraph::PartialShape& pshape,
-            const std::string& name,
-            DeviceType device_type,
-            bool is_persistent = false,
-            bool is_constant = false,
-            bool is_parameter = false,
-            bool is_RDMA_tensor = false,
-            size_t group_id = -1,
-            size_t device_id = 0);
+                   const ngraph::PartialShape& pshape,
+                   const std::string& name,
+                   DeviceType device_type,
+                   bool is_persistent = false,
+                   bool is_constant = false,
+                   bool is_parameter = false,
+                   bool is_RDMA_tensor = false,
+                   size_t group_id = -1,
+                   size_t device_id = 0);
 
             const std::string& get_name() const { return m_name; }
-            void set_tensor_type(const ngraph::element::Type& element_type, const ngraph::PartialShape& pshape);
+            void set_tensor_type(const ngraph::element::Type& element_type,
+                                 const ngraph::PartialShape& pshape);
 
             const ngraph::element::Type& get_element_type() const { return m_element_type; }
             const ngraph::Shape& get_shape() const;
@@ -79,7 +80,7 @@ namespace nnfusion
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
             size_t size() const;
-            // persistent tensors exist in all iterations, and do not reuse any memory space. 
+            // persistent tensors exist in all iterations, and do not reuse any memory space.
             // Data in persistent tensors can be immutable or mutable.
             bool is_persistent() const { return m_persistent; }
             // Constant tensors contain immutable data.

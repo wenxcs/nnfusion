@@ -35,7 +35,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
     MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
 
-    auto is_same_dev = [](const nnfusion::descriptor::Tensor* a, const nnfusion::descriptor::Tensor* b) {
+    auto is_same_dev = [](const nnfusion::descriptor::Tensor* a,
+                          const nnfusion::descriptor::Tensor* b) {
         return (a->get_device_type() == b->get_device_type()) &&
                (a->get_device_id() == b->get_device_id());
     };

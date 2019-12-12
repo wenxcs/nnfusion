@@ -5,7 +5,8 @@ using namespace std;
 using namespace ngraph;
 using namespace nnfusion;
 
-TensorWrapper::TensorWrapper(const shared_ptr<nnfusion::descriptor::Tensor>& tv, const string& alias)
+TensorWrapper::TensorWrapper(const shared_ptr<nnfusion::descriptor::Tensor>& tv,
+                             const string& alias)
     : m_tensor(tv)
     , m_alias(alias)
     , m_ishost(false)

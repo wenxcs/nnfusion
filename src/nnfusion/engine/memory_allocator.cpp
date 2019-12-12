@@ -367,7 +367,8 @@ nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory(size_t alignment, bool 
 std::unordered_map<std::string, MemoryAllocator*>
     nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory::m_allocator_list;
 
-MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(nnfusion::descriptor::Tensor* tensor)
+MemoryAllocator*
+    nnfusion::MemoryAllocatorFactory::get_allocator(nnfusion::descriptor::Tensor* tensor)
 {
     std::string device_name = this->get_device_name(tensor);
     if (m_allocator_list.find(device_name) != m_allocator_list.end())
