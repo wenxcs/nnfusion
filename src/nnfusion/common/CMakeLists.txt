@@ -3,6 +3,9 @@
 set(SRC
     languageunit.cpp
     type_info.cpp
+    descriptor/layout/dense_tensor_layout.cpp
+    descriptor/layout/tensor_layout.cpp
+    descriptor/tensor.cpp
     tensorwrapper.cpp
     code_writer.cpp
 )
@@ -13,4 +16,4 @@ target_include_directories(nnfusion_common SYSTEM PUBLIC
 )
 
 target_compile_options(nnfusion_common PRIVATE "-fPIC")
-target_link_libraries(nnfusion_common PRIVATE ngraph nnfusion_util)
+target_link_libraries(nnfusion_common PRIVATE ngraph nnfusion_util gflags)

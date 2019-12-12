@@ -2,6 +2,7 @@
 #pragma once
 
 #include "nnfusion/common/common.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 #include "nnfusion/engine/op.hpp"
 

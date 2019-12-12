@@ -196,6 +196,7 @@ using namespace std;
 using namespace nnfusion;
 
 #include "code_writer.hpp"
+#include "device_type.hpp"
 #include "gflags/gflags.h"
 #include "nlohmann/json.hpp"
 #include "nnfusion/util/util.hpp"
@@ -207,12 +208,12 @@ using namespace nnfusion;
 // #undef LOG(INFO)INFO
 // #define LOG(INFO)INFO std::cout
 
-namespace nnfusion
-{
-    enum DeviceType
-    {
-        CUDA_GPU,
-        ROCM_GPU,
-        GENERIC_CPU
-    };
-}
+// namespace nnfusion
+// {
+//     enum DeviceType
+//     {
+//         CUDA_GPU,
+//         ROCM_GPU,
+//         GENERIC_CPU
+//     };
+// }
