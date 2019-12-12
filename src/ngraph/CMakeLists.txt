@@ -228,6 +228,7 @@ if (NGRAPH_ONNX_IMPORT_ENABLE)
     # target_link_libraries(ngraph PRIVATE onnx_import)
 endif()
 
+target_link_libraries(ngraph PRIVATE gflags)
 #-----------------------------------------------------------------------------------------------
 # Installation logic...
 #-----------------------------------------------------------------------------------------------

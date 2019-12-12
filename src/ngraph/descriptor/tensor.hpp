@@ -57,7 +57,17 @@ namespace ngraph
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
                    size_t group_id = -1,
-                   DeviceType device_type = CUDA_GPU,
+                   size_t device_id = 0);
+
+            Tensor(const element::Type& element_type,
+                   const PartialShape& pshape,
+                   const std::string& name,
+                   DeviceType device_type,
+                   bool is_persistent = false,
+                   bool is_constant = false,
+                   bool is_parameter = false,
+                   bool is_RDMA_tensor = false,
+                   size_t group_id = -1,
                    size_t device_id = 0);
 
             const std::string& get_name() const { return m_name; }

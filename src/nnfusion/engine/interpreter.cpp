@@ -15,9 +15,7 @@
 
 using namespace nnfusion::pass;
 
-DEFINE_string(fdefault_device,
-              "CUDA",
-              "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
+DECLARE_string(fdefault_device);
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
