@@ -326,15 +326,15 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
         if (global_required.count("declaration::eigen_global_thread_pool") > 0)
         {
-            lu_main_free << "delete global_thread_pool;\n";
+            lu_main_free << "free(global_thread_pool);\n";
         }
         if (global_required.count("declaration::eigen_global_thread_pool_device") > 0)
         {
-            lu_main_free << "delete global_thread_pool_device;\n";
+            lu_main_free << "free(global_thread_pool_device);\n";
         }
         if (global_required.count("declaration::mlas_global_thread_pool") > 0)
         {
-            lu_main_free << "delete mlas_global_thread_pool;\n";
+            lu_main_free << "free(mlas_global_thread_pool);\n";
         }
 
         lu_kernel_entry << "\nreturn 0;\n";
