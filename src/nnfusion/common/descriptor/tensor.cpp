@@ -15,10 +15,10 @@
 //*****************************************************************************
 
 #include "nnfusion/common/descriptor/tensor.hpp"
+#include <strings.h>
 #include "gflags/gflags.h"
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/util/errors.hpp"
-
 //using namespace ngraph;
 using namespace std;
 DEFINE_string(fdefault_device,
@@ -44,10 +44,10 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
     , m_group_id(group_id)
     , m_device_id(device_id)
 {
-    auto default_device = FLAGS_fdefault_device;
-    if (default_device == "ROCm")
+    auto default_device = FLAGS_fdefault_device.c_str();
+    if (strcasecmp(default_device, "ROCm") == 0)
         m_device_type = ROCM_GPU;
-    else if (default_device == "CPU")
+    else if (strcasecmp(default_device, "CPU") == 0)
         m_device_type = GENERIC_CPU;
     else
         m_device_type = CUDA_GPU;
