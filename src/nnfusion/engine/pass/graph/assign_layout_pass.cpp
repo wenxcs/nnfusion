@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "assign_layout_pass.hpp"
-#include "ngraph/descriptor/layout/dense_tensor_layout.hpp"
+#include "nnfusion/common/descriptor/layout/dense_tensor_layout.hpp"
 #include "nnfusion/util/util.hpp"
 
 using namespace nnfusion::graph;
@@ -19,7 +19,7 @@ bool AssignLayoutPass::run_on_graph(std::shared_ptr<Graph>& graph)
                 if (nullptr == tv->get_tensor_layout())
                 {
                     auto layout =
-                        std::make_shared<ngraph::descriptor::layout::DenseTensorLayout>(*tv);
+                        std::make_shared<nnfusion::descriptor::layout::DenseTensorLayout>(*tv);
                     tv->set_tensor_layout(layout);
                 }
             }

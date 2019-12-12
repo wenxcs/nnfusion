@@ -4,6 +4,7 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 #include "nnfusion/engine/op.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 
 namespace nnfusion
 {

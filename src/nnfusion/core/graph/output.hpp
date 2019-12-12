@@ -4,7 +4,7 @@
 
 #include <memory>
 
-#include "ngraph/descriptor/tensor.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 
 namespace nnfusion
 {
@@ -14,14 +14,14 @@ namespace nnfusion
         {
         public:
             /// \param tensor The view of this tensor; where the value will be written
-            Output(const std::shared_ptr<ngraph::descriptor::Tensor>& tensor)
+            Output(const std::shared_ptr<nnfusion::descriptor::Tensor>& tensor)
                 : m_tensor(tensor)
             {
             }
 
-            ngraph::descriptor::Tensor& get_tensor() const { return *m_tensor; }
-            std::shared_ptr<ngraph::descriptor::Tensor> get_tensor_ptr() const { return m_tensor; }
-            void set_tensor_ptr(const std::shared_ptr<ngraph::descriptor::Tensor>& tensor)
+            nnfusion::descriptor::Tensor& get_tensor() const { return *m_tensor; }
+            std::shared_ptr<nnfusion::descriptor::Tensor> get_tensor_ptr() const { return m_tensor; }
+            void set_tensor_ptr(const std::shared_ptr<nnfusion::descriptor::Tensor>& tensor)
             {
                 m_tensor = tensor;
             }
@@ -45,7 +45,7 @@ namespace nnfusion
             }
 
         protected:
-            std::shared_ptr<ngraph::descriptor::Tensor> m_tensor;
+            std::shared_ptr<nnfusion::descriptor::Tensor> m_tensor;
 
         private:
             Output(const Output&) = delete;

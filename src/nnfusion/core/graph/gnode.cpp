@@ -182,19 +182,19 @@ void GNode::remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge)
     m_out_edges.erase(edge);
 }
 
-descriptor::Tensor& GNode::get_input_tensor(size_t i) const
+nnfusion::descriptor::Tensor& GNode::get_input_tensor(size_t i) const
 {
     auto in_edge = get_in_edge(i);
     return in_edge->get_src()->get_output_tensor(in_edge->get_src_output());
 }
 
-std::shared_ptr<descriptor::Tensor> GNode::get_input_tensor_ptr(size_t i) const
+std::shared_ptr<nnfusion::descriptor::Tensor> GNode::get_input_tensor_ptr(size_t i) const
 {
     auto in_edge = get_in_edge(i);
     return in_edge->get_src()->get_output_tensor_ptr(in_edge->get_src_output());
 }
 
-descriptor::Tensor& GNode::get_output_tensor(size_t i) const
+nnfusion::descriptor::Tensor& GNode::get_output_tensor(size_t i) const
 {
     CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
                                 << m_outputs.size() << " outputs.";
@@ -202,7 +202,7 @@ descriptor::Tensor& GNode::get_output_tensor(size_t i) const
     return m_outputs.at(i)->get_tensor();
 }
 
-std::shared_ptr<descriptor::Tensor> GNode::get_output_tensor_ptr(size_t i) const
+std::shared_ptr<nnfusion::descriptor::Tensor> GNode::get_output_tensor_ptr(size_t i) const
 {
     CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
                                 << m_outputs.size() << " outputs.";

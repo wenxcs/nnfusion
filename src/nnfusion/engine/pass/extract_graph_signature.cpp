@@ -8,7 +8,7 @@ bool ExtractGraphSignature::extract_result(std::shared_ptr<TranslationUnit> tu,
 {
     for (auto gnode : graph->get_outputs())
     {
-        std::shared_ptr<ngraph::descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
+        std::shared_ptr<nnfusion::descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
         CHECK_NOT_NULLPTR(tv);
         tu->output_names->insert(tv->get_name());
         LOG(INFO) << "Result Tensor: " << tv->get_name();
@@ -24,7 +24,7 @@ bool ExtractGraphSignature::extract_constants(std::shared_ptr<InterpreterContext
     {
         if (dynamic_cast<nnfusion::op::Constant*>(gnode->get_op_ptr().get()))
         {
-            shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
+            shared_ptr<nnfusion::descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
             CHECK_NOT_NULLPTR(tv);
             tu->constants->insert(tv);
 
@@ -164,7 +164,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
             continue;
         }
 
-        shared_ptr<descriptor::Tensor> tv = node->get_output_tensor_ptr(0);
+        shared_ptr<nnfusion::descriptor::Tensor> tv = node->get_output_tensor_ptr(0);
         CHECK_NOT_NULLPTR(tv);
 
         tu->out.push_back(tv);
@@ -181,7 +181,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         auto input_node = in_edge->get_src();
         if (!input_node->get_op_ptr()->is_constant() && !input_node->get_op_ptr()->is_parameter())
         {
-            shared_ptr<descriptor::Tensor> itv =
+            shared_ptr<nnfusion::descriptor::Tensor> itv =
                 input_node->get_output_tensor_ptr(in_edge->get_src_output());
             auto output_name = ss.str();
             ctx->m_variable_name_map[itv->get_name()] = output_name;

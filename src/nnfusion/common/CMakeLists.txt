@@ -3,6 +3,9 @@
 set(SRC
     languageunit.cpp
     type_info.cpp
+    descriptor/layout/dense_tensor_layout.cpp
+    descriptor/layout/tensor_layout.cpp
+    descriptor/tensor.cpp
     tensorwrapper.cpp
     code_writer.cpp
 )

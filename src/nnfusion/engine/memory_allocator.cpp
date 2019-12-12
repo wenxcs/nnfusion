@@ -27,7 +27,7 @@ nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(std::vector<ngraph::descriptor::Tensor*>& tensors)
+void nnfusion::MemoryAllocator::allocate(std::vector<nnfusion::descriptor::Tensor*>& tensors)
 {
     size_t rc;
     size_t total_size = 0;
@@ -56,7 +56,7 @@ void nnfusion::MemoryAllocator::allocate(std::vector<ngraph::descriptor::Tensor*
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(ngraph::descriptor::Tensor* tensor)
+void nnfusion::MemoryAllocator::allocate(nnfusion::descriptor::Tensor* tensor)
 {
     size_t rc;
     size_t size = tensor->size();
@@ -77,7 +77,7 @@ void nnfusion::MemoryAllocator::allocate(ngraph::descriptor::Tensor* tensor)
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(ngraph::descriptor::Tensor* tensor, size_t offset)
+void nnfusion::MemoryAllocator::allocate(nnfusion::descriptor::Tensor* tensor, size_t offset)
 {
     tensor->set_pool_offset(offset);
     m_allocated_tensors.push_back(tensor);
@@ -170,7 +170,7 @@ size_t nnfusion::MemoryAllocator::first_fit(size_t size)
     return offset;
 }
 
-void nnfusion::MemoryAllocator::free(ngraph::descriptor::Tensor* tensor)
+void nnfusion::MemoryAllocator::free(nnfusion::descriptor::Tensor* tensor)
 {
     size_t offset = tensor->get_pool_offset();
     size_t search_offset = 0;
@@ -229,7 +229,7 @@ void nnfusion::MemoryAllocator::dump(ofstream& out)
     }
 }
 
-void nnfusion::MemoryAllocator::record(string symbol, ngraph::descriptor::Tensor* tensor)
+void nnfusion::MemoryAllocator::record(string symbol, nnfusion::descriptor::Tensor* tensor)
 {
     m_trace << symbol << " name: " << tensor->get_name()
             << "  offset: " << tensor->get_pool_offset() << "  size: " << tensor->size() << "\n";
@@ -367,7 +367,7 @@ nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory(size_t alignment, bool 
 std::unordered_map<std::string, MemoryAllocator*>
     nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory::m_allocator_list;
 
-MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descriptor::Tensor* tensor)
+MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(nnfusion::descriptor::Tensor* tensor)
 {
     std::string device_name = this->get_device_name(tensor);
     if (m_allocator_list.find(device_name) != m_allocator_list.end())
@@ -391,19 +391,19 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descrip
             MemoryAllocator* allocator = nullptr;
             switch (tensor->get_device_type())
             {
-            case ngraph::descriptor::Tensor::DeviceType::CUDA_GPU:
+            case nnfusion::descriptor::Tensor::DeviceType::CUDA_GPU:
             {
                 allocator = new CUDAMemoryAllocator(
                     m_alignment, m_disable_reuse, CUDA_GPU, tensor->get_device_id());
                 break;
             }
-            case ngraph::descriptor::Tensor::DeviceType::ROCM_GPU:
+            case nnfusion::descriptor::Tensor::DeviceType::ROCM_GPU:
             {
                 allocator = new RocmMemoryAllocator(
                     m_alignment, m_disable_reuse, ROCM_GPU, tensor->get_device_id());
                 break;
             }
-            case ngraph::descriptor::Tensor::DeviceType::GENERIC_CPU:
+            case nnfusion::descriptor::Tensor::DeviceType::GENERIC_CPU:
             {
                 allocator = new HostMemoryAllocator(
                     m_alignment, m_disable_reuse, GENERIC_CPU, tensor->get_device_id());
@@ -418,7 +418,7 @@ MemoryAllocator* nnfusion::MemoryAllocatorFactory::get_allocator(ngraph::descrip
     }
 }
 
-std::string nnfusion::MemoryAllocatorFactory::get_device_name(ngraph::descriptor::Tensor* tensor)
+std::string nnfusion::MemoryAllocatorFactory::get_device_name(nnfusion::descriptor::Tensor* tensor)
 {
     std::stringstream device_name;
 

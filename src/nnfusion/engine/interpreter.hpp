@@ -5,6 +5,7 @@
 #include "nnfusion/core/IR/IR.hpp"
 #include "nnfusion/engine/pass/graph/graph_pass.hpp"
 #include "op.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 
 namespace nnfusion
 {
@@ -39,9 +40,9 @@ namespace nnfusion
         shared_ptr<vector<ir::Operator_p>> inter_ops;
         shared_ptr<set<string>> input_names;
         shared_ptr<set<string>> output_names;
-        shared_ptr<set<shared_ptr<ngraph::descriptor::Tensor>>> constants;
-        vector<shared_ptr<ngraph::descriptor::Tensor>> arg;
-        vector<shared_ptr<ngraph::descriptor::Tensor>> out;
+        shared_ptr<set<shared_ptr<nnfusion::descriptor::Tensor>>> constants;
+        vector<shared_ptr<nnfusion::descriptor::Tensor>> arg;
+        vector<shared_ptr<nnfusion::descriptor::Tensor>> out;
         nnfusion::ir::Program program;
         bool m_is_translated;
         size_t memory_pool_size;
@@ -51,7 +52,7 @@ namespace nnfusion
             , m_is_translated(false)
             , input_names(new set<string>())
             , output_names(new set<string>())
-            , constants(new set<shared_ptr<ngraph::descriptor::Tensor>>()){};
+            , constants(new set<shared_ptr<nnfusion::descriptor::Tensor>>()){};
     };
 
     using TranslationUnitMap = map<shared_ptr<graph::Graph>, shared_ptr<TranslationUnit>>;

@@ -218,7 +218,7 @@ const TensorWrapper& KernelEmitter::allocate_tensor(
         name = name + "_" + wrapper_name;
     }
     TensorWrapper temp_tensor(
-        make_shared<ngraph::descriptor::Tensor>(elt, shape, name, persistent, host), wrapper_name);
+        make_shared<nnfusion::descriptor::Tensor>(elt, shape, name, persistent, host), wrapper_name);
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);
 

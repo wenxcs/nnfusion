@@ -3,6 +3,7 @@
 
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 
 DECLARE_bool(fmem_trace);
 
@@ -39,15 +40,15 @@ namespace nnfusion
                         DeviceType device_type = CUDA_GPU,
                         size_t device_id = 0);
         // allocate a set of tensors.
-        virtual void allocate(std::vector<ngraph::descriptor::Tensor*>& tensors);
+        virtual void allocate(std::vector<nnfusion::descriptor::Tensor*>& tensors);
         // allocate one tensor.
-        virtual void allocate(ngraph::descriptor::Tensor* tensor);
+        virtual void allocate(nnfusion::descriptor::Tensor* tensor);
         // allocate tensor with specified offset.
-        virtual void allocate(ngraph::descriptor::Tensor* tensor, size_t offset);
-        virtual void free(ngraph::descriptor::Tensor* tensor);
+        virtual void allocate(nnfusion::descriptor::Tensor* tensor, size_t offset);
+        virtual void free(nnfusion::descriptor::Tensor* tensor);
 
         void dump(std::ofstream&);
-        void record(string symbol, ngraph::descriptor::Tensor* tensor);
+        void record(string symbol, nnfusion::descriptor::Tensor* tensor);
         virtual LanguageUnit_p emit_memory_init();
         virtual LanguageUnit_p emit_memory_alloc();
         virtual LanguageUnit_p emit_memory_free();
@@ -80,7 +81,7 @@ namespace nnfusion
         DeviceType m_device_type;
         size_t m_device_id;
         size_t m_max_allocated;
-        std::vector<ngraph::descriptor::Tensor*> m_allocated_tensors;
+        std::vector<nnfusion::descriptor::Tensor*> m_allocated_tensors;
         std::stringstream m_trace;
         bool record_trace = FLAGS_fmem_trace;
     };
@@ -141,8 +142,8 @@ namespace nnfusion
     {
     public:
         MemoryAllocatorFactory(size_t alignment = 1, bool disable_reuse = false);
-        MemoryAllocator* get_allocator(ngraph::descriptor::Tensor* tensor);
-        std::string get_device_name(ngraph::descriptor::Tensor* tensor);
+        MemoryAllocator* get_allocator(nnfusion::descriptor::Tensor* tensor);
+        std::string get_device_name(nnfusion::descriptor::Tensor* tensor);
         size_t get_alignment() const { return m_alignment; }
         static const std::unordered_map<std::string, MemoryAllocator*>& get_allocator_list()
         {

@@ -20,6 +20,7 @@
 
 #include "nnfusion/core/IR/attribute.hpp"
 #include "nnfusion/core/operators/op.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 namespace nnfusion
 {
     namespace graph
@@ -73,18 +74,18 @@ namespace nnfusion
             const std::vector<std::shared_ptr<Input>>& get_inputs() const { return m_inputs; }
             size_t get_input_size() const { return m_inputs.size(); }
             /// Returns the tensor for input i
-            descriptor::Tensor& get_input_tensor(size_t i) const;
+            nnfusion::descriptor::Tensor& get_input_tensor(size_t i) const;
             /// Returns the tensor view of input i
-            std::shared_ptr<descriptor::Tensor> get_input_tensor_ptr(size_t i) const;
+            std::shared_ptr<nnfusion::descriptor::Tensor> get_input_tensor_ptr(size_t i) const;
 
             std::vector<std::shared_ptr<Output>>& get_outputs() { return m_outputs; }
             const std::vector<std::shared_ptr<Output>>& get_outputs() const { return m_outputs; }
             size_t get_output_size() const { return m_outputs.size(); }
             void set_output_size(size_t n);
             /// Returns the tensor for output i
-            descriptor::Tensor& get_output_tensor(size_t i) const;
+            nnfusion::descriptor::Tensor& get_output_tensor(size_t i) const;
             /// Returns the tensor view of output i
-            std::shared_ptr<descriptor::Tensor> get_output_tensor_ptr(size_t i) const;
+            std::shared_ptr<nnfusion::descriptor::Tensor> get_output_tensor_ptr(size_t i) const;
 
             /// Checks that there is exactly one output and returns its shape
             const ngraph::Shape& get_shape() const;

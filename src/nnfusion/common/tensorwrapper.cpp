@@ -1,13 +1,11 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "tensorwrapper.hpp"
-#include "ngraph/descriptor/layout/tensor_layout.hpp"
-#include "ngraph/descriptor/tensor.hpp"
 
 using namespace std;
 using namespace ngraph;
 using namespace nnfusion;
 
-TensorWrapper::TensorWrapper(const shared_ptr<descriptor::Tensor>& tv, const string& alias)
+TensorWrapper::TensorWrapper(const shared_ptr<nnfusion::descriptor::Tensor>& tv, const string& alias)
     : m_tensor(tv)
     , m_alias(alias)
     , m_ishost(false)
@@ -64,7 +62,7 @@ const Shape& TensorWrapper::get_shape() const
     }
 }
 
-const descriptor::Tensor& TensorWrapper::get_tensor() const
+const nnfusion::descriptor::Tensor& TensorWrapper::get_tensor() const
 {
     return *m_tensor;
 }
