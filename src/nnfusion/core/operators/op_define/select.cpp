@@ -36,5 +36,5 @@ void Select::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                                gnode->get_input_element_type(2)))
         << "Argument 1 and 2 element types are inconsistent.";
 
-    set_output_type_and_shape(gnode, 0, result_et, result_shape);
+    gnode->set_output_type_and_shape(0, result_et, result_shape);
 }

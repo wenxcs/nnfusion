@@ -45,5 +45,5 @@ REGISTER_OP(OneHot)
         output_shape_0.push_back(depth);
         for (int i = axis + 1; i < shape_0.size(); ++i)
             output_shape_0.push_back(shape_0[i]);
-        gnode->get_op_ptr()->set_output_type_and_shape(gnode, 0, type, output_shape_0);
+        gnode->set_output_type_and_shape(0, type, output_shape_0);
     });

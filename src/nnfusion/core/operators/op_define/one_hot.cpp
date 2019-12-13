@@ -54,5 +54,5 @@ void OneHot::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         result_shape = ngraph::PartialShape{output_dims};
     }
 
-    set_output_type_and_shape(gnode, 0, arg_et, result_shape);
+    gnode->set_output_type_and_shape(0, arg_et, result_shape);
 }

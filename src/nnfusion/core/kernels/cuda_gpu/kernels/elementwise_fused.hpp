@@ -10,7 +10,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class ElementWiseFused : public CudaEmitter
+            class ElementWiseFused : public BlockCudaEmitter
             {
             public:
                 ElementWiseFused(shared_ptr<KernelContext> ctx);

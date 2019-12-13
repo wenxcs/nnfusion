@@ -61,5 +61,5 @@ void Reduce::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         << "Return element type from reduction graph does not match expected";
     CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == ngraph::Shape{})
         << "Return shape from reduction graph is not a scalar";
-    set_output_type_and_shape(gnode, 0, input_reductee->get_element_type(), result_shape);
+    gnode->set_output_type_and_shape(0, input_reductee->get_element_type(), result_shape);
 }

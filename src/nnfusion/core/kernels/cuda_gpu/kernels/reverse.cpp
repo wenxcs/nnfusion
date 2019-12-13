@@ -7,7 +7,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::Reverse::Reverse(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto reverse = static_pointer_cast<nnfusion::op::Reverse>(ctx->gnode->get_op_ptr());
 

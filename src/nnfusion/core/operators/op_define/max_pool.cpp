@@ -53,16 +53,15 @@ void MaxPool::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     ngraph::CoordinateDiff padding_below(m_padding_below.begin(), m_padding_below.end());
     ngraph::CoordinateDiff padding_above(m_padding_above.begin(), m_padding_above.end());
 
-    set_output_type_and_shape(gnode,
-                              0,
-                              gnode->get_input_element_type(0),
-                              infer_batched_pooling_forward(this,
-                                                            arg_shape,
-                                                            padding_below,
-                                                            padding_above,
-                                                            m_window_shape,
-                                                            m_window_movement_strides,
-                                                            true));
+    gnode->set_output_type_and_shape(0,
+                                     gnode->get_input_element_type(0),
+                                     infer_batched_pooling_forward(this,
+                                                                   arg_shape,
+                                                                   padding_below,
+                                                                   padding_above,
+                                                                   m_window_shape,
+                                                                   m_window_movement_strides,
+                                                                   true));
 }
 
 MaxPoolBackprop::MaxPoolBackprop(const ngraph::Shape& window_shape,
@@ -114,7 +113,7 @@ void MaxPoolBackprop::validate_and_infer_types(std::shared_ptr<graph::GNode> gno
     // TODO(amprocte): We may technically be able to infer some extra information from
     // forward_result_shape that was not present in the forward arg shape---namely batch size and
     // channel count. Merge that info in.
-    set_output_type_and_shape(gnode, 0, forward_arg_et, forward_arg_shape);
+    gnode->set_output_type_and_shape(0, forward_arg_et, forward_arg_shape);
 }
 
 shared_ptr<MaxPool> MaxPoolBackprop::get_forward_op() const

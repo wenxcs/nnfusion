@@ -49,5 +49,5 @@ void IndexReduction::validate_and_infer_types(std::shared_ptr<graph::GNode> gnod
         output_shape = ngraph::PartialShape(output_dims);
     }
 
-    set_output_type_and_shape(gnode, 0, m_index_element_type, output_shape);
+    gnode->set_output_type_and_shape(0, m_index_element_type, output_shape);
 }

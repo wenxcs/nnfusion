@@ -14,6 +14,5 @@ REGISTER_OP(Add).infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
             CHECK(shape_0[i] == 1 || shape_1[i] == 1);
         output_shape_0.push_back(std::max(shape_0[i], shape_1[i]));
     }
-    gnode->get_op_ptr()->set_output_type_and_shape(
-        gnode, 0, gnode->get_input_element_type(0), output_shape_0);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
 });

@@ -69,7 +69,7 @@ void Convolution::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                                                   m_window_movement_strides,
                                                                   m_window_dilation_strides);
 
-    set_output_type_and_shape(gnode, 0, result_et, result_shape);
+    gnode->set_output_type_and_shape(0, result_et, result_shape);
 }
 
 ngraph::Strides Convolution::default_strides(const Op* op,
@@ -224,7 +224,7 @@ void ConvolutionBackpropData::validate_and_infer_types(std::shared_ptr<graph::GN
         << "Inferred forward output shape (" << forward_result_shape << ") does not match shape of "
         << "delta (" << delta_shape << ").";
 
-    set_output_type_and_shape(gnode, 0, forward_result_et, m_data_batch_shape);
+    gnode->set_output_type_and_shape(0, forward_result_et, m_data_batch_shape);
 
     //
     // Compute parameters needed for backprop-as-convolution.
@@ -334,7 +334,7 @@ void ConvolutionBackpropFilters::validate_and_infer_types(std::shared_ptr<graph:
         << "Inferred forward output shape (" << forward_result_shape << ") does not match shape of "
         << "delta (" << delta_shape << ").";
 
-    set_output_type_and_shape(gnode, 0, forward_result_et, m_filters_shape);
+    gnode->set_output_type_and_shape(0, forward_result_et, m_filters_shape);
 
     //
     // Compute parameters needed for backprop-as-convolution.

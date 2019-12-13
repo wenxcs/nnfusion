@@ -61,5 +61,5 @@ REGISTER_OP(DynamicStitch)
             output_shape = dims;
         }
         generic_op->localOpConfig.attr("indices_inputs", indices_inputs);
-        gnode->get_op_ptr()->set_output_type_and_shape(gnode, 0, type, output_shape);
+        gnode->set_output_type_and_shape(0, type, output_shape);
     });

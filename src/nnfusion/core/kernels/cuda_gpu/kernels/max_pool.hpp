@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class MaxPool1D : public CudaEmitter
+            class MaxPool1D : public BlockCudaEmitter
             {
             public:
                 MaxPool1D(shared_ptr<KernelContext> ctx);

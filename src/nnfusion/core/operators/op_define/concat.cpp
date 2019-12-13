@@ -60,5 +60,5 @@ void Concat::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         concatenated_shape[m_concatenation_axis] = concatenation_axis_output_dim;
     }
 
-    set_output_type_and_shape(gnode, 0, inputs_et, concatenated_shape);
+    gnode->set_output_type_and_shape(0, inputs_et, concatenated_shape);
 }

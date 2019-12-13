@@ -20,6 +20,5 @@ REGISTER_OP(GatherV2).attr<int>("axis", 0).infershape(
         for (int i = axis + 1; i < input_shape_0.size(); ++i)
             output_shape_0.push_back(input_shape_0[i]);
 
-        gnode->get_op_ptr()->set_output_type_and_shape(
-            gnode, 0, gnode->get_input_element_type(0), output_shape_0);
+        gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
     });

@@ -7,6 +7,8 @@ set(SRC
     graph_pass.cpp
     manager.cpp
     gradient_weight_mapping_pass.cpp
+    device_dispatcher.cpp
+    kernel_selection.cpp
 )
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})

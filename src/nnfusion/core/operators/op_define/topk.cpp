@@ -64,6 +64,6 @@ void TopK::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     }
 
     gnode->set_output_size(2);
-    set_output_type_and_shape(gnode, 0, m_index_element_type, output_shape);
-    set_output_type_and_shape(gnode, 1, input_element_type, output_shape);
+    gnode->set_output_type_and_shape(0, m_index_element_type, output_shape);
+    gnode->set_output_type_and_shape(1, input_element_type, output_shape);
 }

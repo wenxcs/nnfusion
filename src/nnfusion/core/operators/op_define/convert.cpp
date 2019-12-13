@@ -13,5 +13,5 @@ Convert::Convert(const ngraph::element::Type& element_type)
 
 void Convert::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    set_output_type_and_shape(gnode, 0, m_element_type, gnode->get_input_shape(0));
+    gnode->set_output_type_and_shape(0, m_element_type, gnode->get_input_shape(0));
 }

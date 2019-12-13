@@ -41,7 +41,7 @@ void BatchNormInference::validate_and_infer_types(std::shared_ptr<graph::GNode> 
                                  gnode->get_input_partial_shape(INPUT_MEAN),
                                  gnode->get_input_partial_shape(INPUT_VARIANCE));
 
-    set_output_type_and_shape(gnode, 0, result_et, result_batch_shape);
+    gnode->set_output_type_and_shape(0, result_et, result_batch_shape);
 }
 
 void BatchNormTraining::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
@@ -60,9 +60,9 @@ void BatchNormTraining::validate_and_infer_types(std::shared_ptr<graph::GNode> g
                                  gnode->get_input_partial_shape(INPUT_BETA));
 
     gnode->set_output_size(3);
-    set_output_type_and_shape(gnode, 0, result_et, result_batch_shape);
-    set_output_type_and_shape(gnode, 1, result_et, result_channel_shape);
-    set_output_type_and_shape(gnode, 2, result_et, result_channel_shape);
+    gnode->set_output_type_and_shape(0, result_et, result_batch_shape);
+    gnode->set_output_type_and_shape(1, result_et, result_channel_shape);
+    gnode->set_output_type_and_shape(2, result_et, result_channel_shape);
 }
 
 BatchNormTrainingBackprop::BatchNormTrainingBackprop(double eps)
@@ -111,7 +111,7 @@ void BatchNormTrainingBackprop::validate_and_infer_types(std::shared_ptr<graph::
                                  gnode->get_input_partial_shape(INPUT_VARIANCE));
 
     gnode->set_output_size(3);
-    set_output_type_and_shape(gnode, 0, result_et, result_batch_shape);
-    set_output_type_and_shape(gnode, 1, result_et, result_channel_shape);
-    set_output_type_and_shape(gnode, 2, result_et, result_channel_shape);
+    gnode->set_output_type_and_shape(0, result_et, result_batch_shape);
+    gnode->set_output_type_and_shape(1, result_et, result_channel_shape);
+    gnode->set_output_type_and_shape(2, result_et, result_channel_shape);
 }

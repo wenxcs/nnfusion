@@ -22,13 +22,13 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Transpose : public CudaEmitter
+            class Transpose : public BlockCudaEmitter
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 Transpose(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {

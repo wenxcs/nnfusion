@@ -4,8 +4,10 @@
 #include "manager.hpp"
 
 #include "assign_layout_pass.hpp"
+#include "device_dispatcher.hpp"
 #include "gradient_weight_mapping_pass.hpp"
 #include "kernel_fusion_pass.hpp"
+#include "kernel_selection.hpp"
 #include "multi_reshape_folding_pass.hpp"
 #include "op_inplace_pass.hpp"
 #include "runtime_const_folding_pass.hpp"
@@ -23,9 +25,17 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
-    pass_manager.register_pass<KernelFusionPass>();
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<OpInplacePass>();
+
+    // The graph after this pass will have selected kernels
+    pass_manager.register_pass<DefaultDeviceDispatcher>();
+    pass_manager.register_pass<ProfilingBasedKernelSelector>();
+    pass_manager.register_pass<DefaultKernelSelector>();
+
+    // GPU specific graph passes
+    pass_manager.register_pass<KernelFusionPass>();
+
     pass_manager.run_passes(graph);
 
     return true;

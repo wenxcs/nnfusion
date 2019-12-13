@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Reverse : public CudaEmitter
+            class Reverse : public BlockCudaEmitter
             {
             public:
                 Reverse(shared_ptr<KernelContext> ctx);

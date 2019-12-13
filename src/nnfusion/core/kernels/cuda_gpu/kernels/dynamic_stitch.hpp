@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class DynamicStitch : public CudaEmitter
+            class DynamicStitch : public BlockCudaEmitter
             {
             public:
                 DynamicStitch(shared_ptr<KernelContext> ctx);

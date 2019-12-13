@@ -14,11 +14,11 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class InvertPermutation : public CudaEmitter
+            class InvertPermutation : public BlockCudaEmitter
             {
             public:
                 InvertPermutation(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                 {
                     data_size = ctx->inputs[0].get_size();
                 }

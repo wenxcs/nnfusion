@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class StridedSliceGrad : public CudaEmitter
+            class StridedSliceGrad : public BlockCudaEmitter
             {
             public:
                 StridedSliceGrad(shared_ptr<KernelContext> ctx);

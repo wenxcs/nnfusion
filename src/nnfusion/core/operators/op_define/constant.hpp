@@ -5,11 +5,11 @@
 #include <cstring>
 #include <sstream>
 
-#include "nnfusion/core/operators/op.hpp"
-
 #include "ngraph/type/bfloat16.hpp"
 #include "ngraph/type/element_type.hpp"
 #include "ngraph/util.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/core/operators/op.hpp"
 
 namespace nnfusion
 {
@@ -100,7 +100,7 @@ namespace nnfusion
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override
             {
                 infer_element_type();
-                set_output_type_and_shape(gnode, 0, m_element_type, m_shape);
+                gnode->set_output_type_and_shape(0, m_element_type, m_shape);
             }
 
             /// \brief Wrapper around constructing a shared_ptr of a Constant

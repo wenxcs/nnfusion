@@ -45,6 +45,5 @@ REGISTER_OP(BatchMatMul)
             CHECK(m0 == m1), output_shape_0.push_back(n0), output_shape_0.push_back(n1);
         else // trans_A && trans_B
             CHECK(m0 == n1), output_shape_0.push_back(n0), output_shape_0.push_back(m1);
-        gnode->get_op_ptr()->set_output_type_and_shape(
-            gnode, 0, gnode->get_input_element_type(0), output_shape_0);
+        gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
     });

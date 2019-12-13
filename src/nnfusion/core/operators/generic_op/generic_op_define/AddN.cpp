@@ -19,6 +19,5 @@ REGISTER_OP(AddN).attr<nnfusion::op::OpConfig::any>("T").infershape(
         }
 
         ngraph::Shape output_shape_0(shape_0);
-        gnode->get_op_ptr()->set_output_type_and_shape(
-            gnode, 0, gnode->get_input_element_type(0), output_shape_0);
+        gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
     });

@@ -184,8 +184,8 @@ namespace nnfusion
             {
                 for (int i = 0; i < gnode->get_input_size(); ++i)
                 {
-                    gnode->get_op_ptr()->set_output_type_and_shape(
-                        gnode, 0, gnode->get_input_element_type(i), gnode->get_input_shape(i));
+                    gnode->set_output_type_and_shape(
+                        0, gnode->get_input_element_type(i), gnode->get_input_shape(i));
                 }
             }
         } // namespace infershape

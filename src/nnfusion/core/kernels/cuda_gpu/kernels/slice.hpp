@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Slice : public CudaEmitter
+            class Slice : public BlockCudaEmitter
             {
             public:
                 Slice(shared_ptr<KernelContext> ctx);

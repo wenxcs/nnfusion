@@ -1,12 +1,8 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "interpreter.hpp"
 #include "nnfusion/engine/pass/cpu_codegenerator.hpp"
-#include "nnfusion/engine/pass/create_fusion_block.hpp"
 #include "nnfusion/engine/pass/cuda_codegenerator.hpp"
-#include "nnfusion/engine/pass/device_dispatcher.hpp"
-#include "nnfusion/engine/pass/elementwise_kernel_fusion.hpp"
 #include "nnfusion/engine/pass/extract_graph_signature.hpp"
-#include "nnfusion/engine/pass/kernel_selection.hpp"
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
 #include <strings.h>
@@ -32,17 +28,15 @@ Interpreter::Interpreter()
         default_device = CUDA_GPU;
 
     // kernel selection
-    m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
-    m_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
-    m_passes->push_back(make_shared<DefaultKernelSelector>());
+    // m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
+    // m_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
+    // m_passes->push_back(make_shared<DefaultKernelSelector>());
 
     /*
         This is disabled since we did use same stream for allreduce or applygradient;
         m_passes->push_back(make_shared<TrainningAsyncExecution>());
     */
 
-    m_passes->push_back(make_shared<CreateFusionBlock>());
-    m_passes->push_back(make_shared<ElementwiseKernelFusion>());
     m_passes->push_back(make_shared<TensorLivenessAnalysis>());
     // m_passes->push_back(make_shared<HostTensorAllocation>());
     m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
@@ -137,8 +131,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
                     auto res = INS["DEBUG"].as<int>();
                 }
 
-                // move fusion group tags to intructions
-                if ((*gnode)["elem_group_id"].is_valid() || (*gnode)["fusion_group_id"].is_valid())
+                // move all tags on the node to the intruction
                 {
                     ir->copy_tags_from(*gnode);
                 }

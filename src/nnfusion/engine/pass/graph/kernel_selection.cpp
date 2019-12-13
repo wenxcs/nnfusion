@@ -1,11 +1,11 @@
-// Microsoft (c) 2019, Wenxiang Hu
+// Microsoft (c) 2019, NNFusion Team
 #include "kernel_selection.hpp"
 
 #include <queue>
 #include <utility>
 
 using namespace nnfusion;
-using namespace nnfusion::graph;
+using namespace nnfusion::pass::graph;
 using namespace nnfusion::profiler;
 
 // Register_Tag(Enable_Kernel_Selection, bool);
@@ -67,8 +67,7 @@ pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::
     return std::make_pair(devtype, nullptr);
 }
 
-bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
-                                       std::shared_ptr<TranslationUnit> tu)
+bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
     bool enable_tuning = FLAGS_fkernel_tunning;
     if (!enable_tuning)
@@ -80,49 +79,43 @@ bool ProfilingBasedKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
     DeviceType the_device = ROCM_GPU;
 
     // Currently *ONLY* has BroadCast Selection
-    auto& p = tu->program;
-    for (auto iterator : p)
+    std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
+    for (auto it : nodes)
     {
-        for (auto ins : *iterator)
-        {
-            auto opname = ins->getGNode()->get_op_type();
-            for (auto& rule : white_list)
-                if (opname == rule)
-                {
-                    (*ins)["Enable_Kernel_Selection"] = true;
-                    if (!all_device)
-                        (*ins)["Kernel_Selection_Device"] = the_device;
-                }
-        }
+        auto opname = it->get_op_type();
+        for (auto& rule : white_list)
+            if (opname == rule)
+            {
+                (*it)["Enable_Kernel_Selection"] = true;
+                if (!all_device)
+                    (*it)["Kernel_Selection_Device"] = the_device;
+            }
     }
 
-    for (auto iterator : p)
+    for (auto it : nodes)
     {
-        for (auto ins : *iterator)
+        if ((*it)["Enable_Kernel_Selection"].is_valid() &&
+            (*it)["Enable_Kernel_Selection"].as<bool>())
         {
-            if ((*ins)["Enable_Kernel_Selection"].is_valid() &&
-                (*ins)["Enable_Kernel_Selection"].as<bool>())
+            (*it)["Kernel_Selection_Result"] = vector<pair<DeviceType, KernelEmitter::Pointer>>();
+            auto& res = (*it)["Kernel_Selection_Result"]
+                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+
+            vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+            for (auto t : dev_type)
             {
-                (*ins)["Kernel_Selection_Result"] =
-                    vector<pair<DeviceType, KernelEmitter::Pointer>>();
-                auto& res = (*ins)["Kernel_Selection_Result"]
-                                .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                if ((*it)["Kernel_Selection_Device"].is_valid() &&
+                    (*it)["Kernel_Selection_Device"].as<DeviceType>() != t)
+                    continue;
 
-                vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
-                for (auto t : dev_type)
-                {
-                    if ((*ins)["Kernel_Selection_Device"].is_valid() &&
-                        (*ins)["Kernel_Selection_Device"].as<DeviceType>() != t)
-                        continue;
+                auto ans = profiling_best(it, t, get_default_runtime(t));
 
-                    auto ans = profiling_best(ins->getGNode(), t, get_default_runtime(t));
-
-                    if (ans.second != nullptr)
-                        res.push_back(ans);
-                }
+                if (ans.second != nullptr)
+                    res.push_back(ans);
             }
         }
     }
+
     return true;
 }
 
@@ -194,51 +187,47 @@ pair<DeviceType, kernels::KernelEmitter::Pointer>
     return std::make_pair(ROCM_GPU, nullptr);
 }
 
-bool DefaultKernelSelector::run(std::shared_ptr<InterpreterContext> ctx,
-                                std::shared_ptr<TranslationUnit> tu)
+bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
-    auto& p = tu->program;
-    for (auto iterator : p)
+    std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
+    for (auto it : nodes)
     {
-        for (auto ins : *iterator)
+        if (!(*it)["Kernel_Selection_Result"].is_valid())
+            (*it)["Kernel_Selection_Result"] = vector<pair<DeviceType, KernelEmitter::Pointer>>();
+        auto& res =
+            (*it)["Kernel_Selection_Result"].as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+
+        vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+        for (auto t : dev_type)
         {
-            if (!(*ins)["Kernel_Selection_Result"].is_valid())
-                (*ins)["Kernel_Selection_Result"] =
-                    vector<pair<DeviceType, KernelEmitter::Pointer>>();
-            auto& res = (*ins)["Kernel_Selection_Result"]
-                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+            if ((*it)["Kernel_Selection_Device"].is_valid() &&
+                (*it)["Kernel_Selection_Device"].as<DeviceType>() != t)
+                continue;
 
-            vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
-            for (auto t : dev_type)
+            bool selected = false;
+            for (auto& p : res)
             {
-                if ((*ins)["Kernel_Selection_Device"].is_valid() &&
-                    (*ins)["Kernel_Selection_Device"].as<DeviceType>() != t)
-                    continue;
+                if (p.first == t)
+                {
+                    selected = true;
+                    break;
+                }
+            }
+            if (selected)
+                continue;
 
-                bool selected = false;
-                for (auto& p : res)
-                {
-                    if (p.first == t)
-                    {
-                        selected = true;
-                        break;
-                    }
-                }
-                if (selected)
-                    continue;
-
-                if (t == ROCM_GPU)
-                {
-                    auto ans = pick_first_rocm(ins->getGNode());
-                    res.push_back(ans);
-                }
-                else
-                {
-                    auto ans = pick_first(ins->getGNode(), t);
-                    res.push_back(ans);
-                }
+            if (t == ROCM_GPU)
+            {
+                auto ans = pick_first_rocm(it);
+                res.push_back(ans);
+            }
+            else
+            {
+                auto ans = pick_first(it, t);
+                res.push_back(ans);
             }
         }
     }
+
     return true;
 }

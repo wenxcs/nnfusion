@@ -45,14 +45,6 @@ void Op::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
 }
 
-void Op::set_output_type_and_shape(std::shared_ptr<graph::GNode> gnode,
-                                   size_t i,
-                                   const ngraph::element::Type& element_type,
-                                   const ngraph::PartialShape& pshape)
-{
-    gnode->get_outputs().at(i)->set_type_and_shape(element_type, pshape);
-}
-
 bool Op::is_parameter() const
 {
     return false;

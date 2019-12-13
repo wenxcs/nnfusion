@@ -49,7 +49,7 @@ void Broadcast::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         << "(argument shape: " << partial_shape << ", output shape: " << m_shape
         << ", broadcast axes: " << m_broadcast_axes << ").";
 
-    set_output_type_and_shape(gnode, 0, gnode->get_input_element_type(0), m_shape);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), m_shape);
 }
 
 void Broadcast::inner_or_outer_broadcast()

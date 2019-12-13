@@ -32,6 +32,5 @@ REGISTER_OP(UnsortedSegmentSum).infershape([](std::shared_ptr<graph::GNode> gnod
     // except for the first segment_ids.rank dimensions,
     // which are replaced with a single dimension which has size num_segments.
     output_shape[0] = seg_num[0];
-    gnode->get_op_ptr()->set_output_type_and_shape(
-        gnode, 0, gnode->get_input_element_type(0), output_shape);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape);
 });

@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "binary_elementwise_logical.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
 
 using namespace std;
 using namespace nnfusion::op;
@@ -20,5 +21,5 @@ void BinaryElementwiseLogical::validate_and_infer_types(std::shared_ptr<graph::G
         << "Operands for logical operators must have boolean element type but have element type "
         << args_et << ".";
 
-    set_output_type_and_shape(gnode, 0, ngraph::element::boolean, args_pshape);
+    gnode->set_output_type_and_shape(0, ngraph::element::boolean, args_pshape);
 }

@@ -131,5 +131,5 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
     //
     // Result type is the same element type and shape as the selectee.
     //
-    set_output_type_and_shape(gnode, 0, input_selectee_element_type, input_selectee_shape);
+    gnode->set_output_type_and_shape(0, input_selectee_element_type, input_selectee_shape);
 }

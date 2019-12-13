@@ -36,5 +36,5 @@ REGISTER_OP(StridedSliceGrad)
         for (int i = 0; i < x_size; ++i)
             output_shape_0.push_back(x_value[i]);
 
-        gnode->get_op_ptr()->set_output_type_and_shape(gnode, 0, element::f32, output_shape_0);
+        gnode->set_output_type_and_shape(0, element::f32, output_shape_0);
     });

@@ -14,7 +14,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Tile : public CudaEmitter
+            class Tile : public BlockCudaEmitter
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
@@ -24,7 +24,7 @@ namespace nnfusion
 
             public:
                 Tile(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {

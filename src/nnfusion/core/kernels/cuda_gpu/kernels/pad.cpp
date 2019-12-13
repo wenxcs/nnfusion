@@ -6,7 +6,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::Pad::Pad(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto pad = static_pointer_cast<nnfusion::op::Pad>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());

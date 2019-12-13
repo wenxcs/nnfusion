@@ -115,5 +115,5 @@ void Dot::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         result_shape = ngraph::PartialShape::dynamic();
     }
 
-    set_output_type_and_shape(gnode, 0, result_et, result_shape);
+    gnode->set_output_type_and_shape(0, result_et, result_shape);
 }

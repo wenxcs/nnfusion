@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Gather1D : public CudaEmitter
+            class Gather1D : public BlockCudaEmitter
             {
             public:
                 Gather1D(shared_ptr<KernelContext> ctx);

@@ -26,7 +26,23 @@ namespace nnfusion
     namespace graph
     {
         class Edge;
-
+        class GNode;
+        struct GNodeIndex
+        {
+            explicit GNodeIndex(std::shared_ptr<GNode> gnode, int i)
+                : gnode(gnode)
+                , index(i)
+            {
+            }
+            explicit GNodeIndex(std::shared_ptr<GNode> gnode)
+                : gnode(gnode)
+                , index(0)
+            {
+            }
+            std::shared_ptr<nnfusion::graph::GNode> gnode;
+            int index;
+        };
+        using GNodeIndexVector = std::vector<GNodeIndex>;
         /// Nodes are the backbone of the graph of Value dataflow. Every node has
         /// zero or more nodes as arguments and one value, which is either a tensor
         /// view or a (possibly empty) tuple of values.
@@ -37,11 +53,17 @@ namespace nnfusion
             GNode(const std::shared_ptr<op::Op> op_ptr,
                   const GNodeVector& input_gnodes,
                   size_t output_size = 1);
+            GNode(const std::shared_ptr<op::Op> op_ptr,
+                  const GNodeIndexVector& input_gnode_indexs,
+                  size_t output_size = 1);
 
             ~GNode();
             void construct_from_op_ptr(const std::shared_ptr<op::Op>& op_ptr);
             void initialize(const std::shared_ptr<op::Op> op_ptr,
                             const GNodeVector& input_gnodes,
+                            size_t output_size = 1);
+            void initialize(const std::shared_ptr<op::Op> op_ptr,
+                            const GNodeIndexVector& input_gnode_indexs,
                             size_t output_size = 1);
             size_t get_instance_id() const { return m_instance_id; }
             size_t get_id() const { return m_id; }
@@ -70,14 +92,19 @@ namespace nnfusion
             void add_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
             void remove_out_edge(std::shared_ptr<nnfusion::graph::Edge> edge);
 
+            /// inputs
             std::vector<std::shared_ptr<Input>>& get_inputs() { return m_inputs; }
             const std::vector<std::shared_ptr<Input>>& get_inputs() const { return m_inputs; }
             size_t get_input_size() const { return m_inputs.size(); }
+            void set_input_size(size_t n);
             /// Returns the tensor for input i
             nnfusion::descriptor::Tensor& get_input_tensor(size_t i) const;
             /// Returns the tensor view of input i
             std::shared_ptr<nnfusion::descriptor::Tensor> get_input_tensor_ptr(size_t i) const;
 
+            void set_input(size_t i, std::shared_ptr<Input> input);
+
+            /// outputs
             std::vector<std::shared_ptr<Output>>& get_outputs() { return m_outputs; }
             const std::vector<std::shared_ptr<Output>>& get_outputs() const { return m_outputs; }
             size_t get_output_size() const { return m_outputs.size(); }
@@ -87,6 +114,10 @@ namespace nnfusion
             /// Returns the tensor view of output i
             std::shared_ptr<nnfusion::descriptor::Tensor> get_output_tensor_ptr(size_t i) const;
 
+            void set_output(size_t i, std::shared_ptr<Output> output);
+            void set_output_type_and_shape(size_t i,
+                                           const ngraph::element::Type& element_type,
+                                           const ngraph::PartialShape& pshape);
             /// Checks that there is exactly one output and returns its shape
             const ngraph::Shape& get_shape() const;
 

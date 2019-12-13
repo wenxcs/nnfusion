@@ -25,14 +25,14 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class OneHot : public CudaEmitter
+            class OneHot : public BlockCudaEmitter
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t groups;
 
             public:
                 OneHot(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                     , groups(1LU)

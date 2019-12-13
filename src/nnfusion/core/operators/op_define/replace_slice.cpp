@@ -101,5 +101,5 @@ void ReplaceSlice::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                             : ngraph::PartialShape(std::vector<ngraph::Dimension>(
                                                   output_rank, ngraph::Dimension::dynamic()));
 
-    set_output_type_and_shape(gnode, 0, merged_args_et, result_shape);
+    gnode->set_output_type_and_shape(0, merged_args_et, result_shape);
 }

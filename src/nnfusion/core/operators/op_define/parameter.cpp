@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "parameter.hpp"
-
+#include "nnfusion/core/graph/gnode.hpp"
 using namespace std;
 using namespace nnfusion::op;
 
@@ -19,5 +19,5 @@ void Parameter::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
     Op::validate_and_infer_types(gnode);
 
-    set_output_type_and_shape(gnode, 0, m_element_type, m_partial_shape);
+    gnode->set_output_type_and_shape(0, m_element_type, m_partial_shape);
 }

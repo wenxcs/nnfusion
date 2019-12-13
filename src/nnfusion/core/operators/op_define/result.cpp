@@ -19,6 +19,6 @@ void Result::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 
     // always borrow the placement conf even the default one
     set_placement(gnode->get_in_edge(0)->get_src()->get_op_ptr()->get_placement());
-    set_output_type_and_shape(
-        gnode, 0, gnode->get_input_element_type(0), gnode->get_input_partial_shape(0));
+    gnode->set_output_type_and_shape(
+        0, gnode->get_input_element_type(0), gnode->get_input_partial_shape(0));
 }

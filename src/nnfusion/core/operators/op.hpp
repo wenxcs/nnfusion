@@ -49,11 +49,6 @@ namespace nnfusion
             // Called after transition
             void delayed_validate_and_infer_types(std::shared_ptr<graph::GNode> gnode);
 
-            void set_output_type_and_shape(std::shared_ptr<graph::GNode> gnode,
-                                           size_t i,
-                                           const ngraph::element::Type& element_type,
-                                           const ngraph::PartialShape& pshape);
-
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
             const std::string& get_name() const;

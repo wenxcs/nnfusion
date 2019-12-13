@@ -25,6 +25,5 @@ REGISTER_OP(Pack).attr<int>("axis", 0).infershape([](std::shared_ptr<graph::GNod
     auto output_shape_0 = input_shape_0;
     output_shape_0.insert(output_shape_0.begin() + size_t(axis), gnode->get_input_size());
 
-    gnode->get_op_ptr()->set_output_type_and_shape(
-        gnode, 0, gnode->get_input_element_type(0), output_shape_0);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
 });

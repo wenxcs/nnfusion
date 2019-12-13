@@ -74,6 +74,6 @@ void Slice::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         result_dims[i] = result_axis_size;
     }
 
-    set_output_type_and_shape(
-        gnode, 0, gnode->get_input_element_type(0), ngraph::PartialShape{result_dims});
+    gnode->set_output_type_and_shape(
+        0, gnode->get_input_element_type(0), ngraph::PartialShape{result_dims});
 }

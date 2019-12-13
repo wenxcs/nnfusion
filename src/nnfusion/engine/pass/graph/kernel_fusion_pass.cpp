@@ -4,7 +4,9 @@
 #include <queue>
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
+#include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/core/operators/op_define/broadcast.hpp"
+#include "nnfusion/core/operators/op_define/noop.hpp"
 #include "nnfusion/core/operators/op_define/reshape.hpp"
 #include "nnfusion/core/operators/util/elementwise_arithmetic.hpp"
 
@@ -12,8 +14,11 @@
 
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
+using namespace ngraph::op::util;
+using namespace nnfusion::kernels;
 
 DEFINE_int32(fkernel_fusion_level, 2, "");
+DECLARE_string(fdefault_device);
 
 const static int DEFAULT_GROUP_ID = -1;
 
@@ -83,7 +88,8 @@ public:
                 {
                     FuseReshapeAndBroadcast(fuse_groups);
                 }
-                TagFusionGroupsOnGraph(fuse_groups);
+                // TagFusionGroupsOnGraph(fuse_groups);
+                FuseElementGroupOnGraph(fuse_groups);
                 return true;
             }
         }
@@ -339,6 +345,11 @@ private:
                             auto input_node = in_edge->get_src();
                             while (input_node)
                             {
+                                // A conservative way to avoid loop on DAG: only fuse node with single output
+                                if (input_node->get_out_edges().size() > 1)
+                                {
+                                    break;
+                                }
                                 auto op = input_node->get_op_ptr();
                                 if (auto bc =
                                         std::dynamic_pointer_cast<nnfusion::op::Broadcast>(op))
@@ -421,6 +432,155 @@ private:
         }
     }
 
+    void FuseElementGroupOnGraph(std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups)
+    {
+        for (auto group : *groups)
+        {
+            for (auto id : group->nodes)
+            {
+                CHECK(id < m_nodes.size());
+                auto tn = m_nodes[id];
+                if (id >= ELEM_GROUP_NODEID && tn->elem_group)
+                {
+                    std::vector<std::shared_ptr<KernelEmitter>> block_kernels;
+                    bool all_kernel_emitted = true;
+                    DeviceType dev_type;
+
+                    // find and check whether all kernels are emitted
+                    for (auto elem_id : tn->elem_group->nodes)
+                    {
+                        CHECK(elem_id < m_nodes.size());
+                        auto node = m_nodes[elem_id]->node;
+                        CHECK_NOT_NULLPTR(node);
+
+                        auto emitted_kernels =
+                            (*node)["Kernel_Selection_Result"]
+                                .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                        auto emitter_iter =
+                            find_if(emitted_kernels.begin(),
+                                    emitted_kernels.end(),
+                                    [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
+                                        return (i.first == DeviceType::CUDA_GPU ||
+                                                i.first == DeviceType::ROCM_GPU);
+                                    });
+
+                        KernelEmitter::Pointer kernel = nullptr;
+
+                        if (emitter_iter == emitted_kernels.end() ||
+                            emitter_iter->second == nullptr ||
+                            emitter_iter->second->get_or_emit_source() == nullptr)
+                        {
+                            LOG(WARNING) << "Kernel should be emitted before this pass:"
+                                         << node->get_name();
+                            all_kernel_emitted = false;
+                            break;
+                        }
+                        else
+                        {
+                            kernel = emitter_iter->second;
+                            dev_type = emitter_iter->first;
+                            block_kernels.push_back(kernel);
+                        }
+                    }
+
+                    if (all_kernel_emitted)
+                    {
+                        auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+                            "ElementWiseFused", CUDA_GPU, DT_FLOAT);
+                        CHECK_NOT_NULLPTR(kernel_reg);
+                        auto ctx = std::make_shared<KernelContext>();
+                        ctx->kernels = block_kernels;
+                        auto kernel = kernel_reg->m_factory(ctx);
+                        kernel->get_or_emit_source();
+
+                        //auto fused_node = std::make_shared<GNode>();
+                        auto fused_op = std::make_shared<nnfusion::op::NoOp>("fused_kernel");
+                        GNodeVector empty_inputs;
+                        auto fused_node = std::make_shared<GNode>(fused_op, empty_inputs);
+
+                        (*fused_node)["Kernel_Selection_Result"] =
+                            vector<pair<DeviceType, KernelEmitter::Pointer>>();
+                        auto& res = (*fused_node)["Kernel_Selection_Result"]
+                                        .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                        res.push_back(std::make_pair(dev_type, kernel));
+
+                        // replace original nodes with the fused node on graph
+                        m_graph->add_node(fused_node);
+                        int next_input_id = 0;
+                        int next_output_id = 0;
+                        std::unordered_set<std::shared_ptr<GNode>> internal_nodes;
+
+                        for (auto elem_id : tn->elem_group->nodes)
+                        {
+                            auto node = m_nodes[elem_id]->node;
+                            internal_nodes.insert(node);
+                        }
+
+                        for (auto elem_id : tn->elem_group->nodes)
+                        {
+                            auto node = m_nodes[elem_id]->node;
+                            for (const auto& in_edge : node->get_in_edges())
+                            {
+                                if (internal_nodes.find(in_edge->get_src()) == internal_nodes.end())
+                                {
+                                    auto input_id = in_edge->is_control_edge() ? Graph::kControlSlot
+                                                                               : next_input_id++;
+                                    if (input_id != Graph::kControlSlot)
+                                    {
+                                        fused_node->set_input(
+                                            input_id,
+                                            node->get_inputs().at(in_edge->get_dst_input()));
+                                    }
+                                    m_graph->add_edge(in_edge->get_src(),
+                                                      in_edge->get_src_output(),
+                                                      fused_node,
+                                                      input_id);
+                                }
+                            }
+
+                            for (const auto& out_edge : node->get_out_edges())
+                            {
+                                if (internal_nodes.find(out_edge->get_dst()) ==
+                                    internal_nodes.end())
+                                {
+                                    auto output_id = out_edge->is_control_edge()
+                                                         ? Graph::kControlSlot
+                                                         : next_output_id++;
+                                    if (output_id != Graph::kControlSlot)
+                                    {
+                                        fused_node->set_output(
+                                            output_id,
+                                            node->get_outputs().at(out_edge->get_src_output()));
+                                    }
+                                    m_graph->add_edge(fused_node,
+                                                      output_id,
+                                                      out_edge->get_dst(),
+                                                      out_edge->get_dst_input());
+                                }
+                            }
+                        }
+
+                        // ROCm can only support maximum 70 args for single kernel
+                        if (FLAGS_fdefault_device == "ROCm" &&
+                            fused_node->get_in_edges().size() +
+                                    fused_node->get_out_edges().size() >=
+                                70)
+                        {
+                            m_graph->remove_node(fused_node);
+                        }
+                        else
+                        {
+                            for (auto node : internal_nodes)
+                            {
+                                m_graph->remove_node(node);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     std::string DebugStringFuseGroup(std::shared_ptr<FuseGroup> group)
     {
         std::ostringstream ret;
@@ -465,6 +625,15 @@ private:
 
 bool KernelFusionPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
-    KernelFuseOptimizer optimizer(graph);
-    return optimizer.Optimize();
+    auto dev_name = FLAGS_fdefault_device;
+    if (dev_name == "ROCm" || dev_name == "CUDA")
+    {
+        LOG(INFO) << "device: " << dev_name;
+        KernelFuseOptimizer optimizer(graph);
+        return optimizer.Optimize();
+    }
+    else
+    {
+        return false;
+    }
 }

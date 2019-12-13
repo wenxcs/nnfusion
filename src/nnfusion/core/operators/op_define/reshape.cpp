@@ -65,5 +65,5 @@ void Reshape::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     {
         m_is_transpose = true;
     }
-    set_output_type_and_shape(gnode, 0, gnode->get_input_element_type(0), m_output_shape);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), m_output_shape);
 }

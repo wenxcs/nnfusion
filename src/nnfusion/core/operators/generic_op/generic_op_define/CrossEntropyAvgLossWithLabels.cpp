@@ -11,6 +11,5 @@ REGISTER_OP(CrossEntropyAvgLossWithLabels)
 
         CHECK(shape_0.size() == 2 && shape_1.size() == 1 && shape_0[0] == shape_1[0]);
 
-        gnode->get_op_ptr()->set_output_type_and_shape(
-            gnode, 0, gnode->get_input_element_type(0), shape_1);
+        gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), shape_1);
     });

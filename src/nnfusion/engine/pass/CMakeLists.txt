@@ -7,16 +7,11 @@ set(SRC
     cpu_codegenerator.cpp
     cuda_codegenerator.cpp
     rocm_codegenerator.cpp
-    device_dispatcher.cpp
-    kernel_selection.cpp
-    elementwise_kernel_fusion.cpp
     # tensor related
     tensor/tensor_memory_layout.cpp
     tensor/liveness_analysis.cpp
     # train related
     train/async_execution.cpp
-    # fusion
-    create_fusion_block.cpp
 )
 add_library(nnfusion_engine_pass STATIC ${SRC})
 target_include_directories(nnfusion_engine_pass SYSTEM PUBLIC

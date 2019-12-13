@@ -7,7 +7,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::MaxPool1D::MaxPool1D(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());

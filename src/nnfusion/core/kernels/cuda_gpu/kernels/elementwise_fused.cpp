@@ -8,7 +8,7 @@ using namespace nnfusion::kernels::cuda;
 int ElementWiseFused::unique_func_id = 0;
 
 ElementWiseFused::ElementWiseFused(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     CHECK_NOT_NULLPTR(FuseContext());
 }

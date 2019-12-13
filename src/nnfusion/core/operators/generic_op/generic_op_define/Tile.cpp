@@ -16,6 +16,5 @@ REGISTER_OP(Tile).infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
     ngraph::Shape output_shape_0(multiples.size());
     for (int i = 0; i < multiples.size(); i++)
         output_shape_0[i] = multiples[i] * input_shape_0[i];
-    gnode->get_op_ptr()->set_output_type_and_shape(
-        gnode, 0, gnode->get_input_element_type(0), output_shape_0);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
 });

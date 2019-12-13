@@ -7,7 +7,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto slice_op = static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 

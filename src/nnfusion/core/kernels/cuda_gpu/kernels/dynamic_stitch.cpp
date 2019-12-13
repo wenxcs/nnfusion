@@ -7,7 +7,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::DynamicStitch::DynamicStitch(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto dynamic_stitch_node =
         static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());

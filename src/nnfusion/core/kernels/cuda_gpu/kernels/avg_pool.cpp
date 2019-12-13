@@ -39,7 +39,7 @@ cuda::pooling_op_shape cuda::AvgPool1D::avgpool_shape(ngraph::Shape in,
 }
 
 cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
     input_shape = ngraph::Shape(ctx->inputs[0].get_shape());

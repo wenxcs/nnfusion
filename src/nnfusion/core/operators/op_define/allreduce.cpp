@@ -20,5 +20,5 @@ void AllReduce::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         << "Only element types f32 and f64 are supported (argument element type: " << element_type
         << ").";
 
-    set_output_type_and_shape(gnode, 0, element_type, gnode->get_input_partial_shape(0));
+    gnode->set_output_type_and_shape(0, element_type, gnode->get_input_partial_shape(0));
 }

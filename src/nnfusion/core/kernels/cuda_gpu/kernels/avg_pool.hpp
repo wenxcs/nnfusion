@@ -32,7 +32,7 @@ namespace nnfusion
                 int PAD_W;
             };
 
-            class AvgPool1D : public CudaEmitter
+            class AvgPool1D : public BlockCudaEmitter
             {
             public:
                 AvgPool1D(shared_ptr<KernelContext> ctx);

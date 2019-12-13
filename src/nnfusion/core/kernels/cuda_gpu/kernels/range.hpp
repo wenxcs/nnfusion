@@ -9,7 +9,7 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Range : public CudaEmitter
+            class Range : public BlockCudaEmitter
             {
             public:
                 Range(shared_ptr<KernelContext> ctx);

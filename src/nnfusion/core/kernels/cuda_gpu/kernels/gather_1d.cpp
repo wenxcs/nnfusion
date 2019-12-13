@@ -7,7 +7,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 cuda::Gather1D::Gather1D(shared_ptr<KernelContext> ctx)
-    : CudaEmitter(ctx)
+    : BlockCudaEmitter(ctx)
 {
     auto gather = static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
     input_shape_0 = ngraph::Shape(ctx->inputs[0].get_shape());

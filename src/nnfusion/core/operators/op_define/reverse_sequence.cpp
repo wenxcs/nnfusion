@@ -53,5 +53,5 @@ void ReverseSequence::validate_and_infer_types(std::shared_ptr<graph::GNode> gno
         output_shape[m_batch_axis] = merged_sequence_length;
     }
 
-    set_output_type_and_shape(gnode, 0, gnode->get_input_element_type(0), output_shape);
+    gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape);
 }

@@ -14,14 +14,14 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class ApplyGradient : public CudaEmitter
+            class ApplyGradient : public BlockCudaEmitter
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
 
             public:
                 ApplyGradient(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {

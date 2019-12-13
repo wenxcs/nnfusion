@@ -23,5 +23,5 @@ void ElementwiseArithmetic::validate_and_infer_types(std::shared_ptr<graph::GNod
     OP_VALIDATION(this, args_et.is_dynamic() || args_et != ngraph::element::boolean)
         << "Arguments cannot have boolean element type (argument element type: " << args_et << ").";
 
-    set_output_type_and_shape(gnode, 0, args_et, args_pshape);
+    gnode->set_output_type_and_shape(0, args_et, args_pshape);
 }

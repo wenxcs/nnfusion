@@ -5,13 +5,13 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class __KernelUniqueClassName__ : public CudaEmitter
+            class __KernelUniqueClassName__ : public BlockCudaEmitter
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
 
             public:
                 __KernelUniqueClassName__(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {

@@ -27,6 +27,13 @@ GNode::GNode(const std::shared_ptr<Op> op_ptr, const GNodeVector& input_gnodes, 
 {
     initialize(op_ptr, input_gnodes, output_size);
 }
+GNode::GNode(const std::shared_ptr<Op> op_ptr,
+             const GNodeIndexVector& input_gnode_indexs,
+             size_t output_size)
+    : GNode()
+{
+    initialize(op_ptr, input_gnode_indexs, output_size);
+}
 
 void GNode::construct_from_op_ptr(const std::shared_ptr<Op>& op_ptr)
 {
@@ -57,6 +64,41 @@ void GNode::initialize(const std::shared_ptr<Op> op_ptr,
     }
 
     set_output_size(output_size);
+}
+
+void GNode::initialize(const std::shared_ptr<Op> op_ptr,
+                       const GNodeIndexVector& input_gnode_indexs,
+                       size_t output_size)
+{
+    construct_from_op_ptr(op_ptr);
+
+    m_in_edges.clear();
+    m_out_edges.clear();
+    m_inputs.clear();
+    m_outputs.clear();
+
+    for (size_t i = 0; i < input_gnode_indexs.size(); ++i)
+    {
+        m_inputs.emplace_back(std::make_shared<Input>(input_gnode_indexs.at(i)
+                                                          .gnode->get_outputs()
+                                                          .at(input_gnode_indexs.at(i).index)
+                                                          ->get_element_type(),
+                                                      input_gnode_indexs.at(i)
+                                                          .gnode->get_outputs()
+                                                          .at(input_gnode_indexs.at(i).index)
+                                                          ->get_partial_shape()));
+    }
+
+    set_output_size(output_size);
+}
+
+void GNode::set_input_size(size_t n)
+{
+    CHECK(n >= m_inputs.size()) << "shrinking " << m_inputs.size() << " to " << n;
+    for (size_t i = m_inputs.size(); i < n; ++i)
+    {
+        m_inputs.emplace_back(std::make_shared<Input>(element::dynamic, PartialShape::dynamic()));
+    }
 }
 
 void GNode::set_output_size(size_t n)
@@ -194,6 +236,15 @@ std::shared_ptr<nnfusion::descriptor::Tensor> GNode::get_input_tensor_ptr(size_t
     return in_edge->get_src()->get_output_tensor_ptr(in_edge->get_src_output());
 }
 
+void GNode::set_input(size_t i, std::shared_ptr<Input> input)
+{
+    if (i >= m_inputs.size())
+    {
+        set_input_size(i + 1);
+    }
+    m_inputs[i] = input;
+}
+
 nnfusion::descriptor::Tensor& GNode::get_output_tensor(size_t i) const
 {
     CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
@@ -208,6 +259,26 @@ std::shared_ptr<nnfusion::descriptor::Tensor> GNode::get_output_tensor_ptr(size_
                                 << m_outputs.size() << " outputs.";
 
     return m_outputs.at(i)->get_tensor_ptr();
+}
+
+void GNode::set_output(size_t i, std::shared_ptr<Output> output)
+{
+    if (i >= m_outputs.size())
+    {
+        set_output_size(i + 1);
+    }
+    m_outputs[i] = output;
+}
+
+void GNode::set_output_type_and_shape(size_t i,
+                                      const ngraph::element::Type& element_type,
+                                      const ngraph::PartialShape& pshape)
+{
+    if (i >= m_outputs.size())
+    {
+        set_output_size(i + 1);
+    }
+    m_outputs.at(i)->set_type_and_shape(element_type, pshape);
 }
 
 const ngraph::Shape& GNode::get_shape() const

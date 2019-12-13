@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "not.hpp"
+#include "nnfusion/core/graph/gnode.hpp"
 
 using namespace nnfusion::op;
 using namespace std;
@@ -17,5 +18,5 @@ void Not::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     ngraph::element::Type& args_et = std::get<0>(args_et_pshape);
     ngraph::PartialShape& args_pshape = std::get<1>(args_et_pshape);
 
-    set_output_type_and_shape(gnode, 0, args_et, args_pshape);
+    gnode->set_output_type_and_shape(0, args_et, args_pshape);
 }

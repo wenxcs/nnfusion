@@ -88,5 +88,5 @@ void ReduceWindow::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                         m_window_movement_strides[i]));
     }
 
-    set_output_type_and_shape(gnode, 0, input_reductee->get_element_type(), result_shape);
+    gnode->set_output_type_and_shape(0, input_reductee->get_element_type(), result_shape);
 }
