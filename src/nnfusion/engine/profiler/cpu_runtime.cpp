@@ -75,39 +75,39 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
     writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
     for (size_t i = 0; i + 1 < arg.size(); i++)
     {
-        writer << arg[i].get_type() << "* " << arg[i].get_name() << ", ";
+        writer << arg[i]->get_element_type().c_type_string() << "* " << arg[i]->get_name() << ", ";
     }
     if (!arg.empty())
     {
-        writer << arg.back().get_type() << "* " << arg.back().get_name();
+        writer << arg.back()->get_element_type().c_type_string() << "* " << arg.back()->get_name();
         if (!out.empty())
             writer << ", ";
     }
 
     for (size_t i = 0; i + 1 < out.size(); i++)
     {
-        writer << out[i].get_type() << "* " << out[i].get_name() << ", ";
+        writer << out[i]->get_element_type().c_type_string() << "* " << out[i]->get_name() << ", ";
     }
     if (!out.empty())
     {
-        writer << out.back().get_type() << "* " << out.back().get_name();
+        writer << out.back()->get_element_type().c_type_string() << "* " << out.back()->get_name();
     }
     writer << ")\n";
 
-    auto tensor_declare = [](const TensorWrapper& t) -> std::string {
-        return t.get_type() + "* " + t.get_name() + ";\n";
+    auto tensor_declare = [](const shared_ptr<nnfusion::descriptor::Tensor>& t) -> std::string {
+        return t->get_element_type().c_type_string() + "* " + t->get_name() + ";\n";
     };
 
-    auto tensor_alloc_host = [](const TensorWrapper& tensor) {
+    auto tensor_alloc_host = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
         stringstream s;
-        s << tensor.get_name() << " = new " << tensor.get_type() << "[" << tensor.get_size()
-          << "];\n";
+        s << tensor->get_name() << " = new " << tensor->get_element_type().c_type_string() << "["
+          << tensor->size(false) << "];\n";
         return s.str();
     };
 
-    auto tensor_free_host = [](const TensorWrapper& tensor) {
+    auto tensor_free_host = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
         stringstream s;
-        s << "delete[] " << tensor.get_name() << ";\n";
+        s << "delete[] " << tensor->get_name() << ";\n";
         return s.str();
     };
 
@@ -150,8 +150,10 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
         for (size_t i = 0; i + 1 < arg.size() + out.size(); i++)
         {
             string type = i < arg.size()
-                              ? arg[i].get_type()
-                              : (i - arg.size() < out.size() ? out[i - arg.size()].get_type() : "");
+                              ? arg[i]->get_element_type().c_type_string()
+                              : (i - arg.size() < out.size()
+                                     ? out[i - arg.size()]->get_element_type().c_type_string()
+                                     : "");
             writer << "(" << type << "*)" << (i < arg.size() ? "args" : "outputs") << "["
                    << i - (i >= arg.size() ? arg.size() : 0) << "], ";
         }
@@ -159,8 +161,10 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
         {
             int i = arg.size() + out.size() - 1;
             string type = i < arg.size()
-                              ? arg[i].get_type()
-                              : (i - arg.size() < out.size() ? out[i - arg.size()].get_type() : "");
+                              ? arg[i]->get_element_type().c_type_string()
+                              : (i - arg.size() < out.size()
+                                     ? out[i - arg.size()]->get_element_type().c_type_string()
+                                     : "");
             writer << "(" << type << "*)" << (out.size() == 0 ? "args" : "outputs") << "["
                    << i - (i >= arg.size() ? arg.size() : 0) << "]";
         }

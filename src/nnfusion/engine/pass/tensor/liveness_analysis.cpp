@@ -110,11 +110,10 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     auto kernel_context = kernel->m_context;
                     for (size_t i = 0; i < kernel_context->inputs.size(); i++)
                     {
-                        auto& tw = kernel_context->inputs[i];
-                        auto& tensor = (nnfusion::descriptor::Tensor&)tw.get_tensor();
-                        if (persist_candidate.find(&tensor) != persist_candidate.end())
+                        auto tensor = kernel_context->inputs[i];
+                        if (persist_candidate.find(&*tensor) != persist_candidate.end())
                         {
-                            tmp.insert(&tensor);
+                            tmp.insert(&*tensor);
                             is_const = true;
                         }
                         else
@@ -129,9 +128,8 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                         {
                             for (size_t i = 0; i < kernel_context->outputs.size(); i++)
                             {
-                                auto& tw = kernel_context->outputs[i];
-                                auto& tensor = (nnfusion::descriptor::Tensor&)tw.get_tensor();
-                                persist_candidate.insert(&tensor);
+                                auto tensor = kernel_context->outputs[i];
+                                persist_candidate.insert(&*tensor);
                             }
                         }
 
@@ -165,39 +163,16 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             std::unordered_set<nnfusion::descriptor::Tensor*> input_tensor_decls;
             std::unordered_set<nnfusion::descriptor::Tensor*> output_tensor_decls;
 
-            if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_output() ||
-                gnode->is_constant())
+            for (size_t i = 0; i < gnode->get_input_size(); ++i)
             {
-                for (size_t i = 0; i < gnode->get_input_size(); ++i)
-                {
-                    nnfusion::descriptor::Tensor& tensor = gnode->get_input_tensor(i);
-                    input_tensor_decls.insert(&tensor);
-                }
-
-                for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                {
-                    nnfusion::descriptor::Tensor& tensor = gnode->get_output_tensor(i);
-                    output_tensor_decls.insert(&tensor);
-                }
+                nnfusion::descriptor::Tensor& tensor = gnode->get_input_tensor(i);
+                input_tensor_decls.insert(&tensor);
             }
-            else
+
+            for (size_t i = 0; i < gnode->get_output_size(); ++i)
             {
-                auto kernel = op_kernels[gnode];
-                auto kernel_context = kernel->m_context;
-
-                for (size_t i = 0; i < kernel_context->inputs.size(); i++)
-                {
-                    auto& tw = kernel_context->inputs[i];
-                    auto& tensor = (descriptor::Tensor&)tw.get_tensor();
-                    input_tensor_decls.insert(&tensor);
-                }
-
-                for (size_t i = 0; i < kernel_context->outputs.size(); i++)
-                {
-                    auto& tw = kernel_context->outputs[i];
-                    auto& tensor = (descriptor::Tensor&)tw.get_tensor();
-                    output_tensor_decls.insert(&tensor);
-                }
+                nnfusion::descriptor::Tensor& tensor = gnode->get_output_tensor(i);
+                output_tensor_decls.insert(&tensor);
             }
 
             std::unordered_set<nnfusion::descriptor::Tensor*> free_tensor_decls;

@@ -106,19 +106,19 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
                 // Attribute example code
                 {
                     auto& attr = ir->Attr();
-                    vector<TensorWrapper> in;
+                    vector<shared_ptr<descriptor::Tensor>> in;
                     for (int i = 0; i < gnode->get_input_size(); i++)
                     {
                         shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
                         CHECK_NOT_NULLPTR(tv);
-                        in.push_back(TensorWrapper(tv, tv->get_name()));
+                        in.push_back(tv);
                     }
-                    vector<TensorWrapper> out;
+                    vector<shared_ptr<descriptor::Tensor>> out;
                     for (int i = 0; i < gnode->get_output_size(); i++)
                     {
                         shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
                         CHECK_NOT_NULLPTR(tv);
-                        out.push_back(TensorWrapper(tv, tv->get_name()));
+                        out.push_back(tv);
                     }
 
                     //attr.ts_("INPUT", std::move(in))->ts_("OUTPUT", std::move(out));

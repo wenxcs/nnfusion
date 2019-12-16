@@ -32,14 +32,14 @@ namespace nnfusion
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
-                    input_size = ctx->inputs[0].get_size();
-                    output_size = ctx->outputs[0].get_size();
-                    input_outer_dim_size = (ctx->inputs[1].get_shape())[0];
-                    input_inner_dim_size = ctx->inputs[0].get_size() / input_outer_dim_size;
+                    input_size = ctx->inputs[0]->size(false);
+                    output_size = ctx->outputs[0]->size(false);
+                    input_outer_dim_size = (ctx->inputs[1]->get_shape())[0];
+                    input_inner_dim_size = ctx->inputs[0]->size(false) / input_outer_dim_size;
 
-                    input0_t = ctx->inputs[0].get_element_type().c_type_string();
-                    input1_t = ctx->inputs[1].get_element_type().c_type_string();
-                    output0_t = ctx->outputs[0].get_element_type().c_type_string();
+                    input0_t = ctx->inputs[0]->get_element_type().c_type_string();
+                    input1_t = ctx->inputs[1]->get_element_type().c_type_string();
+                    output0_t = ctx->outputs[0]->get_element_type().c_type_string();
 
                     std::stringstream ss;
                     ss << "ResetMemory_" << input0_t;

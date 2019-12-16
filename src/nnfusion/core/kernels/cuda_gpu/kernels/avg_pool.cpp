@@ -42,15 +42,15 @@ cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
     window_shape = ngraph::Shape(avg_pool->get_window_shape());
     padding_below = ngraph::Shape(avg_pool->get_padding_below());
     padding_above = ngraph::Shape(avg_pool->get_padding_above());
     window_stride = ngraph::Strides(avg_pool->get_window_movement_strides());
     include_pad = avg_pool->get_include_padding_in_avg_computation();
-    input_type = ctx->inputs[0].get_element_type().c_type_string();
-    output_type = ctx->outputs[0].get_element_type().c_type_string();
+    input_type = ctx->inputs[0]->get_element_type().c_type_string();
+    output_type = ctx->outputs[0]->get_element_type().c_type_string();
 
     // CHECK(input_shape.size() == 3)
     //     << "Input shape size of AvgPool1D is invalid, shape size: " << input_shape.size()
@@ -257,15 +257,15 @@ cuda::AvgPoolmD::AvgPoolmD(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
     auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
     window_shape = ngraph::Shape(avg_pool->get_window_shape());
     padding_below = ngraph::Shape(avg_pool->get_padding_below());
     padding_above = ngraph::Shape(avg_pool->get_padding_above());
     window_stride = ngraph::Strides(avg_pool->get_window_movement_strides());
     include_pad = avg_pool->get_include_padding_in_avg_computation();
-    input_type = ctx->inputs[0].get_element_type().c_type_string();
-    output_type = ctx->outputs[0].get_element_type().c_type_string();
+    input_type = ctx->inputs[0]->get_element_type().c_type_string();
+    output_type = ctx->outputs[0]->get_element_type().c_type_string();
 
     CHECK(input_shape.size() == 4 || input_shape.size() == 5)
         << "Input shape size of AvgPoolmD is invalid, shape size: " << input_shape.size()

@@ -110,22 +110,27 @@ static string format_name(const string& name)
     return rc;
 }
 
-std::string cpu::EigenKernelEmitter::emit_eigen_vector(const TensorWrapper& tw, const string& name)
+std::string
+    cpu::EigenKernelEmitter::emit_eigen_vector(const shared_ptr<nnfusion::descriptor::Tensor> tw,
+                                               const string& name)
 {
     stringstream ss;
 
-    const element::Type& et = tw.get_element_type();
-    ss << "EigenVector<" << et.c_type_string() << ">" << format_name(name) << "(" << tw.get_name()
-       << ", " << tw.get_size() << ")";
+    const element::Type& et = tw->get_element_type();
+    ss << "EigenVector<" << et.c_type_string() << ">" << format_name(name) << "(" << tw->get_name()
+       << ", " << tw->size(false) << ")";
     return ss.str();
 }
 
-std::string cpu::EigenKernelEmitter::emit_eigen_matrix(const TensorWrapper& tw, const string& name)
+std::string
+    cpu::EigenKernelEmitter::emit_eigen_matrix(const shared_ptr<nnfusion::descriptor::Tensor> tw,
+                                               const string& name)
 {
     stringstream ss;
 
-    const element::Type& et = tw.get_element_type();
-    ss << "EigenMatrix<" << et.c_type_string() << ">" << format_name(name) << "(" << tw.get_name()
-       << ", " << join(tw.get_shape()) << ", " << join(tw.get_strides()) << ")";
+    const element::Type& et = tw->get_element_type();
+    ss << "EigenMatrix<" << et.c_type_string() << ">" << format_name(name) << "(" << tw->get_name()
+       << ", " << join(tw->get_shape()) << ", " << join(tw->get_tensor_layout()->get_strides())
+       << ")";
     return ss.str();
 }

@@ -31,10 +31,10 @@ namespace nnfusion
 
                     for (size_t i = 0; i < input_num; i++)
                     {
-                        auto arg_rank = ctx->inputs[i].get_shape().size();
+                        auto arg_rank = ctx->inputs[i]->get_shape().size();
                         for (size_t j = concat_axis; j < arg_rank; j++)
                         {
-                            inputs_strides[i] *= ctx->inputs[i].get_shape()[j];
+                            inputs_strides[i] *= ctx->inputs[i]->get_shape()[j];
                         }
                         output_stride += inputs_strides[i];
                     }
@@ -49,7 +49,7 @@ namespace nnfusion
                         uint32_t split_output_stride = 0;
                         for (uint32_t j = i; j < i + split_input_size && j < input_num; j++)
                         {
-                            nthread += shape_size(ctx->inputs[j].get_shape());
+                            nthread += shape_size(ctx->inputs[j]->get_shape());
                             split_output_stride += inputs_strides[j];
                         }
                         split_input_stride_offset += split_output_stride;
@@ -60,13 +60,13 @@ namespace nnfusion
                             align_to_block_size(split_nthreads.back(), block_size_x));
                     }
 
-                    dtype = ctx->outputs[0].get_type();
+                    dtype = ctx->outputs[0]->get_element_type().c_type_string();
 
                     std::stringstream tag;
-                    tag << "_s" << join(ctx->outputs[0].get_shape(), "_") << "_a_" << concat_axis;
+                    tag << "_s" << join(ctx->outputs[0]->get_shape(), "_") << "_a_" << concat_axis;
                     for (size_t i = 0; i < input_num; i++)
                     {
-                        tag << "_i_" << join(ctx->inputs[i].get_shape(), "_");
+                        tag << "_i_" << join(ctx->inputs[i]->get_shape(), "_");
                     }
                     custom_tag = tag.str();
                 }

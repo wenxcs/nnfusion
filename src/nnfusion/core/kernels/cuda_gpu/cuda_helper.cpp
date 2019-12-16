@@ -39,18 +39,17 @@ uint32_t cuda::align_to_block_size(uint32_t threads, uint32_t block_size)
 }
 
 void cuda::emit_memcpyDtD(CodeWriter& writer,
-                          const TensorWrapper& dst,
-                          const TensorWrapper& src,
+                          shared_ptr<nnfusion::descriptor::Tensor> dst,
+                          shared_ptr<nnfusion::descriptor::Tensor> src,
                           size_t buffer_size)
 {
     if (buffer_size == 0)
     {
-        writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
-               << dst.get_size() << " * " << dst.get_element_type().size()
-               << ", cudaMemcpyDeviceToDevice));\n";
+        writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst->get_name() << ", " << src->get_name() << ", "
+               << dst->size() << ", cudaMemcpyDeviceToDevice));\n";
         return;
     }
-    writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", " << src.get_name() << ", "
+    writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst->get_name() << ", " << src->get_name() << ", "
            << buffer_size << ", cudaMemcpyDeviceToDevice));\n";
     return;
 }

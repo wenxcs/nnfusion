@@ -34,13 +34,13 @@ namespace nnfusion
                     GENERIC_OP_LOGGING();
                     auto& ctx = m_context;
 
-                    auto& arg0_shape = ctx->inputs[0].get_shape();
-                    auto& arg1_shape = ctx->inputs[1].get_shape();
-                    auto& out_shape = ctx->outputs[0].get_shape();
+                    auto& arg0_shape = ctx->inputs[0]->get_shape();
+                    auto& arg1_shape = ctx->inputs[1]->get_shape();
+                    auto& out_shape = ctx->outputs[0]->get_shape();
 
                     auto gemm = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
                     auto reduction_axes = gemm->get_reduction_axes_count();
-                    auto& dtype = ctx->outputs[0].get_element_type().c_type_string();
+                    auto& dtype = ctx->outputs[0]->get_element_type().c_type_string();
                     if (gemm->get_transpose_A())
                         return nullptr;
                     auto transpose_B = gemm->get_transpose_B();

@@ -23,7 +23,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
 
                     auto& cfg = generic_op->localOpConfig.getRoot();
 

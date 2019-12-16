@@ -11,6 +11,8 @@
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
 // For reference kernels
+#include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/kernels/cpu/reference/reference_common.hpp"
 
 using namespace nnfusion;

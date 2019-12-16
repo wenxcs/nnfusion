@@ -25,7 +25,7 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
-                    auto data_size = m_context->inputs.begin()->get_size();
+                    auto data_size = m_context->inputs.front()->size(false);
 
                     lu << "super_scaler_all_reduce(input0, output0, " << data_size
                        << ", &applygradient_stream);";

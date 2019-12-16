@@ -2115,7 +2115,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_abs<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2153,7 +2153,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_acos<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2191,7 +2191,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_add<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2229,7 +2229,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_allreduce_float(input0,output0,static_cast<int>("
-                       << m_context->inputs[0].get_size() << "));";
+                       << m_context->inputs[0]->size(false) << "));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2268,7 +2268,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_asin<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2306,7 +2306,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_atan<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2344,8 +2344,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_broadcast<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0]->get_shape()) << "}),AxisSet({"
                        << join(op->get_broadcast_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2384,7 +2384,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_ceiling<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2427,10 +2427,10 @@ namespace nnfusion
                     {
                         lu << "in_args.push_back( input" << t << ");";
                         lu << "in_shapes.push_back(Shape({"
-                           << join(m_context->inputs[0].get_shape()) << "});";
+                           << join(m_context->inputs[0]->get_shape()) << "});";
                     }
                     lu << "cpu_reference_concat<float>(in_args,output0, in_shapes,Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}), "
+                       << join(m_context->outputs[0]->get_shape()) << "}), "
                        << op->get_concatenation_axis() << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2466,7 +2466,7 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    // lu<<"cpu_reference_constant<float>(OP->get_data_ptr<float>(),output0,"<<m_context->outputs[0].get_size()<<");";
+                    // lu<<"cpu_reference_constant<float>(OP->get_data_ptr<float>(),output0,"<<m_context->outputs[0]->size(false)<<");";
                     lu << "//<todo> left blank by purpose.";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -2505,10 +2505,10 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    auto in_type = m_context->inputs[0].get_type();
-                    auto out_type = m_context->outputs[0].get_element_type();
+                    auto in_type = m_context->inputs[0]->get_element_type().c_type_string();
+                    auto out_type = m_context->outputs[0]->get_element_type();
                     lu << "cpu_reference_convert<" << in_type << ", " << out_type
-                       << ">(input0, output0," << m_context->outputs[0].get_size() << ");";
+                       << ">(input0, output0," << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2546,9 +2546,9 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_convolution<float>(input0,input1,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
-                       << join(m_context->inputs[1].get_shape()) << "}),Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}),Strides({"
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape({"
+                       << join(m_context->inputs[1]->get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0]->get_shape()) << "}),Strides({"
                        << join(op->get_window_movement_strides()) << "}),Strides({"
                        << join(op->get_window_dilation_strides()) << "}),CoordinateDiff({"
                        << join(op->get_padding_below()) << "}),CoordinateDiff({"
@@ -2591,7 +2591,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_cos<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2629,7 +2629,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_cosh<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2667,7 +2667,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_divide<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2705,7 +2705,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_equal<float>(input0,input1,(char*)output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2743,7 +2743,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_exp<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2781,7 +2781,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_floor<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2819,7 +2819,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_greater<float>(input0,input1,(char*)output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2857,7 +2857,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_less<float>(input0,input1,(char*)output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2895,7 +2895,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_log<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -2933,7 +2933,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_lrn<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "})," << (op->get_alpha())
+                       << join(m_context->inputs[0]->get_shape()) << "})," << (op->get_alpha())
                        << "," << (op->get_beta()) << "," << (op->get_bias()) << ","
                        << (op->get_nsize()) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
@@ -2973,8 +2973,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_max<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Shape("
-                       << join(m_context->outputs[0].get_shape()) << "),AxisSet("
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape("
+                       << join(m_context->outputs[0]->get_shape()) << "),AxisSet("
                        << join(op->get_reduction_axes()) << "));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3013,7 +3013,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_maximum<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3051,8 +3051,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_min<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0]->get_shape()) << "}),AxisSet({"
                        << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3091,7 +3091,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_minimum<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3129,7 +3129,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_multiply<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3167,7 +3167,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_power<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3205,8 +3205,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_product<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0]->get_shape()) << "}),AxisSet({"
                        << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3245,7 +3245,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_relu<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3284,7 +3284,7 @@ namespace nnfusion
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_select<float>(args[0]->get_data_ptr<char>(),input1,input2,"
                           "output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3322,7 +3322,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_sigmoid<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3360,7 +3360,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_sign<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3398,7 +3398,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_sin<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3436,7 +3436,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_sinh<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3474,10 +3474,10 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_slice<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Coordinate({"
+                       << join(m_context->inputs[0]->get_shape()) << "}),Coordinate({"
                        << join(op->get_lower_bounds()) << "}),Coordinate({"
                        << join(op->get_upper_bounds()) << "}),Strides({" << join(op->get_strides())
-                       << "}),Shape({" << join(m_context->outputs[0].get_shape()) << "}));";
+                       << "}),Shape({" << join(m_context->outputs[0]->get_shape()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3515,7 +3515,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_softmax<float>(input0,output0,Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}), AxisSet({"
+                       << join(m_context->outputs[0]->get_shape()) << "}), AxisSet({"
                        << join(op->get_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3559,7 +3559,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_sqrt<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3597,7 +3597,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_subtract<float>(input0,input1,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3635,8 +3635,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_sum<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0].get_shape()) << "}),Shape({"
-                       << join(m_context->outputs[0].get_shape()) << "}),AxisSet({"
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0]->get_shape()) << "}),AxisSet({"
                        << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3675,7 +3675,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_tan<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3713,7 +3713,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_tanh<float>(input0,output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3752,7 +3752,7 @@ namespace nnfusion
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_batch_norm<float>(" << op->get_eps_value() << ","
                        << "input0, input1, input2, input3, input4, output0, "
-                       << "Shape({" << join(m_context->inputs[2].get_shape()) << "}));";
+                       << "Shape({" << join(m_context->inputs[2]->get_shape()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3790,8 +3790,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_avg_pool<float>(input0,output0,"
-                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
-                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[0]->get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0]->get_shape()) << "}),"
                        << "Shape({" << join(op->get_window_shape()) << "}),"
                        << "Strides({" << join(op->get_window_movement_strides()) << "}),"
                        << "Shape({" << join(op->get_padding_below()) << "}),"
@@ -3834,9 +3834,9 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_dot<float>(input0,input1,output0,"
-                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
-                       << "Shape({" << join(m_context->inputs[1].get_shape()) << "}),"
-                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[0]->get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[1]->get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0]->get_shape()) << "}),"
                        << op->get_reduction_axes_count() << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
@@ -3875,8 +3875,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_max_pool<float>(input0,output0,"
-                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
-                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[0]->get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0]->get_shape()) << "}),"
                        << "Shape({" << join(op->get_window_shape()) << "}),"
                        << "Strides({" << join(op->get_window_movement_strides()) << "}),"
                        << "Shape({" << join(op->get_padding_below()) << "}),"
@@ -3918,8 +3918,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_pad<float>(input0, input1, output0,"
-                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
-                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[0]->get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0]->get_shape()) << "}),"
                        << "Shape({" << join(op->get_padding_below()) << "}),"
                        << "Shape({" << join(op->get_padding_above()) << "}),"
                        << "Shape({" << join(op->get_padding_interior()) << "}));";
@@ -3960,9 +3960,9 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_reshape<float>(input0, output0,"
-                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[0]->get_shape()) << "}),"
                        << "AxisVector({" << join(op->get_input_order()) << "}),"
-                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}));";
+                       << "Shape({" << join(m_context->outputs[0]->get_shape()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -4000,7 +4000,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_result<float>(input0, output0,"
-                       << shape_size(m_context->outputs[0].get_shape()) << ");";
+                       << shape_size(m_context->outputs[0]->get_shape()) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -4038,7 +4038,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_less_eq<float>(input0,input1,(char*)output0,"
-                       << m_context->outputs[0].get_size() << ");";
+                       << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -4076,8 +4076,8 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_reverse<float>(input0,output0,"
-                       << "Shape({" << join(m_context->inputs[0].get_shape()) << "}),"
-                       << "Shape({" << join(m_context->outputs[0].get_shape()) << "}),"
+                       << "Shape({" << join(m_context->inputs[0]->get_shape()) << "}),"
+                       << "Shape({" << join(m_context->outputs[0]->get_shape()) << "}),"
                        << "AxisSet({" << join(op->get_reversed_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }

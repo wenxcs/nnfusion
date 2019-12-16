@@ -79,7 +79,7 @@ namespace nnfusion
 
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
-            size_t size() const;
+            size_t size(bool in_byte = true) const;
             // persistent tensors exist in all iterations, and do not reuse any memory space.
             // Data in persistent tensors can be immutable or mutable.
             bool is_persistent() const { return m_persistent; }

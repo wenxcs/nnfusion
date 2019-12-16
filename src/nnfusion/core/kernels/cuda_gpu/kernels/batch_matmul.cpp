@@ -48,8 +48,8 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
-                    const ngraph::Shape& input_shape_1 = m_context->inputs[1].get_shape();
+                    const ngraph::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
+                    const ngraph::Shape& input_shape_1 = m_context->inputs[1]->get_shape();
 
                     bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
                     bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];

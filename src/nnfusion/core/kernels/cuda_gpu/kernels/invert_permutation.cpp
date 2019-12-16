@@ -20,7 +20,7 @@ namespace nnfusion
                 InvertPermutation(shared_ptr<KernelContext> ctx)
                     : BlockCudaEmitter(ctx)
                 {
-                    data_size = ctx->inputs[0].get_size();
+                    data_size = ctx->inputs[0]->size(false);
                 }
 
                 LanguageUnit_p emit_function_body() override

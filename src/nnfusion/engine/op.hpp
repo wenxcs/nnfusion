@@ -2,8 +2,8 @@
 #pragma once
 
 #include "nnfusion/common/common.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/common/languageunit.hpp"
-#include "nnfusion/common/tensorwrapper.hpp"
 
 namespace nnfusion
 {
@@ -19,9 +19,9 @@ namespace nnfusion
 
         public:
             shared_ptr<graph::GNode> gnode;
-            vector<TensorWrapper> args;
+            vector<shared_ptr<descriptor::Tensor>> args;
             vector<string> arg_names;
-            vector<TensorWrapper> out;
+            vector<shared_ptr<descriptor::Tensor>> out;
             vector<string> out_names;
             vector<string> dtypes;
 

@@ -22,8 +22,8 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     auto& ctx = m_context;
-                    auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-                    auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+                    auto input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+                    auto output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
                     size_t in_size = 1LU, out_size = 1LU;
                     for (auto it : input_shape)
                         in_size *= it;

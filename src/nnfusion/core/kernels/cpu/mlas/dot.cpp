@@ -11,8 +11,8 @@ cpu::DotMlas::DotMlas(shared_ptr<KernelContext> ctx)
     auto dot_op = static_pointer_cast<op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
-    arg0_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    arg1_shape = ngraph::Shape(ctx->inputs[1].get_shape());
+    arg0_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+    arg1_shape = ngraph::Shape(ctx->inputs[1]->get_shape());
 
     std::stringstream tag;
     tag << "Mlas"

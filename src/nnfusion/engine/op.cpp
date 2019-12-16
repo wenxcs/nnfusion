@@ -15,22 +15,22 @@ Operator::Operator()
 Operator::Operator(shared_ptr<graph::GNode> gnode)
     : Operator()
 {
-    vector<TensorWrapper> in;
+    vector<shared_ptr<descriptor::Tensor>> in;
     vector<string> node_input_names;
     vector<string> node_output_names;
     for (size_t i = 0; i < gnode->get_input_size(); i++)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
-        in.push_back(TensorWrapper(tv, tv->get_name()));
+        in.push_back(tv);
         node_input_names.emplace_back(tv->get_name());
     }
-    vector<TensorWrapper> out;
+    vector<shared_ptr<descriptor::Tensor>> out;
     for (size_t i = 0; i < gnode->get_output_size(); i++)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
-        out.push_back(TensorWrapper(tv, tv->get_name()));
+        out.push_back(tv);
         node_output_names.emplace_back(tv->get_name());
     }
 
@@ -45,14 +45,14 @@ Operator::Operator(shared_ptr<graph::GNode> gnode)
         LOG(INFO) << ")\n";
     }
 
-    for (auto& arg : in)
+    for (auto arg : in)
     {
-        this->dtypes.push_back(arg.get_type());
+        this->dtypes.push_back(arg->get_element_type().c_type_string());
     }
 
-    for (auto& ou : out)
+    for (auto ou : out)
     {
-        this->dtypes.push_back(ou.get_type());
+        this->dtypes.push_back(ou->get_element_type().c_type_string());
     }
 
     this->gnode = gnode;

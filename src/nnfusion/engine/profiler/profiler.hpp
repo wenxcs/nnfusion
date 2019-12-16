@@ -74,7 +74,7 @@ namespace nnfusion
                 for (size_t i = 0; i < kctx->inputs.size(); i++)
                 {
                     auto& t = kctx->inputs[i];
-                    size_t _size = t.get_size() * t.get_element_type().size();
+                    size_t _size = t->size();
                     CHECK(inputs[i].size() == _size);
 
                     kernel_mem->load_input_from(i, inputs[i].data(), _size);
@@ -92,7 +92,7 @@ namespace nnfusion
                 for (size_t i = 0; i < kctx->outputs.size(); ++i)
                 {
                     auto& t = kctx->outputs[i];
-                    size_t _size = t.get_size() * t.get_element_type().size();
+                    size_t _size = t->size();
 
                     CHECK(ptrs[i] != nullptr);
                     vector<char> output(_size);
@@ -114,7 +114,7 @@ namespace nnfusion
                 for (size_t i = 0; i < kctx->inputs.size(); i++)
                 {
                     auto& t = kctx->inputs[i];
-                    size_t _size = t.get_size() * t.get_element_type().size();
+                    size_t _size = t->size();
                     void* newval = (void*)((char*)val + offset);
                     kernel_mem->load_input_from(i, newval, _size);
                     offset += _size;
@@ -141,7 +141,7 @@ namespace nnfusion
                 for (int i = 0; i < kctx->outputs.size(); i++)
                 {
                     res.push_back(vector<T>());
-                    res[i].resize(kctx->outputs[i].get_size());
+                    res[i].resize(kctx->outputs[i]->size(false));
                 }
                 return move(res);
             }

@@ -26,8 +26,8 @@ namespace nnfusion
                         return nullptr;
 
                     auto& ctx = m_context;
-                    auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-                    auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+                    auto input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+                    auto output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
 
                     auto node =
                         static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());

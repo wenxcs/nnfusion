@@ -15,7 +15,7 @@ KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
-        inputs.push_back(TensorWrapper(tv, tv->get_name()));
+        inputs.push_back(tv);
         input_names.push_back(tv->get_name());
     }
 
@@ -24,18 +24,18 @@ KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
         CHECK_NOT_NULLPTR(tv);
-        outputs.push_back(TensorWrapper(tv, tv->get_name()));
+        outputs.push_back(tv);
         output_names.push_back(tv->get_name());
     }
 
-    for (auto& arg : inputs)
+    for (auto arg : inputs)
     {
-        this->dtypes.push_back(arg.get_type());
+        this->dtypes.push_back(arg->get_element_type().c_type_string());
     }
 
-    for (auto& out : outputs)
+    for (auto out : outputs)
     {
-        this->dtypes.push_back(out.get_type());
+        this->dtypes.push_back(out->get_element_type().c_type_string());
     }
 }
 
@@ -73,7 +73,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->inputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->inputs[i].get_type() << "* ";
+        ss << m_context->inputs[i]->get_element_type().c_type_string() << "* ";
         ss << "input" << i;
         params.push_back(ss.str());
     }
@@ -81,7 +81,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->outputs[i].get_type() << "* ";
+        ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
         ss << "output" << i;
         params.push_back(ss.str());
     }
@@ -89,9 +89,9 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->tensors.size(); i++)
     {
         stringstream ss;
-        ss << m_context->tensors[i].get_type() << "* ";
+        ss << m_context->tensors[i]->get_element_type().c_type_string() << "* ";
         // defult name is: "persit0", "persist1" ...
-        ss << m_context->tensors[i].get_name();
+        ss << m_context->tensors[i]->get_name();
         params.push_back(ss.str());
     }
 
@@ -120,31 +120,31 @@ LanguageUnit_p KernelEmitter::emit_comments()
     lu << "// Node name:\t" << m_context->gnode->get_op_ptr()->get_unique_name() << "\n";
     lu << "// Description:\t" << m_context->gnode->get_op_type() << "\n";
     lu << "// Input:\n";
-    for (auto& in : m_context->inputs)
+    for (auto in : m_context->inputs)
     {
-        lu << "//\t- name: " << in.get_name();
-        lu << "\ttype: " << in.get_type();
-        lu << "\tshape: " << in.get_shape();
+        lu << "//\t- name: " << in->get_name();
+        lu << "\ttype: " << in->get_element_type().c_type_string();
+        lu << "\tshape: " << in->get_shape();
         lu << "\n";
     }
 
     lu << "// Output:\n";
-    for (auto& out : m_context->outputs)
+    for (auto out : m_context->outputs)
     {
-        lu << "//\t- name: " << out.get_name();
-        lu << "\ttype: " << out.get_type();
-        lu << "\tshape: " << out.get_shape();
+        lu << "//\t- name: " << out->get_name();
+        lu << "\ttype: " << out->get_element_type().c_type_string();
+        lu << "\tshape: " << out->get_shape();
         lu << "\n";
     }
 
     if (!m_context->tensors.empty())
         lu << "// Other tensors in use:\n";
 
-    for (auto& persist : m_context->tensors)
+    for (auto persist : m_context->tensors)
     {
-        lu << "//\t- name: " << persist.get_name();
-        lu << "\ttype: " << persist.get_type();
-        lu << "\tshape: " << persist.get_shape();
+        lu << "//\t- name: " << persist->get_name();
+        lu << "\ttype: " << persist->get_element_type().c_type_string();
+        lu << "\tshape: " << persist->get_shape();
         lu << "\n";
     }
 
@@ -203,23 +203,74 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     return fu;
 }
 
-const TensorWrapper& KernelEmitter::allocate_tensor(
-    Shape shape, element::Type elt, string name, bool host, bool persistent)
+const shared_ptr<nnfusion::descriptor::Tensor> KernelEmitter::allocate_tensor(Shape shape,
+                                                                              element::Type elt,
+                                                                              string name,
+                                                                              bool is_persistent,
+                                                                              bool is_constant,
+                                                                              bool is_parameter,
+                                                                              bool is_RDMA_tensor,
+                                                                              size_t group_id,
+                                                                              size_t device_id)
 {
     // Internal access of this tensor should be like temp0, temp1 ...
     // External access of this tensor should be like Conv1_temp0, Conv2_temp1...
     ///\important Important assumption! the tensor allocated can only be seen inside the kernel.
-    ///\todo wenxh difference: Tensor::name, TensorWrapper::name, KernelContext::I/O/T/PNames
-    string wrapper_name = "temp" + to_string(m_context->tensors.size());
+    string t_name = "temp" + to_string(m_context->tensors.size());
     // Generate tensor name
     if (name.empty())
     {
         name = m_context->gnode->get_op_ptr()->get_unique_name();
-        name = name + "_" + wrapper_name;
+        name = name + "_" + t_name;
     }
-    TensorWrapper temp_tensor(
-        make_shared<nnfusion::descriptor::Tensor>(elt, shape, name, persistent, host),
-        wrapper_name);
+    auto temp_tensor = make_shared<nnfusion::descriptor::Tensor>(elt,
+                                                                 shape,
+                                                                 name,
+                                                                 is_persistent,
+                                                                 is_constant,
+                                                                 is_parameter,
+                                                                 is_RDMA_tensor,
+                                                                 group_id,
+                                                                 device_id);
+    m_context->tensors.push_back(move(temp_tensor));
+    m_context->tensor_names.push_back(name);
+
+    LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
+    return m_context->tensors.back();
+}
+
+const shared_ptr<nnfusion::descriptor::Tensor>
+    KernelEmitter::allocate_tensor(Shape shape,
+                                   DeviceType device_type,
+                                   element::Type elt,
+                                   string name,
+                                   bool is_persistent,
+                                   bool is_constant,
+                                   bool is_parameter,
+                                   bool is_RDMA_tensor,
+                                   size_t group_id,
+                                   size_t device_id)
+{
+    // Internal access of this tensor should be like temp0, temp1 ...
+    // External access of this tensor should be like Conv1_temp0, Conv2_temp1...
+    ///\important Important assumption! the tensor allocated can only be seen inside the kernel.
+    string t_name = "temp" + to_string(m_context->tensors.size());
+    // Generate tensor name
+    if (name.empty())
+    {
+        name = m_context->gnode->get_op_ptr()->get_unique_name();
+        name = name + "_" + t_name;
+    }
+    auto temp_tensor = make_shared<nnfusion::descriptor::Tensor>(elt,
+                                                                 shape,
+                                                                 name,
+                                                                 device_type,
+                                                                 is_persistent,
+                                                                 is_constant,
+                                                                 is_parameter,
+                                                                 is_RDMA_tensor,
+                                                                 group_id,
+                                                                 device_id);
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);
 

@@ -10,7 +10,7 @@ cuda::Range::Range(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto range = static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
 
     start = range->localOpConfig.getRoot()["start"];
     limit = range->localOpConfig.getRoot()["limit"];

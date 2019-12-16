@@ -3,8 +3,8 @@
 #pragma once
 
 #include "nnfusion/common/common.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/common/languageunit.hpp"
-#include "nnfusion/common/tensorwrapper.hpp"
 
 #include "async.hpp"
 
@@ -26,14 +26,14 @@ namespace nnfusion
             // The node this OpKernel corresponds to
             shared_ptr<graph::GNode> gnode;
 
-            // The input tensor descriptions
-            vector<nnfusion::TensorWrapper> inputs;
+            // The input tensor ptr
+            vector<shared_ptr<nnfusion::descriptor::Tensor>> inputs;
 
-            // The output tensor descriptions
-            vector<nnfusion::TensorWrapper> outputs;
+            // The output tensor ptr
+            vector<shared_ptr<nnfusion::descriptor::Tensor>> outputs;
 
-            // Allocated tensor descriptons
-            vector<nnfusion::TensorWrapper> tensors;
+            // Allocated tensor ptr
+            vector<shared_ptr<nnfusion::descriptor::Tensor>> tensors;
 
             // The input tensor names
             vector<string> input_names;
@@ -104,11 +104,28 @@ namespace nnfusion
             virtual LanguageUnit_p emit_comments();
 
             // Allocate persistant tensor, this could be used for trainning
-            virtual const TensorWrapper& allocate_tensor(Shape shape,
-                                                         element::Type elt = element::f32,
-                                                         string name = "",
-                                                         bool host_tensor = false,
-                                                         bool persistent_tensor = false);
+            virtual const shared_ptr<nnfusion::descriptor::Tensor>
+                allocate_tensor(Shape shape,
+                                element::Type elt = element::f32,
+                                string name = "",
+                                bool is_persistent = false,
+                                bool is_constant = false,
+                                bool is_parameter = false,
+                                bool is_RDMA_tensor = false,
+                                size_t group_id = -1,
+                                size_t device_id = 0);
+
+            virtual const shared_ptr<nnfusion::descriptor::Tensor>
+                allocate_tensor(Shape shape,
+                                DeviceType device_type,
+                                element::Type elt = element::f32,
+                                string name = "",
+                                bool is_persistent = false,
+                                bool is_constant = false,
+                                bool is_parameter = false,
+                                bool is_RDMA_tensor = false,
+                                size_t group_id = -1,
+                                size_t device_id = 0);
 
             // A kernel only emits kernel code once
             bool m_is_emitted;

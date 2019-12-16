@@ -80,12 +80,11 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 CHECK_NOT_NULLPTR(kernel->m_context);
                 // Allocate NoneResuseable Space for Persistent Tensors
-                for (auto& tensorwrapper : kernel->m_context->tensors)
+                for (size_t i = 0; i < kernel->m_context->tensors.size(); i++)
                 {
-                    // todo: make get_tensor() interface return un-const variable.
-                    auto& tensor = (nnfusion::descriptor::Tensor&)tensorwrapper.get_tensor();
-                    if (!tensor.is_persistent())
-                        alloc_temp.insert(&tensor);
+                    auto tensor = kernel->m_context->tensors[i];
+                    if (!tensor->is_persistent())
+                        alloc_temp.insert(&*tensor);
                 }
             }
 
