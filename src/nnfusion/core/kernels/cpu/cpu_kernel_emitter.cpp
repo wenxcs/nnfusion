@@ -111,7 +111,7 @@ static string format_name(const string& name)
 }
 
 std::string
-    cpu::EigenKernelEmitter::emit_eigen_vector(const shared_ptr<nnfusion::descriptor::Tensor>& tw,
+    cpu::EigenKernelEmitter::emit_eigen_vector(const shared_ptr<nnfusion::descriptor::Tensor> tw,
                                                const string& name)
 {
     stringstream ss;
@@ -123,7 +123,7 @@ std::string
 }
 
 std::string
-    cpu::EigenKernelEmitter::emit_eigen_matrix(const shared_ptr<nnfusion::descriptor::Tensor>& tw,
+    cpu::EigenKernelEmitter::emit_eigen_matrix(const shared_ptr<nnfusion::descriptor::Tensor> tw,
                                                const string& name)
 {
     stringstream ss;

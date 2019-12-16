@@ -110,7 +110,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     auto kernel_context = kernel->m_context;
                     for (size_t i = 0; i < kernel_context->inputs.size(); i++)
                     {
-                        auto& tensor = kernel_context->inputs[i];
+                        auto tensor = kernel_context->inputs[i];
                         if (persist_candidate.find(&*tensor) != persist_candidate.end())
                         {
                             tmp.insert(&*tensor);
@@ -128,7 +128,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                         {
                             for (size_t i = 0; i < kernel_context->outputs.size(); i++)
                             {
-                                auto& tensor = kernel_context->outputs[i];
+                                auto tensor = kernel_context->outputs[i];
                                 persist_candidate.insert(&*tensor);
                             }
                         }
