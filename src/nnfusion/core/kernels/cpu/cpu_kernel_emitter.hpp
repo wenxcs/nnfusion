@@ -1,5 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
+#include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
@@ -39,8 +41,10 @@ namespace nnfusion
                 LanguageUnit_p emit_eigen_utils();
 
             protected:
-                std::string emit_eigen_vector(const TensorWrapper& tw, const string& name = "");
-                std::string emit_eigen_matrix(const TensorWrapper& tw, const string& name = "");
+                std::string emit_eigen_vector(const nnfusion::descriptor::Tensor& tw,
+                                              const string& name = "");
+                std::string emit_eigen_matrix(const nnfusion::descriptor::Tensor& tw,
+                                              const string& name = "");
             };
 
             class MlasKernelEmitter : public CpuKernelEmitter

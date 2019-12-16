@@ -10,8 +10,8 @@ cuda::MaxPool1D::MaxPool1D(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
     window_shape = ngraph::Shape(max_pool->get_window_shape());
     padding_below = ngraph::Shape(max_pool->get_padding_below());
     padding_above = ngraph::Shape(max_pool->get_padding_above());
@@ -22,8 +22,8 @@ cuda::MaxPool1D::MaxPool1D(shared_ptr<KernelContext> ctx)
     input_width = input_shape.back();
     output_width = output_shape.back();
 
-    input_type = ctx->inputs[0].get_element_type().c_type_string();
-    output_type = ctx->outputs[0].get_element_type().c_type_string();
+    input_type = ctx->get_input_tensor(0).get_element_type().c_type_string();
+    output_type = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
     // CHECK(input_shape.size() == 3)
     //     << "Input shape size of MaxPool1D is invalid, shape size: " << input_shape.size()
@@ -97,15 +97,15 @@ cuda::MaxPoolmD::MaxPoolmD(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
     auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
     window_shape = ngraph::Shape(max_pool->get_window_shape());
     padding_below = ngraph::Shape(max_pool->get_padding_below());
     padding_above = ngraph::Shape(max_pool->get_padding_above());
     window_stride = ngraph::Strides(max_pool->get_window_movement_strides());
 
-    input_type = ctx->inputs[0].get_element_type().c_type_string();
-    output_type = ctx->outputs[0].get_element_type().c_type_string();
+    input_type = ctx->get_input_tensor(0).get_element_type().c_type_string();
+    output_type = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
     std::stringstream tag;
     tag << "cudnn_maxpool_dtype_" << output_type << "_i" << join(input_shape, "_") << "_o"

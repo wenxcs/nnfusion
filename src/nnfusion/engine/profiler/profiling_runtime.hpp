@@ -94,16 +94,14 @@ namespace nnfusion
                 raw_input.clear();
                 raw_output.clear();
 
-                for (auto& t : kctx->inputs)
+                for (auto t : kctx->inputs)
                 {
-                    shared_ptr<char> i(new char[t.get_size() * t.get_element_type().size()],
-                                       [](char* p) { delete[] p; });
+                    shared_ptr<char> i(new char[t->size()], [](char* p) { delete[] p; });
                     raw_input.push_back(move(i));
                 }
                 for (auto& t : kctx->outputs)
                 {
-                    shared_ptr<char> i(new char[t.get_size() * t.get_element_type().size()],
-                                       [](char* p) { delete[] p; });
+                    shared_ptr<char> i(new char[t->size()], [](char* p) { delete[] p; });
                     raw_output.push_back(move(i));
                 };
             }
@@ -121,8 +119,7 @@ namespace nnfusion
 
             bool load_input_from(int input_id, const void* data, size_t size)
             {
-                auto buffsize = kctx->inputs[input_id].get_size() *
-                                kctx->inputs[input_id].get_element_type().size();
+                auto buffsize = kctx->inputs[input_id]->size();
                 // Check if the buffer is same size;
                 if (input_id >= kctx->inputs.size() || size != buffsize)
                 {
@@ -141,8 +138,7 @@ namespace nnfusion
 
             bool set_output_from(int output_id, const void* data, size_t size)
             {
-                auto buffsize = kctx->outputs[output_id].get_size() *
-                                kctx->outputs[output_id].get_element_type().size();
+                auto buffsize = kctx->outputs[output_id]->size();
                 // Check if the buffer is same size;
                 if (output_id >= kctx->outputs.size() || size != buffsize)
                 {
@@ -162,8 +158,7 @@ namespace nnfusion
             template <typename T>
             bool load_input_from(const vector<T>& data, int input_id)
             {
-                auto buffsize = kctx->inputs[input_id].get_size() *
-                                kctx->inputs[input_id].get_element_type().size();
+                auto buffsize = kctx->inputs[input_id]->size();
                 // Check if the buffer is same size;
                 if (input_id >= kctx->inputs.size() || sizeof(T) * data.size() != buffsize)
                 {
@@ -206,7 +201,7 @@ namespace nnfusion
                     return vector<T>();
                 }
                 auto base = (T*)unsafe_output(output_id);
-                auto buffsize = kctx->outputs[output_id].get_size();
+                auto buffsize = kctx->outputs[output_id]->size(false);
                 vector<T> res(base, base + buffsize);
                 return move(res);
             }

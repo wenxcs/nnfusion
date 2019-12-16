@@ -19,11 +19,12 @@ namespace nnfusion
                     CHECK(ctx->outputs.size() == 1)
                         << "Multi-output elementwise ops are not currently supported.";
 
-                    for (auto& arg : ctx->inputs)
+                    for (auto arg : ctx->inputs)
                     {
-                        data_types.push_back(arg.get_type());
+                        data_types.push_back(arg->get_element_type().c_type_string());
                     }
-                    data_types.push_back(ctx->outputs[0].get_type());
+                    data_types.push_back(
+                        ctx->get_output_tensor(0).get_element_type().c_type_string());
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -43,7 +44,7 @@ namespace nnfusion
 
                     auto num_inputs = data_types.size() - 1;
                     uint32_t nthreads = static_cast<uint32_t>(
-                        ngraph::shape_size(m_context->outputs[0].get_shape()));
+                        ngraph::shape_size(m_context->get_output_tensor(0).get_shape()));
                     CHECK(num_inputs > 0)
                         << "At least one input and one output tesnor for elementwise-op.";
 
@@ -105,7 +106,7 @@ namespace nnfusion
                 void compute_best_config(int& grids, int& blocks, int& bound)
                 {
                     uint32_t num_ele = static_cast<uint32_t>(
-                        ngraph::shape_size(m_context->outputs[0].get_shape()));
+                        ngraph::shape_size(m_context->get_output_tensor(0).get_shape()));
                     for (int i = 1024; i >= 64; i >>= 1)
                     {
                         if (num_ele % i == 0)

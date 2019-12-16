@@ -24,9 +24,9 @@ namespace nnfusion
                     size_t num_in = m_context->inputs.size(), num_out = m_context->outputs.size();
                     std::vector<ngraph::Shape> input_shapes, output_shapes;
                     for (int i = 0; i < num_in; ++i)
-                        input_shapes.push_back(m_context->inputs[i].get_shape());
+                        input_shapes.push_back(m_context->get_input_tensor(i).get_shape());
                     for (int i = 0; i < num_out; ++i)
-                        output_shapes.push_back(m_context->outputs[i].get_shape());
+                        output_shapes.push_back(m_context->get_output_tensor(i).get_shape());
 
                     auto res = generate_kernel_code(
                         input_shapes, output_shapes, generic_op->localOpConfig.getRoot());

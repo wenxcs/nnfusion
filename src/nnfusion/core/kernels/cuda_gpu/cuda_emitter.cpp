@@ -33,7 +33,7 @@ LanguageUnit_p cuda::CudaEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->inputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->inputs[i].get_element_type().c_type_string() << "* ";
+        ss << m_context->inputs[i]->get_element_type().c_type_string() << "* ";
         ss << "input" << i;
         params.push_back(ss.str());
     }
@@ -41,7 +41,7 @@ LanguageUnit_p cuda::CudaEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->outputs[i].get_element_type().c_type_string() << "* ";
+        ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
         ss << "output" << i;
         params.push_back(ss.str());
     }
@@ -60,7 +60,7 @@ LanguageUnit_p cuda::BlockCudaEmitter::emit_device_function_signature()
     for (size_t i = 0; i < m_context->inputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->inputs[i].get_element_type().c_type_string() << "* ";
+        ss << m_context->inputs[i]->get_element_type().c_type_string() << "* ";
         ss << "input" << i;
         params.push_back(ss.str());
     }
@@ -68,7 +68,7 @@ LanguageUnit_p cuda::BlockCudaEmitter::emit_device_function_signature()
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;
-        ss << m_context->outputs[i].get_element_type().c_type_string() << "* ";
+        ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
         ss << "output" << i;
         params.push_back(ss.str());
     }

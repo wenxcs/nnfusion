@@ -11,14 +11,14 @@ cpu::AvgPoolMlas::AvgPoolMlas(shared_ptr<KernelContext> ctx)
 {
     auto avg_pool = static_pointer_cast<op::AvgPool>(ctx->gnode->get_op_ptr());
 
-    input_shape = ctx->inputs[0].get_shape();
-    output_shape = ctx->outputs[0].get_shape();
+    input_shape = ctx->get_input_tensor(0).get_shape();
+    output_shape = ctx->get_output_tensor(0).get_shape();
     window_shape = avg_pool->get_window_shape();
     padding_below = avg_pool->get_padding_below();
     padding_above = avg_pool->get_padding_above();
     window_stride = avg_pool->get_window_movement_strides();
     include_pad = avg_pool->get_include_padding_in_avg_computation();
-    dtype = ctx->outputs[0].get_element_type().c_type_string();
+    dtype = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
     std::stringstream tag;
     tag << "mlas_maxpool_" << dtype << "_i" << join(input_shape, "_") << "_w"

@@ -40,11 +40,11 @@ namespace nnfusion
                     if (transA || transB)
                         return nullptr;
 
-                    if (ctx->outputs[0].get_element_type().c_type_string() != "float")
+                    if (ctx->get_output_tensor(0).get_element_type().c_type_string() != "float")
                         return nullptr;
 
-                    ngraph::Shape input_shape_0 = ctx->inputs[0].get_shape();
-                    ngraph::Shape input_shape_1 = ctx->inputs[1].get_shape();
+                    ngraph::Shape input_shape_0 = ctx->get_input_tensor(0).get_shape();
+                    ngraph::Shape input_shape_1 = ctx->get_input_tensor(1).get_shape();
                     if (input_shape_0.size() != input_shape_1.size())
                         return nullptr;
 

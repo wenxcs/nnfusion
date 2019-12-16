@@ -28,10 +28,10 @@ namespace nnfusion
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
-                    out_shape = m_context->outputs.front().get_shape();
-                    in_shape = m_context->inputs.front().get_shape();
-                    threads = ctx->outputs.front().get_size();
-                    dtype = ngraph::element::Type(ctx->outputs[0].get_element_type());
+                    out_shape = m_context->outputs.front()->get_shape();
+                    in_shape = m_context->inputs.front()->get_shape();
+                    threads = ctx->outputs.front()->size(false);
+                    dtype = ngraph::element::Type(ctx->get_output_tensor(0).get_element_type());
                     strides = ngraph::row_major_strides(out_shape);
 
                     // calculate strides

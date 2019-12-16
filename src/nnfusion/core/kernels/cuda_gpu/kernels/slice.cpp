@@ -11,11 +11,11 @@ cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
 {
     auto slice_op = static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 
-    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
 
-    input_type = ctx->inputs[0].get_element_type().c_type_string();
-    output_type = ctx->outputs[0].get_element_type().c_type_string();
+    input_type = ctx->get_input_tensor(0).get_element_type().c_type_string();
+    output_type = ctx->get_output_tensor(0).get_element_type().c_type_string();
     lower_bounds = slice_op->get_lower_bounds();
 
     input_strides = row_major_strides(input_shape);

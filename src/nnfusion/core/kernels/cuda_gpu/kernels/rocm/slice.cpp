@@ -20,11 +20,11 @@ namespace nnfusion
                     auto slice_op =
                         static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 
-                    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+                    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+                    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
 
-                    input_type = ctx->inputs[0].get_element_type().c_type_string();
-                    output_type = ctx->outputs[0].get_element_type().c_type_string();
+                    input_type = ctx->get_input_tensor(0).get_element_type().c_type_string();
+                    output_type = ctx->get_output_tensor(0).get_element_type().c_type_string();
                     lower_bounds = slice_op->get_lower_bounds();
 
                     input_strides = row_major_strides(input_shape);
@@ -35,8 +35,8 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     auto& ctx = m_context;
-                    auto input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-                    auto output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+                    auto input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+                    auto output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
 
                     auto op_config =
                         static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
@@ -65,7 +65,7 @@ namespace nnfusion
                         num_out *= output_shape[i];
                     if (num_ele != num_out * input_shape[0])
                         return nullptr;
-                    if (ctx->outputs[0].get_element_type().c_type_string() != "float")
+                    if (ctx->get_output_tensor(0).get_element_type().c_type_string() != "float")
                         return nullptr;
 
                     size_t offset = num_out * lower_bounds[0];

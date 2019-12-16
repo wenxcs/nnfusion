@@ -12,10 +12,10 @@ bool IProfilingRuntime::execute(const ProfilingContext::Pointer& ke)
 {
     auto kctx = ke->kernel->m_context;
     size_t buffer_size = 0;
-    for (auto& t : kctx->inputs)
-        buffer_size += t.get_size() * t.get_element_type().size();
-    for (auto& t : kctx->outputs)
-        buffer_size += t.get_size() * t.get_element_type().size();
+    for (auto t : kctx->inputs)
+        buffer_size += t->size();
+    for (auto t : kctx->outputs)
+        buffer_size += t->size();
 
     char* buffer = new char[buffer_size];
     void** inputs = new void*[kctx->inputs.size()];
@@ -24,16 +24,16 @@ bool IProfilingRuntime::execute(const ProfilingContext::Pointer& ke)
     // Assign all the tensor in the buffer space.
     size_t offset = 0;
     size_t index = 0;
-    for (auto& t : kctx->inputs)
+    for (auto t : kctx->inputs)
     {
         inputs[index++] = buffer + offset;
-        offset += t.get_size() * t.get_element_type().size();
+        offset += t->size();
     }
     index = 0;
-    for (auto& t : kctx->outputs)
+    for (auto t : kctx->outputs)
     {
         outputs[index++] = buffer + offset;
-        offset += t.get_size() * t.get_element_type().size();
+        offset += t->size();
     }
 
     bool ret = execute(ke, inputs, outputs);

@@ -12,15 +12,15 @@ cpu::ConvolutionMlas::ConvolutionMlas(shared_ptr<KernelContext> ctx)
 {
     auto conv = static_pointer_cast<op::Convolution>(ctx->gnode->get_op_ptr());
 
-    input_shape = ctx->inputs[0].get_shape();
-    filter_shape = ctx->inputs[1].get_shape();
-    output_shape = ctx->outputs[0].get_shape();
+    input_shape = ctx->get_input_tensor(0).get_shape();
+    filter_shape = ctx->get_input_tensor(1).get_shape();
+    output_shape = ctx->get_output_tensor(0).get_shape();
     window_dilation_strides = conv->get_window_dilation_strides();
     window_movement_strides = conv->get_window_movement_strides();
     data_dilation_strides = conv->get_data_dilation_strides();
     padding_below_diff = conv->get_padding_below();
     padding_above_diff = conv->get_padding_above();
-    dtype = ctx->outputs[0].get_element_type().c_type_string();
+    dtype = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
     std::stringstream tag;
     tag << "mlas_convolution_op_" << dtype << "_i" << join(input_shape, "_") << "_w"

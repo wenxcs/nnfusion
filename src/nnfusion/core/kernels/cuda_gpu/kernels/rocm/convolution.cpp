@@ -22,9 +22,9 @@ namespace nnfusion
                 {
                     auto& ctx = m_context;
 
-                    auto& input_shape = ctx->inputs[0].get_shape();
-                    auto& filter_shape = ctx->inputs[1].get_shape();
-                    auto& output_shape = ctx->outputs[0].get_shape();
+                    auto& input_shape = ctx->get_input_tensor(0).get_shape();
+                    auto& filter_shape = ctx->get_input_tensor(1).get_shape();
+                    auto& output_shape = ctx->get_output_tensor(0).get_shape();
 
                     auto conv =
                         static_pointer_cast<nnfusion::op::Convolution>(ctx->gnode->get_op_ptr());
@@ -33,7 +33,7 @@ namespace nnfusion
                     auto& data_dilation_strides = conv->get_data_dilation_strides();
                     auto& padding_below_diff = conv->get_padding_below();
                     auto& padding_above_diff = conv->get_padding_above();
-                    auto& dtype = ctx->outputs[0].get_element_type().c_type_string();
+                    auto& dtype = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
                     if (dtype != "float")
                         return nullptr;

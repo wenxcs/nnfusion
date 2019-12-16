@@ -61,22 +61,25 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
     for (size_t i = 0; i + 1 < arg.size(); i++)
     {
-        writer << arg[i].get_type() << "* " << arg[i].get_name() << "_host, ";
+        writer << arg[i]->get_element_type().c_type_string() << "* " << arg[i]->get_name()
+               << "_host, ";
     }
     if (!arg.empty())
     {
-        writer << arg.back().get_type() << "* " << arg.back().get_name();
+        writer << arg.back()->get_element_type().c_type_string() << "* " << arg.back()->get_name();
         if (!out.empty())
             writer << "_host, ";
     }
 
     for (size_t i = 0; i + 1 < out.size(); i++)
     {
-        writer << out[i].get_type() << "* " << out[i].get_name() << "_host, ";
+        writer << out[i]->get_element_type().c_type_string() << "* " << out[i]->get_name()
+               << "_host, ";
     }
     if (!out.empty())
     {
-        writer << out.back().get_type() << "* " << out.back().get_name() << "_host";
+        writer << out.back()->get_element_type().c_type_string() << "* " << out.back()->get_name()
+               << "_host";
     }
     writer << ")\n";
 
@@ -98,49 +101,51 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
                       "cudaDevAttrMultiProcessorCount, 0));\n";
         }
 
-        auto tensor_declare = [](const TensorWrapper& t) -> std::string {
-            return t.get_type() + "* " + t.get_name() + ";\n";
+        auto tensor_declare = [](const shared_ptr<nnfusion::descriptor::Tensor>& t) -> std::string {
+            return t->get_element_type().c_type_string() + "* " + t->get_name() + ";\n";
         };
 
-        auto tensor_alloc_cuda = [](const TensorWrapper& tensor) {
+        auto tensor_alloc_cuda = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
             stringstream s;
-            s << "cudaMalloc((void**)&" << tensor.get_name() << "," << tensor.get_size() << " * "
-              << tensor.get_element_type().size() << ");\n";
+            s << "cudaMalloc((void**)&" << tensor->get_name() << "," << tensor->size(false) << " * "
+              << tensor->get_element_type().size() << ");\n";
             return s.str();
         };
 
-        auto tensor_alloc_host = [](const TensorWrapper& tensor) {
+        auto tensor_alloc_host = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
             stringstream s;
-            s << tensor.get_name() << " = new " << tensor.get_type() << "[" << tensor.get_size()
-              << "];\n";
+            s << tensor->get_name() << " = new " << tensor->get_element_type().c_type_string()
+              << "[" << tensor->size(false) << "];\n";
             return s.str();
         };
 
-        auto tensor_cpy_h2d = [](const TensorWrapper& tensor, string from) {
+        auto tensor_cpy_h2d = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor,
+                                 string from) {
             stringstream s;
-            s << "cudaMemcpy(" << tensor.get_name() << ", " << from << ", " << tensor.get_size()
-              << " * " << tensor.get_element_type().size() << ", "
+            s << "cudaMemcpy(" << tensor->get_name() << ", " << from << ", " << tensor->size(false)
+              << " * " << tensor->get_element_type().size() << ", "
               << "cudaMemcpyHostToDevice);\n";
             return s.str();
         };
 
-        auto tensor_cpy_d2h = [](string to, const TensorWrapper& tensor) {
+        auto tensor_cpy_d2h = [](string to,
+                                 const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
             stringstream s;
-            s << "cudaMemcpy(" << to << ", " << tensor.get_name() << ", " << tensor.get_size()
-              << " * " << tensor.get_element_type().size() << ", "
+            s << "cudaMemcpy(" << to << ", " << tensor->get_name() << ", " << tensor->size(false)
+              << " * " << tensor->get_element_type().size() << ", "
               << "cudaMemcpyDeviceToHost);\n";
             return s.str();
         };
 
-        auto tensor_free_cuda = [](const TensorWrapper& tensor) {
+        auto tensor_free_cuda = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
             stringstream s;
-            s << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+            s << "CUDA_SAFE_CALL(cudaFree(" << tensor->get_name() << "));\n";
             return s.str();
         };
 
-        auto tensor_free_host = [](const TensorWrapper& tensor) {
+        auto tensor_free_host = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
             stringstream s;
-            s << "delete[] " << tensor.get_name() << ";\n";
+            s << "delete[] " << tensor->get_name() << ";\n";
             return s.str();
         };
 
@@ -148,12 +153,12 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         {
             auto& tensor = arg[i];
             writer << tensor_declare(tensor);
-            if (tensor.is_host())
-                writer << tensor.get_name() << " = " << tensor.get_name() + "_host;\n";
+            if (tensor->get_device_type() == GENERIC_CPU)
+                writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
             else
             {
                 writer << tensor_alloc_cuda(tensor);
-                writer << tensor_cpy_h2d(tensor, tensor.get_name() + "_host");
+                writer << tensor_cpy_h2d(tensor, tensor->get_name() + "_host");
             }
         }
 
@@ -161,8 +166,8 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         {
             auto& tensor = out[i];
             writer << tensor_declare(tensor);
-            if (tensor.is_host())
-                writer << tensor.get_name() << " = " << tensor.get_name() + "_host;\n";
+            if (tensor->get_device_type() == GENERIC_CPU)
+                writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
             else
                 writer << tensor_alloc_cuda(tensor);
         }
@@ -171,7 +176,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         {
             auto& tensor = out[i];
             writer << tensor_declare(tensor);
-            if (tensor.is_host())
+            if (tensor->get_device_type() == GENERIC_CPU)
                 writer << tensor_alloc_host(tensor);
             else
                 writer << tensor_alloc_cuda(tensor);
@@ -197,28 +202,28 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         for (size_t i = 0; i < out.size(); i++)
         {
             auto& tensor = out[i];
-            if (!tensor.is_host())
-                writer << tensor_cpy_d2h(tensor.get_name() + "_host", tensor);
+            if (tensor->get_device_type() != GENERIC_CPU)
+                writer << tensor_cpy_d2h(tensor->get_name() + "_host", tensor);
         }
 
         for (size_t i = 0; i < arg.size(); i++)
         {
             auto& tensor = arg[i];
-            if (!tensor.is_host())
+            if (tensor->get_device_type() != GENERIC_CPU)
                 writer << tensor_free_cuda(tensor);
         }
 
         for (size_t i = 0; i < out.size(); i++)
         {
             auto& tensor = out[i];
-            if (!tensor.is_host())
+            if (tensor->get_device_type() != GENERIC_CPU)
                 writer << tensor_free_cuda(tensor);
         }
 
         for (size_t i = 0; i < temp.size(); i++)
         {
             auto& tensor = temp[i];
-            if (!tensor.is_host())
+            if (tensor->get_device_type() != GENERIC_CPU)
                 writer << tensor_free_cuda(tensor);
             else
                 writer << tensor_free_host(tensor);
@@ -248,8 +253,10 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         for (size_t i = 0; i + 1 < arg.size() + out.size(); i++)
         {
             string type = i < arg.size()
-                              ? arg[i].get_type()
-                              : (i - arg.size() < out.size() ? out[i - arg.size()].get_type() : "");
+                              ? arg[i]->get_element_type().c_type_string()
+                              : (i - arg.size() < out.size()
+                                     ? out[i - arg.size()]->get_element_type().c_type_string()
+                                     : "");
             writer << "(" << type << "*)" << (i < arg.size() ? "args" : "outputs") << "["
                    << i - (i >= arg.size() ? arg.size() : 0) << "], ";
         }
@@ -257,8 +264,10 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         {
             int i = arg.size() + out.size() - 1;
             string type = i < arg.size()
-                              ? arg[i].get_type()
-                              : (i - arg.size() < out.size() ? out[i - arg.size()].get_type() : "");
+                              ? arg[i]->get_element_type().c_type_string()
+                              : (i - arg.size() < out.size()
+                                     ? out[i - arg.size()]->get_element_type().c_type_string()
+                                     : "");
             writer << "(" << type << "*)" << (out.size() == 0 ? "args" : "outputs") << "["
                    << i - (i >= arg.size() ? arg.size() : 0) << "]";
         }

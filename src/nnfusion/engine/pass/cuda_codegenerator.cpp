@@ -5,6 +5,8 @@
 #include <unistd.h>
 
 #include "cuda_codegenerator.hpp"
+#include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
+#include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
@@ -261,12 +263,14 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     LanguageUnit m;
                     if ((*ins)["memcpy_pair"].is_valid())
                     {
-                        auto mempairs = (*ins)["memcpy_pair"]
-                                            .as<unordered_map<TensorWrapper*, TensorWrapper*>>();
+                        auto mempairs =
+                            (*ins)["memcpy_pair"]
+                                .as<unordered_map<descriptor::Tensor*, descriptor::Tensor*>>();
                         for (auto& it : mempairs)
                         {
-                            string memcpykind = it.first->is_host() ? "cudaMemcpyDeviceToHost"
-                                                                    : "cudaMemcpyHostToDevice";
+                            string memcpykind = it.first->get_device_type() == GENERIC_CPU
+                                                    ? "cudaMemcpyDeviceToHost"
+                                                    : "cudaMemcpyHostToDevice";
                             m << "cudaMemcpy(" << it.first->get_name() << ", "
                               << it.second->get_name() << ", " << memcpykind << ");\n";
                         }
@@ -600,12 +604,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                         {
-                            if (kernel->m_context->outputs[i].get_type() != "float")
+                            if (kernel->m_context->outputs[i]->get_element_type().c_type_string() !=
+                                "float")
                                 continue;
                             auto out_name = kernel->m_context->output_names[i];
                             call_place << "Debug(\"" << node_name << ", " << out_name << "\", "
                                        << out_name << ", \"" << join(kernel->m_context->input_names)
-                                       << "\", " << kernel->m_context->outputs[i].get_size()
+                                       << "\", " << kernel->m_context->outputs[i]->size(false)
                                        << ");\n";
                         }
                     }

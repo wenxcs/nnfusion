@@ -39,7 +39,7 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
+                    const ngraph::Shape& input_shape_0 = m_context->get_input_tensor(0).get_shape();
                     for (int i = 0; i < input_shape_0.size(); ++i)
                         groups *= input_shape_0[i];
                 }
@@ -48,7 +48,7 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0].get_shape();
+                    const ngraph::Shape& input_shape_0 = m_context->get_input_tensor(0).get_shape();
 
                     auto& cfg = generic_op->localOpConfig.getRoot();
 

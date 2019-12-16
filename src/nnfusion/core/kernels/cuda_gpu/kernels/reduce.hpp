@@ -35,9 +35,9 @@ namespace nnfusion
                     }
 
                     reduce_rank = reduce_axis.size();
-                    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
-                    data_bytes = ctx->inputs[0].get_element_type().size();
+                    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+                    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
+                    data_bytes = ctx->get_input_tensor(0).get_element_type().size();
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
 
@@ -77,8 +77,8 @@ namespace nnfusion
                     nthreads_acc = ctx->gpu_num_sm * block_size_x_acc;
 
                     reduce_op = CudaOpMap<T>::op;
-                    input_type = ctx->inputs[0].get_element_type().c_type_string();
-                    output_type = ctx->outputs[0].get_element_type().c_type_string();
+                    input_type = ctx->get_input_tensor(0).get_element_type().c_type_string();
+                    output_type = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
                     std::stringstream tag;
                     tag << "cuda"
@@ -482,14 +482,14 @@ if (thread_idx == 0) output0[block_idx] = val;
                     }
 
                     reduce_rank = reduce_axis.size();
-                    input_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+                    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+                    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
 
                     reduce_op = CudaOpMap<T>::op;
-                    input_type = ctx->inputs[0].get_element_type().c_type_string();
-                    output_type = ctx->outputs[0].get_element_type().c_type_string();
+                    input_type = ctx->get_input_tensor(0).get_element_type().c_type_string();
+                    output_type = ctx->get_output_tensor(0).get_element_type().c_type_string();
 
                     std::stringstream tag;
                     tag << "cuda"
@@ -508,15 +508,17 @@ if (thread_idx == 0) output0[block_idx] = val;
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
-                    auto dst = m_context->outputs[0];
-                    auto src = m_context->inputs[0];
-                    lu << dst.get_type() << "* " << dst.get_name() << " = output0;\n";
-                    lu << src.get_type() << "* " << src.get_name() << " = input0;\n";
+                    auto& dst = m_context->get_output_tensor(0);
+                    auto& src = m_context->get_input_tensor(0);
+                    lu << dst.get_element_type().c_type_string() << "* " << dst.get_name()
+                       << " = output0;\n";
+                    lu << src.get_element_type().c_type_string() << "* " << src.get_name()
+                       << " = input0;\n";
 
                     //emit_memcpyDtD(lu, dst, src);
                     lu << "if (input0 != output0) {\n"
                        << "    CUDA_SAFE_CALL(cudaMemcpy(" << dst.get_name() << ", "
-                       << src.get_name() << ", " << dst.get_size() << " * "
+                       << src.get_name() << ", " << dst.size(false) << " * "
                        << dst.get_element_type().size() << ", cudaMemcpyDeviceToDevice));\n"
                        << "}\n";
 

@@ -12,14 +12,14 @@ cuda::StridedSliceGrad::StridedSliceGrad(shared_ptr<KernelContext> ctx)
     auto strided_slice_grad =
         static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
 
-    x_shape = ngraph::Shape(ctx->inputs[0].get_shape());
-    begin_shape = ngraph::Shape(ctx->inputs[1].get_shape());
-    end_shape = ngraph::Shape(ctx->inputs[2].get_shape());
-    strides_shape = ngraph::Shape(ctx->inputs[3].get_shape());
-    grad_shape = ngraph::Shape(ctx->inputs[4].get_shape());
+    x_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
+    begin_shape = ngraph::Shape(ctx->get_input_tensor(1).get_shape());
+    end_shape = ngraph::Shape(ctx->get_input_tensor(2).get_shape());
+    strides_shape = ngraph::Shape(ctx->get_input_tensor(3).get_shape());
+    grad_shape = ngraph::Shape(ctx->get_input_tensor(4).get_shape());
 
     x_size = x_shape[0];
-    output_shape = ngraph::Shape(ctx->outputs[0].get_shape());
+    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
 
     std::stringstream tag;
     tag << join(x_shape, "_") << join(begin_shape, "_") << join(end_shape, "_")

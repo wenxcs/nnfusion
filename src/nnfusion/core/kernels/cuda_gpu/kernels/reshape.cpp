@@ -8,21 +8,21 @@ using namespace nnfusion::kernels;
 cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    CHECK(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
+    CHECK(ctx->get_output_tensor(0).size(false) > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<nnfusion::op::Reshape>(ctx->gnode->get_op_ptr());
     is_memcpy = false;
     is_noop = false;
     //Noop
-    if (ctx->outputs[0].get_name() == ctx->inputs[0].get_name())
+    if (ctx->get_output_tensor(0).get_name() == ctx->get_input_tensor(0).get_name())
     {
         is_noop = true;
         // LOG(INFO) << "Same input and output tensor.";
         return;
     }
 
-    arg_shape = ctx->inputs[0].get_shape();
+    arg_shape = ctx->get_input_tensor(0).get_shape();
     arg_rank = arg_shape.size();
-    result_shape = ctx->outputs[0].get_shape();
+    result_shape = ctx->get_output_tensor(0).get_shape();
     input_order = reshape->get_input_order();
     size_t result_shape_product = shape_size(result_shape);
 
@@ -438,19 +438,19 @@ void cuda::ReshapehD::set_launch_config()
 cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    CHECK(ctx->outputs[0].get_size() > 0) << "Invalid output shape for Reshape.";
+    CHECK(ctx->get_output_tensor(0).size(false) > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<nnfusion::op::Reshape>(ctx->gnode->get_op_ptr());
     is_memcpy = false;
     is_noop = false;
     //Noop
-    if (ctx->outputs[0].get_name() == ctx->inputs[0].get_name())
+    if (ctx->get_output_tensor(0).get_name() == ctx->get_input_tensor(0).get_name())
     {
         is_noop = true;
     }
 
-    arg_shape = ctx->inputs[0].get_shape();
+    arg_shape = ctx->get_input_tensor(0).get_shape();
     arg_rank = arg_shape.size();
-    result_shape = ctx->outputs[0].get_shape();
+    result_shape = ctx->get_output_tensor(0).get_shape();
     size_t result_shape_product = shape_size(result_shape);
 
     //Result OP
