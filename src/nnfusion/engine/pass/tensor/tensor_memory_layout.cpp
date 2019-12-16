@@ -82,9 +82,9 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 // Allocate NoneResuseable Space for Persistent Tensors
                 for (size_t i = 0; i < kernel->m_context->tensors.size(); i++)
                 {
-                    auto& tensor = kernel->m_context->get_inter_tensor(i);
-                    if (!tensor.is_persistent())
-                        alloc_temp.insert(&tensor);
+                    auto& tensor = kernel->m_context->tensors[i];
+                    if (!tensor->is_persistent())
+                        alloc_temp.insert(&*tensor);
                 }
             }
 

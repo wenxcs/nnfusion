@@ -82,13 +82,13 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
     std::unordered_map<std::string, std::string> in_args, out_args, local_tensors;
     for (int i = 0; i < m_context->inputs.size(); i++)
     {
-        auto& tensor = m_context->get_input_tensor(i);
-        in_args[tensor.get_name()] = "input" + std::to_string(i);
+        auto& tensor = m_context->inputs[i];
+        in_args[tensor->get_name()] = "input" + std::to_string(i);
     }
     for (int i = 0; i < m_context->outputs.size(); i++)
     {
-        auto& tensor = m_context->get_output_tensor(i);
-        out_args[tensor.get_name()] = "output" + std::to_string(i);
+        auto& tensor = m_context->outputs[i];
+        out_args[tensor->get_name()] = "output" + std::to_string(i);
     }
 
     size_t temp_tensor_id = 0;
@@ -120,7 +120,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
     for (auto kernel_emitter : m_context->kernels)
     {
         auto gnode = kernel_emitter->m_context->gnode;
-        auto& out_tw = kernel_emitter->m_context->get_output_tensor(0);
+        auto& out_tw = kernel_emitter->m_context->outputs[0];
         if (auto bc = std::dynamic_pointer_cast<nnfusion::op::Broadcast>(gnode->get_op_ptr()))
         {
             std::string index = "";
@@ -133,26 +133,26 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
                 CHECK(bc->is_outer_broadcast());
                 index += "[tid % " + std::to_string(bc->get_outer_broadcast_size()) + "]";
             }
-            local_tensors[out_tw.get_name()] = "temp" + std::to_string(temp_tensor_id++);
-            auto& in_tw = kernel_emitter->m_context->get_input_tensor(0);
-            CHECK(in_args.count(in_tw.get_name()) > 0);
+            local_tensors[out_tw->get_name()] = "temp" + std::to_string(temp_tensor_id++);
+            auto& in_tw = kernel_emitter->m_context->inputs[0];
+            CHECK(in_args.count(in_tw->get_name()) > 0);
 
-            lu << out_tw.get_element_type().c_type_string() << " "
-               << local_tensors[out_tw.get_name()] << " = " << in_args[in_tw.get_name()] << index
+            lu << out_tw->get_element_type().c_type_string() << " "
+               << local_tensors[out_tw->get_name()] << " = " << in_args[in_tw->get_name()] << index
                << ";\n";
         }
         else if (auto rs = std::dynamic_pointer_cast<nnfusion::op::Reshape>(gnode->get_op_ptr()))
         {
             CHECK(rs->get_is_transpose() == false);
-            auto& in_tw = kernel_emitter->m_context->get_input_tensor(0);
-            if (in_args.count(in_tw.get_name()) > 0)
+            auto& in_tw = kernel_emitter->m_context->inputs[0];
+            if (in_args.count(in_tw->get_name()) > 0)
             {
-                in_args[out_tw.get_name()] = in_args[in_tw.get_name()];
+                in_args[out_tw->get_name()] = in_args[in_tw->get_name()];
             }
             else
             {
-                CHECK(local_tensors.count(in_tw.get_name()) > 0);
-                local_tensors[out_tw.get_name()] = local_tensors[in_tw.get_name()];
+                CHECK(local_tensors.count(in_tw->get_name()) > 0);
+                local_tensors[out_tw->get_name()] = local_tensors[in_tw->get_name()];
             }
         }
         else
@@ -165,23 +165,23 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
             {
                 lu.require(op_kernel.second);
             }
-            local_tensors[out_tw.get_name()] = "temp" + std::to_string(temp_tensor_id++);
+            local_tensors[out_tw->get_name()] = "temp" + std::to_string(temp_tensor_id++);
             std::vector<std::string> input_args;
             for (int i = 0; i < cuda_kernel->m_context->inputs.size(); i++)
             {
-                auto& in_tw = cuda_kernel->m_context->get_input_tensor(i);
-                if (in_args.count(in_tw.get_name()) > 0)
+                auto& in_tw = cuda_kernel->m_context->inputs[i];
+                if (in_args.count(in_tw->get_name()) > 0)
                 {
-                    input_args.push_back(in_args[in_tw.get_name()] + "[tid]");
+                    input_args.push_back(in_args[in_tw->get_name()] + "[tid]");
                 }
                 else
                 {
-                    CHECK(local_tensors.count(in_tw.get_name()) > 0);
-                    input_args.push_back(local_tensors[in_tw.get_name()]);
+                    CHECK(local_tensors.count(in_tw->get_name()) > 0);
+                    input_args.push_back(local_tensors[in_tw->get_name()]);
                 }
             }
-            lu << out_tw.get_element_type().c_type_string() << " "
-               << local_tensors[out_tw.get_name()] << " = " << op_kernel.first << "("
+            lu << out_tw->get_element_type().c_type_string() << " "
+               << local_tensors[out_tw->get_name()] << " = " << op_kernel.first << "("
                << join(input_args, ", ") << ");\n";
         }
     }
@@ -276,7 +276,7 @@ void ElementWiseFused::set_launch_config()
 void ElementWiseFused::compute_best_config(int& grids, int& blocks, int& bound)
 {
     uint32_t num_ele =
-        static_cast<uint32_t>(ngraph::shape_size(m_context->get_output_tensor(0).get_shape()));
+        static_cast<uint32_t>(ngraph::shape_size(m_context->outputs[0]->get_shape()));
     for (int i = 1024; i >= 64; i >>= 1)
     {
         if (num_ele % i == 0)

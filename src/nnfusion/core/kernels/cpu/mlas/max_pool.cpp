@@ -11,13 +11,13 @@ cpu::MaxPoolMlas::MaxPoolMlas(shared_ptr<KernelContext> ctx)
 {
     auto max_pool = static_pointer_cast<op::MaxPool>(ctx->gnode->get_op_ptr());
 
-    input_shape = ctx->get_input_tensor(0).get_shape();
-    output_shape = ctx->get_output_tensor(0).get_shape();
+    input_shape = ctx->inputs[0]->get_shape();
+    output_shape = ctx->outputs[0]->get_shape();
     window_shape = max_pool->get_window_shape();
     padding_below = max_pool->get_padding_below();
     padding_above = max_pool->get_padding_above();
     window_stride = max_pool->get_window_movement_strides();
-    dtype = ctx->get_output_tensor(0).get_element_type().c_type_string();
+    dtype = ctx->outputs[0]->get_element_type().c_type_string();
 
     std::stringstream tag;
     tag << "mlas_maxpool_" << dtype << "_i" << join(input_shape, "_") << "_w"

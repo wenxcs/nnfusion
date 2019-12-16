@@ -32,7 +32,7 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     nnfusion::codegen::create_folder(folder);
-                    const_name = m_context->get_output_tensor(0).get_name();
+                    const_name = m_context->outputs[0]->get_name();
                     ofstream bin_file(folder + const_name + ".bin", ios::out | ios::binary);
                     bin_file.write((const char*)op->get_data_ptr(), op->get_data_size());
                     bin_file.close();

@@ -25,17 +25,14 @@ LanguageUnit_p cuda::Result::emit_function_signature()
     auto& lu = *_lu;
 
     vector<string> params;
-    params.push_back(m_context->get_input_tensor(0).get_element_type().c_type_string() +
-                     "* input0");
+    params.push_back(m_context->inputs[0]->get_element_type().c_type_string() + "* input0");
     if (need_copy_to_host)
     {
-        params.push_back(m_context->get_output_tensor(0).get_element_type().c_type_string() +
-                         "** output0");
+        params.push_back(m_context->outputs[0]->get_element_type().c_type_string() + "** output0");
     }
     else
     {
-        params.push_back(m_context->get_output_tensor(0).get_element_type().c_type_string() +
-                         "* output0");
+        params.push_back(m_context->outputs[0]->get_element_type().c_type_string() + "* output0");
     }
     lu << "void "
        << "(" << join(params, ", ") << ")";

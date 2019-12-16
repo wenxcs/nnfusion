@@ -35,12 +35,6 @@ namespace nnfusion
             // Allocated tensor ptr
             vector<shared_ptr<nnfusion::descriptor::Tensor>> tensors;
 
-            // get input tensor
-            nnfusion::descriptor::Tensor& get_input_tensor(size_t i) const { return *inputs[i]; }
-            // get output tensor
-            nnfusion::descriptor::Tensor& get_output_tensor(size_t i) const { return *outputs[i]; }
-            // get allocated tensor
-            nnfusion::descriptor::Tensor& get_inter_tensor(size_t i) const { return *tensors[i]; }
             // The input tensor names
             vector<string> input_names;
 

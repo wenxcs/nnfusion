@@ -28,8 +28,8 @@ namespace nnfusion
                     auto& ctx = m_context;
                     auto node =
                         static_pointer_cast<nnfusion::op::Softmax>(ctx->gnode->get_op_ptr());
-                    input_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
-                    output_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
+                    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+                    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
 
                     // this kernel currently can only handle 2D matrix, thus we have to transfer a >2D tensor
                     // to 2D softmax

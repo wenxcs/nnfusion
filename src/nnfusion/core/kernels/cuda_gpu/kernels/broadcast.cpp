@@ -27,7 +27,7 @@ namespace nnfusion
                         this->axes = AxisSet(axes);
                     }
 
-                    result_shape = ctx->get_output_tensor(0).get_shape();
+                    result_shape = ctx->outputs[0]->get_shape();
 
                     // calculate strides
                     strides = ngraph::row_major_strides(result_shape);

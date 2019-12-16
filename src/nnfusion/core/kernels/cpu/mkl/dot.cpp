@@ -11,10 +11,10 @@ cpu::DotMkl::DotMkl(shared_ptr<KernelContext> ctx)
     auto dot_op = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
-    arg0_shape = ngraph::Shape(ctx->get_input_tensor(0).get_shape());
-    arg1_shape = ngraph::Shape(ctx->get_input_tensor(1).get_shape());
-    out_shape = ngraph::Shape(ctx->get_output_tensor(0).get_shape());
-    dtype = ngraph::element::Type(ctx->get_output_tensor(0).get_element_type());
+    arg0_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+    arg1_shape = ngraph::Shape(ctx->inputs[1]->get_shape());
+    out_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
 
     std::stringstream tag;
     tag << "mklblas"
@@ -44,11 +44,11 @@ LanguageUnit_p cpu::DotMkl::emit_function_body()
     }
     else if ((arg0_shape.size() == 3) && (arg1_shape.size() == 2) && reduction_axes == 1)
     {
-        auto& mat_a = m_context->get_input_tensor(0);
-        auto& mat_b = m_context->get_input_tensor(1);
-        auto& mat_c = m_context->get_output_tensor(0);
-        const Shape& shape_a = mat_a.get_shape();
-        const Shape& shape_b = mat_b.get_shape();
+        auto& mat_a = m_context->inputs[0];
+        auto& mat_b = m_context->inputs[1];
+        auto& mat_c = m_context->outputs[0];
+        const Shape& shape_a = mat_a->get_shape();
+        const Shape& shape_b = mat_b->get_shape();
 
         const size_t m = shape_a[1];
         const size_t k = shape_a[2];

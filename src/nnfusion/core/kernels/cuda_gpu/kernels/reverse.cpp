@@ -11,9 +11,9 @@ cuda::Reverse::Reverse(shared_ptr<KernelContext> ctx)
 {
     auto reverse = static_pointer_cast<nnfusion::op::Reverse>(ctx->gnode->get_op_ptr());
 
-    arg_shape = ctx->get_input_tensor(0).get_shape();
+    arg_shape = ctx->inputs[0]->get_shape();
     arg_rank = arg_shape.size();
-    result_shape = ctx->get_output_tensor(0).get_shape();
+    result_shape = ctx->outputs[0]->get_shape();
     reverse_axes = reverse->get_reversed_axes();
 
     vector<uint32_t> reverse_axes_flag(arg_rank, 0);

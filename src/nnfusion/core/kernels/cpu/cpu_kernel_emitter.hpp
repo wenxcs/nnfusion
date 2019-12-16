@@ -41,9 +41,9 @@ namespace nnfusion
                 LanguageUnit_p emit_eigen_utils();
 
             protected:
-                std::string emit_eigen_vector(const nnfusion::descriptor::Tensor& tw,
+                std::string emit_eigen_vector(const shared_ptr<nnfusion::descriptor::Tensor>& tw,
                                               const string& name = "");
-                std::string emit_eigen_matrix(const nnfusion::descriptor::Tensor& tw,
+                std::string emit_eigen_matrix(const shared_ptr<nnfusion::descriptor::Tensor>& tw,
                                               const string& name = "");
             };
 

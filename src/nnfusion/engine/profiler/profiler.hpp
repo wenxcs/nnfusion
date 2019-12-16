@@ -73,8 +73,8 @@ namespace nnfusion
 
                 for (size_t i = 0; i < kctx->inputs.size(); i++)
                 {
-                    auto& t = kctx->get_input_tensor(i);
-                    size_t _size = t.size(false) * t.get_element_type().size();
+                    auto& t = kctx->inputs[i];
+                    size_t _size = t->size();
                     CHECK(inputs[i].size() == _size);
 
                     kernel_mem->load_input_from(i, inputs[i].data(), _size);
@@ -91,8 +91,8 @@ namespace nnfusion
                 void** ptrs = kernel_mem->unsafe_outputs();
                 for (size_t i = 0; i < kctx->outputs.size(); ++i)
                 {
-                    auto& t = kctx->get_output_tensor(i);
-                    size_t _size = t.size(false) * t.get_element_type().size();
+                    auto& t = kctx->outputs[i];
+                    size_t _size = t->size();
 
                     CHECK(ptrs[i] != nullptr);
                     vector<char> output(_size);
@@ -113,8 +113,8 @@ namespace nnfusion
                 auto kctx = pctx->kernel->m_context;
                 for (size_t i = 0; i < kctx->inputs.size(); i++)
                 {
-                    auto& t = kctx->get_input_tensor(i);
-                    size_t _size = t.size();
+                    auto& t = kctx->inputs[i];
+                    size_t _size = t->size();
                     void* newval = (void*)((char*)val + offset);
                     kernel_mem->load_input_from(i, newval, _size);
                     offset += _size;
@@ -141,7 +141,7 @@ namespace nnfusion
                 for (int i = 0; i < kctx->outputs.size(); i++)
                 {
                     res.push_back(vector<T>());
-                    res[i].resize(kctx->get_output_tensor(i).size(false));
+                    res[i].resize(kctx->outputs[i]->size(false));
                 }
                 return move(res);
             }

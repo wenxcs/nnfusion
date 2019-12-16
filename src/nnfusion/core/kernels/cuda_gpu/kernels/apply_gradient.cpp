@@ -25,7 +25,7 @@ namespace nnfusion
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
-                    threads = ctx->get_input_tensor(0).size(false);
+                    threads = ctx->inputs[0]->size(false);
                 }
 
                 LanguageUnit_p emit_function_body() override

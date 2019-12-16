@@ -29,7 +29,7 @@ namespace nnfusion
                 {
                     threads = ctx->outputs.front()->size(false);
                     input_count = ctx->inputs.size();
-                    dtype = ngraph::element::Type(ctx->get_output_tensor(0).get_element_type());
+                    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
                 }
 
                 LanguageUnit_p emit_function_body() override
