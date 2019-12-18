@@ -48,7 +48,7 @@ TEST(nnfusion_inplace_op, reshape)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     ngraph::AxisVector input_order{0, 1};
     Shape output_shape{3, 2};
@@ -71,7 +71,7 @@ TEST(nnfusion_inplace_op, result)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Result>();
@@ -91,11 +91,11 @@ TEST(nnfusion_inplace_op, sum)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
 
     Shape shape_b{2, 3, 1};
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_b);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     ngraph::AxisSet reduce_axesA;
     ngraph::AxisSet reduce_axesB{2};
@@ -123,9 +123,9 @@ TEST(nnfusion_inplace_op, broadcast)
     Shape shape_b{2, 3};
 
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_b);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     ngraph::AxisSet broadcast_axesA;
     Shape output_shapeA{2, 3};
@@ -153,7 +153,7 @@ TEST(nnfusion_inplace_op, max)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
     ngraph::AxisSet reduction_axes;
 
     // Create node
@@ -174,7 +174,7 @@ TEST(nnfusion_inplace_op, min)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
     ngraph::AxisSet reduction_axes;
 
     // Create node
@@ -195,7 +195,7 @@ TEST(nnfusion_inplace_op, abs)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Abs>();
@@ -215,7 +215,7 @@ TEST(nnfusion_inplace_op, acos)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Acos>();
@@ -235,7 +235,7 @@ TEST(nnfusion_inplace_op, asin)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Asin>();
@@ -255,7 +255,7 @@ TEST(nnfusion_inplace_op, atan)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Atan>();
@@ -275,7 +275,7 @@ TEST(nnfusion_inplace_op, ceiling)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Ceiling>();
@@ -295,7 +295,7 @@ TEST(nnfusion_inplace_op, cos)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Cos>();
@@ -315,7 +315,7 @@ TEST(nnfusion_inplace_op, cosh)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Cosh>();
@@ -335,7 +335,7 @@ TEST(nnfusion_inplace_op, exp)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Exp>();
@@ -355,7 +355,7 @@ TEST(nnfusion_inplace_op, floor)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Floor>();
@@ -375,7 +375,7 @@ TEST(nnfusion_inplace_op, log)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Log>();
@@ -395,7 +395,7 @@ TEST(nnfusion_inplace_op, sin)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Sin>();
@@ -415,7 +415,7 @@ TEST(nnfusion_inplace_op, sinh)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Sinh>();
@@ -435,7 +435,7 @@ TEST(nnfusion_inplace_op, sqrt)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Sqrt>();
@@ -455,7 +455,7 @@ TEST(nnfusion_inplace_op, tan)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Tan>();
@@ -475,7 +475,7 @@ TEST(nnfusion_inplace_op, tanh)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Tanh>();
@@ -495,9 +495,9 @@ TEST(nnfusion_inplace_op, power)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Power>();
@@ -517,9 +517,9 @@ TEST(nnfusion_inplace_op, subtract)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Subtract>();
@@ -539,9 +539,9 @@ TEST(nnfusion_inplace_op, divide)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Divide>();
@@ -561,9 +561,9 @@ TEST(nnfusion_inplace_op, divnonan)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::DivNoNan>();
@@ -583,7 +583,7 @@ TEST(nnfusion_inplace_op, sign)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Sign>();
@@ -603,7 +603,7 @@ TEST(nnfusion_inplace_op, relu)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Relu>();
@@ -623,7 +623,7 @@ TEST(nnfusion_inplace_op, negative)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, {});
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Negative>();
@@ -643,11 +643,11 @@ TEST(nnfusion_inplace_op, select)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::boolean, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
     auto para_c_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_c_gnode = graph->add_node_and_edge(para_c_op, {});
+    auto para_c_gnode = graph->add_node_and_edge(para_c_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Select>();
@@ -667,9 +667,9 @@ TEST(nnfusion_inplace_op, relubackprop)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::ReluBackprop>();
@@ -689,9 +689,9 @@ TEST(nnfusion_inplace_op, add)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Add>();
@@ -711,11 +711,11 @@ TEST(nnfusion_inplace_op, addn)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
     auto para_c_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_c_gnode = graph->add_node_and_edge(para_c_op, {});
+    auto para_c_gnode = graph->add_node_and_edge(para_c_op, GNodeVector({}));
 
     // Create node
     nnfusion::op::OpConfig::any myConfig;
@@ -736,9 +736,9 @@ TEST(nnfusion_inplace_op, multiply)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Multiply>();
@@ -758,9 +758,9 @@ TEST(nnfusion_inplace_op, minimum)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Minimum>();
@@ -780,9 +780,9 @@ TEST(nnfusion_inplace_op, maximum)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Maximum>();
@@ -802,9 +802,9 @@ TEST(nnfusion_inplace_op, sigmoid)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Sigmoid>();
@@ -824,9 +824,9 @@ TEST(nnfusion_inplace_op, sigmoidbackprop)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_a_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+    auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_b_gnode = graph->add_node_and_edge(para_b_op, {});
+    auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
     // Create node
     auto op = std::make_shared<nnfusion::op::SigmoidBackprop>();

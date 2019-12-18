@@ -34,7 +34,7 @@ namespace nnfusion
 
                 Shape shape_a{2, 2};
                 auto para_a_op = make_shared<op::Parameter>(element::f32, shape_a);
-                auto para_a_gnode = graph->add_node_and_edge(para_a_op, {});
+                auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
 
                 auto op = std::make_shared<op::Abs>();
                 auto gnode = graph->add_node_and_edge(op, {para_a_gnode});

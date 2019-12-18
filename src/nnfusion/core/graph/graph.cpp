@@ -68,6 +68,21 @@ std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::
     return gnode;
 }
 
+std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
+                                                const GNodeIndexVector& input_gnodes)
+{
+    auto gnode = std::make_shared<GNode>(op, input_gnodes);
+
+    add_node(gnode);
+
+    for (size_t i = 0; i < input_gnodes.size(); i++)
+    {
+        add_edge(input_gnodes[i].gnode, input_gnodes[i].index, gnode, i);
+    }
+    op->revalidate_and_infer_types(gnode->shared_from_this());
+    return gnode;
+}
+
 void Graph::remove_node(std::shared_ptr<GNode> node)
 {
     //TF_DCHECK_OK(IsValidNode(node)) << node->DebugString();

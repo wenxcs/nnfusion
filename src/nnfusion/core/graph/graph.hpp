@@ -36,6 +36,9 @@ namespace nnfusion
             std::shared_ptr<GNode> add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
                                                      const GNodeVector& input_gnodes);
 
+            std::shared_ptr<GNode> add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
+                                                     const GNodeIndexVector& input_gnodes);
+
             // Removes a node from this graph, including all edges from or to it.
             // *node should not be accessed after calling this function.
             // REQUIRES: node->IsOp()

@@ -135,7 +135,7 @@ namespace nnfusion
 
                 auto input_op = std::make_shared<T>(ng_et, ng_shape);
                 input_op->set_name(node.name());
-                auto input_gnode = m_graph->add_node_and_edge(input_op, {});
+                auto input_gnode = m_graph->add_node_and_edge(input_op, GNodeVector({}));
                 NamedNodeVector ret{{node.name(), input_gnode}};
                 return ret;
             }
@@ -763,7 +763,7 @@ namespace nnfusion
                 auto pad_val_op = std::make_shared<op::Constant>(input_gnode->get_element_type(),
                                                                  ngraph::Shape{},
                                                                  std::vector<std::string>{"0"});
-                auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, {});
+                auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, GNodeVector({}));
 
                 auto pad_op =
                     std::make_shared<op::Pad>(padding_below, padding_above, padding_interior);
@@ -809,7 +809,7 @@ namespace nnfusion
                 auto pad_val_op = std::make_shared<op::Constant>(
                     input_gnode->get_element_type(), ngraph::Shape{}, constant_values);
 
-                auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, {});
+                auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, GNodeVector({}));
 
                 auto pad_op =
                     std::make_shared<op::Pad>(padding_below, padding_above, padding_interior);
@@ -936,7 +936,7 @@ namespace nnfusion
                     input_gnode->get_element_type(),
                     input_gnode->get_shape(),
                     std::vector<std::string>(ngraph::shape_size(input_gnode->get_shape()), "1"));
-                auto constant_gnode = m_graph->add_node_and_edge(constant_op, {});
+                auto constant_gnode = m_graph->add_node_and_edge(constant_op, GNodeVector({}));
                 auto denominator_op = std::make_shared<op::Add>();
                 auto denominator_gnode =
                     m_graph->add_node_and_edge(denominator_op, {constant_gnode, exp_gnode});
@@ -1191,7 +1191,7 @@ namespace nnfusion
                 const auto& et = xsum_gnode->get_element_type();
 
                 auto divisor_op = op::Constant::create(et, xsum_gnode->get_shape(), {N});
-                auto divisor_gnode = m_graph->add_node_and_edge(divisor_op, {});
+                auto divisor_gnode = m_graph->add_node_and_edge(divisor_op, GNodeVector({}));
 
                 auto mean_op = std::make_shared<op::Divide>();
                 NamedNodeVector ret;
@@ -1788,7 +1788,7 @@ namespace nnfusion
 
                 auto exponent_op = std::make_shared<op::Constant>(
                     input_gnode->get_element_type(), shape, constant_values);
-                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, {});
+                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, GNodeVector({}));
 
                 // Raise each element of the input to the power -0.5.
                 auto power_op = std::make_shared<op::Power>();
@@ -1814,7 +1814,7 @@ namespace nnfusion
                 std::vector<std::string> constant_values(ngraph::shape_size(shape), "3");
 
                 auto exponent_op = std::make_shared<op::Constant>(et, shape, constant_values);
-                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, {});
+                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, GNodeVector({}));
                 // Raise each element of the input to the power 3.
                 auto pow_op = std::make_shared<op::Power>();
                 auto pow_gnode = m_graph->add_node_and_edge(pow_op, {input_gnode, exponent_gnode});
@@ -1822,7 +1822,7 @@ namespace nnfusion
                 // Create a constant tensor populated with the value -1/2.
                 std::vector<std::string> constant_diff(ngraph::shape_size(shape), "-0.5");
                 auto diff_op = std::make_shared<op::Constant>(et, shape, constant_diff);
-                auto diff_gnode = m_graph->add_node_and_edge(diff_op, {});
+                auto diff_gnode = m_graph->add_node_and_edge(diff_op, GNodeVector({}));
 
                 auto multiply_op = std::make_shared<op::Multiply>();
                 auto multiply_gnode =
@@ -2186,7 +2186,7 @@ namespace nnfusion
                     << "StridedSliceGradOp currently do not support dynamic output tensor shape";
                 auto x_shape = x_gnode->get_shape();
                 auto x_const_op = std::make_shared<op::Constant>(element::i32, x_shape, x_value);
-                auto x_const_gnode = m_graph->add_node_and_edge(x_const_op, {});
+                auto x_const_gnode = m_graph->add_node_and_edge(x_const_op, GNodeVector({}));
 
                 int tf_shrink_axis_mask;
                 bool status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
@@ -2245,7 +2245,7 @@ namespace nnfusion
                     << "TileOp currently do not support dynamic tensor shape";
                 auto input_shape = multiples_gnode->get_shape();
                 auto const_op = std::make_shared<op::Constant>(element::i64, input_shape, in_value);
-                auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                auto const_gnode = m_graph->add_node_and_edge(const_op, GNodeVector({}));
                 nnfusion::op::OpConfig::any myConfig;
                 auto generic_op =
                     std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
@@ -2269,7 +2269,7 @@ namespace nnfusion
                     << "We only accept the sgements number as Constant.";
                 auto const_op = std::make_shared<op::Constant>(
                     element::i32, seg_num_gnode->get_shape(), in_value);
-                auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                auto const_gnode = m_graph->add_node_and_edge(const_op, GNodeVector({}));
                 nnfusion::op::OpConfig::any myConfig;
 
                 auto generic_op =
@@ -2479,7 +2479,7 @@ namespace nnfusion
                             << "DynamicStitch currently do not support dynamic tensor shape";
                         auto const_op =
                             std::make_shared<op::Constant>(element::i64, input_shape, in_value);
-                        auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                        auto const_gnode = m_graph->add_node_and_edge(const_op, GNodeVector({}));
                         input_gnodes.push_back(const_gnode);
                     }
                     else
@@ -2518,7 +2518,7 @@ namespace nnfusion
                 std::vector<std::string> const_values(ngraph::shape_size(input_shape), "1");
 
                 auto const_op = std::make_shared<op::Constant>(et, input_shape, const_values);
-                auto const_gnode = m_graph->add_node_and_edge(const_op, {});
+                auto const_gnode = m_graph->add_node_and_edge(const_op, GNodeVector({}));
 
                 auto sub_op = std::make_shared<op::Subtract>();
                 auto sub_gnode = m_graph->add_node_and_edge(sub_op, {const_gnode, sq_gnode});

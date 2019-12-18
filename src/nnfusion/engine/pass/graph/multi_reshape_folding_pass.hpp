@@ -25,22 +25,11 @@ namespace nnfusion
                     if (!using_pass)
                         return true;
 
-                    std::vector<std::shared_ptr<GNode>> tail_op;
-                    std::vector<int> tail_op_idx;
+                    std::unordered_set<std::shared_ptr<GNode>> tail_reshape_nodes;
 
                     auto is_transpose = [](const std::shared_ptr<GNode>& gnode) -> bool {
                         return std::dynamic_pointer_cast<op::Reshape>(gnode->get_op_ptr())
                             ->get_is_transpose();
-                    };
-
-                    auto get_in_edge = [](const std::shared_ptr<GNode>& gnode,
-                                          int idx) -> std::shared_ptr<nnfusion::graph::Edge> {
-                        for (auto& it : gnode->get_in_edges())
-                        {
-                            if (it->get_dst_input() == idx)
-                                return it;
-                        }
-                        return nullptr;
                     };
 
                     // Find tail nodes exactly after reshape node
@@ -56,35 +45,48 @@ namespace nnfusion
                                 {
                                     if (!is_transpose(edge->get_src()))
                                         continue;
-                                    tail_op.push_back(it);
-                                    tail_op_idx.push_back(edge->get_dst_input());
+                                    tail_reshape_nodes.insert(edge->get_src());
                                 }
                             }
                         }
                     }
 
-                    for (int i = 0; i < tail_op.size(); ++i)
+                    for (auto tail_node : tail_reshape_nodes)
                     {
                         std::vector<std::shared_ptr<GNode>> chain;
-                        auto node = tail_op[i]->get_in_edge(tail_op_idx[i])->get_src();
+                        auto node = tail_node;
                         CHECK_NOT_NULLPTR(node);
                         CHECK(node->get_op_type() == "Reshape");
                         chain.push_back(node);
                         while (true)
                         {
-                            node = node->get_in_edge(0)->get_src();
-                            if (node->get_op_type() == "Reshape" && is_transpose(node))
-                                chain.push_back(node);
-                            else
+                            if (node->get_in_edges().size() != 1)
+                            {
                                 break;
+                            }
+                            auto src = node->get_in_edge(0)->get_src();
+                            if (src->get_op_type() != "Reshape" || !is_transpose(src) ||
+                                src->get_out_edges().size() != 1)
+                            {
+                                break;
+                            }
+                            node = src;
+                            chain.push_back(node);
                         }
+
                         if (chain.size() <= 1)
                             continue;
+
                         AxisVector order, mirror;
-                        CHECK(node->get_output_size() == 1) << node->get_op_type()
-                                                            << "must has exactly one output.";
-                        for (int i = 0; i < node->get_output_shape(0).size(); ++i)
+                        auto rs_inedge = node->get_in_edge(0);
+                        auto rs_input = rs_inedge->get_src();
+                        for (int i = 0;
+                             i < rs_input->get_output_shape(rs_inedge->get_src_output()).size();
+                             ++i)
+                        {
                             order.push_back(i);
+                        }
+
                         for (int i = chain.size() - 1; i >= 0; --i)
                         {
                             auto chord =
@@ -95,25 +97,33 @@ namespace nnfusion
                             for (int i = 0; i < chord.size(); ++i)
                                 mirror[i] = order[chord[i]];
                             order = std::move(mirror);
-
-                            // for (auto &it: chord) printf("%d ", (int)it); puts("");
                         }
-                        auto top_shape = node->get_output_shape(0), out_shape = top_shape;
+                        auto top_shape = rs_input->get_output_shape(rs_inedge->get_src_output());
+                        auto out_shape = top_shape;
                         CHECK(top_shape.size() == order.size());
                         for (int i = 0; i < top_shape.size(); ++i)
                         {
                             out_shape[i] = top_shape[order[i]];
                         }
+
                         auto reshape_op = std::make_shared<op::Reshape>(order, out_shape);
+                        auto reshape_gnode = graph->add_node_and_edge(
+                            reshape_op,
+                            GNodeIndexVector({GNodeIndex(rs_input, rs_inedge->get_src_output())}));
 
-                        auto reshape_gnode =
-                            graph->add_node_and_edge(reshape_op, GNodeVector({node}));
-                        graph->add_edge(reshape_gnode, 0, tail_op[i], tail_op_idx[i]);
+                        auto tail_reshape = chain[0];
+                        for (auto edge : tail_reshape->get_out_edges())
+                        {
+                            graph->add_edge(reshape_gnode,
+                                            edge->get_src_output(),
+                                            edge->get_dst(),
+                                            edge->get_dst_input());
+                        }
 
-                        graph->remove_edge(tail_op[i]->get_in_edge(tail_op_idx[i]));
-
-                        // for (auto &it: order) printf("%d ", (int)it); puts("");
-                        // printf("%s (%d) => %zd\n", tail_op[i]->get_op_type().c_str(), tail_op_idx[i], chain.size());
+                        for (auto node : chain)
+                        {
+                            graph->remove_node(node);
+                        }
                     }
 
                     return true;

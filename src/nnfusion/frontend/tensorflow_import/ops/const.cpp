@@ -213,7 +213,7 @@ namespace nnfusion
                         << "Unsupported TensorFlow data type: " << tensorflow::DataType_Name(dtype);
                 }
                 ng_node->set_name(node.name());
-                auto gnode = m_graph->add_node_and_edge(ng_node, {});
+                auto gnode = m_graph->add_node_and_edge(ng_node, GNodeVector({}));
                 NamedNodeVector ret{{node.name(), gnode}};
 
                 return ret;
