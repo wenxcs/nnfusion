@@ -3,6 +3,7 @@
 set(SRC
     assign_layout_pass.cpp
     kernel_fusion_pass.cpp
+    gemm_fusion_pass.cpp
     op_inplace_pass.cpp
     graph_pass.cpp
     manager.cpp

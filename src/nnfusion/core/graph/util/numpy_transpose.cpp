@@ -28,9 +28,10 @@ namespace nnfusion
         }
 
         std::shared_ptr<GNode> numpy_transpose(const std::shared_ptr<GNode>& gnode,
-                                               ngraph::AxisVector order)
+                                               ngraph::AxisVector order,
+                                               size_t output_index)
         {
-            auto in_shape = gnode->get_shape();
+            auto in_shape = gnode->get_output_shape(output_index);
             // default, reverse the order of the axes
             if (order.size() == 0)
             {
@@ -66,7 +67,8 @@ namespace nnfusion
 
             // do the reshaping with the order
             auto reshape_op = std::make_shared<op::Reshape>(order, out_shape);
-            auto reshape_gnode = std::make_shared<GNode>(reshape_op, GNodeVector({gnode}));
+            auto reshape_gnode = std::make_shared<GNode>(
+                reshape_op, GNodeIndexVector({GNodeIndex(gnode, output_index)}));
             reshape_op->revalidate_and_infer_types(reshape_gnode->shared_from_this());
             return reshape_gnode;
         }

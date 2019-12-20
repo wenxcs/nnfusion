@@ -83,6 +83,19 @@ std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::
     return gnode;
 }
 
+void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
+                               const GNodeIndexVector& input_gnodes)
+{
+    CHECK(gnode == nullptr) << "GNode can't be nullptr.";
+
+    add_node(gnode);
+
+    for (size_t i = 0; i < input_gnodes.size(); i++)
+    {
+        add_edge(input_gnodes[i].gnode, input_gnodes[i].index, gnode, i);
+    }
+}
+
 void Graph::remove_node(std::shared_ptr<GNode> node)
 {
     //TF_DCHECK_OK(IsValidNode(node)) << node->DebugString();
