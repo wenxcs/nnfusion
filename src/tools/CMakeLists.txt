@@ -14,12 +14,4 @@
 # limitations under the License.
 # ******************************************************************************
 
-add_subdirectory(nbench)
-if(NNFUSION_TENSORFLOW_IMPORT_ENABLE AND NGRAPH_ONNX_IMPORT_ENABLE)
-    add_subdirectory(nnfusion)
-endif()
-add_subdirectory(ngraph-to-plaidml)
-add_subdirectory(reserialize)
-if (NGRAPH_ONNX_IMPORT_ENABLE)
-    add_subdirectory(serialize_onnx)
-endif()
+add_subdirectory(nnfusion)

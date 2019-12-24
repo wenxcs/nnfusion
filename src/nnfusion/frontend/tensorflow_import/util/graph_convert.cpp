@@ -629,6 +629,68 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector
+                TranslateDepthwiseConv2dNativeOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto filter_gnode = GetInputNode(all_ng_nodes, node, 1);
+
+                std::vector<int32> tf_strides;
+                std::vector<int32> tf_dilations;
+                std::string tf_padding_type;
+                std::string tf_data_format;
+
+                bool status;
+                status = GetNodeAttr(node.attr(), "strides", tf_strides);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "dilations", tf_dilations);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
+                CHECK(status);
+                status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
+                CHECK(status);
+
+                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                    << "Conv2D data format is neither NHWC nor NCHW";
+                bool is_nhwc = (tf_data_format == "NHWC");
+
+                ngraph::Strides ng_strides(2);
+                ngraph::Strides ng_dilations(2);
+                ngraph::Shape ng_image_shape(2);
+                ngraph::Shape ng_kernel_shape(2);
+
+                BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
+                BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
+                BatchedOpParamToNGraph(is_nhwc, tf_dilations, ng_dilations);
+
+                ngraph::CoordinateDiff ng_padding_below{0, 0};
+                ngraph::CoordinateDiff ng_padding_above{0, 0};
+                MakePadding(tf_padding_type,
+                            ng_image_shape,
+                            ng_kernel_shape,
+                            ng_strides,
+                            ng_dilations,
+                            ng_padding_below,
+                            ng_padding_above);
+
+                nnfusion::op::OpConfig::any op_config;
+                op_config["data_format"] = tf_data_format;
+                op_config["padding_type"] = tf_padding_type;
+                op_config["strides"] = ng_strides;
+                op_config["dilations"] = ng_dilations;
+                op_config["padding_before"] = ng_padding_above;
+                op_config["padding_after"] = ng_padding_below;
+
+                auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
+                    node.name(), "DepthwiseConv2dNative", op_config);
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {input_gnode, filter_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateAvgPoolOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2570,6 +2632,7 @@ namespace nnfusion
                 {"Const", TranslateConstOp},
                 {"Conv2D", TranslateConv2DOp},
                 {"ConcatV2", TranslateConcatV2Op},
+                {"DepthwiseConv2dNative", TranslateDepthwiseConv2dNativeOp},
                 {"DivNoNan", TranslateBinaryOp<op::DivNoNan>},
                 {"DynamicStitch", TranslateDynamicStitchOp},
                 {"Equal", TranslateBinaryOp<op::Equal>},
