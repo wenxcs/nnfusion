@@ -13,12 +13,7 @@
 #include <unordered_set>
 #include <vector>
 
-//#include "nnfusion/common/common.hpp"
-//#include "nnfusion/common/tensorwrapper.hpp"
-#include "ngraph/node.hpp"
 #include "nnfusion/util/util.hpp"
-
-using namespace ngraph;
 
 namespace nnfusion
 {

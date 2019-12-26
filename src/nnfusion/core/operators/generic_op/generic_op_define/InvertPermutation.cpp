@@ -16,11 +16,11 @@ REGISTER_OP(InvertPermutation)
         auto ng_op = gnode->get_in_edge(0)->get_src();
         if (ng_op->get_op_type() == "Constant")
         {
-            CHECK(gnode->get_input_element_type(0) == ngraph::element::i32 ||
-                  gnode->get_input_element_type(0) == ngraph::element::i64);
+            CHECK(gnode->get_input_element_type(0) == nnfusion::element::i32 ||
+                  gnode->get_input_element_type(0) == nnfusion::element::i64);
             std::unordered_map<int64_t, int64_t> element_records;
             std::vector<int64_t> input_vector;
-            if (gnode->get_input_element_type(0) == ngraph::element::i32)
+            if (gnode->get_input_element_type(0) == nnfusion::element::i32)
             {
                 auto temp = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())
                                 ->get_vector<int>();
@@ -43,6 +43,6 @@ REGISTER_OP(InvertPermutation)
             }
         }
 
-        ngraph::Shape output_shape_0(shape_0);
+        nnfusion::Shape output_shape_0(shape_0);
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
     });

@@ -43,7 +43,7 @@ namespace nnfusion
 
                     auto num_inputs = data_types.size() - 1;
                     uint32_t nthreads = static_cast<uint32_t>(
-                        ngraph::shape_size(m_context->outputs[0]->get_shape()));
+                        nnfusion::shape_size(m_context->outputs[0]->get_shape()));
                     CHECK(num_inputs > 0)
                         << "At least one input and one output tesnor for elementwise-op.";
 
@@ -105,7 +105,7 @@ namespace nnfusion
                 void compute_best_config(int& grids, int& blocks, int& bound)
                 {
                     uint32_t num_ele = static_cast<uint32_t>(
-                        ngraph::shape_size(m_context->outputs[0]->get_shape()));
+                        nnfusion::shape_size(m_context->outputs[0]->get_shape()));
                     for (int i = 1024; i >= 64; i >>= 1)
                     {
                         if (num_ele % i == 0)

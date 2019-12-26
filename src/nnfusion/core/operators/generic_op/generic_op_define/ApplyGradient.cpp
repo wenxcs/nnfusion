@@ -21,6 +21,6 @@ REGISTER_OP(ApplyGradient)
                                                           << " in shapes must be equal.";
         }
 
-        ngraph::Shape output_shape_0(weight_tensor);
+        nnfusion::Shape output_shape_0(weight_tensor);
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
     });

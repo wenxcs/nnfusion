@@ -12,30 +12,30 @@ namespace nnfusion
         namespace tensorflow_import
         {
             bool TFDataTypeToNGraphElementType(const tensorflow::DataType tf_dt,
-                                               ngraph::element::Type* ng_et)
+                                               nnfusion::element::Type* ng_et)
             {
                 switch (tf_dt)
                 {
-                case tensorflow::DataType::DT_FLOAT: *ng_et = ngraph::element::f32; break;
-                case tensorflow::DataType::DT_DOUBLE: *ng_et = ngraph::element::f64; break;
-                case tensorflow::DataType::DT_INT8: *ng_et = ngraph::element::i8; break;
-                case tensorflow::DataType::DT_INT16: *ng_et = ngraph::element::i16; break;
-                case tensorflow::DataType::DT_INT32: *ng_et = ngraph::element::i32; break;
-                case tensorflow::DataType::DT_INT64: *ng_et = ngraph::element::i64; break;
-                case tensorflow::DataType::DT_UINT8: *ng_et = ngraph::element::u8; break;
-                case tensorflow::DataType::DT_UINT16: *ng_et = ngraph::element::u16; break;
-                case tensorflow::DataType::DT_UINT32: *ng_et = ngraph::element::u32; break;
-                case tensorflow::DataType::DT_UINT64: *ng_et = ngraph::element::u64; break;
-                case tensorflow::DataType::DT_BOOL: *ng_et = ngraph::element::boolean; break;
-                case tensorflow::DataType::DT_QINT8: *ng_et = ngraph::element::i8; break;
-                case tensorflow::DataType::DT_QUINT8: *ng_et = ngraph::element::u8; break;
+                case tensorflow::DataType::DT_FLOAT: *ng_et = nnfusion::element::f32; break;
+                case tensorflow::DataType::DT_DOUBLE: *ng_et = nnfusion::element::f64; break;
+                case tensorflow::DataType::DT_INT8: *ng_et = nnfusion::element::i8; break;
+                case tensorflow::DataType::DT_INT16: *ng_et = nnfusion::element::i16; break;
+                case tensorflow::DataType::DT_INT32: *ng_et = nnfusion::element::i32; break;
+                case tensorflow::DataType::DT_INT64: *ng_et = nnfusion::element::i64; break;
+                case tensorflow::DataType::DT_UINT8: *ng_et = nnfusion::element::u8; break;
+                case tensorflow::DataType::DT_UINT16: *ng_et = nnfusion::element::u16; break;
+                case tensorflow::DataType::DT_UINT32: *ng_et = nnfusion::element::u32; break;
+                case tensorflow::DataType::DT_UINT64: *ng_et = nnfusion::element::u64; break;
+                case tensorflow::DataType::DT_BOOL: *ng_et = nnfusion::element::boolean; break;
+                case tensorflow::DataType::DT_QINT8: *ng_et = nnfusion::element::i8; break;
+                case tensorflow::DataType::DT_QUINT8: *ng_et = nnfusion::element::u8; break;
                 default: return false;
                 }
                 return true;
             }
 
             bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
-                                            ngraph::Shape* ng_shape)
+                                            nnfusion::Shape* ng_shape)
             {
                 for (int i = 0; i < tf_shape.dim_size(); i++)
                 {
@@ -45,7 +45,7 @@ namespace nnfusion
                     }
                 }
 
-                *ng_shape = ngraph::Shape(tf_shape.dim_size());
+                *ng_shape = nnfusion::Shape(tf_shape.dim_size());
                 for (int i = 0; i < tf_shape.dim_size(); i++)
                 {
                     (*ng_shape)[i] = tf_shape.dim(i).size();
@@ -82,7 +82,8 @@ namespace nnfusion
                 return nodes;
             }
 
-            size_t GetNumElements(const ngraph::Shape& shape, const ngraph::AxisSet& reduction_axes)
+            size_t GetNumElements(const nnfusion::Shape& shape,
+                                  const nnfusion::AxisSet& reduction_axes)
             {
                 size_t N = 1;
                 for (auto a : reduction_axes)

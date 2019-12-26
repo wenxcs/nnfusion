@@ -4,7 +4,7 @@
 
 using namespace nnfusion::op;
 
-Max::Max(const ngraph::AxisSet& reduction_axes)
+Max::Max(const nnfusion::AxisSet& reduction_axes)
     : ArithmeticReduction("Max", reduction_axes)
 {
 }

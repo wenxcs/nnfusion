@@ -10,12 +10,12 @@ cuda::MaxPool1D::MaxPool1D(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    window_shape = ngraph::Shape(max_pool->get_window_shape());
-    padding_below = ngraph::Shape(max_pool->get_padding_below());
-    padding_above = ngraph::Shape(max_pool->get_padding_above());
-    window_stride = ngraph::Strides(max_pool->get_window_movement_strides());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    window_shape = nnfusion::Shape(max_pool->get_window_shape());
+    padding_below = nnfusion::Shape(max_pool->get_padding_below());
+    padding_above = nnfusion::Shape(max_pool->get_padding_above());
+    window_stride = nnfusion::Strides(max_pool->get_window_movement_strides());
 
     window_width = window_shape.back();
     window_stride_width = window_stride.back();
@@ -97,12 +97,12 @@ cuda::MaxPoolmD::MaxPoolmD(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
     auto max_pool = static_pointer_cast<nnfusion::op::MaxPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    window_shape = ngraph::Shape(max_pool->get_window_shape());
-    padding_below = ngraph::Shape(max_pool->get_padding_below());
-    padding_above = ngraph::Shape(max_pool->get_padding_above());
-    window_stride = ngraph::Strides(max_pool->get_window_movement_strides());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    window_shape = nnfusion::Shape(max_pool->get_window_shape());
+    padding_below = nnfusion::Shape(max_pool->get_padding_below());
+    padding_above = nnfusion::Shape(max_pool->get_padding_above());
+    window_stride = nnfusion::Strides(max_pool->get_window_movement_strides());
 
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();

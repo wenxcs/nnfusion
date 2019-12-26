@@ -76,7 +76,7 @@ namespace nnfusion
             /// \param reduction_graph The reduction graph to use.
             /// \param reduction_axes The axis positions (0-based) to be eliminated.
             Reduce(const std::shared_ptr<graph::Graph>& reduction_graph,
-                   const ngraph::AxisSet& reduction_axes);
+                   const nnfusion::AxisSet& reduction_axes);
 
             /// \return A one-element vector containing the graph to use for reduction.
             std::vector<std::shared_ptr<graph::Graph>> get_graphs() const
@@ -84,12 +84,12 @@ namespace nnfusion
                 return std::vector<std::shared_ptr<graph::Graph>>{m_reduction_graph};
             }
             /// \return The axis positions (0-based) to be eliminated through reduction.
-            const ngraph::AxisSet& get_reduction_axes() const { return m_reduction_axes; }
+            const nnfusion::AxisSet& get_reduction_axes() const { return m_reduction_axes; }
         protected:
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             std::shared_ptr<graph::Graph> m_reduction_graph;
-            ngraph::AxisSet m_reduction_axes;
+            nnfusion::AxisSet m_reduction_axes;
         };
     }
 }

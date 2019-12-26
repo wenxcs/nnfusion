@@ -19,7 +19,7 @@ namespace nnfusion
                 void set_launch_config() override;
 
             private:
-                ngraph::Shape output_shape;
+                nnfusion::Shape output_shape;
                 int start, limit, delta;
                 int range_num;
             };

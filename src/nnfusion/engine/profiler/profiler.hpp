@@ -11,7 +11,6 @@
 
 #include "cpu_runtime.hpp"
 #include "cuda_runtime.hpp"
-#include "ngraph/file_util.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "profiling_runtime.hpp"
@@ -270,7 +269,7 @@ namespace nnfusion
                             continue;
                         auto dstnode = edge->get_dst();
                         auto dstpctx = gctx.get_profiling_context(dstnode);
-                        size_t _size = ngraph::shape_size(gnode->get_shape()) *
+                        size_t _size = nnfusion::shape_size(gnode->get_shape()) *
                                        gnode->get_element_type().size();
                         // This statments will remove some allocated memory.
                         dstpctx->kernel_memory->load_input_from(

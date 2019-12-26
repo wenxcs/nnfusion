@@ -20,10 +20,10 @@
 #include "ngraph/node_vector.hpp"
 #include "ngraph/shape.hpp"
 
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/maximum.hpp"
-#include "ngraph/op/multiply.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/maximum.hpp"
+#include "nnfusion/core/operators/multiply.hpp"
 
 #include "exceptions.hpp"
 

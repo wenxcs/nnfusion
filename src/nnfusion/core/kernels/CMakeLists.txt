@@ -1,17 +1,5 @@
 # Microsoft (c) 2019, NNFusion Team
 
-# #-------lib_kernels_common----------
-# set(SRC
-#     kernel_emitter.cpp
-# )
-# add_library(kernels_common STATIC ${SRC})
-# target_include_directories(kernels_common SYSTEM PUBLIC
-#     ${NGRAPH_INCLUDE_PATH}
-# )
-# target_compile_options(kernels_common PRIVATE "-fPIC")
-# target_link_libraries(kernels_common ngraph nnfusion_common nnfusion_util )
-
-
 #-------lib_kernels_registration----------
 set(SRC
     kernel_emitter.cpp
@@ -23,7 +11,7 @@ target_include_directories(kernels_registration SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}
 )
 target_link_libraries(kernels_registration PRIVATE
-    ngraph nnfusion_common nnfusion_util nnfusion_graph nnfusion_operators
+    nnfusion_common nnfusion_util nnfusion_graph nnfusion_operators
 )
 target_compile_options(kernels_registration PRIVATE "-fPIC")
 

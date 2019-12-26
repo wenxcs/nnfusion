@@ -11,10 +11,10 @@ cuda::Dot::Dot(shared_ptr<KernelContext> ctx)
     auto dot_op = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
-    arg0_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    arg1_shape = ngraph::Shape(ctx->inputs[1]->get_shape());
-    out_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
+    arg0_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    arg1_shape = nnfusion::Shape(ctx->inputs[1]->get_shape());
+    out_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    dtype = nnfusion::element::Type(ctx->outputs[0]->get_element_type());
 
     std::stringstream tag;
     tag << "cublas_dot"
@@ -42,7 +42,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
         if (arg0_shape.empty() || arg1_shape.empty())
         {
             auto& second = (arg0_shape.empty() ? arg1_shape : arg0_shape);
-            size_t count = ngraph::shape_size(second);
+            size_t count = nnfusion::shape_size(second);
 
             string firstarg = (arg0_shape.empty() ? "input0" : "input1");
             string secondarg = (arg0_shape.empty() ? "input1" : "input0");
@@ -62,15 +62,15 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                 if (arg0_shape[i] != arg1_shape[i])
                 {
                     std::vector<std::string> arg_vec{"arg0", "arg1"};
-                    std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
+                    std::vector<nnfusion::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
                                  << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
             }
 
-            size_t count = ngraph::shape_size(arg0_shape);
+            size_t count = nnfusion::shape_size(arg0_shape);
             lu << "CUBLAS_SAFE_CALL(cublasSdot(global_cublas_handle, " << count
                << ", static_cast<const float*>(input0), 1, static_cast<const float*>(input0), 1, "
                   "static_cast<float*>(output0)));\n";
@@ -140,9 +140,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                 if (arg0_shape[arg0_k_idx++] != arg1_shape[arg1_k_idx++])
                 {
                     std::vector<std::string> arg_vec{"arg0", "arg1"};
-                    std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
+                    std::vector<nnfusion::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
                                  << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
@@ -156,9 +156,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                 if (arg0_shape[arg0_m_idx++] != out_shape[out_m_idx++])
                 {
                     std::vector<std::string> arg_vec{"arg0", "output"};
-                    std::vector<ngraph::Shape> shape_vec{arg0_shape, out_shape};
+                    std::vector<nnfusion::Shape> shape_vec{arg0_shape, out_shape};
 
-                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
                                  << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }
@@ -172,9 +172,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                 if (arg1_shape[arg1_n_idx++] != out_shape[out_n_idx++])
                 {
                     std::vector<std::string> arg_vec{"arg1", "output"};
-                    std::vector<ngraph::Shape> shape_vec{arg1_shape, out_shape};
+                    std::vector<nnfusion::Shape> shape_vec{arg1_shape, out_shape};
 
-                    CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
                                  << " respectively, at Node " << m_context->gnode->get_name()
                                  << ", do not match for dot op";
                 }

@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "ngraph/coordinate.hpp"
-#include "ngraph/op/concat.hpp"
-#include "ngraph/op/dot.hpp"
-#include "ngraph/op/reshape.hpp"
-#include "ngraph/op/slice.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/concat.hpp"
+#include "nnfusion/core/operators/dot.hpp"
+#include "nnfusion/core/operators/reshape.hpp"
+#include "nnfusion/core/operators/slice.hpp"
 
 #include "matmul.hpp"
 #include "utils/broadcasting.hpp"

@@ -30,7 +30,7 @@ namespace nnfusion
                     result_shape = ctx->outputs[0]->get_shape();
 
                     // calculate strides
-                    strides = ngraph::row_major_strides(result_shape);
+                    strides = nnfusion::row_major_strides(result_shape);
                     // precacluate invariants for integer division via multiplication
                     stride_magic;
                     stride_shift;
@@ -48,7 +48,7 @@ namespace nnfusion
                     {
                         reduced_shape[axis] = 1;
                     }
-                    reduced_strides = ngraph::row_major_strides(reduced_shape);
+                    reduced_strides = nnfusion::row_major_strides(reduced_shape);
                     for (auto const& axis : axes)
                     {
                         reduced_strides[axis] = 0;
@@ -140,14 +140,14 @@ namespace nnfusion
                 shared_ptr<nnfusion::op::Pad> _op;
 
                 // calculate strides
-                ngraph::NVShape strides;
+                nnfusion::NVShape strides;
                 // precacluate invariants for integer division via multiplication
                 std::vector<int> stride_magic;
                 std::vector<int> stride_shift;
                 // calculate reduced tensor strides with 0s inserted for reduced axes
-                ngraph::NVShape reduced_shape;
-                ngraph::NVShape reduced_strides;
-                ngraph::Shape result_shape;
+                nnfusion::NVShape reduced_shape;
+                nnfusion::NVShape reduced_strides;
+                nnfusion::Shape result_shape;
                 size_t rank;
                 AxisSet axes;
                 bool isMemcpy = false;

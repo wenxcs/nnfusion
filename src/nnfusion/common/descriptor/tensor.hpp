@@ -19,10 +19,10 @@
 #include <memory>
 #include <string>
 
-#include "ngraph/partial_shape.hpp"
-#include "ngraph/shape.hpp"
-#include "ngraph/type/element_type.hpp"
 #include "nnfusion/common/device_type.hpp"
+#include "nnfusion/common/partial_shape.hpp"
+#include "nnfusion/common/shape.hpp"
+#include "nnfusion/common/type/element_type.hpp"
 
 namespace nnfusion
 {
@@ -42,8 +42,8 @@ namespace nnfusion
             Tensor& operator=(const Tensor&) = delete;
 
         public:
-            Tensor(const ngraph::element::Type& element_type,
-                   const ngraph::PartialShape& pshape,
+            Tensor(const nnfusion::element::Type& element_type,
+                   const nnfusion::PartialShape& pshape,
                    const std::string& name,
                    bool is_persistent = false,
                    bool is_constant = false,
@@ -52,8 +52,8 @@ namespace nnfusion
                    size_t group_id = -1,
                    size_t device_id = 0);
 
-            Tensor(const ngraph::element::Type& element_type,
-                   const ngraph::PartialShape& pshape,
+            Tensor(const nnfusion::element::Type& element_type,
+                   const nnfusion::PartialShape& pshape,
                    const std::string& name,
                    DeviceType device_type,
                    bool is_persistent = false,
@@ -64,12 +64,12 @@ namespace nnfusion
                    size_t device_id = 0);
 
             const std::string& get_name() const { return m_name; }
-            void set_tensor_type(const ngraph::element::Type& element_type,
-                                 const ngraph::PartialShape& pshape);
+            void set_tensor_type(const nnfusion::element::Type& element_type,
+                                 const nnfusion::PartialShape& pshape);
 
-            const ngraph::element::Type& get_element_type() const { return m_element_type; }
-            const ngraph::Shape& get_shape() const;
-            const ngraph::PartialShape& get_partial_shape() const { return m_partial_shape; }
+            const nnfusion::element::Type& get_element_type() const { return m_element_type; }
+            const nnfusion::Shape& get_shape() const;
+            const nnfusion::PartialShape& get_partial_shape() const { return m_partial_shape; }
             const std::shared_ptr<layout::TensorLayout>& get_tensor_layout() const
             {
                 return m_tensor_layout;
@@ -99,14 +99,14 @@ namespace nnfusion
             void set_device_id(size_t device_id) { m_device_id = device_id; }
             size_t get_device_id() const { return m_device_id; }
         protected:
-            ngraph::element::Type m_element_type;
+            nnfusion::element::Type m_element_type;
 
             // TODO(amprocte): For now we are maintaining both m_shape and m_partial_shape fields,
             //    with m_shape possibly being invalid (get_shape will throw an exception if it
             //    is). This is because get_shape() returns a const reference. I think ideally we
             //    should refactor so that get_shape returns by value.
-            ngraph::Shape m_shape;
-            ngraph::PartialShape m_partial_shape;
+            nnfusion::Shape m_shape;
+            nnfusion::PartialShape m_partial_shape;
 
             std::string m_name;
             std::shared_ptr<layout::TensorLayout> m_tensor_layout;

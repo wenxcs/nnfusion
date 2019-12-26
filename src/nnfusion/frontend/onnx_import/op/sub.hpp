@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/subtract.hpp"
+#include "nnfusion/core/operators/subtract.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

@@ -4,7 +4,7 @@
 
 #include "../gnode.hpp"
 #include "../graph.hpp"
-#include "ngraph/axis_vector.hpp"
+#include "nnfusion/common/axis_vector.hpp"
 
 namespace nnfusion
 {
@@ -33,7 +33,7 @@ namespace nnfusion
         /// | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
         /// | \f$E[d_{n-1},\dots,d_0)]\textit{ or }E[d_{order[0]},\dots,d_{order[n-1]}]\f$ | The tensor \f$T\f$, where \f$T\f$ is the input tensor with the axes reordered via Numpy Transpose rules          |
         std::shared_ptr<GNode> numpy_transpose(const std::shared_ptr<GNode>& node,
-                                               ngraph::AxisVector order = {},
+                                               nnfusion::AxisVector order = {},
                                                size_t output_index = 0);
     } // namespace builder
 } // namespace ngraph

@@ -17,8 +17,8 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/multiply.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
+#include "nnfusion/core/operators/multiply.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

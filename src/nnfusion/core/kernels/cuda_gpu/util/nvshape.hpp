@@ -20,14 +20,12 @@
 #include <stdexcept>
 #include <vector>
 
-#include "ngraph/axis_set.hpp"
-#include "ngraph/axis_vector.hpp"
-#include "ngraph/coordinate.hpp"
-#include "ngraph/coordinate_diff.hpp"
-#include "ngraph/shape.hpp"
-#include "ngraph/strides.hpp"
+#include "nnfusion/common/axis_set.hpp"
+#include "nnfusion/common/axis_vector.hpp"
+#include "nnfusion/common/shape.hpp"
+#include "nnfusion/common/strides.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
     class Shape;
     /// \brief Shape for a tensor resident on GPU.

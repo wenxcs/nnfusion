@@ -11,6 +11,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -21,9 +22,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ngraph/descriptor/layout/dense_tensor_layout.hpp"
-#include "ngraph/descriptor/tensor.hpp"
-#include "ngraph/graph_util.hpp"
+#include "nnfusion/common/shape.hpp"
+#include "nnfusion/common/type/element_type.hpp"
+#include "nnfusion/common/util.hpp"
+#include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/operators/op.hpp"
 #include "nnfusion/core/operators/op_define/abs.hpp"
 #include "nnfusion/core/operators/op_define/acos.hpp"
@@ -49,16 +51,6 @@
 #include "nnfusion/core/operators/op_define/equal.hpp"
 #include "nnfusion/core/operators/op_define/exp.hpp"
 #include "nnfusion/core/operators/op_define/floor.hpp"
-//#include "nnfusion/core/operators/op_define/function_call.hpp"
-//#include "nnfusion/core/operators/op_define/get_output_element.hpp"
-#include "ngraph/pass/assign_layout.hpp"
-#include "ngraph/pass/liveness.hpp"
-#include "ngraph/pass/manager.hpp"
-#include "ngraph/pass/memory_layout.hpp"
-#include "ngraph/runtime/backend.hpp"
-#include "ngraph/shape.hpp"
-#include "ngraph/type/element_type.hpp"
-#include "ngraph/util.hpp"
 #include "nnfusion/core/operators/op_define/greater.hpp"
 #include "nnfusion/core/operators/op_define/greater_eq.hpp"
 #include "nnfusion/core/operators/op_define/less.hpp"

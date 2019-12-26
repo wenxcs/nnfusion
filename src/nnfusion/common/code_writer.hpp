@@ -19,7 +19,7 @@
 #include <sstream>
 #include <string>
 
-namespace ngraph
+namespace nnfusion
 {
     namespace codegen
     {
@@ -27,7 +27,7 @@ namespace ngraph
     }
 }
 
-class ngraph::codegen::CodeWriter
+class nnfusion::codegen::CodeWriter
 {
 public:
     CodeWriter();

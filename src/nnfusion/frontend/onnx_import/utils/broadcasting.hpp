@@ -20,8 +20,8 @@
 
 #include "ngraph/axis_set.hpp"
 #include "ngraph/node.hpp"
-#include "ngraph/op/broadcast.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
 
 namespace ngraph
 {

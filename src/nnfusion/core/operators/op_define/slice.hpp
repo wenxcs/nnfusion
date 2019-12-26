@@ -3,7 +3,7 @@
 #pragma once
 
 #include "../op.hpp"
-#include "ngraph/coordinate.hpp"
+#include "nnfusion/common/coordinate.hpp"
 
 namespace nnfusion
 {
@@ -19,28 +19,29 @@ namespace nnfusion
             /// \param upper_bounds The axiswise upper bounds of the slice (exclusive).
             /// \param strides The slicing strides; for example, strides of `{n,m}` means to take
             ///                every nth row and every mth column of the input matrix.
-            Slice(const ngraph::Coordinate& lower_bounds,
-                  const ngraph::Coordinate& upper_bounds,
-                  const ngraph::Strides& strides);
+            Slice(const nnfusion::Coordinate& lower_bounds,
+                  const nnfusion::Coordinate& upper_bounds,
+                  const nnfusion::Strides& strides);
 
             /// \brief Constructs a tensor slice operation with unit strides; i.e., every element inside the bounding box will be copied to the output slice.
             ///
             /// \param lower_bounds The axiswise lower bounds of the slice (inclusive).
             /// \param upper_bounds The axiswise upper bounds of the slice (exclusive).
-            Slice(const ngraph::Coordinate& lower_bounds, const ngraph::Coordinate& upper_bounds);
+            Slice(const nnfusion::Coordinate& lower_bounds,
+                  const nnfusion::Coordinate& upper_bounds);
 
             /// \return The inclusive lower-bound coordinates.
-            const ngraph::Coordinate& get_lower_bounds() const { return m_lower_bounds; }
+            const nnfusion::Coordinate& get_lower_bounds() const { return m_lower_bounds; }
             /// \return The exclusive upper-bound coordinates.
-            const ngraph::Coordinate& get_upper_bounds() const { return m_upper_bounds; }
+            const nnfusion::Coordinate& get_upper_bounds() const { return m_upper_bounds; }
             /// \return The slicing strides.
-            const ngraph::Strides& get_strides() const { return m_strides; }
+            const nnfusion::Strides& get_strides() const { return m_strides; }
         protected:
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
-            ngraph::Coordinate m_lower_bounds;
-            ngraph::Coordinate m_upper_bounds;
-            ngraph::Strides m_strides;
+            nnfusion::Coordinate m_lower_bounds;
+            nnfusion::Coordinate m_upper_bounds;
+            nnfusion::Strides m_strides;
         };
     }
 }

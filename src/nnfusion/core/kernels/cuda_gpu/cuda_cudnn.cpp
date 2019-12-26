@@ -27,7 +27,7 @@ std::string cuda::get_cudnn_datatype(std::string dtype)
     return p->second;
 }
 
-LanguageUnit_p cuda::cudnn_tensor_descriptor_from_shape(const ngraph::Shape& shape, string desc)
+LanguageUnit_p cuda::cudnn_tensor_descriptor_from_shape(const nnfusion::Shape& shape, string desc)
 {
     LanguageUnit_p _lu(new LanguageUnit);
     auto& lu = *_lu;

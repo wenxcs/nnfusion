@@ -56,7 +56,7 @@ namespace nnfusion
             /// \brief Constructs a summation operation.
             ///
             /// \param reduction_axes The axis positions (0-based) to be eliminated.
-            Sum(const ngraph::AxisSet& reduction_axes);
+            Sum(const nnfusion::AxisSet& reduction_axes);
         };
     }
 }

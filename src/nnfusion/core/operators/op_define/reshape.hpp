@@ -4,7 +4,7 @@
 
 #include "../op.hpp"
 
-#include "ngraph/axis_vector.hpp"
+#include "nnfusion/common/axis_vector.hpp"
 
 namespace nnfusion
 {
@@ -46,18 +46,18 @@ namespace nnfusion
             ///                    sequence \f$(0,\dots,n-1)\f$ where \f$n\f$ is the rank of the input tensor.
             /// \param output_shape The output shape. If the input shape is \f$(a_0,\dots,a_{k-1})\f$ then the output shape must
             ///        be of the form \f$(b_0,\dots,b_{j-1})\f$ where \f$\Pi(a_i) = \Pi(b_i)\f$.
-            Reshape(const ngraph::AxisVector& input_order, const ngraph::Shape& output_shape);
+            Reshape(const nnfusion::AxisVector& input_order, const nnfusion::Shape& output_shape);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             /// \return The order in which to iterate over input axes.
-            const ngraph::AxisVector& get_input_order() const { return m_input_order; }
+            const nnfusion::AxisVector& get_input_order() const { return m_input_order; }
             /// \return The shape of the output tensor.
-            const ngraph::Shape& get_output_shape() const { return m_output_shape; }
+            const nnfusion::Shape& get_output_shape() const { return m_output_shape; }
             bool get_is_transpose() const { return m_is_transpose; }
         protected:
-            const ngraph::AxisVector m_input_order;
-            const ngraph::Shape m_output_shape;
+            const nnfusion::AxisVector m_input_order;
+            const nnfusion::Shape m_output_shape;
             bool m_is_transpose{false};
         };
     }

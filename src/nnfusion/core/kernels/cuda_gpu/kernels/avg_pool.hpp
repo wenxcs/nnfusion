@@ -36,11 +36,11 @@ namespace nnfusion
             {
             public:
                 AvgPool1D(shared_ptr<KernelContext> ctx);
-                static pooling_op_shape avgpool_shape(ngraph::Shape in,
-                                                      ngraph::Shape out,
-                                                      ngraph::Shape window,
-                                                      ngraph::Shape strides,
-                                                      ngraph::Shape pad);
+                static pooling_op_shape avgpool_shape(nnfusion::Shape in,
+                                                      nnfusion::Shape out,
+                                                      nnfusion::Shape window,
+                                                      nnfusion::Shape strides,
+                                                      nnfusion::Shape pad);
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
@@ -48,8 +48,9 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::Shape input_shape, output_shape, window_shape, padding_below, padding_above;
-                ngraph::Strides window_stride;
+                nnfusion::Shape input_shape, output_shape, window_shape, padding_below,
+                    padding_above;
+                nnfusion::Strides window_stride;
                 bool include_pad;
                 string input_type, output_type;
 
@@ -70,8 +71,9 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::Shape input_shape, output_shape, window_shape, padding_below, padding_above;
-                ngraph::Strides window_stride;
+                nnfusion::Shape input_shape, output_shape, window_shape, padding_below,
+                    padding_above;
+                nnfusion::Strides window_stride;
                 bool include_pad;
                 string input_type, output_type;
             };

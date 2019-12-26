@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/add.hpp"
+#include "nnfusion/core/operators/add.hpp"
 
 #include "core/node.hpp"
 #include "utils/variadic.hpp"

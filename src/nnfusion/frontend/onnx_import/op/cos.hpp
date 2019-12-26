@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/cos.hpp"
+#include "nnfusion/core/operators/cos.hpp"
 
 #include "core/node.hpp"
 

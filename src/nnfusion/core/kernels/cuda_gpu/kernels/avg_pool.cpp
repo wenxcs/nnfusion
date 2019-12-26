@@ -6,11 +6,11 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-cuda::pooling_op_shape cuda::AvgPool1D::avgpool_shape(ngraph::Shape in,
-                                                      ngraph::Shape out,
-                                                      ngraph::Shape window,
-                                                      ngraph::Shape strides,
-                                                      ngraph::Shape pad)
+cuda::pooling_op_shape cuda::AvgPool1D::avgpool_shape(nnfusion::Shape in,
+                                                      nnfusion::Shape out,
+                                                      nnfusion::Shape window,
+                                                      nnfusion::Shape strides,
+                                                      nnfusion::Shape pad)
 {
     cuda::pooling_op_shape shape;
     shape.N = in[0];
@@ -42,12 +42,12 @@ cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    window_shape = ngraph::Shape(avg_pool->get_window_shape());
-    padding_below = ngraph::Shape(avg_pool->get_padding_below());
-    padding_above = ngraph::Shape(avg_pool->get_padding_above());
-    window_stride = ngraph::Strides(avg_pool->get_window_movement_strides());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    window_shape = nnfusion::Shape(avg_pool->get_window_shape());
+    padding_below = nnfusion::Shape(avg_pool->get_padding_below());
+    padding_above = nnfusion::Shape(avg_pool->get_padding_above());
+    window_stride = nnfusion::Strides(avg_pool->get_window_movement_strides());
     include_pad = avg_pool->get_include_padding_in_avg_computation();
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();
@@ -257,12 +257,12 @@ cuda::AvgPoolmD::AvgPoolmD(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
     auto avg_pool = static_pointer_cast<nnfusion::op::AvgPool>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    window_shape = ngraph::Shape(avg_pool->get_window_shape());
-    padding_below = ngraph::Shape(avg_pool->get_padding_below());
-    padding_above = ngraph::Shape(avg_pool->get_padding_above());
-    window_stride = ngraph::Strides(avg_pool->get_window_movement_strides());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    window_shape = nnfusion::Shape(avg_pool->get_window_shape());
+    padding_below = nnfusion::Shape(avg_pool->get_padding_below());
+    padding_above = nnfusion::Shape(avg_pool->get_padding_above());
+    window_stride = nnfusion::Strides(avg_pool->get_window_movement_strides());
     include_pad = avg_pool->get_include_padding_in_avg_computation();
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();

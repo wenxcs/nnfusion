@@ -10,9 +10,9 @@ cuda::Gather1D::Gather1D(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto gather = static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
-    input_shape_0 = ngraph::Shape(ctx->inputs[0]->get_shape());
-    input_shape_1 = ngraph::Shape(ctx->inputs[1]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+    input_shape_0 = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    input_shape_1 = nnfusion::Shape(ctx->inputs[1]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
 
     axis = gather->localOpConfig.getRoot()["axis"];
     if (axis < 0)
@@ -32,11 +32,11 @@ cuda::Gather1D::Gather1D(shared_ptr<KernelContext> ctx)
         inner_size *= input_shape_0[i];
     }
 
-    int64_t out_size = ngraph::shape_size(output_shape);
+    int64_t out_size = nnfusion::shape_size(output_shape);
     CHECK(out_size > 0);
     is_axis_zero = outer_size == 1;
     gather_dim_size = input_shape_0[axis];
-    indices_size = ngraph::shape_size(input_shape_1);
+    indices_size = nnfusion::shape_size(input_shape_1);
     slice_size = inner_size;
 
     std::stringstream tag;

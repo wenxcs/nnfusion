@@ -17,10 +17,10 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override;
 
             private:
-                ngraph::Shape input_shape, filter_shape, output_shape, padding;
-                ngraph::Strides window_dilation_strides, window_movement_strides,
+                nnfusion::Shape input_shape, filter_shape, output_shape, padding;
+                nnfusion::Strides window_dilation_strides, window_movement_strides,
                     data_dilation_strides;
-                ngraph::CoordinateDiff padding_below_diff, padding_above_diff;
+                nnfusion::CoordinateDiff padding_below_diff, padding_above_diff;
                 string dtype;
             };
         } // namespace cpu

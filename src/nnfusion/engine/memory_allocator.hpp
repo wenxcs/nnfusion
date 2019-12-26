@@ -5,6 +5,8 @@
 #include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/common/languageunit.hpp"
 
+#include <list>
+
 DECLARE_bool(fmem_trace);
 
 namespace nnfusion

@@ -7,7 +7,7 @@ REGISTER_OP(Add).infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
     auto& shape_0 = gnode->get_input_shape(0);
     auto& shape_1 = gnode->get_input_shape(1);
     CHECK(shape_0.size() == shape_1.size());
-    ngraph::Shape output_shape_0;
+    nnfusion::Shape output_shape_0;
     for (int i = 0; i < shape_0.size(); ++i)
     {
         if (shape_0[i] != shape_1[i])

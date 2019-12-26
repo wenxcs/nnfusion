@@ -17,9 +17,9 @@
 #include "code_writer.hpp"
 
 using namespace std;
-using namespace ngraph;
+using namespace nnfusion;
 
-codegen::CodeWriter::CodeWriter()
+nnfusion::codegen::CodeWriter::CodeWriter()
     : indent(0)
     , m_pending_indent(true)
     , m_temporary_name_count(0)

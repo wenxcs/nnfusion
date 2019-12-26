@@ -346,7 +346,7 @@ private:
                     if (dot_op->get_transpose_B())
                     {
                         reshape_node =
-                            numpy_transpose(src_gnode, ngraph::AxisVector{1, 0}, src_output_idx);
+                            numpy_transpose(src_gnode, nnfusion::AxisVector{1, 0}, src_output_idx);
                     }
                 }
                 else if (dot_op && in_idx == 0)
@@ -355,11 +355,11 @@ private:
                     if (dot_op->get_transpose_A())
                     {
                         reshape_node =
-                            numpy_transpose(src_gnode, ngraph::AxisVector{1, 0}, src_output_idx);
+                            numpy_transpose(src_gnode, nnfusion::AxisVector{1, 0}, src_output_idx);
                     }
                 }
 
-                ngraph::Shape shape;
+                nnfusion::Shape shape;
                 if (reshape_node != nullptr)
                 {
                     m_graph->add_gnode_and_edge(
@@ -439,7 +439,7 @@ private:
         auto dot_gnode = m_graph->add_node_and_edge(dot_op, dot_inputs);
 
         // Step 4: add slice node.
-        ngraph::Shape shape = dot_gnode->get_shape();
+        nnfusion::Shape shape = dot_gnode->get_shape();
         int rank = shape.size();
         std::vector<size_t> lower(rank, 0);
         std::vector<size_t> upper(shape);

@@ -5,8 +5,8 @@
 
 #include "graph_convert.hpp"
 #include "../ops/const.hpp"
-#include "ngraph/axis_vector.hpp"
-#include "ngraph/coordinate_diff.hpp"
+#include "nnfusion/common/axis_vector.hpp"
+#include "nnfusion/common/coordinate_diff.hpp"
 #include "nnfusion/core/graph/util/autobroadcast.hpp"
 #include "nnfusion/core/graph/util/numpy_transpose.hpp"
 
@@ -125,11 +125,11 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 auto status = GetNodeAttr(node.attr(), "dtype", dtype);
                 CHECK(status);
-                ngraph::element::Type ng_et;
+                nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
                 CHECK(status);
                 tensorflow::TensorShapeProto tf_shape = node.attr().at("shape").shape();
-                ngraph::Shape ng_shape;
+                nnfusion::Shape ng_shape;
                 status = TFTensorShapeToNGraphShape(tf_shape, &ng_shape);
                 CHECK(status);
 
@@ -148,7 +148,7 @@ namespace nnfusion
                 auto lhs_gnode = GetInputNode(all_ng_nodes, node, 0);
                 auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
 
-                ngraph::AxisSet ng_axes_softmax{lhs_gnode->get_shape().size() - 1};
+                nnfusion::AxisSet ng_axes_softmax{lhs_gnode->get_shape().size() - 1};
                 auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
                 auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {lhs_gnode});
 
@@ -183,11 +183,11 @@ namespace nnfusion
                 CHECK(status);
                 // if (transpose_a)
                 // {
-                //     ng_lhs = nnfusion::graph::numpy_transpose(ng_lhs, ngraph::AxisVector{1, 0});
+                //     ng_lhs = nnfusion::graph::numpy_transpose(ng_lhs, nnfusion::AxisVector{1, 0});
                 // }
                 // if (transpose_b)
                 // {
-                //     ng_rhs = nnfusion::graph::numpy_transpose(ng_rhs, ngraph::AxisVector{1, 0});
+                //     ng_rhs = nnfusion::graph::numpy_transpose(ng_rhs, nnfusion::AxisVector{1, 0});
                 // }
 
                 auto dot_op =
@@ -217,7 +217,7 @@ namespace nnfusion
                 CHECK(status);
 
                 int input_dims = lhs_gnode->get_output_shape(0).size();
-                ngraph::AxisVector ng_axis_order;
+                nnfusion::AxisVector ng_axis_order;
 
                 ng_axis_order.reserve(input_dims);
 
@@ -271,7 +271,7 @@ namespace nnfusion
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
-                ngraph::AxisSet broadcast_axes;
+                nnfusion::AxisSet broadcast_axes;
 
                 if (is_nhwc)
                 {
@@ -345,7 +345,7 @@ namespace nnfusion
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
-                ngraph::AxisSet ng_reduction_axes;
+                nnfusion::AxisSet ng_reduction_axes;
 
                 if (is_nhwc)
                 {
@@ -387,7 +387,7 @@ namespace nnfusion
                 CHECK(status);
 
                 size_t output_rank = shape.size();
-                size_t num_input_elements = ngraph::shape_size(input_gnode->get_shape());
+                size_t num_input_elements = nnfusion::shape_size(input_gnode->get_shape());
 
                 // If there is a single "-1" in the result shape, we have to auto-infer
                 // the length of that dimension.
@@ -428,16 +428,16 @@ namespace nnfusion
                     shape[inferred_pos] = num_input_elements / product_of_rest;
                 }
 
-                // Convert the values from the constant into an nGraph::Shape, and
+                // Convert the values from the constant into an nnfusion::Shape, and
                 // construct the axis order while we are at it.
-                ngraph::Shape ng_shape(output_rank);
+                nnfusion::Shape ng_shape(output_rank);
 
                 for (size_t i = 0; i < output_rank; i++)
                 {
                     ng_shape[i] = shape[i];
                 }
 
-                ngraph::AxisVector ng_axis_order(input_gnode->get_shape().size());
+                nnfusion::AxisVector ng_axis_order(input_gnode->get_shape().size());
                 std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
                 auto reshape_op = std::make_shared<nnfusion::op::Reshape>(ng_axis_order, ng_shape);
                 reshape_op->set_name(node.name());
@@ -455,7 +455,7 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "DstT", dtype);
                 CHECK(status);
-                ngraph::element::Type ng_et;
+                nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
                 CHECK(status);
                 auto cast_op = std::make_shared<op::Convert>(ng_et);
@@ -490,9 +490,9 @@ namespace nnfusion
                     << "MaxPool data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
-                ngraph::Strides ng_strides(2);
-                ngraph::Shape ng_image_shape(2);
-                ngraph::Shape ng_kernel_shape(2);
+                nnfusion::Strides ng_strides(2);
+                nnfusion::Shape ng_image_shape(2);
+                nnfusion::Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
@@ -513,8 +513,8 @@ namespace nnfusion
                 // ng::CoordinateDiff ng_padding_below{0,0};
                 // ng::CoordinateDiff ng_padding_above{0,0};
 
-                ngraph::Shape ng_padding_below{0, 0};
-                ngraph::Shape ng_padding_above{0, 0};
+                nnfusion::Shape ng_padding_below{0, 0};
+                nnfusion::Shape ng_padding_above{0, 0};
                 MakePadding(tf_padding_type,
                             ng_image_shape,
                             ng_kernel_shape,
@@ -569,10 +569,10 @@ namespace nnfusion
                 CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "Conv2D data format is neither NHWC nor NCHW";
                 bool is_nhwc = (tf_data_format == "NHWC");
-                ngraph::Strides ng_strides(2);
-                ngraph::Strides ng_dilations(2);
-                ngraph::Shape ng_image_shape(2);
-                ngraph::Shape ng_kernel_shape(2);
+                nnfusion::Strides ng_strides(2);
+                nnfusion::Strides ng_dilations(2);
+                nnfusion::Shape ng_image_shape(2);
+                nnfusion::Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
@@ -596,8 +596,8 @@ namespace nnfusion
                 m_graph->add_edge(filter_gnode, 0, reshape_filter_gnode, 0);
 
                 // Padding
-                ngraph::CoordinateDiff ng_padding_below{0, 0};
-                ngraph::CoordinateDiff ng_padding_above{0, 0};
+                nnfusion::CoordinateDiff ng_padding_below{0, 0};
+                nnfusion::CoordinateDiff ng_padding_above{0, 0};
 
                 MakePadding(tf_padding_type,
                             ng_image_shape,
@@ -656,17 +656,17 @@ namespace nnfusion
                     << "Conv2D data format is neither NHWC nor NCHW";
                 bool is_nhwc = (tf_data_format == "NHWC");
 
-                ngraph::Strides ng_strides(2);
-                ngraph::Strides ng_dilations(2);
-                ngraph::Shape ng_image_shape(2);
-                ngraph::Shape ng_kernel_shape(2);
+                Strides ng_strides(2);
+                Strides ng_dilations(2);
+                Shape ng_image_shape(2);
+                Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_dilations, ng_dilations);
 
-                ngraph::CoordinateDiff ng_padding_below{0, 0};
-                ngraph::CoordinateDiff ng_padding_above{0, 0};
+                CoordinateDiff ng_padding_below{0, 0};
+                CoordinateDiff ng_padding_above{0, 0};
                 MakePadding(tf_padding_type,
                             ng_image_shape,
                             ng_kernel_shape,
@@ -715,9 +715,9 @@ namespace nnfusion
                     << "AvgPool data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
-                ngraph::Strides ng_strides(2);
-                ngraph::Shape ng_image_shape(2);
-                ngraph::Shape ng_kernel_shape(2);
+                nnfusion::Strides ng_strides(2);
+                nnfusion::Shape ng_image_shape(2);
+                nnfusion::Shape ng_kernel_shape(2);
 
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
@@ -739,8 +739,8 @@ namespace nnfusion
                 // ng::CoordinateDiff ng_padding_below{0,0};
                 // ng::CoordinateDiff ng_padding_above{0,0};
 
-                ngraph::Shape ng_padding_below{0, 0};
-                ngraph::Shape ng_padding_above{0, 0};
+                nnfusion::Shape ng_padding_below{0, 0};
+                nnfusion::Shape ng_padding_above{0, 0};
                 MakePadding(tf_padding_type,
                             ng_image_shape,
                             ng_kernel_shape,
@@ -780,8 +780,8 @@ namespace nnfusion
                 bool status = GetValueFromNGraphOp<size_t>(shape_gnode, &dims_vec);
                 CHECK(status);
 
-                ngraph::Shape ng_output_shape(dims_vec.size());
-                ngraph::AxisSet ng_axis_set;
+                nnfusion::Shape ng_output_shape(dims_vec.size());
+                nnfusion::AxisSet ng_axis_set;
                 for (size_t i = 0; i < dims_vec.size(); ++i)
                 {
                     ng_output_shape[i] = dims_vec[i];
@@ -810,9 +810,9 @@ namespace nnfusion
                 CHECK(paddings.size() % 2 == 0)
                     << "Constant node for paddings does not have an even number of elements";
 
-                ngraph::Shape padding_below(paddings.size() / 2);
-                ngraph::Shape padding_above(paddings.size() / 2);
-                ngraph::Shape padding_interior(paddings.size() / 2);
+                nnfusion::Shape padding_below(paddings.size() / 2);
+                nnfusion::Shape padding_above(paddings.size() / 2);
+                nnfusion::Shape padding_interior(paddings.size() / 2);
 
                 for (size_t i = 0; i < paddings.size() / 2; i++)
                 {
@@ -823,7 +823,7 @@ namespace nnfusion
 
                 // For PadV1 it seems the value is always zero.
                 auto pad_val_op = std::make_shared<op::Constant>(input_gnode->get_element_type(),
-                                                                 ngraph::Shape{},
+                                                                 nnfusion::Shape{},
                                                                  std::vector<std::string>{"0"});
                 auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, GNodeVector({}));
 
@@ -857,9 +857,9 @@ namespace nnfusion
                 CHECK(paddings.size() % 2 == 0)
                     << "Constant node for paddings does not have an even number of elements";
 
-                ngraph::Shape padding_below(paddings.size() / 2);
-                ngraph::Shape padding_above(paddings.size() / 2);
-                ngraph::Shape padding_interior(paddings.size() / 2);
+                nnfusion::Shape padding_below(paddings.size() / 2);
+                nnfusion::Shape padding_above(paddings.size() / 2);
+                nnfusion::Shape padding_interior(paddings.size() / 2);
 
                 for (size_t i = 0; i < paddings.size() / 2; i++)
                 {
@@ -869,7 +869,7 @@ namespace nnfusion
                 }
 
                 auto pad_val_op = std::make_shared<op::Constant>(
-                    input_gnode->get_element_type(), ngraph::Shape{}, constant_values);
+                    input_gnode->get_element_type(), nnfusion::Shape{}, constant_values);
 
                 auto pad_val_gnode = m_graph->add_node_and_edge(pad_val_op, GNodeVector({}));
 
@@ -997,8 +997,8 @@ namespace nnfusion
                 auto constant_op = std::make_shared<op::Constant>(
                     input_gnode->get_element_type(),
                     input_gnode->get_shape(),
-                    std::vector<std::string>(ngraph::shape_size(input_gnode->get_shape()), "1"));
-                auto constant_gnode = m_graph->add_node_and_edge(constant_op, GNodeVector({}));
+                    std::vector<std::string>(nnfusion::shape_size(input_gnode->get_shape()), "1"));
+                auto constant_gnode = m_graph->add_node_and_edge(constant_op, GNodeVector{});
                 auto denominator_op = std::make_shared<op::Add>();
                 auto denominator_gnode =
                     m_graph->add_node_and_edge(denominator_op, {constant_gnode, exp_gnode});
@@ -1033,7 +1033,7 @@ namespace nnfusion
                 bool status = GetValueFromNGraphOp<int64>(axes_gnode, &sum_axes);
                 CHECK(status);
 
-                ngraph::Shape input_shape = input_gnode->get_shape();
+                nnfusion::Shape input_shape = input_gnode->get_shape();
                 size_t input_rank = input_shape.size();
 
                 status = CheckAxisDimInRange(sum_axes, input_rank);
@@ -1045,7 +1045,7 @@ namespace nnfusion
                     sum_axes.end(),
                     ng_reduction_axes_vect.begin(),
                     [input_rank](int idx) { return idx + (idx < 0 ? (int)input_rank : 0); });
-                ngraph::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
+                nnfusion::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
 
                 auto sum_op = std::make_shared<op::Sum>(ng_reduction_axes);
                 NamedNodeVector ret;
@@ -1054,14 +1054,14 @@ namespace nnfusion
                 if (tf_keep_dims)
                 {
                     auto sum_gnode = m_graph->add_node_and_edge(sum_op, {input_gnode});
-                    ngraph::Shape ng_result_shape_with_keep(input_rank);
+                    nnfusion::Shape ng_result_shape_with_keep(input_rank);
 
                     for (size_t i = 0; i < input_rank; i++)
                     {
                         ng_result_shape_with_keep[i] =
                             ng_reduction_axes.count(i) == 0 ? input_shape[i] : 1;
                     }
-                    ngraph::AxisVector ng_axis_order(sum_gnode->get_shape().size());
+                    nnfusion::AxisVector ng_axis_order(sum_gnode->get_shape().size());
                     std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
                     auto reshape_op =
                         std::make_shared<op::Reshape>(ng_axis_order, ng_result_shape_with_keep);
@@ -1091,7 +1091,7 @@ namespace nnfusion
                 int32 num_split;
                 bool status = GetNodeAttr(node.attr(), "num_split", num_split);
                 CHECK(status);
-                ngraph::Shape shape = input_gnode->get_shape();
+                nnfusion::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower;
                 std::vector<size_t> upper;
@@ -1137,7 +1137,7 @@ namespace nnfusion
                 std::vector<int> lengths;
                 bool status = GetValueFromNGraphOp<int>(length_gnode, &lengths);
                 CHECK(status);
-                ngraph::Shape shape = input_gnode->get_shape();
+                nnfusion::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower(rank, 0);
                 std::vector<size_t> upper(shape);
@@ -1226,7 +1226,7 @@ namespace nnfusion
                     }
                 }
 
-                ngraph::Shape shape = input_gnode->get_shape();
+                nnfusion::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
 
                 std::vector<int64> mean_axes;
@@ -1241,7 +1241,7 @@ namespace nnfusion
                                mean_axes.end(),
                                ng_reduction_axes_vect.begin(),
                                [rank](int idx) { return idx + (idx < 0 ? (int)rank : 0); });
-                ngraph::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
+                nnfusion::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
 
                 // todo: move to function ngraph::builder::mean?
                 //std::shared_ptr<ngraph::Node> ng_mean =
@@ -1264,14 +1264,14 @@ namespace nnfusion
                     auto mean_gnode =
                         m_graph->add_node_and_edge(mean_op, {xsum_gnode, divisor_gnode});
 
-                    ngraph::Shape ng_result_shape_with_keep(rank);
+                    nnfusion::Shape ng_result_shape_with_keep(rank);
                     for (size_t i = 0; i < rank; i++)
                     {
                         ng_result_shape_with_keep[i] =
                             ng_reduction_axes.count(i) == 0 ? shape[i] : 1;
                     }
 
-                    ngraph::AxisVector ng_axis_order(mean_gnode->get_shape().size());
+                    nnfusion::AxisVector ng_axis_order(mean_gnode->get_shape().size());
                     std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
                     auto reshape_mean_op =
                         std::make_shared<op::Reshape>(ng_axis_order, ng_result_shape_with_keep);
@@ -1370,7 +1370,7 @@ namespace nnfusion
                 bool status = GetValueFromNGraphOp<int64>(permutation_gnode, &permutation);
                 CHECK(status);
 
-                ngraph::AxisVector ng_axis_order;
+                nnfusion::AxisVector ng_axis_order;
                 ng_axis_order.reserve(permutation.size());
 
                 for (auto i : permutation)
@@ -1420,7 +1420,7 @@ namespace nnfusion
                     CHECK(count[i]) << i << " is missing from {" << join(permutation) << "}.";
                 }
 
-                ngraph::AxisVector ng_axis_order;
+                nnfusion::AxisVector ng_axis_order;
                 ng_axis_order.reserve(permutation.size());
 
                 for (auto i : permutation)
@@ -1476,11 +1476,11 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 status = GetNodeAttr(node.attr(), "T", dtype);
                 CHECK(status);
-                ngraph::element::Type ng_et;
+                nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
                 CHECK(status);
 
-                CHECK(ng_et == ngraph::element::f32);
+                CHECK(ng_et == nnfusion::element::f32);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["axis"] = one_hot_axis;
@@ -1696,7 +1696,7 @@ namespace nnfusion
                 }
 
                 std::set<int> axis_set(tf_axis.begin(), tf_axis.end());
-                ngraph::Shape input_shape = input_gnode->get_shape();
+                nnfusion::Shape input_shape = input_gnode->get_shape();
                 std::vector<int> dims;
 
                 if (axis_set.size() == 0)
@@ -1728,13 +1728,13 @@ namespace nnfusion
                     }
                 }
 
-                ngraph::Shape output_shape(dims.size());
+                nnfusion::Shape output_shape(dims.size());
                 for (size_t i = 0; i < dims.size(); ++i)
                 {
                     output_shape[i] = dims[i];
                 }
 
-                ngraph::AxisVector ng_axis_order(input_gnode->get_shape().size());
+                nnfusion::AxisVector ng_axis_order(input_gnode->get_shape().size());
                 std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
 
                 auto reshape_op = std::make_shared<op::Reshape>(ng_axis_order, output_shape);
@@ -1846,7 +1846,7 @@ namespace nnfusion
                 // Create a constant tensor populated with the value -1/2.
                 // (1/sqrt(x) = x^(-1/2))
                 auto shape = input_gnode->get_shape();
-                std::vector<std::string> constant_values(ngraph::shape_size(shape), "-0.5");
+                std::vector<std::string> constant_values(nnfusion::shape_size(shape), "-0.5");
 
                 auto exponent_op = std::make_shared<op::Constant>(
                     input_gnode->get_element_type(), shape, constant_values);
@@ -1873,7 +1873,7 @@ namespace nnfusion
                 // Create a constant tensor populated with the value 3.
                 auto et = input_gnode->get_element_type();
                 auto shape = input_gnode->get_shape();
-                std::vector<std::string> constant_values(ngraph::shape_size(shape), "3");
+                std::vector<std::string> constant_values(nnfusion::shape_size(shape), "3");
 
                 auto exponent_op = std::make_shared<op::Constant>(et, shape, constant_values);
                 auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, GNodeVector({}));
@@ -1882,7 +1882,7 @@ namespace nnfusion
                 auto pow_gnode = m_graph->add_node_and_edge(pow_op, {input_gnode, exponent_gnode});
 
                 // Create a constant tensor populated with the value -1/2.
-                std::vector<std::string> constant_diff(ngraph::shape_size(shape), "-0.5");
+                std::vector<std::string> constant_diff(nnfusion::shape_size(shape), "-0.5");
                 auto diff_op = std::make_shared<op::Constant>(et, shape, constant_diff);
                 auto diff_gnode = m_graph->add_node_and_edge(diff_op, GNodeVector({}));
 
@@ -2210,8 +2210,8 @@ namespace nnfusion
                         shrink_axis_mask >>= 1;
                     }
 
-                    ngraph::Shape ng_final_shape(output_shape);
-                    ngraph::AxisVector ng_axis_order(input_shape.size());
+                    nnfusion::Shape ng_final_shape(output_shape);
+                    nnfusion::AxisVector ng_axis_order(input_shape.size());
                     std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
 
                     auto reshape_strided_slice_op =
@@ -2348,7 +2348,7 @@ namespace nnfusion
             {
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 auto input_shape = input_gnode->get_shape();
-                ngraph::AxisSet ng_axes_softmax;
+                nnfusion::AxisSet ng_axes_softmax;
                 auto rank = input_shape.size();
                 CHECK(rank >= 1) << "TF Softmax logits must be >=1 dimension";
 
@@ -2367,7 +2367,7 @@ namespace nnfusion
             {
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 auto constant_op = std::make_shared<nnfusion::op::Constant>(
-                    ngraph::element::i32, ngraph::Shape{}, std::vector<int>{0});
+                    nnfusion::element::i32, nnfusion::Shape{}, std::vector<int>{0});
                 constant_op->set_name(node.name());
 
                 auto constant_gnode = m_graph->add_node_and_edge(constant_op, GNodeVector());
@@ -2401,7 +2401,7 @@ namespace nnfusion
                     << "match the size of condition.";
 
                 int length = 0;
-                shared_ptr<ngraph::Node> ng_input_new;
+                // shared_ptr<ngraph::Node> ng_input_new;
 
                 // If input tensor has higher rank than condiiton, length will be > 0.
                 length = input2_rank - input1_rank;
@@ -2420,7 +2420,7 @@ namespace nnfusion
                     tmp_vector[0] = input1_shape[0];
 
                     auto reshape_input1_op =
-                        std::make_shared<op::Reshape>(ngraph::AxisVector{0}, tmp_vector);
+                        std::make_shared<op::Reshape>(nnfusion::AxisVector{0}, tmp_vector);
                     input1_gnode = m_graph->add_node_and_edge(reshape_input1_op, {input1_gnode});
                 }
 
@@ -2473,14 +2473,14 @@ namespace nnfusion
 
                 // todo: name???
                 auto out_node_0_op = std::make_shared<op::Constant>(
-                    ngraph::element::i64, ngraph::Shape({out0.size()}), out0);
+                    nnfusion::element::i64, nnfusion::Shape({out0.size()}), out0);
                 out_node_0_op->set_name(node.name() + "x");
 
                 auto out_node_0_gnode = m_graph->add_node_and_edge(out_node_0_op, GNodeVector());
                 m_graph->add_control_edge(input_gnodes[0], out_node_0_gnode);
 
                 auto out_node_1_op = std::make_shared<op::Constant>(
-                    ngraph::element::i64, ngraph::Shape({out1.size()}), out1);
+                    nnfusion::element::i64, nnfusion::Shape({out1.size()}), out1);
                 out_node_1_op->set_name(node.name() + "y");
                 auto out_node_1_gnode = m_graph->add_node_and_edge(out_node_1_op, GNodeVector());
                 m_graph->add_control_edge(input_gnodes[1], out_node_1_gnode);
@@ -2577,7 +2577,7 @@ namespace nnfusion
                 auto sq_op = std::make_shared<op::Multiply>();
                 auto sq_gnode = m_graph->add_node_and_edge(sq_op, {input_gnode, input_gnode});
 
-                std::vector<std::string> const_values(ngraph::shape_size(input_shape), "1");
+                std::vector<std::string> const_values(nnfusion::shape_size(input_shape), "1");
 
                 auto const_op = std::make_shared<op::Constant>(et, input_shape, const_values);
                 auto const_gnode = m_graph->add_node_and_edge(const_op, GNodeVector({}));

@@ -26,18 +26,18 @@ Dot::Dot(size_t reduction_axes_count, bool has_reduction_axes_count, bool trans_
 
 void Dot::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    ngraph::element::Type result_et;
+    nnfusion::element::Type result_et;
 
     OP_VALIDATION(this,
-                  ngraph::element::Type::merge(result_et,
-                                               gnode->get_input_element_type(0),
-                                               gnode->get_input_element_type(1)))
+                  nnfusion::element::Type::merge(result_et,
+                                                 gnode->get_input_element_type(0),
+                                                 gnode->get_input_element_type(1)))
         << "Arguments do not have the same element type (arg0 element type: "
         << gnode->get_input_element_type(0)
         << ", arg1 element type: " << gnode->get_input_element_type(1) << ").";
 
-    const ngraph::PartialShape& arg0_shape = gnode->get_input_partial_shape(0);
-    const ngraph::PartialShape& arg1_shape = gnode->get_input_partial_shape(1);
+    const nnfusion::PartialShape& arg0_shape = gnode->get_input_partial_shape(0);
+    const nnfusion::PartialShape& arg1_shape = gnode->get_input_partial_shape(1);
 
     // If an explicit value was not passed for reduction axis count at construction time, we have
     // some extra work to do.
@@ -61,7 +61,7 @@ void Dot::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         }
     }
 
-    ngraph::PartialShape result_shape;
+    nnfusion::PartialShape result_shape;
 
     OP_VALIDATION(this,
                   reduction_axes_ambiguous || arg0_shape.rank().is_dynamic() ||
@@ -92,7 +92,7 @@ void Dot::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                 << "transA: " << m_transpose_A << ", transB: " << m_transpose_B << ").";
         }
 
-        std::vector<ngraph::Dimension> result_dims(
+        std::vector<nnfusion::Dimension> result_dims(
             size_t(arg0_shape.rank()) + size_t(arg1_shape.rank()) - 2 * m_reduction_axes_count);
 
         size_t i = 0;
@@ -108,11 +108,11 @@ void Dot::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
             result_dims[i++] = arg1_shape[idx];
         }
 
-        result_shape = ngraph::PartialShape(result_dims);
+        result_shape = nnfusion::PartialShape(result_dims);
     }
     else
     {
-        result_shape = ngraph::PartialShape::dynamic();
+        result_shape = nnfusion::PartialShape::dynamic();
     }
 
     gnode->set_output_type_and_shape(0, result_et, result_shape);

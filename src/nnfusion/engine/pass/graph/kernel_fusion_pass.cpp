@@ -14,7 +14,6 @@
 
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
-using namespace ngraph::op::util;
 using namespace nnfusion::kernels;
 
 DEFINE_int32(fkernel_fusion_level, 2, "");
@@ -280,7 +279,7 @@ private:
                 elem_ready.pop_front();
                 tn = m_nodes[node_id];
 
-                size_t tensor_size = shape_size(tn->node->get_output_shape(0));
+                size_t tensor_size = nnfusion::shape_size(tn->node->get_output_shape(0));
                 if (cur_elemgroup && cur_elemgroup->output_size != tensor_size)
                 {
                     AppendElementGroup();
@@ -366,8 +365,8 @@ private:
                                              std::dynamic_pointer_cast<nnfusion::op::Reshape>(op))
                                 {
                                     if (!(rs->get_is_transpose()) &&
-                                        (shape_size(input_node->get_output_shape(0)) ==
-                                         shape_size(elem_tn->node->get_output_shape(0))))
+                                        (nnfusion::shape_size(input_node->get_output_shape(0)) ==
+                                         nnfusion::shape_size(elem_tn->node->get_output_shape(0))))
                                         fusable_input_nodes.push_back(input_node->get_id());
                                 }
                                 else

@@ -27,10 +27,10 @@
 
 #include "ngraph/axis_set.hpp"
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/convert.hpp"
-#include "ngraph/op/reshape.hpp"
-#include "ngraph/op/util/arithmetic_reduction.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/convert.hpp"
+#include "nnfusion/core/operators/reshape.hpp"
+#include "nnfusion/core/operators/util/arithmetic_reduction.hpp"
 
 #include "core/node.hpp"
 #include "exceptions.hpp"

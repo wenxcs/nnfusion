@@ -17,22 +17,22 @@ namespace nnfusion
             /// \param padding_below The padding-below widths.
             /// \param padding_above The padding-above widths.
             /// \param padding_interior The interior-padding widths.
-            Pad(const ngraph::Shape& padding_below,
-                const ngraph::Shape& padding_above,
-                const ngraph::Shape& padding_interior);
+            Pad(const nnfusion::Shape& padding_below,
+                const nnfusion::Shape& padding_above,
+                const nnfusion::Shape& padding_interior);
 
             /// \return The padding-below sizes.
-            const ngraph::Shape& get_padding_below() const { return m_padding_below; }
+            const nnfusion::Shape& get_padding_below() const { return m_padding_below; }
             /// \return The padding-above sizes.
-            const ngraph::Shape& get_padding_above() const { return m_padding_above; }
+            const nnfusion::Shape& get_padding_above() const { return m_padding_above; }
             /// \return The interior padding sizes.
-            const ngraph::Shape& get_padding_interior() const { return m_padding_interior; }
+            const nnfusion::Shape& get_padding_interior() const { return m_padding_interior; }
         protected:
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
-            ngraph::Shape m_padding_below;
-            ngraph::Shape m_padding_above;
-            ngraph::Shape m_padding_interior;
+            nnfusion::Shape m_padding_below;
+            nnfusion::Shape m_padding_above;
+            nnfusion::Shape m_padding_interior;
         };
     }
 }

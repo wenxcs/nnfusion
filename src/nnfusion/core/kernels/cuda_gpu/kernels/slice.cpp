@@ -11,8 +11,8 @@ cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
 {
     auto slice_op = static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
 
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();
@@ -39,7 +39,7 @@ LanguageUnit_p cuda::Slice::emit_function_body()
     lu << "if (tid < " << nthreads << ")\n";
     lu.block_begin();
     {
-        if (ngraph::is_scalar(input_shape))
+        if (nnfusion::is_scalar(input_shape))
         {
             lu << "output0[0] = input0[0];\n";
         }

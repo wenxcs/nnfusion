@@ -5,9 +5,9 @@
 #include <cstring>
 #include <sstream>
 
-#include "ngraph/type/bfloat16.hpp"
-#include "ngraph/type/element_type.hpp"
-#include "ngraph/util.hpp"
+#include "nnfusion/common/type/bfloat16.hpp"
+#include "nnfusion/common/type/element_type.hpp"
+#include "nnfusion/common/util.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/operators/op.hpp"
 
@@ -26,25 +26,25 @@ namespace nnfusion
             /// \param values A vector of literals for initializing the tensor constant. The size
             ///        of values must match the size of the shape.
             template <typename T>
-            Constant(const ngraph::element::Type& type,
-                     ngraph::Shape shape,
+            Constant(const nnfusion::element::Type& type,
+                     nnfusion::Shape shape,
                      const std::vector<T>& values)
                 : Op("Constant")
                 , m_element_type(type)
                 , m_shape(shape)
-                , m_data(ngraph::aligned_alloc(m_element_type.size(),
-                                               ngraph::shape_size(m_shape) * m_element_type.size()))
+                , m_data(nnfusion::aligned_alloc(
+                      m_element_type.size(), nnfusion::shape_size(m_shape) * m_element_type.size()))
             {
                 OP_VALIDATION(this,
-                              values.size() == 1 || values.size() == ngraph::shape_size(m_shape))
+                              values.size() == 1 || values.size() == nnfusion::shape_size(m_shape))
                     << "Did not get the expected number of literals for a constant of shape "
                     << m_shape << " (got " << values.size() << ", expected "
-                    << (ngraph::shape_size(m_shape) == 1 ? "" : "1 or ")
-                    << ngraph::shape_size(m_shape) << ").";
+                    << (nnfusion::shape_size(m_shape) == 1 ? "" : "1 or ")
+                    << nnfusion::shape_size(m_shape) << ").";
 
                 if (values.size() == 1)
                 {
-                    write_values(std::vector<T>(ngraph::shape_size(m_shape), values[0]));
+                    write_values(std::vector<T>(nnfusion::shape_size(m_shape), values[0]));
                 }
                 else
                 {
@@ -58,21 +58,21 @@ namespace nnfusion
             /// \param type The element type of the tensor constant.
             /// \param shape The shape of the tensor constant.
             /// \param values A list of string values to use as the constant data.
-            Constant(const ngraph::element::Type& type,
-                     ngraph::Shape shape,
+            Constant(const nnfusion::element::Type& type,
+                     nnfusion::Shape shape,
                      const std::vector<std::string>& values)
                 : Op("Constant")
                 , m_element_type(type)
                 , m_shape(shape)
-                , m_data(ngraph::aligned_alloc(m_element_type.size(),
-                                               ngraph::shape_size(m_shape) * m_element_type.size()))
+                , m_data(nnfusion::aligned_alloc(
+                      m_element_type.size(), nnfusion::shape_size(m_shape) * m_element_type.size()))
             {
-                OP_VALIDATION(this, values.size() == ngraph::shape_size(m_shape))
+                OP_VALIDATION(this, values.size() == nnfusion::shape_size(m_shape))
                     << "Did not get the expected number of literals for a constant of shape "
                     << m_shape << " (got " << values.size() << ", expected "
-                    << ngraph::shape_size(m_shape) << ".";
+                    << nnfusion::shape_size(m_shape) << ".";
 
-                std::vector<double> dvalues = ngraph::parse_string<double>(values);
+                std::vector<double> dvalues = nnfusion::parse_string<double>(values);
                 write_values(dvalues);
             }
 
@@ -82,16 +82,16 @@ namespace nnfusion
             /// \param type The element type of the tensor constant.
             /// \param shape The shape of the tensor constant.
             /// \param data A void* to constant data.
-            Constant(const ngraph::element::Type& type,
-                     const ngraph::Shape& shape,
+            Constant(const nnfusion::element::Type& type,
+                     const nnfusion::Shape& shape,
                      const void* data)
                 : Op("Constant")
                 , m_element_type(type)
                 , m_shape(shape)
                 , m_data(nullptr)
             {
-                size_t size = ngraph::shape_size(m_shape) * m_element_type.size();
-                m_data = ngraph::aligned_alloc(m_element_type.size(), size);
+                size_t size = nnfusion::shape_size(m_shape) * m_element_type.size();
+                m_data = nnfusion::aligned_alloc(m_element_type.size(), size);
                 std::memcpy(m_data, data, size);
             }
 
@@ -109,8 +109,8 @@ namespace nnfusion
             /// \param shape The shape of the tensor constant.
             /// \param values A vector of values to use as the constant data.
             template <typename T>
-            static std::shared_ptr<op::Constant> create(const ngraph::element::Type& type,
-                                                        ngraph::Shape shape,
+            static std::shared_ptr<op::Constant> create(const nnfusion::element::Type& type,
+                                                        nnfusion::Shape shape,
                                                         const std::vector<T> values)
             {
                 auto result = std::make_shared<op::Constant>(type, shape, values);
@@ -124,8 +124,8 @@ namespace nnfusion
             /// \param shape The shape of the tensor constant.
             /// \param values An initializer_list of values to use as the constant data.
             template <typename T>
-            static std::shared_ptr<op::Constant> create(const ngraph::element::Type& type,
-                                                        ngraph::Shape shape,
+            static std::shared_ptr<op::Constant> create(const nnfusion::element::Type& type,
+                                                        nnfusion::Shape shape,
                                                         std::initializer_list<T> values)
             {
                 auto result = std::make_shared<op::Constant>(type, shape, std::vector<T>{values});
@@ -139,12 +139,12 @@ namespace nnfusion
             template <typename T>
             std::vector<T> get_vector() const
             {
-                CHECK(sizeof(T) <= m_element_type.size() || ngraph::shape_size(m_shape) << 0)
+                CHECK(sizeof(T) <= m_element_type.size() || nnfusion::shape_size(m_shape) << 0)
                     << "Buffer over-read";
 
                 std::vector<T> rc;
                 const T* p = reinterpret_cast<const T*>(m_data);
-                for (size_t i = 0; i < ngraph::shape_size(m_shape); i++)
+                for (size_t i = 0; i < nnfusion::shape_size(m_shape); i++)
                 {
                     rc.push_back(p[i]);
                 }
@@ -154,7 +154,7 @@ namespace nnfusion
             const void* get_data_ptr() const { return m_data; }
             size_t get_data_size() const
             {
-                return ngraph::shape_size(m_shape) * m_element_type.size();
+                return nnfusion::shape_size(m_shape) * m_element_type.size();
             }
             template <typename T>
             const T* get_data_ptr() const
@@ -176,7 +176,7 @@ namespace nnfusion
             void write_values(const std::vector<T>& values)
             {
                 write_to_buffer(
-                    m_element_type, m_shape, values, m_data, ngraph::shape_size(m_shape));
+                    m_element_type, m_shape, values, m_data, nnfusion::shape_size(m_shape));
             }
 
             template <typename T, typename U>
@@ -190,8 +190,8 @@ namespace nnfusion
             }
 
             template <typename T>
-            void write_to_buffer(const ngraph::element::Type& target_type,
-                                 const ngraph::Shape& target_shape,
+            void write_to_buffer(const nnfusion::element::Type& target_type,
+                                 const nnfusion::Shape& target_shape,
                                  const std::vector<T>& source,
                                  void* target,
                                  size_t target_element_count)
@@ -199,51 +199,51 @@ namespace nnfusion
                 CHECK(source.size() == target_element_count)
                     << "Constant initializer does not match shape";
 
-                if (target_type == ngraph::element::boolean)
+                if (target_type == nnfusion::element::boolean)
                 {
                     write_buffer<char, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::bf16)
+                else if (target_type == nnfusion::element::bf16)
                 {
-                    write_buffer<ngraph::bfloat16, T>(target, source, target_element_count);
+                    write_buffer<nnfusion::bfloat16, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::f32)
+                else if (target_type == nnfusion::element::f32)
                 {
                     write_buffer<float, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::f64)
+                else if (target_type == nnfusion::element::f64)
                 {
                     write_buffer<double, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::i8)
+                else if (target_type == nnfusion::element::i8)
                 {
                     write_buffer<int8_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::i16)
+                else if (target_type == nnfusion::element::i16)
                 {
                     write_buffer<int16_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::i32)
+                else if (target_type == nnfusion::element::i32)
                 {
                     write_buffer<int32_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::i64)
+                else if (target_type == nnfusion::element::i64)
                 {
                     write_buffer<int64_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::u8)
+                else if (target_type == nnfusion::element::u8)
                 {
                     write_buffer<uint8_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::u16)
+                else if (target_type == nnfusion::element::u16)
                 {
                     write_buffer<uint16_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::u32)
+                else if (target_type == nnfusion::element::u32)
                 {
                     write_buffer<uint32_t, T>(target, source, target_element_count);
                 }
-                else if (target_type == ngraph::element::u64)
+                else if (target_type == nnfusion::element::u64)
                 {
                     write_buffer<uint64_t, T>(target, source, target_element_count);
                 }
@@ -254,8 +254,8 @@ namespace nnfusion
             }
 
             bool m_is_weight = false;
-            ngraph::element::Type m_element_type;
-            ngraph::Shape m_shape{};
+            nnfusion::element::Type m_element_type;
+            nnfusion::Shape m_shape{};
             void* m_data{nullptr};
             Constant(const Constant&) = delete;
             Constant(Constant&&) = delete;
@@ -293,7 +293,7 @@ namespace nnfusion
             {
                 if (nullptr == m_data)
                 {
-                    m_data = ngraph::aligned_alloc(m_element_type.size(), m_element_type.size());
+                    m_data = nnfusion::aligned_alloc(m_element_type.size(), m_element_type.size());
                     write_values(std::vector<T>(1, m_value));
                 }
             }

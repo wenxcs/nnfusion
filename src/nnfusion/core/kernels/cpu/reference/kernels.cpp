@@ -989,8 +989,8 @@ void cpu_reference_topk(const T* arg,
         out_shape, start_corner, end_corner, strides, axis_order);
     // Create temp vector for sorting.
     vector<tuple<T, U>> workspace(in_shape[axis]);
-    vector<size_t> in_strides = ngraph::row_major_strides(in_shape);
-    vector<size_t> out_strides = ngraph::row_major_strides(out_shape);
+    vector<size_t> in_strides = nnfusion::row_major_strides(in_shape);
+    vector<size_t> out_strides = nnfusion::row_major_strides(out_shape);
     auto in_axis_stride = in_strides[axis];
     auto out_axis_stride = out_strides[axis];
     for (const Coordinate coord : input_transform)

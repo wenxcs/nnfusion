@@ -16,7 +16,7 @@
 
 #include "ngraph/node.hpp"
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/max_pool.hpp"
+#include "nnfusion/core/operators/max_pool.hpp"
 
 #include "utils/convpool.hpp"
 

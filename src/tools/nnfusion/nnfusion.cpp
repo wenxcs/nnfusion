@@ -7,8 +7,7 @@
 #include <iomanip>
 
 #include "gflags/gflags.h"
-#include "ngraph/runtime/backend.hpp"
-
+#include "nnfusion/engine/external/backend.hpp"
 #include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 
 using namespace std;
@@ -26,6 +25,12 @@ SYNOPSIS
 
 OPTIONS
 )###";
+}
+
+bool file_exists(const string& filename)
+{
+    struct stat buffer;
+    return (stat(filename.c_str(), &buffer) == 0);
 }
 
 int main(int argc, char** argv)
@@ -63,7 +68,7 @@ int main(int argc, char** argv)
     if (format == "##UNSET##")
         format = FLAGS_format;
 
-    if (!model.empty() && !file_util::exists(model))
+    if (!model.empty() && !file_exists(model))
     {
         cout << "File " << model << " not found\n";
         failed = true;
@@ -99,7 +104,7 @@ int main(int argc, char** argv)
 
         if (!backend.empty())
         {
-            auto runtime = runtime::Backend::create(backend);
+            auto runtime = ngraph::runtime::Backend::create(backend);
             runtime->codegen(graph);
         }
     }

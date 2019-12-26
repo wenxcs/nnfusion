@@ -41,7 +41,7 @@ namespace nnfusion
 
                 size_t get_offset() const { return m_offset; }
                 virtual size_t get_index_offset(const std::vector<size_t>& indices) override;
-                Strides get_strides() const override;
+                nnfusion::Strides get_strides() const override;
                 virtual bool operator==(const TensorLayout& other) const override;
 
             protected:

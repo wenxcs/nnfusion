@@ -14,7 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
-#include "ngraph/op/argmax.hpp"
+#include "nnfusion/core/operators/argmax.hpp"
 #include "core/node.hpp"
 #include "ngraph/node_vector.hpp"
 #include "utils/reduction.hpp"

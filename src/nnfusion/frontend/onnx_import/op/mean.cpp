@@ -14,9 +14,9 @@
 // limitations under the License.
 //*****************************************************************************
 
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/divide.hpp"
+#include "nnfusion/core/operators/add.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/divide.hpp"
 
 #include "mean.hpp"
 #include "utils/variadic.hpp"

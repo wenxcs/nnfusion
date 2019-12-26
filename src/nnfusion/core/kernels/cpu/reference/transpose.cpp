@@ -23,7 +23,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
+                    const nnfusion::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
 
                     std::vector<int> axes_order = generic_op->localOpConfig.getRoot()["axes_order"];
                     CHECK(axes_order.size() == input_shape_0.size());

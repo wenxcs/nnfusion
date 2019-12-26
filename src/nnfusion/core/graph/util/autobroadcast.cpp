@@ -5,8 +5,8 @@
 #include "nnfusion/core/operators/op_define/broadcast.hpp"
 #include "nnfusion/core/operators/op_define/reshape.hpp"
 
-#include "ngraph/axis_vector.hpp"
-#include "ngraph/util.hpp"
+#include "nnfusion/common/axis_vector.hpp"
+#include "nnfusion/common/util.hpp"
 
 #include <cassert>
 #include <memory>
@@ -20,25 +20,25 @@ namespace nnfusion
     namespace graph
     {
         autobroadcast_incompatible_shapes::autobroadcast_incompatible_shapes(
-            const ngraph::Shape& shape1, const ngraph::Shape& shape2)
+            const nnfusion::Shape& shape1, const nnfusion::Shape& shape2)
             : errors::CheckError(error_str(shape1, shape2))
             , m_shape1(shape1)
             , m_shape2(shape2)
         {
         }
 
-        const ngraph::Shape& autobroadcast_incompatible_shapes::get_shape1() const
+        const nnfusion::Shape& autobroadcast_incompatible_shapes::get_shape1() const
         {
             return m_shape1;
         }
 
-        const ngraph::Shape& autobroadcast_incompatible_shapes::get_shape2() const
+        const nnfusion::Shape& autobroadcast_incompatible_shapes::get_shape2() const
         {
             return m_shape2;
         }
 
-        std::string autobroadcast_incompatible_shapes::error_str(const ngraph::Shape& shape1,
-                                                                 const ngraph::Shape& shape2)
+        std::string autobroadcast_incompatible_shapes::error_str(const nnfusion::Shape& shape1,
+                                                                 const nnfusion::Shape& shape2)
         {
             ostringstream os;
             os << "Auto-broadcast not possible for these input shapes:"
@@ -50,11 +50,11 @@ namespace nnfusion
         /// compute_shapes_and_broadcast_axes function.
         struct Autobroadcast_plan
         {
-            ngraph::Shape m_arg1_shape_after_possible_reshaping;
-            ngraph::Shape m_arg2_shape_after_possible_reshaping;
-            ngraph::AxisSet m_arg1_broadcast_axes;
-            ngraph::AxisSet m_arg2_broadcast_axes;
-            ngraph::Shape m_final_shape;
+            nnfusion::Shape m_arg1_shape_after_possible_reshaping;
+            nnfusion::Shape m_arg2_shape_after_possible_reshaping;
+            nnfusion::AxisSet m_arg1_broadcast_axes;
+            nnfusion::AxisSet m_arg2_broadcast_axes;
+            nnfusion::Shape m_final_shape;
         };
 
         /// \brief Compute the details regarding what reshape and/or broadcast operations must be applied to
@@ -65,8 +65,8 @@ namespace nnfusion
         ///
         /// \exception ngraph::builder::autobroadcast_incompatible_shapes
         static Autobroadcast_plan
-            compute_shapes_and_broadcast_axes(const ngraph::Shape& arg1_in_shape,
-                                              const ngraph::Shape& arg2_in_shape)
+            compute_shapes_and_broadcast_axes(const nnfusion::Shape& arg1_in_shape,
+                                              const nnfusion::Shape& arg2_in_shape)
         {
             Autobroadcast_plan plan;
 
@@ -140,9 +140,9 @@ namespace nnfusion
         /// If no additional reshape or broadcast op was needed, simply return \p node.
         static std::shared_ptr<GNode>
             add_required_ops(const std::shared_ptr<GNode>& gnode,
-                             const ngraph::Shape& node_shape_after_possible_reshaping,
-                             const ngraph::AxisSet& node_broadcast_axes,
-                             const ngraph::Shape& node_final_shape,
+                             const nnfusion::Shape& node_shape_after_possible_reshaping,
+                             const nnfusion::AxisSet& node_broadcast_axes,
+                             const nnfusion::Shape& node_final_shape,
                              std::shared_ptr<nnfusion::graph::Graph> graph)
         {
             std::shared_ptr<GNode> return_gnode = gnode;
@@ -150,7 +150,7 @@ namespace nnfusion
             if (gnode->get_shape() != node_shape_after_possible_reshaping)
             {
                 // tell reshape to examine input dimensions in order
-                ngraph::AxisVector order = ngraph::get_default_order(gnode->get_shape());
+                nnfusion::AxisVector order = nnfusion::get_default_order(gnode->get_shape());
                 auto return_op =
                     std::make_shared<op::Reshape>(order, node_shape_after_possible_reshaping);
                 return_gnode = graph->add_node_and_edge(return_op, {return_gnode});
@@ -173,8 +173,8 @@ namespace nnfusion
             assert(args.first);
             assert(args.second);
 
-            const ngraph::Shape& arg1_in_shape = args.first->get_shape();
-            const ngraph::Shape& arg2_in_shape = args.second->get_shape();
+            const nnfusion::Shape& arg1_in_shape = args.first->get_shape();
+            const nnfusion::Shape& arg2_in_shape = args.second->get_shape();
 
             // Handle the trivial case...
             if (arg1_in_shape == arg2_in_shape)

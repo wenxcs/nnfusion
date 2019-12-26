@@ -5,8 +5,6 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/op.hpp"
 
-extern DeviceType default_device;
-
 namespace nnfusion
 {
     namespace pass

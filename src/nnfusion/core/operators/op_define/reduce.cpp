@@ -1,16 +1,14 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "reduce.hpp"
-#include "ngraph/graph_util.hpp"
-#include "ngraph/util.hpp"
-#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/common/util.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 
 using namespace std;
 using namespace nnfusion::op;
 
 Reduce::Reduce(const shared_ptr<graph::Graph>& reduction_graph,
-               const ngraph::AxisSet& reduction_axes)
+               const nnfusion::AxisSet& reduction_axes)
     : Op("Reduce")
     , m_reduction_graph(reduction_graph)
     , m_reduction_axes(reduction_axes)
@@ -34,7 +32,7 @@ void Reduce::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         CHECK(axis < input_reductee_shape.size()) << "Reduction axis is out of bounds";
     }
 
-    ngraph::Shape result_shape;
+    nnfusion::Shape result_shape;
 
     for (size_t i = 0; i < input_reductee_shape.size(); i++)
     {
@@ -59,7 +57,7 @@ void Reduce::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     CHECK(m_reduction_graph->get_outputs().at(0)->get_element_type() ==
           arg_init->get_element_type())
         << "Return element type from reduction graph does not match expected";
-    CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == ngraph::Shape{})
+    CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from reduction graph is not a scalar";
     gnode->set_output_type_and_shape(0, input_reductee->get_element_type(), result_shape);
 }

@@ -48,15 +48,15 @@ namespace nnfusion
                 /// With non-linear buffers, this will need to be something other than size_t.
                 virtual size_t get_index_offset(const std::vector<size_t>& indices) = 0;
 
-                const ngraph::element::Type& get_element_type() const;
-                const ngraph::Shape& get_shape() const;
-                virtual ngraph::Strides get_strides() const = 0;
+                const nnfusion::element::Type& get_element_type() const;
+                const nnfusion::Shape& get_shape() const;
+                virtual nnfusion::Strides get_strides() const = 0;
                 /// \brief Return true if this and other have the same element interpretation
                 virtual bool operator==(const TensorLayout& other) const = 0;
                 bool operator!=(const TensorLayout& other) const { return !(*this == other); }
             protected:
-                const ngraph::element::Type m_element_type;
-                const ngraph::Shape m_shape;
+                const nnfusion::element::Type m_element_type;
+                const nnfusion::Shape m_shape;
             };
         }
     }

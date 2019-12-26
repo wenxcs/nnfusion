@@ -17,8 +17,6 @@ void Result::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     OP_VALIDATION(this, gnode->get_input_size() == 1) << "Argument has " << gnode->get_input_size()
                                                       << " outputs (1 expected).";
 
-    // always borrow the placement conf even the default one
-    set_placement(gnode->get_in_edge(0)->get_src()->get_op_ptr()->get_placement());
     gnode->set_output_type_and_shape(
         0, gnode->get_input_element_type(0), gnode->get_input_partial_shape(0));
 }

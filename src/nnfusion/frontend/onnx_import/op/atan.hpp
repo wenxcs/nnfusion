@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/atan.hpp"
+#include "nnfusion/core/operators/atan.hpp"
 
 #include "core/node.hpp"
 

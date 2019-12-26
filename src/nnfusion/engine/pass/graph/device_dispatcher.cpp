@@ -9,7 +9,7 @@ using namespace nnfusion::pass::graph;
 
 bool DefaultDeviceDispatcher::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
-    DeviceType dt = default_device;
+    DeviceType dt = DeviceType::CUDA_GPU;
     /* for debug purpose
     switch(default_device)
     {

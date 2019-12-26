@@ -50,7 +50,7 @@ TEST(nnfusion_inplace_op, reshape)
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
     auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
 
-    ngraph::AxisVector input_order{0, 1};
+    nnfusion::AxisVector input_order{0, 1};
     Shape output_shape{3, 2};
 
     // Create node
@@ -97,8 +97,8 @@ TEST(nnfusion_inplace_op, sum)
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_b);
     auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
-    ngraph::AxisSet reduce_axesA;
-    ngraph::AxisSet reduce_axesB{2};
+    nnfusion::AxisSet reduce_axesA;
+    nnfusion::AxisSet reduce_axesB{2};
 
     // Create node
     auto sum_a_op = std::make_shared<nnfusion::op::Sum>(reduce_axesA);
@@ -127,9 +127,9 @@ TEST(nnfusion_inplace_op, broadcast)
     auto para_b_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_b);
     auto para_b_gnode = graph->add_node_and_edge(para_b_op, GNodeVector({}));
 
-    ngraph::AxisSet broadcast_axesA;
+    nnfusion::AxisSet broadcast_axesA;
     Shape output_shapeA{2, 3};
-    ngraph::AxisSet broadcast_axesB{0};
+    nnfusion::AxisSet broadcast_axesB{0};
     Shape output_shapeB{1, 2, 3};
 
     // Create node
@@ -153,8 +153,8 @@ TEST(nnfusion_inplace_op, max)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
-    ngraph::AxisSet reduction_axes;
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector{});
+    nnfusion::AxisSet reduction_axes;
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Max>(reduction_axes);
@@ -174,8 +174,8 @@ TEST(nnfusion_inplace_op, min)
     // Prepare inputs
     Shape shape_a{2, 3};
     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector({}));
-    ngraph::AxisSet reduction_axes;
+    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector{});
+    nnfusion::AxisSet reduction_axes;
 
     // Create node
     auto op = std::make_shared<nnfusion::op::Min>(reduction_axes);
@@ -842,17 +842,17 @@ TEST(nnfusion_inplace_op, sigmoidbackprop)
 //     // Prepare inputs
 //     Shape shape_a{2, 3};
 //     auto A = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-//     auto args = shared_ptr<ngraph::Node>(A);
+//     auto args = shared_ptr<nnfusion::Node>(A);
 
 //     // Create node
 //     auto nodeA = std::make_shared<nnfusion::op::Tan>(args);
 //     auto nodeB = std::make_shared<nnfusion::op::Sqrt>(args);
 
 //     // Create graph
-//     ngraph::NodeVector res{nodeA, nodeB};
+//     nnfusion::NodeVector res{nodeA, nodeB};
 //     nnfusion::op::ParameterVector parameters{A};
 //     std::string name = "UnaryElementwiseArithmetic";
-//     auto func = make_shared<ngraph::Function>(res, parameters, name);
+//     auto func = make_shared<nnfusion::Function>(res, parameters, name);
 //     auto graph = make_shared<nnfusion::graph::Graph>(func, name);
 
 //     run(graph);
@@ -866,19 +866,19 @@ TEST(nnfusion_inplace_op, sigmoidbackprop)
 //     // Prepare inputs
 //     Shape shape_a{2, 3};
 //     auto A = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-//     auto args0 = shared_ptr<ngraph::Node>(A);
+//     auto args0 = shared_ptr<nnfusion::Node>(A);
 //     auto B = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-//     auto args1 = shared_ptr<ngraph::Node>(B);
+//     auto args1 = shared_ptr<nnfusion::Node>(B);
 
 //     // Create node
 //     auto nodeA = std::make_shared<nnfusion::op::Power>(args0, args1);
 //     auto nodeB = std::make_shared<nnfusion::op::Subtract>(args0, args1);
 
 //     // Create graph
-//     ngraph::NodeVector res{nodeA, nodeB};
+//     nnfusion::NodeVector res{nodeA, nodeB};
 //     nnfusion::op::ParameterVector parameters{A, B};
 //     std::string name = "BinaryElementwiseArithmetic";
-//     auto func = make_shared<ngraph::Function>(res, parameters, name);
+//     auto func = make_shared<nnfusion::Function>(res, parameters, name);
 //     auto graph = make_shared<nnfusion::graph::Graph>(func, name);
 
 //     run(graph);
@@ -892,12 +892,12 @@ TEST(nnfusion_inplace_op, sigmoidbackprop)
 //     // Prepare inputs
 //     Shape shape_a{2, 3};
 //     auto A = make_shared<nnfusion::op::Parameter>(element::boolean, shape_a);
-//     auto args0 = shared_ptr<ngraph::Node>(A);
+//     auto args0 = shared_ptr<nnfusion::Node>(A);
 //     auto B = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-//     auto args1 = shared_ptr<ngraph::Node>(B);
+//     auto args1 = shared_ptr<nnfusion::Node>(B);
 //     auto C = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-//     auto args2 = shared_ptr<ngraph::Node>(C);
-//     auto inputs = vector<shared_ptr<ngraph::Node>>{B, C};
+//     auto args2 = shared_ptr<nnfusion::Node>(C);
+//     auto inputs = vector<shared_ptr<nnfusion::Node>>{B, C};
 
 //     // Create node
 //     string node_type("AddN");
@@ -906,10 +906,10 @@ TEST(nnfusion_inplace_op, sigmoidbackprop)
 //     auto nodeB = std::make_shared<nnfusion::op::GenericOp>(node_type, node_type, inputs, myConfig);
 
 //     // Create graph
-//     ngraph::NodeVector res{nodeA, nodeB};
+//     nnfusion::NodeVector res{nodeA, nodeB};
 //     nnfusion::op::ParameterVector parameters{A, B, C};
 //     std::string name = "Select_AddN";
-//     auto func = make_shared<ngraph::Function>(res, parameters, name);
+//     auto func = make_shared<nnfusion::Function>(res, parameters, name);
 //     auto graph = make_shared<nnfusion::graph::Graph>(func, name);
 
 //     run(graph);

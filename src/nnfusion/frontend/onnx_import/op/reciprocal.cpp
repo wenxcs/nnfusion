@@ -17,9 +17,9 @@
 #include <memory>
 #include <vector>
 
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/divide.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/divide.hpp"
 
 #include "utils/broadcasting.hpp"
 

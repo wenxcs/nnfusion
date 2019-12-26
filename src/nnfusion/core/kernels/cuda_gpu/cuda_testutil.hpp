@@ -3,7 +3,7 @@
 #include "cuda_helper.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
 
-using CodeWriter = ngraph::codegen::CodeWriter;
+using CodeWriter = nnfusion::codegen::CodeWriter;
 
 namespace nnfusion
 {

@@ -18,8 +18,8 @@ namespace nnfusion
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
-                ngraph::element::Type dtype;
-                ngraph::Shape strides, reduced_strides, in_shape, out_shape;
+                nnfusion::element::Type dtype;
+                nnfusion::Shape strides, reduced_strides, in_shape, out_shape;
                 vector<int> stride_magic, stride_shift, reduced_magic, reduced_shift;
 
             public:
@@ -31,11 +31,11 @@ namespace nnfusion
                     out_shape = m_context->outputs.front()->get_shape();
                     in_shape = m_context->inputs.front()->get_shape();
                     threads = ctx->outputs.front()->size(false);
-                    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
-                    strides = ngraph::row_major_strides(out_shape);
+                    dtype = nnfusion::element::Type(ctx->outputs[0]->get_element_type());
+                    strides = nnfusion::row_major_strides(out_shape);
 
                     // calculate strides
-                    strides = ngraph::row_major_strides(out_shape);
+                    strides = nnfusion::row_major_strides(out_shape);
                     // precacluate invariants for integer division via multiplication
                     for (int i = 0; i < strides.size(); i++)
                     {
@@ -46,7 +46,7 @@ namespace nnfusion
                         stride_shift.push_back(shift);
                     }
 
-                    reduced_strides = ngraph::row_major_strides(in_shape);
+                    reduced_strides = nnfusion::row_major_strides(in_shape);
 
                     for (int i = 0; i < in_shape.size(); i++)
                     {

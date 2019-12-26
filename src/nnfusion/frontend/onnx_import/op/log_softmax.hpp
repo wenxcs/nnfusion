@@ -20,7 +20,7 @@
 
 #include "ngraph/node.hpp"
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/log.hpp"
+#include "nnfusion/core/operators/log.hpp"
 
 #include "../op/softmax.hpp"
 #include "core/node.hpp"

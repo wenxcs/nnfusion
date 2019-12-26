@@ -16,11 +16,11 @@
 
 #include "op/gemm.hpp"
 
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/dot.hpp"
-#include "ngraph/op/multiply.hpp"
+#include "nnfusion/core/operators/add.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/dot.hpp"
+#include "nnfusion/core/operators/multiply.hpp"
 
 #include "../exceptions.hpp"
 #include "../utils/broadcasting.hpp"

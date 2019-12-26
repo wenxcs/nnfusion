@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/divide.hpp"
+#include "nnfusion/core/operators/divide.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

@@ -27,7 +27,7 @@ REGISTER_OP(UnsortedSegmentSum).infershape([](std::shared_ptr<graph::GNode> gnod
     auto seg_num = constop->get_vector<int>();
     CHECK(shape_0.size() > 0 && shape_1.size() == 1 && seg_num.size() == 1)
         << "Only support 1-D sgments." << shape_0 << shape_1 << shape_2;
-    ngraph::Shape output_shape(shape_0);
+    nnfusion::Shape output_shape(shape_0);
     // Output: Has same shape as data,
     // except for the first segment_ids.rank dimensions,
     // which are replaced with a single dimension which has size num_segments.

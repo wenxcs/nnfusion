@@ -9,7 +9,7 @@ REGISTER_OP(Transpose)
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         auto& axes_order = generic_op->localOpConfig.getRoot()["axes_order"];
         CHECK(axes_order.size() == shape_0.size());
-        ngraph::Shape output_shape_0;
+        nnfusion::Shape output_shape_0;
         for (int i = 0; i < axes_order.size(); ++i)
             output_shape_0.push_back(shape_0[axes_order[i]]);
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);

@@ -15,8 +15,8 @@
 //*****************************************************************************
 
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
-#include "ngraph/type/element_type.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
+#include "nnfusion/common/type/element_type.hpp"
 
 nnfusion::descriptor::layout::TensorLayout::TensorLayout(const descriptor::Tensor& tensor)
     : m_element_type(tensor.get_element_type())
@@ -24,19 +24,19 @@ nnfusion::descriptor::layout::TensorLayout::TensorLayout(const descriptor::Tenso
 {
 }
 
-const ngraph::element::Type& nnfusion::descriptor::layout::TensorLayout::get_element_type() const
+const nnfusion::element::Type& nnfusion::descriptor::layout::TensorLayout::get_element_type() const
 {
     return m_element_type;
 }
 
-const ngraph::Shape& nnfusion::descriptor::layout::TensorLayout::get_shape() const
+const nnfusion::Shape& nnfusion::descriptor::layout::TensorLayout::get_shape() const
 {
     return m_shape;
 }
 
 size_t nnfusion::descriptor::layout::TensorLayout::get_size() const
 {
-    return ngraph::shape_size(get_shape());
+    return nnfusion::shape_size(get_shape());
 }
 
 size_t nnfusion::descriptor::layout::TensorLayout::get_allocated_size()

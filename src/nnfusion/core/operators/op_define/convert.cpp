@@ -5,7 +5,7 @@
 
 using namespace nnfusion::op;
 
-Convert::Convert(const ngraph::element::Type& element_type)
+Convert::Convert(const nnfusion::element::Type& element_type)
     : Op("Convert")
     , m_element_type(element_type)
 {

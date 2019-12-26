@@ -20,8 +20,8 @@ namespace nnfusion
                     auto slice_op =
                         static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
 
-                    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+                    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+                    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
 
                     input_type = ctx->inputs[0]->get_element_type().c_type_string();
                     output_type = ctx->outputs[0]->get_element_type().c_type_string();
@@ -35,8 +35,8 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     auto& ctx = m_context;
-                    auto input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-                    auto output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+                    auto input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+                    auto output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
 
                     auto op_config =
                         static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
@@ -93,8 +93,8 @@ namespace nnfusion
             private:
                 shared_ptr<KernelContext> kernel_ctx;
 
-                ngraph::Shape input_shape, output_shape, lower_bounds;
-                ngraph::Shape input_strides, output_strides, slice_strides;
+                nnfusion::Shape input_shape, output_shape, lower_bounds;
+                nnfusion::Shape input_strides, output_strides, slice_strides;
                 string input_type, output_type;
             };
         } // namespace cuda

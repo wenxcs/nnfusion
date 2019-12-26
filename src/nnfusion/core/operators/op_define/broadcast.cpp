@@ -7,15 +7,15 @@ using namespace std;
 using namespace nnfusion::op;
 
 Broadcast::Broadcast(const std::string& name,
-                     const ngraph::Shape& shape,
-                     const ngraph::AxisSet& broadcast_axes)
+                     const nnfusion::Shape& shape,
+                     const nnfusion::AxisSet& broadcast_axes)
     : Op(name)
     , m_shape(shape)
     , m_broadcast_axes(broadcast_axes)
 {
 }
 
-Broadcast::Broadcast(const ngraph::Shape& shape, const ngraph::AxisSet& broadcast_axes)
+Broadcast::Broadcast(const nnfusion::Shape& shape, const nnfusion::AxisSet& broadcast_axes)
     : Broadcast("Broadcast", shape, broadcast_axes)
 {
 }
@@ -33,7 +33,7 @@ void Broadcast::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
             << "(broadcast axes: " << m_broadcast_axes << ", output shape: " << m_shape << ").";
     }
 
-    ngraph::Shape required_input_shape = m_shape;
+    nnfusion::Shape required_input_shape = m_shape;
     for (auto i = m_broadcast_axes.rbegin(); i != m_broadcast_axes.rend(); ++i)
     {
         required_input_shape.erase(required_input_shape.begin() + *i);
@@ -54,7 +54,7 @@ void Broadcast::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 
 void Broadcast::inner_or_outer_broadcast()
 {
-    ngraph::AxisSet outer_axes;
+    nnfusion::AxisSet outer_axes;
     size_t rest_size = 1;
     bool count_size_only = false;
     for (size_t i = 0; i < m_shape.size(); i++)
@@ -74,7 +74,7 @@ void Broadcast::inner_or_outer_broadcast()
         return;
     }
 
-    ngraph::AxisSet inner_axes;
+    nnfusion::AxisSet inner_axes;
     for (size_t i = m_shape.size() - 1; i >= 0; i--)
     {
         if (m_broadcast_axes.count(i) > 0)

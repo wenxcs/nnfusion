@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/maximum.hpp"
+#include "nnfusion/core/operators/maximum.hpp"
 
 #include "core/node.hpp"
 #include "utils/variadic.hpp"

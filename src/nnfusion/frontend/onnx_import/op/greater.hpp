@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/greater.hpp"
+#include "nnfusion/core/operators/greater.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

@@ -43,7 +43,7 @@ namespace nnfusion
             //     std::vector<T> local(element_count);
             //     size_t size_in_bytes = sizeof(T) * element_count;
             //     cuda_memcpyDtH(local.data(), p, size_in_bytes);
-            //     LOG(INFO) << "{" << ngraph::join(local) << "}";
+            //     LOG(INFO) << "{" << nnfusion::join(local) << "}";
             // }
         }
     }

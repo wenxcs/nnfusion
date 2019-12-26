@@ -14,8 +14,8 @@
 namespace
 {
     nnfusion::op::OpConfig::any
-        generate_kernel_code(const std::vector<ngraph::Shape>& input_shapes,
-                             const std::vector<ngraph::Shape>& output_shapes,
+        generate_kernel_code(const std::vector<nnfusion::Shape>& input_shapes,
+                             const std::vector<nnfusion::Shape>& output_shapes,
                              const nnfusion::op::OpConfig::any& config)
     {
         // e.g: inputs_shapes = {{64, 10}, {64}}, output_shapes = {{64}}

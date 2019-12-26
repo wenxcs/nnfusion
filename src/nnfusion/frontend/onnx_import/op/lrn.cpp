@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "ngraph/op/lrn.hpp"
+#include "nnfusion/core/operators/lrn.hpp"
 
 #include "core/node.hpp"
 #include "lrn.hpp"

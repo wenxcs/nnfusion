@@ -5,8 +5,8 @@
 using namespace std;
 using namespace nnfusion::op;
 
-Parameter::Parameter(const ngraph::element::Type& element_type,
-                     const ngraph::PartialShape& pshape,
+Parameter::Parameter(const nnfusion::element::Type& element_type,
+                     const nnfusion::PartialShape& pshape,
                      const bool cacheable)
     : Op("Parameter")
     , m_cacheable(cacheable)

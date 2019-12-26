@@ -96,7 +96,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
     uint32_t nthreads = 0;
     for (auto out : m_context->outputs)
     {
-        auto size = static_cast<uint32_t>(ngraph::shape_size(out->get_shape()));
+        auto size = static_cast<uint32_t>(nnfusion::shape_size(out->get_shape()));
         if (size > nthreads)
             nthreads = size;
     }
@@ -276,7 +276,7 @@ void ElementWiseFused::set_launch_config()
 void ElementWiseFused::compute_best_config(int& grids, int& blocks, int& bound)
 {
     uint32_t num_ele =
-        static_cast<uint32_t>(ngraph::shape_size(m_context->outputs[0]->get_shape()));
+        static_cast<uint32_t>(nnfusion::shape_size(m_context->outputs[0]->get_shape()));
     for (int i = 1024; i >= 64; i >>= 1)
     {
         if (num_ele % i == 0)

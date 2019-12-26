@@ -6,7 +6,7 @@
 #include <sstream>
 #include <utility>
 
-#include "ngraph/util.hpp"
+#include "nnfusion/common/util.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
@@ -14,7 +14,6 @@
 #include "nnfusion/core/operators/op_define/constant.hpp"
 
 using namespace std;
-using namespace ngraph;
 using namespace nnfusion;
 using namespace nnfusion::pass;
 using namespace nnfusion::kernels;

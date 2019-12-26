@@ -19,9 +19,9 @@
 #include <iterator>   // std::begin, std::end
 #include <numeric>    // std::accumulate
 
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/divide.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/divide.hpp"
 
 #include "reduce.hpp"
 #include "utils/broadcasting.hpp"

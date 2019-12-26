@@ -18,9 +18,8 @@
 
 #include "nnfusion/util/util.hpp"
 
-#include "ngraph/partial_shape.hpp"
-#include "ngraph/placement.hpp"
-#include "ngraph/type/element_type.hpp"
+#include "nnfusion/common/partial_shape.hpp"
+#include "nnfusion/common/type/element_type.hpp"
 
 namespace nnfusion
 {
@@ -77,12 +76,6 @@ namespace nnfusion
 
             void Clear();
 
-            /// Get device placement
-            ngraph::Placement get_placement() const;
-
-            /// Set device placement
-            void set_placement(ngraph::Placement placement);
-
             virtual std::shared_ptr<Op> get_default_value() const { return nullptr; }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const Op& other) const { return m_instance_id < other.m_instance_id; }
@@ -99,7 +92,7 @@ namespace nnfusion
             // Called in constructors during transition
             void constructor_validate_and_infer_types(std::shared_ptr<graph::GNode> gnode);
 
-            std::tuple<ngraph::element::Type, ngraph::PartialShape>
+            std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
                 validate_and_infer_elementwise_args(std::shared_ptr<graph::GNode> gnode);
 
             std::string m_op_type;
@@ -108,7 +101,6 @@ namespace nnfusion
             std::string m_name;
             const std::string m_unique_name;
             static std::atomic<size_t> m_next_instance_id;
-            ngraph::Placement m_placement = ngraph::Placement::DEFAULT;
 
         private:
             std::shared_ptr<OpAnnotations> m_op_annotations;

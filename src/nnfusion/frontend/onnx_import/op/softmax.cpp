@@ -16,7 +16,7 @@
 
 #include <numeric>
 
-#include "ngraph/op/softmax.hpp"
+#include "nnfusion/core/operators/softmax.hpp"
 
 #include "exceptions.hpp"
 #include "softmax.hpp"

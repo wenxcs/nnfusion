@@ -19,9 +19,9 @@ namespace nnfusion
             private:
                 shared_ptr<KernelContext> kernel_ctx;
                 size_t reduction_axes;
-                ngraph::Shape arg0_shape, arg1_shape;
-                ngraph::Shape out_shape;
-                ngraph::element::Type dtype;
+                nnfusion::Shape arg0_shape, arg1_shape;
+                nnfusion::Shape out_shape;
+                nnfusion::element::Type dtype;
                 bool use_sgemm_batch = false;
             };
         } // namespace cpu

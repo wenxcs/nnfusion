@@ -14,7 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
-#include "ngraph/op/constant.hpp"
+#include "nnfusion/core/operators/constant.hpp"
 #include "core/node.hpp"
 #include "core/tensor.hpp"
 #include "ngraph/node_vector.hpp"

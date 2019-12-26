@@ -20,10 +20,10 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::Shape input_shape, output_shape, padding_above, padding_below,
+                nnfusion::Shape input_shape, output_shape, padding_above, padding_below,
                     padding_interior;
                 uint32_t rank;
-                ngraph::NVShape input_strides, output_strides, pad_below, pad_interior;
+                nnfusion::NVShape input_strides, output_strides, pad_below, pad_interior;
                 string input_type, output_type;
             };
         } // namespace cuda

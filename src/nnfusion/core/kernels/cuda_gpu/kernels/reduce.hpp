@@ -35,8 +35,8 @@ namespace nnfusion
                     }
 
                     reduce_rank = reduce_axis.size();
-                    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+                    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+                    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
                     data_bytes = ctx->inputs[0]->get_element_type().size();
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
@@ -449,9 +449,9 @@ if (thread_idx == 0) output0[block_idx] = val;
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::AxisSet reduce_axis;
-                ngraph::Shape input_shape, output_shape;
-                ngraph::NVShape input_strides, non_reduce_strides, reduce_strides, reduce_shape;
+                nnfusion::AxisSet reduce_axis;
+                nnfusion::Shape input_shape, output_shape;
+                nnfusion::NVShape input_strides, non_reduce_strides, reduce_strides, reduce_shape;
                 size_t data_bytes, rank, reduce_rank, out_rank;
                 uint32_t nthreads_acc;
                 string reduce_op, input_type, output_type;
@@ -482,8 +482,8 @@ if (thread_idx == 0) output0[block_idx] = val;
                     }
 
                     reduce_rank = reduce_axis.size();
-                    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+                    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+                    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
 
@@ -534,8 +534,8 @@ if (thread_idx == 0) output0[block_idx] = val;
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::AxisSet reduce_axis;
-                ngraph::Shape input_shape, output_shape;
+                nnfusion::AxisSet reduce_axis;
+                nnfusion::Shape input_shape, output_shape;
                 size_t rank, reduce_rank, out_rank;
                 string reduce_op, input_type, output_type;
             };

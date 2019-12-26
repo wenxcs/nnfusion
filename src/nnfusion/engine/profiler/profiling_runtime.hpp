@@ -9,11 +9,9 @@
 #include <memory>
 #include <string>
 
-#include "ngraph/node.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 using namespace std;
-using namespace ngraph;
 using namespace nnfusion;
 using namespace nnfusion::graph;
 

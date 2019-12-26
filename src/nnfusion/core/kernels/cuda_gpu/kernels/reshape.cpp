@@ -118,8 +118,8 @@ cuda::Reshape2D::Reshape2D(shared_ptr<KernelContext> ctx)
     // <TODO> currently we set it to 16, will add tuning method later
     block_size = 16;
     input_strides = row_major_strides(arg_shape);
-    output_strides = ngraph::NVShape(arg_rank);
-    trans_strides = ngraph::NVShape(arg_rank);
+    output_strides = nnfusion::NVShape(arg_rank);
+    trans_strides = nnfusion::NVShape(arg_rank);
     int stride = 1;
     for (int64_t i = arg_rank - 1; i >= 0; i--)
     {
@@ -229,9 +229,9 @@ cuda::Reshape3D::Reshape3D(shared_ptr<KernelContext> ctx)
     block_size[0] = block_size_x;                                                        //x
     block_size[2] = (input_order.size() >= 3 && input_order[2] == 0) ? block_size_x : 1; //z
     block_size[1] = (block_size[2] == block_size_x) ? 1 : block_size_x;                  //y
-    input_strides = ngraph::row_major_strides(arg_shape);
-    output_strides = ngraph::NVShape(arg_rank);
-    trans_strides = ngraph::NVShape(arg_rank);
+    input_strides = nnfusion::row_major_strides(arg_shape);
+    output_strides = nnfusion::NVShape(arg_rank);
+    trans_strides = nnfusion::NVShape(arg_rank);
     int stride = 1;
     for (int64_t i = arg_rank - 1; i >= 0; i--)
     {
@@ -354,9 +354,9 @@ cuda::ReshapehD::ReshapehD(shared_ptr<KernelContext> ctx)
     : Reshape(ctx)
 {
     block_size_x = 64;
-    input_strides = ngraph::row_major_strides(arg_shape);
-    output_strides = ngraph::NVShape(arg_rank);
-    trans_strides = ngraph::NVShape(arg_rank);
+    input_strides = nnfusion::row_major_strides(arg_shape);
+    output_strides = nnfusion::NVShape(arg_rank);
+    trans_strides = nnfusion::NVShape(arg_rank);
     int stride = 1;
     for (int64_t i = arg_rank - 1; i >= 0; i--)
     {

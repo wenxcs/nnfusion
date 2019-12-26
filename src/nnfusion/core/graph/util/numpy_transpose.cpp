@@ -9,26 +9,26 @@
 #include "nnfusion/util/util.hpp"
 #include "numpy_transpose.hpp"
 
-#include "ngraph/util.hpp"
+#include "nnfusion/common/util.hpp"
 
 namespace nnfusion
 {
     namespace graph
     {
-        std::string numpy_transpose_error_str(const ngraph::AxisVector& order,
-                                              const ngraph::Shape& in_shape)
+        std::string numpy_transpose_error_str(const nnfusion::AxisVector& order,
+                                              const nnfusion::Shape& in_shape)
         {
             std::ostringstream os;
             os << "The axes order ";
-            os << "[ " << ngraph::join(order) << " ]";
+            os << "[ " << nnfusion::join(order) << " ]";
             os << " is incompatible with the input shape ";
-            os << "[ " << ngraph::join(in_shape) << " ]";
+            os << "[ " << nnfusion::join(in_shape) << " ]";
             os << " during numpy_transpose.";
             return os.str();
         }
 
         std::shared_ptr<GNode> numpy_transpose(const std::shared_ptr<GNode>& gnode,
-                                               ngraph::AxisVector order,
+                                               nnfusion::AxisVector order,
                                                size_t output_index)
         {
             auto in_shape = gnode->get_output_shape(output_index);
@@ -36,13 +36,13 @@ namespace nnfusion
             if (order.size() == 0)
             {
                 auto n = in_shape.size();
-                order = ngraph::AxisVector(n);
+                order = nnfusion::AxisVector(n);
                 std::generate(order.begin(), order.end(), [&n]() { return --n; });
             }
             else if (order.size() == in_shape.size())
             {
                 // validate that the axes order is valid, i.e., unique and the right size
-                std::unordered_set<ngraph::AxisVector::value_type> axes;
+                std::unordered_set<nnfusion::AxisVector::value_type> axes;
                 for (auto o : order)
                 {
                     if (o < in_shape.size() && !axes.count(o))
@@ -61,7 +61,7 @@ namespace nnfusion
             }
 
             // create output shape
-            ngraph::Shape out_shape;
+            nnfusion::Shape out_shape;
             for (size_t i = 0; i < in_shape.size(); ++i)
                 out_shape.push_back(in_shape[order[i]]);
 

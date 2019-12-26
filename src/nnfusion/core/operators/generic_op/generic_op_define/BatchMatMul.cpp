@@ -15,9 +15,9 @@ REGISTER_OP(BatchMatMul)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
         CHECK(gnode->get_input_size() == 2);
 
-        const ngraph::Shape& input_shape_0 = gnode->get_input_shape(0);
-        const ngraph::Shape& input_shape_1 = gnode->get_input_shape(1);
-        ngraph::Shape output_shape_0;
+        const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
+        const nnfusion::Shape& input_shape_1 = gnode->get_input_shape(1);
+        nnfusion::Shape output_shape_0;
 
         CHECK(input_shape_0.size() == input_shape_1.size());
         CHECK(gnode->get_input_element_type(0) == gnode->get_input_element_type(1));

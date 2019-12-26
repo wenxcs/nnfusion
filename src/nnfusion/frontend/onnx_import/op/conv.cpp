@@ -20,11 +20,11 @@
 
 #include "op/conv.hpp"
 
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/concat.hpp"
-#include "ngraph/op/convolution.hpp"
-#include "ngraph/op/slice.hpp"
+#include "nnfusion/core/operators/add.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
+#include "nnfusion/core/operators/concat.hpp"
+#include "nnfusion/core/operators/convolution.hpp"
+#include "nnfusion/core/operators/slice.hpp"
 
 #include "../exceptions.hpp"
 #include "../op/conv.hpp"

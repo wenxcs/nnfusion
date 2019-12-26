@@ -52,14 +52,15 @@ namespace nnfusion
 
                     // generic_op->validate_and_infer_types();
                     // auto& cfg = generic_op->localOpConfig.getRoot();
-                    auto matching = [&](const ngraph::Shape& _input_shape,
-                                        const ngraph::Shape& _filter_shape,
-                                        const ngraph::Shape& _output_shape,
-                                        const ngraph::Strides& _dilation,
-                                        const ngraph::Strides& _data_dilation,
-                                        const ngraph::Strides& _stride,
-                                        const ngraph::CoordinateDiff& _padding_below_diff,
-                                        const ngraph::CoordinateDiff& _padding_above_diff) -> bool {
+                    auto matching =
+                        [&](const nnfusion::Shape& _input_shape,
+                            const nnfusion::Shape& _filter_shape,
+                            const nnfusion::Shape& _output_shape,
+                            const nnfusion::Strides& _dilation,
+                            const nnfusion::Strides& _data_dilation,
+                            const nnfusion::Strides& _stride,
+                            const nnfusion::CoordinateDiff& _padding_below_diff,
+                            const nnfusion::CoordinateDiff& _padding_above_diff) -> bool {
                         if (input_shape != _input_shape)
                             return false;
                         if (filter_shape != _filter_shape)

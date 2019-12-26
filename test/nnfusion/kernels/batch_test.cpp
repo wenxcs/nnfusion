@@ -63,7 +63,7 @@ namespace nnfusion
         template <>
         bool all_close<float>(const std::vector<float>& a, const std::vector<float>& b)
         {
-            return ngraph::test::all_close_f(a, b);
+            return all_close_f(a, b);
         }
 
         template <>
@@ -119,7 +119,7 @@ namespace nnfusion
                         if (res_first.size() != output.size())
                             return false;
 
-                        if (!ngraph::test::all_close_f(res_first, output))
+                        if (!all_close_f(res_first, output))
                             return false;
                     }
                     else

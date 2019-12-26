@@ -9,18 +9,18 @@ cuda::Pad::Pad(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
     auto pad = static_pointer_cast<nnfusion::op::Pad>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    padding_below = ngraph::Shape(pad->get_padding_below());
-    padding_above = ngraph::Shape(pad->get_padding_above());
-    padding_interior = ngraph::Shape(pad->get_padding_interior());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    padding_below = nnfusion::Shape(pad->get_padding_below());
+    padding_above = nnfusion::Shape(pad->get_padding_above());
+    padding_interior = nnfusion::Shape(pad->get_padding_interior());
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();
 
     rank = static_cast<uint32_t>(input_shape.size());
 
-    pad_below = ngraph::NVShape(input_shape.size(), 0);
-    pad_interior = ngraph::NVShape(input_shape.size(), 1);
+    pad_below = nnfusion::NVShape(input_shape.size(), 0);
+    pad_interior = nnfusion::NVShape(input_shape.size(), 1);
 
     int64_t i = padding_below.size() - 1;
     int64_t j = input_shape.size() - 1;

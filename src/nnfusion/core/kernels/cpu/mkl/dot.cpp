@@ -11,10 +11,10 @@ cpu::DotMkl::DotMkl(shared_ptr<KernelContext> ctx)
     auto dot_op = static_pointer_cast<nnfusion::op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
-    arg0_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    arg1_shape = ngraph::Shape(ctx->inputs[1]->get_shape());
-    out_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
+    arg0_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    arg1_shape = nnfusion::Shape(ctx->inputs[1]->get_shape());
+    out_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    dtype = nnfusion::element::Type(ctx->outputs[0]->get_element_type());
 
     std::stringstream tag;
     tag << "mklblas"

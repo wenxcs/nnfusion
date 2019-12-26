@@ -1,6 +1,5 @@
 // Microsoft (c) 2019, NNFusion Team
 
-#include "ngraph/serializer.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 REGISTER_OP(OneHot)
@@ -22,7 +21,7 @@ REGISTER_OP(OneHot)
         bool is_signed = false;
         bool is_quantized = false;
         string c_type_string = "";
-        for (const element::Type* t : element::Type::get_known_types())
+        for (const nnfusion::element::Type* t : nnfusion::element::Type::get_known_types())
         {
             if (t->c_type_string() == t_str)
             {
@@ -34,12 +33,12 @@ REGISTER_OP(OneHot)
                 break;
             }
         }
-        ngraph::element::Type type =
-            element::Type(bitwidth, is_real, is_signed, is_quantized, c_type_string);
+        nnfusion::element::Type type =
+            nnfusion::element::Type(bitwidth, is_real, is_signed, is_quantized, c_type_string);
 
         if (axis == -1)
             axis = shape_0.size() - 1;
-        ngraph::Shape output_shape_0;
+        nnfusion::Shape output_shape_0;
         for (int i = 0; i <= axis; ++i)
             output_shape_0.push_back(shape_0[i]);
         output_shape_0.push_back(depth);

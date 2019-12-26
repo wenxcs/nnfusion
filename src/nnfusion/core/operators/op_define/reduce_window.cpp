@@ -1,17 +1,15 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "reduce_window.hpp"
-#include "ngraph/graph_util.hpp"
-#include "ngraph/util.hpp"
-#include "nnfusion/core/graph/gnode.hpp"
+#include "nnfusion/common/util.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 
 using namespace std;
 using namespace nnfusion::op;
 
 ReduceWindow::ReduceWindow(const std::shared_ptr<graph::Graph>& reduction_graph,
-                           const ngraph::Shape& window_shape,
-                           const ngraph::Strides& window_movement_strides)
+                           const nnfusion::Shape& window_shape,
+                           const nnfusion::Strides& window_movement_strides)
     : Op("ReduceWindow")
     , m_reduction_graph(reduction_graph)
     , m_window_shape(window_shape)
@@ -64,10 +62,10 @@ void ReduceWindow::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     CHECK(g_params.at(1)->get_element_type() == arg_init->get_element_type())
         << "Parameter 1 of reduction graph has wrong element type";
 
-    CHECK(g_params.at(0)->get_shape() == ngraph::Shape{})
+    CHECK(g_params.at(0)->get_shape() == nnfusion::Shape{})
         << "Parameter 0 of reduction graph is not a scalar";
 
-    CHECK(g_params.at(1)->get_shape() == ngraph::Shape{})
+    CHECK(g_params.at(1)->get_shape() == nnfusion::Shape{})
         << "Parameter 1 of reduction graph is not a scalar";
 
     CHECK(m_reduction_graph->get_output_size() <= 1)
@@ -77,10 +75,10 @@ void ReduceWindow::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
           arg_init->get_element_type())
         << "Return element type from reduction graph does not match expected";
 
-    CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == ngraph::Shape{})
+    CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from reduction graph is not a scalar";
 
-    ngraph::Shape result_shape;
+    nnfusion::Shape result_shape;
 
     for (size_t i = 0; i < input_reductee_shape.size(); i++)
     {

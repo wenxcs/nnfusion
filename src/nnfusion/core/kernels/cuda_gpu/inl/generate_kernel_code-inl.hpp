@@ -22,7 +22,7 @@ namespace nnfusion
                     GENERIC_OP_LOGGING();
 
                     size_t num_in = m_context->inputs.size(), num_out = m_context->outputs.size();
-                    std::vector<ngraph::Shape> input_shapes, output_shapes;
+                    std::vector<nnfusion::Shape> input_shapes, output_shapes;
                     for (int i = 0; i < num_in; ++i)
                         input_shapes.push_back(m_context->inputs[i]->get_shape());
                     for (int i = 0; i < num_out; ++i)

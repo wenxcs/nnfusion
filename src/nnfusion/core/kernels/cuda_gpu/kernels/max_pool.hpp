@@ -20,8 +20,9 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::Shape input_shape, output_shape, window_shape, padding_below, padding_above;
-                ngraph::Strides window_stride;
+                nnfusion::Shape input_shape, output_shape, window_shape, padding_below,
+                    padding_above;
+                nnfusion::Strides window_stride;
                 string input_type, output_type;
 
                 size_t window_width, window_stride_width, input_width, output_width;
@@ -37,8 +38,9 @@ namespace nnfusion
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::Shape input_shape, output_shape, window_shape, padding_below, padding_above;
-                ngraph::Strides window_stride;
+                nnfusion::Shape input_shape, output_shape, window_shape, padding_below,
+                    padding_above;
+                nnfusion::Strides window_stride;
                 string input_type, output_type;
             };
         } // namespace cuda

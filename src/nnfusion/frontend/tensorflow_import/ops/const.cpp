@@ -1,12 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "const.hpp"
+#include "nnfusion/core/operators/op_define/constant.hpp"
 #include "stdint.h"
-// #include "../proto/tensor.pb.h"
-// #include "core/node.hpp"
-// #include "core/tensor.hpp"
-// #include "ngraph/node_vector.hpp"
-#include "ngraph/op/constant.hpp"
 
 namespace nnfusion
 {
@@ -126,7 +122,7 @@ namespace nnfusion
 
             template <typename T, typename VecT = T>
             static bool MakeConstOp(const tensorflow::NodeDef& op,
-                                    ngraph::element::Type et,
+                                    nnfusion::element::Type et,
                                     std::shared_ptr<nnfusion::op::Op>* ng_node)
             {
                 std::vector<VecT> const_values;
@@ -135,7 +131,7 @@ namespace nnfusion
                 auto ret = ValuesFromConstNode<T, VecT>(op, &shape_proto, &const_values);
                 CHECK(ret);
 
-                ngraph::Shape ng_shape;
+                nnfusion::Shape ng_shape;
                 ret = TFTensorShapeToNGraphShape(shape_proto, &ng_shape);
                 CHECK(ret);
 
@@ -146,46 +142,46 @@ namespace nnfusion
 
             const std::map<tensorflow::DataType,
                            std::pair<std::function<bool(const tensorflow::NodeDef&,
-                                                        ngraph::element::Type,
+                                                        nnfusion::element::Type,
                                                         std::shared_ptr<nnfusion::op::Op>*)>,
-                                     const ngraph::element::Type>>&
+                                     const nnfusion::element::Type>>&
                 TF_NGRAPH_CONST_MAP()
             {
                 static const std::map<
                     tensorflow::DataType,
                     std::pair<std::function<bool(const tensorflow::NodeDef&,
-                                                 ngraph::element::Type,
+                                                 nnfusion::element::Type,
                                                  std::shared_ptr<nnfusion::op::Op>*)>,
-                              const ngraph::element::Type>>
+                              const nnfusion::element::Type>>
                     the_map = {
                         {tensorflow::DataType::DT_FLOAT,
-                         std::make_pair(MakeConstOp<float>, ngraph::element::f32)},
+                         std::make_pair(MakeConstOp<float>, nnfusion::element::f32)},
                         {tensorflow::DataType::DT_DOUBLE,
-                         std::make_pair(MakeConstOp<double>, ngraph::element::f64)},
+                         std::make_pair(MakeConstOp<double>, nnfusion::element::f64)},
                         {tensorflow::DataType::DT_INT8,
-                         std::make_pair(MakeConstOp<int8>, ngraph::element::i8)},
+                         std::make_pair(MakeConstOp<int8>, nnfusion::element::i8)},
                         {tensorflow::DataType::DT_INT16,
-                         std::make_pair(MakeConstOp<int16>, ngraph::element::i16)},
+                         std::make_pair(MakeConstOp<int16>, nnfusion::element::i16)},
                         // {tensorflow::DataType::DT_QINT8,
-                        //   std::make_pair(MakeConstOp<google::protobuf::qint8>, ngraph::element::i8)},
+                        //   std::make_pair(MakeConstOp<google::protobuf::qint8>, nnfusion::element::i8)},
                         // {tensorflow::DataType::DT_QUINT16,
-                        //   std::make_pair(MakeConstOp<google::protobuf::quint8>, ngraph::element::u8)},
+                        //   std::make_pair(MakeConstOp<google::protobuf::quint8>, nnfusion::element::u8)},
                         {tensorflow::DataType::DT_INT32,
-                         std::make_pair(MakeConstOp<int32>, ngraph::element::i32)},
+                         std::make_pair(MakeConstOp<int32>, nnfusion::element::i32)},
                         {tensorflow::DataType::DT_INT64,
-                         std::make_pair(MakeConstOp<int64>, ngraph::element::i64)},
+                         std::make_pair(MakeConstOp<int64>, nnfusion::element::i64)},
                         {tensorflow::DataType::DT_UINT8,
-                         std::make_pair(MakeConstOp<uint8>, ngraph::element::u8)},
+                         std::make_pair(MakeConstOp<uint8>, nnfusion::element::u8)},
                         {tensorflow::DataType::DT_UINT16,
-                         std::make_pair(MakeConstOp<uint16>, ngraph::element::u16)},
+                         std::make_pair(MakeConstOp<uint16>, nnfusion::element::u16)},
                         {tensorflow::DataType::DT_UINT32,
-                         std::make_pair(MakeConstOp<uint32>, ngraph::element::u32)},
+                         std::make_pair(MakeConstOp<uint32>, nnfusion::element::u32)},
                         {tensorflow::DataType::DT_UINT64,
-                         std::make_pair(MakeConstOp<uint64>, ngraph::element::u64)},
+                         std::make_pair(MakeConstOp<uint64>, nnfusion::element::u64)},
                         {tensorflow::DataType::DT_BOOL,
-                         std::make_pair(MakeConstOp<bool, char>, ngraph::element::boolean)},
+                         std::make_pair(MakeConstOp<bool, char>, nnfusion::element::boolean)},
                         {tensorflow::DataType::DT_STRING,
-                         std::make_pair(MakeConstOp<std::string, char>, ngraph::element::i32)}};
+                         std::make_pair(MakeConstOp<std::string, char>, nnfusion::element::i32)}};
                 // TODO: data type string unsupport now, bert model has string type const op used for assert
 
                 return the_map;

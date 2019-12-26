@@ -34,7 +34,7 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
+                    const nnfusion::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
                     size_t mul_cnt = 1;
                     for (auto& it : input_shape_0)
                         mul_cnt *= it;

@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/relu.hpp"
+#include "nnfusion/core/operators/relu.hpp"
 
 #include "core/node.hpp"
 

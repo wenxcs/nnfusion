@@ -27,9 +27,6 @@ namespace nnfusion
             std::string doc_string_;
 
             Attributes _attr;
-            // Tags _tag;
-            //std::vector<ngraph::descriptor::Tensor*> inputs_;
-            //std::vector<ngraph::descriptor::Tensor*> outputs_;
             std::shared_ptr<graph::GNode> gnode;
 
         public:

@@ -14,8 +14,8 @@ REGISTER_OP(DynamicStitch)
 
         bool all_indices_constant = true;
         int64_t max_index = 0;
-        ngraph::Shape output_shape;
-        ngraph::element::Type type;
+        nnfusion::Shape output_shape;
+        nnfusion::element::Type type;
         std::vector<std::vector<int64_t>> indices_inputs;
         for (int i = 0; i < num_partitions; ++i)
         {
@@ -25,7 +25,7 @@ REGISTER_OP(DynamicStitch)
                 auto ng_constant_op =
                     std::dynamic_pointer_cast<nnfusion::op::Constant>(indices_node->get_op_ptr());
                 auto ng_element_type = indices_node->get_element_type();
-                CHECK(ng_element_type == ngraph::element::i64);
+                CHECK(ng_element_type == nnfusion::element::i64);
                 std::vector<int64_t> values;
                 values = ng_constant_op->get_vector<int64_t>();
 
@@ -52,7 +52,7 @@ REGISTER_OP(DynamicStitch)
             int64_t end = rank;
             if (start > rank)
                 start = rank;
-            ngraph::Shape dims;
+            nnfusion::Shape dims;
             dims.push_back(max_index + 1);
             for (int i = start; i < end; i++)
             {

@@ -18,7 +18,6 @@
 #include <iostream>
 
 #include "gtest/gtest.h"
-#include "ngraph/log.hpp"
 
 using namespace std;
 

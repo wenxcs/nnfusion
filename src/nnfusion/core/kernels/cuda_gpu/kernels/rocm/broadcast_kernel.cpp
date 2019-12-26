@@ -26,8 +26,8 @@ namespace nnfusion
                         return nullptr;
 
                     auto& ctx = m_context;
-                    auto input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-                    auto output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+                    auto input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+                    auto output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
 
                     auto node =
                         static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
@@ -44,8 +44,8 @@ namespace nnfusion
                     if (input_shape.size() > 1 && output_shape.size() > 1 && input_shape[0] == 1 &&
                         output_shape[0] == 1 && !axes.count(0))
                     {
-                        auto input_shape2 = ngraph::Shape(), output_shape2 = ngraph::Shape();
-                        auto axes2 = ngraph::AxisSet();
+                        auto input_shape2 = nnfusion::Shape(), output_shape2 = nnfusion::Shape();
+                        auto axes2 = nnfusion::AxisSet();
                         for (int i = 1; i < input_shape.size(); ++i)
                             input_shape2.push_back(input_shape[i]);
                         for (int i = 1; i < output_shape.size(); ++i)

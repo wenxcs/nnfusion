@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/equal.hpp"
+#include "nnfusion/core/operators/equal.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

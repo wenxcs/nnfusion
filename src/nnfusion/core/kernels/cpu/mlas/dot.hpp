@@ -18,7 +18,7 @@ namespace nnfusion
 
             private:
                 size_t reduction_axes;
-                ngraph::Shape arg0_shape, arg1_shape;
+                nnfusion::Shape arg0_shape, arg1_shape;
             };
         } // namespace cpu
     }     // namespace kernels

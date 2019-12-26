@@ -40,7 +40,7 @@ namespace nnfusion
                 {
                     GENERIC_OP_LOGGING();
 
-                    const ngraph::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
+                    const nnfusion::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
 
                     auto& cfg = generic_op->localOpConfig.getRoot();
 

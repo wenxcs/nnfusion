@@ -24,9 +24,9 @@ BatchNormTraining::BatchNormTraining(double eps)
 
 void BatchNormInference::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    ngraph::element::Type result_et;
-    ngraph::PartialShape result_batch_shape;
-    ngraph::PartialShape result_channel_shape; // unused here
+    nnfusion::element::Type result_et;
+    nnfusion::PartialShape result_batch_shape;
+    nnfusion::PartialShape result_channel_shape; // unused here
 
     std::tie(result_et, result_batch_shape, result_channel_shape) =
         infer_batch_norm_forward(this,
@@ -46,9 +46,9 @@ void BatchNormInference::validate_and_infer_types(std::shared_ptr<graph::GNode> 
 
 void BatchNormTraining::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    ngraph::element::Type result_et;
-    ngraph::PartialShape result_batch_shape;
-    ngraph::PartialShape result_channel_shape;
+    nnfusion::element::Type result_et;
+    nnfusion::PartialShape result_batch_shape;
+    nnfusion::PartialShape result_channel_shape;
 
     std::tie(result_et, result_batch_shape, result_channel_shape) =
         infer_batch_norm_forward(this,
@@ -74,7 +74,7 @@ BatchNormTrainingBackprop::BatchNormTrainingBackprop(double eps)
 
 void BatchNormTrainingBackprop::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    ngraph::PartialShape input_and_delta_shape{gnode->get_input_partial_shape(INPUT_DATA)};
+    nnfusion::PartialShape input_and_delta_shape{gnode->get_input_partial_shape(INPUT_DATA)};
 
     OP_VALIDATION(this,
                   PartialShape::merge_into(input_and_delta_shape,
@@ -83,19 +83,19 @@ void BatchNormTrainingBackprop::validate_and_infer_types(std::shared_ptr<graph::
         << gnode->get_input_partial_shape(INPUT_DATA)
         << ", delta shape: " << gnode->get_input_partial_shape(INPUT_DELTA) << ").";
 
-    ngraph::element::Type input_and_delta_et;
+    nnfusion::element::Type input_and_delta_et;
 
     OP_VALIDATION(this,
-                  ngraph::element::Type::merge(input_and_delta_et,
-                                               gnode->get_input_element_type(INPUT_DATA),
-                                               gnode->get_input_element_type(INPUT_DELTA)))
+                  nnfusion::element::Type::merge(input_and_delta_et,
+                                                 gnode->get_input_element_type(INPUT_DATA),
+                                                 gnode->get_input_element_type(INPUT_DELTA)))
         << "Element type for input (" << gnode->get_input_element_type(INPUT_DATA)
         << ") does not match element type for delta (" << gnode->get_input_element_type(INPUT_DATA)
         << ").";
 
-    ngraph::element::Type result_et;
-    ngraph::PartialShape result_batch_shape;
-    ngraph::PartialShape result_channel_shape;
+    nnfusion::element::Type result_et;
+    nnfusion::PartialShape result_batch_shape;
+    nnfusion::PartialShape result_channel_shape;
 
     std::tie(result_et, result_batch_shape, result_channel_shape) =
         infer_batch_norm_forward(this,

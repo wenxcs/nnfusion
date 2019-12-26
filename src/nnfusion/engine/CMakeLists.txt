@@ -11,7 +11,8 @@ if (NNFUSION_ENABLE)
         interpreter.cpp
         op.cpp
         memory_allocator.cpp
-        external/nnfusion_backend.cpp
+        external/backend_manager.cpp
+        external/backend.cpp
     )
 
     add_library(nnfusion_backend SHARED
@@ -35,7 +36,7 @@ if (NNFUSION_ENABLE)
     )
 
     target_link_libraries(nnfusion_backend PUBLIC
-        gflags
+        gflags dl
     )
 
     set_target_properties(nnfusion_backend PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${NGRAPH_BUILD_DIR})

@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/ceiling.hpp"
+#include "nnfusion/core/operators/ceiling.hpp"
 
 #include "core/node.hpp"
 

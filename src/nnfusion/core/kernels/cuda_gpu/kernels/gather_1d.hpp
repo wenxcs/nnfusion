@@ -19,7 +19,7 @@ namespace nnfusion
                 void set_launch_config() override;
 
             private:
-                ngraph::Shape input_shape_0, input_shape_1, output_shape;
+                nnfusion::Shape input_shape_0, input_shape_1, output_shape;
                 int axis;
                 bool is_axis_zero;
                 int64_t gather_dim_size;

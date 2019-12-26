@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/negative.hpp"
+#include "nnfusion/core/operators/negative.hpp"
 
 #include "core/node.hpp"
 

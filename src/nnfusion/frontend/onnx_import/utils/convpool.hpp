@@ -19,8 +19,8 @@
 #include <string>
 
 #include "ngraph/coordinate_diff.hpp"
-#include "ngraph/op/avg_pool.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/avg_pool.hpp"
 
 #include "core/attribute.hpp"
 #include "core/node.hpp"

@@ -15,7 +15,7 @@ namespace nnfusion
             /// \brief Constructs a min-reduction operation.
             ///
             /// \param reduction_axes The axis positions (0-based) to be eliminated.
-            Min(const ngraph::AxisSet& reduction_axes);
+            Min(const nnfusion::AxisSet& reduction_axes);
         };
     }
 }

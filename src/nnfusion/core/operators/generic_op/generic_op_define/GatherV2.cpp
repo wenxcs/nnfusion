@@ -5,14 +5,14 @@
 REGISTER_OP(GatherV2).attr<int>("axis", 0).infershape(
     [](std::shared_ptr<graph::GNode> gnode) -> void {
         CHECK(gnode->get_input_size() == 2);
-        const ngraph::Shape& input_shape_0 = gnode->get_input_shape(0);
-        const ngraph::Shape& input_shape_1 = gnode->get_input_shape(1);
+        const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
+        const nnfusion::Shape& input_shape_1 = gnode->get_input_shape(1);
 
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
 
         int axis = generic_op->localOpConfig.getRoot()["axis"];
 
-        ngraph::Shape output_shape_0;
+        nnfusion::Shape output_shape_0;
         for (int i = 0; i < axis; ++i)
             output_shape_0.push_back(input_shape_0[i]);
         for (int i = 0; i < input_shape_1.size(); ++i)

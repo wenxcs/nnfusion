@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/acos.hpp"
+#include "nnfusion/core/operators/acos.hpp"
 
 #include "core/node.hpp"
 

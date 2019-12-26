@@ -4,7 +4,7 @@
 
 using namespace nnfusion;
 
-op::Abs::Abs()
+nnfusion::op::Abs::Abs()
     : ElementwiseArithmetic("Abs")
 {
 }

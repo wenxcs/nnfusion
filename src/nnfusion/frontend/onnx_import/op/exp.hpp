@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/exp.hpp"
+#include "nnfusion/core/operators/exp.hpp"
 
 #include "core/node.hpp"
 

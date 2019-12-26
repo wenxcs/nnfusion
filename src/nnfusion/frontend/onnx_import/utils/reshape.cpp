@@ -19,7 +19,7 @@
 #include <iterator>
 #include <numeric>
 
-#include "ngraph/op/reshape.hpp"
+#include "nnfusion/core/operators/reshape.hpp"
 
 #include "exceptions.hpp"
 #include "utils/common.hpp"

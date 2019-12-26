@@ -16,7 +16,7 @@ namespace nnfusion
             ///
             /// \param axis The axis along which to compute an index for minimum
             /// \param index_element_type produce indices. Currently, only int64 or int32 are supported
-            ArgMin(size_t axis, const ngraph::element::Type& index_element_type)
+            ArgMin(size_t axis, const nnfusion::element::Type& index_element_type)
                 : IndexReduction("ArgMin", axis, index_element_type)
             {
             }

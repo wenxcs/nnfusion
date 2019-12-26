@@ -16,13 +16,13 @@ namespace nnfusion
             /// \brief Constructs a softmax operation.
             ///
             /// \param axes The axis positions (0-based) on which to calculate the softmax.
-            Softmax(const ngraph::AxisSet& axes);
+            Softmax(const nnfusion::AxisSet& axes);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
-            const ngraph::AxisSet& get_axes() const { return m_axes; }
+            const nnfusion::AxisSet& get_axes() const { return m_axes; }
         private:
-            ngraph::AxisSet m_axes;
+            nnfusion::AxisSet m_axes;
         };
     }
 }

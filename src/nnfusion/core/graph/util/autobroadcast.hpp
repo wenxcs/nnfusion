@@ -14,17 +14,18 @@ namespace nnfusion
         class autobroadcast_incompatible_shapes : public errors::CheckError
         {
         public:
-            autobroadcast_incompatible_shapes(const ngraph::Shape& shape1,
-                                              const ngraph::Shape& shape2);
+            autobroadcast_incompatible_shapes(const nnfusion::Shape& shape1,
+                                              const nnfusion::Shape& shape2);
 
-            const ngraph::Shape& get_shape1() const;
-            const ngraph::Shape& get_shape2() const;
+            const nnfusion::Shape& get_shape1() const;
+            const nnfusion::Shape& get_shape2() const;
 
         private:
-            const ngraph::Shape m_shape1;
-            const ngraph::Shape m_shape2;
+            const nnfusion::Shape m_shape1;
+            const nnfusion::Shape m_shape2;
 
-            static std::string error_str(const ngraph::Shape& shape1, const ngraph::Shape& shape2);
+            static std::string error_str(const nnfusion::Shape& shape1,
+                                         const nnfusion::Shape& shape2);
         };
 
         /// \brief Wrap two graph nodes, if necessary, to obtain values with identical shapes,

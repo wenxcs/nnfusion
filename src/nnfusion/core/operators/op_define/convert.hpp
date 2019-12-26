@@ -15,13 +15,17 @@ namespace nnfusion
             /// \brief Constructs a conversion operation.
             ///
             /// \param element_type Element type for the output tensor.
-            Convert(const ngraph::element::Type& element_type);
+            Convert(const nnfusion::element::Type& element_type);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
-            const ngraph::element::Type& get_convert_element_type() const { return m_element_type; }
+            const nnfusion::element::Type& get_convert_element_type() const
+            {
+                return m_element_type;
+            }
+
         protected:
-            const ngraph::element::Type m_element_type;
+            const nnfusion::element::Type m_element_type;
         };
     }
 }

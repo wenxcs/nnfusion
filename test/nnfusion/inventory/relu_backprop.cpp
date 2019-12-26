@@ -5,9 +5,8 @@
  */
 
 #include "../test_util/common.hpp"
-#include "ngraph/op/parameter.hpp"
-#include "ngraph/op/relu.hpp"
-#include "util/ndarray.hpp"
+#include "nnfusion/core/operators/parameter.hpp"
+#include "nnfusion/core/operators/relu.hpp"
 
 using namespace ngraph;
 
@@ -16,7 +15,7 @@ namespace nnfusion
     namespace test
     {
         template <typename T, size_t N>
-        using NDArray = ngraph::test::NDArray<T, N>;
+        using NDArray = nnfusion::test::NDArrayay<T, N>;
     }
 
     namespace inventory

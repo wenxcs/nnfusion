@@ -5,7 +5,7 @@
 using namespace std;
 using namespace nnfusion::op;
 
-Sum::Sum(const ngraph::AxisSet& reduction_axes)
+Sum::Sum(const nnfusion::AxisSet& reduction_axes)
     : ArithmeticReduction("Sum", reduction_axes)
 {
 }

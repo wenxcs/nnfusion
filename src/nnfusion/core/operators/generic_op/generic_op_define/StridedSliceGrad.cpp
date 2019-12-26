@@ -1,5 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
+#include <memory>
+
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/core/operators/op_define/constant.hpp"
 // TODO: add StridedSliceGrad
@@ -24,17 +26,18 @@ REGISTER_OP(StridedSliceGrad)
             << "do not support mast attributes yet!";
 
         // Set output size
+        auto x_edge = gnode->get_in_edge(0);
         auto x = gnode->get_in_edge(0)->get_src();
         auto x_value = std::dynamic_pointer_cast<nnfusion::op::Constant>(x->get_op_ptr())
                            ->get_vector<int32_t>();
-        const ngraph::Shape& input_shape_0 = gnode->get_input_shape(0);
+        const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
         int x_size = input_shape_0[0];
         CHECK(x_size == x_value.size());
 
-        //Bert Defaut: ngraph::Shape output_shape_0 = {1, 256, 1024};
-        ngraph::Shape output_shape_0;
+        //Bert Defaut: nnfusion::Shape output_shape_0 = {1, 256, 1024};
+        nnfusion::Shape output_shape_0;
         for (int i = 0; i < x_size; ++i)
             output_shape_0.push_back(x_value[i]);
 
-        gnode->set_output_type_and_shape(0, element::f32, output_shape_0);
+        gnode->set_output_type_and_shape(0, nnfusion::element::f32, output_shape_0);
     });

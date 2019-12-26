@@ -15,7 +15,7 @@ namespace nnfusion
             /// \brief Constructs a max-reduction operation.
             ///
             /// \param reduction_axes The axis positions (0-based) to be eliminated.
-            Max(const ngraph::AxisSet& reduction_axes);
+            Max(const nnfusion::AxisSet& reduction_axes);
         };
     }
 }

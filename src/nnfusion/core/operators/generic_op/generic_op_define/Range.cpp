@@ -10,7 +10,7 @@ REGISTER_OP(Range).attr<int>("start").attr<int>("limit").attr<int>("delta").infe
         float delta = generic_op->localOpConfig.getRoot()["delta"];
         int num = (int)((limit - start + delta - 1) / delta);
 
-        ngraph::Shape output_shape_0;
+        nnfusion::Shape output_shape_0;
         output_shape_0.push_back(num);
 
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);

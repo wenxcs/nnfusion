@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/sin.hpp"
+#include "nnfusion/core/operators/sin.hpp"
 
 #include "core/node.hpp"
 

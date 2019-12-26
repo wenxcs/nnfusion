@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "ngraph/axis_vector.hpp"
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/reshape.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
+#include "nnfusion/core/operators/reshape.hpp"
 
 #include "broadcasting.hpp"
 #include "reshape.hpp"

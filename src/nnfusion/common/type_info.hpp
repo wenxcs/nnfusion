@@ -22,7 +22,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "ngraph/type/element_type.hpp"
+#include "nnfusion/common/type/element_type.hpp"
 
 namespace nnfusion
 {
@@ -37,7 +37,7 @@ namespace nnfusion
         virtual std::string max() const = 0;
 
         using TypeDispatch = std::unordered_map<std::string, std::shared_ptr<TypeInfo>>;
-        static const std::shared_ptr<TypeInfo>& Get(const ngraph::element::Type& type)
+        static const std::shared_ptr<TypeInfo>& Get(const nnfusion::element::Type& type)
         {
             return dispatcher.at(type.c_type_string());
         }

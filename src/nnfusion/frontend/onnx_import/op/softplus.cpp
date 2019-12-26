@@ -18,10 +18,10 @@
 
 #include "ngraph/node.hpp"
 
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/exp.hpp"
-#include "ngraph/op/log.hpp"
+#include "nnfusion/core/operators/add.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/exp.hpp"
+#include "nnfusion/core/operators/log.hpp"
 
 #include "utils/broadcasting.hpp"
 

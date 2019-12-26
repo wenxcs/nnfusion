@@ -49,8 +49,8 @@ namespace nnfusion
             /// \param window_shape The window shape.
             /// \param window_movement_strides The window movement strides.
             ReduceWindow(const std::shared_ptr<graph::Graph>& reduction_graph,
-                         const ngraph::Shape& window_shape,
-                         const ngraph::Strides& window_movement_strides);
+                         const nnfusion::Shape& window_shape,
+                         const nnfusion::Strides& window_movement_strides);
 
             /// \return A singleton vector containing the graph to use for reduction.
             std::vector<std::shared_ptr<graph::Graph>> get_graphs() const
@@ -58,9 +58,9 @@ namespace nnfusion
                 return std::vector<std::shared_ptr<graph::Graph>>{m_reduction_graph};
             }
             /// \return The window shape.
-            const ngraph::Shape& get_window_shape() const { return m_window_shape; }
+            const nnfusion::Shape& get_window_shape() const { return m_window_shape; }
             /// \return The window movement strides.
-            const ngraph::Strides& get_window_movement_strides() const
+            const nnfusion::Strides& get_window_movement_strides() const
             {
                 return m_window_movement_strides;
             }
@@ -69,8 +69,8 @@ namespace nnfusion
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             std::shared_ptr<graph::Graph> m_reduction_graph;
-            ngraph::Shape m_window_shape;
-            ngraph::Strides m_window_movement_strides;
+            nnfusion::Shape m_window_shape;
+            nnfusion::Strides m_window_movement_strides;
         };
     }
 }

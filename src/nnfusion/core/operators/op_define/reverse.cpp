@@ -9,7 +9,7 @@
 using namespace std;
 using namespace nnfusion::op;
 
-Reverse::Reverse(const ngraph::AxisSet& reversed_axes)
+Reverse::Reverse(const nnfusion::AxisSet& reversed_axes)
     : Op("Reverse")
     , m_reversed_axes(reversed_axes)
 {
@@ -18,7 +18,7 @@ Reverse::Reverse(const ngraph::AxisSet& reversed_axes)
 void Reverse::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
     auto input_shape = gnode->get_input_partial_shape(0);
-    ngraph::Dimension input_rank = input_shape.rank();
+    nnfusion::Dimension input_rank = input_shape.rank();
 
     if (input_rank.is_static())
     {

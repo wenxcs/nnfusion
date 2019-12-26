@@ -17,9 +17,9 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/and.hpp"
-#include "ngraph/op/not.hpp"
-#include "ngraph/op/or.hpp"
+#include "nnfusion/core/operators/and.hpp"
+#include "nnfusion/core/operators/not.hpp"
+#include "nnfusion/core/operators/or.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

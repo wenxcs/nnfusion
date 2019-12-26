@@ -19,14 +19,14 @@
 
 #include "ngraph/node.hpp"
 
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/broadcast.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/exp.hpp"
-#include "ngraph/op/maximum.hpp"
-#include "ngraph/op/minimum.hpp"
-#include "ngraph/op/multiply.hpp"
-#include "ngraph/op/subtract.hpp"
+#include "nnfusion/core/operators/add.hpp"
+#include "nnfusion/core/operators/broadcast.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/exp.hpp"
+#include "nnfusion/core/operators/maximum.hpp"
+#include "nnfusion/core/operators/minimum.hpp"
+#include "nnfusion/core/operators/multiply.hpp"
+#include "nnfusion/core/operators/subtract.hpp"
 
 #include "utils/broadcasting.hpp"
 

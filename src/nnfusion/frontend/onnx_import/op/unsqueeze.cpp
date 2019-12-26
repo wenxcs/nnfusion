@@ -16,7 +16,7 @@
 
 #include <numeric>
 
-#include "ngraph/op/reshape.hpp"
+#include "nnfusion/core/operators/reshape.hpp"
 #include "utils/reshape.hpp"
 
 #include "exceptions.hpp"

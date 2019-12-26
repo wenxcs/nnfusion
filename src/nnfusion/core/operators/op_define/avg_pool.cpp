@@ -7,10 +7,10 @@
 using namespace std;
 using namespace nnfusion::op;
 
-AvgPool::AvgPool(const ngraph::Shape& window_shape,
-                 const ngraph::Strides& window_movement_strides,
-                 const ngraph::Shape& padding_below,
-                 const ngraph::Shape& padding_above,
+AvgPool::AvgPool(const nnfusion::Shape& window_shape,
+                 const nnfusion::Strides& window_movement_strides,
+                 const nnfusion::Shape& padding_below,
+                 const nnfusion::Shape& padding_above,
                  bool include_padding_in_avg_computation)
     : Op("AvgPool")
     , m_window_shape(window_shape)
@@ -38,12 +38,12 @@ void AvgPool::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         m_padding_above = Shape(m_window_shape.size(), 0);
     }
 
-    const ngraph::PartialShape& arg_shape = gnode->get_input_partial_shape(0);
+    const nnfusion::PartialShape& arg_shape = gnode->get_input_partial_shape(0);
 
     // infer_batched_forward_pooling wants CoordinateDiffs for these, while the pooling ops for
     // now still take Shape (no negative padding).
-    ngraph::CoordinateDiff padding_below(m_padding_below.begin(), m_padding_below.end());
-    ngraph::CoordinateDiff padding_above(m_padding_above.begin(), m_padding_above.end());
+    nnfusion::CoordinateDiff padding_below(m_padding_below.begin(), m_padding_below.end());
+    nnfusion::CoordinateDiff padding_above(m_padding_above.begin(), m_padding_above.end());
 
     gnode->set_output_type_and_shape(
         0,
@@ -58,7 +58,7 @@ void AvgPool::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 }
 
 AvgPool::AvgPool(const Shape& window_shape, const Strides& window_movement_strides)
-    : AvgPool(window_shape, window_movement_strides, ngraph::Shape(), ngraph::Shape(), false)
+    : AvgPool(window_shape, window_movement_strides, nnfusion::Shape(), nnfusion::Shape(), false)
 {
 }
 
@@ -67,11 +67,11 @@ AvgPool::AvgPool(const Shape& window_shape)
 {
 }
 
-AvgPoolBackprop::AvgPoolBackprop(const ngraph::Shape& forward_arg_shape,
-                                 const ngraph::Shape& window_shape,
-                                 const ngraph::Strides& window_movement_strides,
-                                 const ngraph::Shape& padding_below,
-                                 const ngraph::Shape& padding_above,
+AvgPoolBackprop::AvgPoolBackprop(const nnfusion::Shape& forward_arg_shape,
+                                 const nnfusion::Shape& window_shape,
+                                 const nnfusion::Strides& window_movement_strides,
+                                 const nnfusion::Shape& padding_below,
+                                 const nnfusion::Shape& padding_above,
                                  bool include_padding_in_avg_computation)
     : Op("AvgPoolBackprop")
     , m_forward_arg_shape(forward_arg_shape)
@@ -87,10 +87,10 @@ void AvgPoolBackprop::validate_and_infer_types(std::shared_ptr<graph::GNode> gno
 {
     // infer_batched_forward_pooling wants CoordinateDiffs for these, while the pooling ops for
     // now still take Shape (no negative padding).
-    ngraph::CoordinateDiff padding_below(m_padding_below.begin(), m_padding_below.end());
-    ngraph::CoordinateDiff padding_above(m_padding_above.begin(), m_padding_above.end());
+    nnfusion::CoordinateDiff padding_below(m_padding_below.begin(), m_padding_below.end());
+    nnfusion::CoordinateDiff padding_above(m_padding_above.begin(), m_padding_above.end());
 
-    ngraph::PartialShape forward_result_shape =
+    nnfusion::PartialShape forward_result_shape =
         infer_batched_pooling_forward(this,
                                       m_forward_arg_shape,
                                       padding_below,
@@ -99,7 +99,7 @@ void AvgPoolBackprop::validate_and_infer_types(std::shared_ptr<graph::GNode> gno
                                       m_window_movement_strides,
                                       m_include_padding_in_avg_computation);
 
-    const ngraph::PartialShape& delta_shape = gnode->get_input_shape(0);
+    const nnfusion::PartialShape& delta_shape = gnode->get_input_shape(0);
 
     OP_VALIDATION(this, forward_result_shape.compatible(delta_shape))
         << "Inferred forward output shape does not match delta shape (inferred forward output "

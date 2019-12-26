@@ -19,19 +19,19 @@ namespace nnfusion
             /// \param k Number of top indices to compute. Compute all indices if k = 0
             /// \param compute_max Compute top k max or top k min?
             TopK(size_t top_k_axis,
-                 const ngraph::element::Type& index_element_type,
+                 const nnfusion::element::Type& index_element_type,
                  size_t k = 0,
                  bool compute_max = true);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             size_t get_top_k_axis() const { return m_top_k_axis; }
-            ngraph::element::Type get_index_element_type() const { return m_index_element_type; }
+            nnfusion::element::Type get_index_element_type() const { return m_index_element_type; }
             size_t get_k() const { return m_k; }
             bool get_compute_max() const { return m_compute_max; }
         protected:
             size_t m_top_k_axis;
-            ngraph::element::Type m_index_element_type;
+            nnfusion::element::Type m_index_element_type;
             size_t m_k;
             bool m_compute_max;
         };

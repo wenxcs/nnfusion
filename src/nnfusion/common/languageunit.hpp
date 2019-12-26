@@ -20,7 +20,7 @@ namespace nnfusion
         scope: Global Local
         visibility: Global
     */
-    class LanguageUnit : public ngraph::codegen::CodeWriter
+    class LanguageUnit : public nnfusion::codegen::CodeWriter
     {
     public:
         // Indicate the symbol of current Language Unit

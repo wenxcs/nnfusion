@@ -17,9 +17,9 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override;
 
             private:
-                ngraph::Shape input_shape, output_shape, window_shape, padding;
-                ngraph::Shape padding_below, padding_above;
-                ngraph::Strides window_stride;
+                nnfusion::Shape input_shape, output_shape, window_shape, padding;
+                nnfusion::Shape padding_below, padding_above;
+                nnfusion::Strides window_stride;
                 string dtype;
             };
         } // namespace cpu

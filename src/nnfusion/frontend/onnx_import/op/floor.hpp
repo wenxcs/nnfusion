@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/floor.hpp"
+#include "nnfusion/core/operators/floor.hpp"
 
 #include "core/node.hpp"
 

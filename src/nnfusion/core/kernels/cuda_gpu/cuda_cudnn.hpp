@@ -11,7 +11,7 @@ namespace nnfusion
         {
             std::vector<int> compute_strides(const std::vector<int>& shape);
             std::string get_cudnn_datatype(std::string dtype);
-            LanguageUnit_p cudnn_tensor_descriptor_from_shape(const ngraph::Shape& shape,
+            LanguageUnit_p cudnn_tensor_descriptor_from_shape(const nnfusion::Shape& shape,
                                                               string desc);
             LanguageUnit_p get_cudnn_convolution_descriptor(const Shape& padding,
                                                             const Strides& window_movement_strides,

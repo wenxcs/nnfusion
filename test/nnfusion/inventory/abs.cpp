@@ -5,16 +5,13 @@
  */
 
 #include "../test_util/common.hpp"
-#include "util/ndarray.hpp"
-
-using namespace ngraph;
 
 namespace nnfusion
 {
     namespace test
     {
         template <typename T, size_t N>
-        using NDArray = ngraph::test::NDArray<T, N>;
+        using NDArray = nnfusion::test::NDArray<T, N>;
     }
 
     namespace inventory

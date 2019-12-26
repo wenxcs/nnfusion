@@ -16,7 +16,7 @@
 
 #include "concat.hpp"
 
-#include "ngraph/op/concat.hpp"
+#include "nnfusion/core/operators/concat.hpp"
 
 namespace ngraph
 {

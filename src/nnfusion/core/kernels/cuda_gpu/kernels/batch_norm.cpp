@@ -10,10 +10,10 @@ cuda::BatchNorm::BatchNorm(shared_ptr<KernelContext> ctx)
 {
     // nnfusion::op::BatchNormInferece <-> nnfusion::ir::BatchNorm
     auto bn_op = static_pointer_cast<nnfusion::op::BatchNormInference>(ctx->gnode->get_op_ptr());
-    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
+    dtype = nnfusion::element::Type(ctx->outputs[0]->get_element_type());
     // <todo> need to check the index
-    tensor_shape = ngraph::Shape(ctx->inputs[2]->get_shape());
-    param_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+    tensor_shape = nnfusion::Shape(ctx->inputs[2]->get_shape());
+    param_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
     epsilon = bn_op->get_eps_value();
 
     std::stringstream tag;

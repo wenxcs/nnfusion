@@ -35,14 +35,14 @@ namespace nnfusion
             /// \brief Constructs a reverse operation.
             ///
             /// \param reversed_axes The axes to reverse.
-            Reverse(const ngraph::AxisSet& reversed_axes);
+            Reverse(const nnfusion::AxisSet& reversed_axes);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             /// \return The set of axes to reverse.
-            const ngraph::AxisSet& get_reversed_axes() const { return m_reversed_axes; }
+            const nnfusion::AxisSet& get_reversed_axes() const { return m_reversed_axes; }
         protected:
-            const ngraph::AxisSet m_reversed_axes;
+            const nnfusion::AxisSet m_reversed_axes;
         };
     }
 }

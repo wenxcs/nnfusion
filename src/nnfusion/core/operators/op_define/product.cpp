@@ -4,7 +4,7 @@
 
 using namespace nnfusion::op;
 
-Product::Product(const ngraph::AxisSet& reduction_axes)
+Product::Product(const nnfusion::AxisSet& reduction_axes)
     : ArithmeticReduction("Product", reduction_axes)
 {
 }

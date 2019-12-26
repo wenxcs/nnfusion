@@ -4,8 +4,8 @@
 
 #include "../op.hpp"
 
-#include "ngraph/axis_set.hpp"
-#include "ngraph/util.hpp"
+#include "nnfusion/common/axis_set.hpp"
+#include "nnfusion/common/util.hpp"
 namespace nnfusion
 {
     namespace op
@@ -19,26 +19,26 @@ namespace nnfusion
             /// \param shape          The shape of the output tensor.
             /// \param broadcast_axes The axis positions (0-based) in the result that are being broadcast. The
             ///                        remaining axes in shape must be the same as the shape of arg.
-            Broadcast(const ngraph::Shape& shape, const ngraph::AxisSet& broadcast_axes);
+            Broadcast(const nnfusion::Shape& shape, const nnfusion::AxisSet& broadcast_axes);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             /// \return A set containing the indices of the broadcast axes (0-based).
-            const ngraph::AxisSet& get_broadcast_axes() const { return m_broadcast_axes; }
-            const ngraph::Shape& get_broadcast_shape() const { return m_shape; }
+            const nnfusion::AxisSet& get_broadcast_axes() const { return m_broadcast_axes; }
+            const nnfusion::Shape& get_broadcast_shape() const { return m_shape; }
             bool is_inner_broadcast() { return m_is_inner_broadcast; }
             bool is_outer_broadcast() { return m_is_outer_broadcast; }
             size_t get_inner_broadcast_size() { return m_inner_bc_size; }
             size_t get_outer_broadcast_size() { return m_outer_bc_size; }
         protected:
             Broadcast(const std::string& node_type,
-                      const ngraph::Shape& shape,
-                      const ngraph::AxisSet& broadcast_axes);
+                      const nnfusion::Shape& shape,
+                      const nnfusion::AxisSet& broadcast_axes);
 
             virtual void infer_shape(std::shared_ptr<graph::GNode> gnode) {}
             void inner_or_outer_broadcast();
-            ngraph::Shape m_shape;
-            ngraph::AxisSet m_broadcast_axes;
+            nnfusion::Shape m_shape;
+            nnfusion::AxisSet m_broadcast_axes;
             size_t m_inner_bc_size, m_outer_bc_size;
             bool m_is_inner_broadcast = false;
             bool m_is_outer_broadcast = false;
@@ -56,12 +56,12 @@ namespace nnfusion
             /// \param like_arg Provides the shape for the result.
             /// \param broadcast_axes indicates which axes will be broadcast. If empty,
             /// arg must be scalar and all axes are broadcast.
-            BroadcastLike(const ngraph::AxisSet& broadcast_axes);
+            BroadcastLike(const nnfusion::AxisSet& broadcast_axes);
 
             void infer_shape(std::shared_ptr<graph::GNode> gnode) override;
 
         protected:
-            ngraph::AxisSet m_initial_broadcast_axes;
+            nnfusion::AxisSet m_initial_broadcast_axes;
         };
     }
 }

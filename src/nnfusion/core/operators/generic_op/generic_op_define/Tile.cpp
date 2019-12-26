@@ -13,7 +13,7 @@ REGISTER_OP(Tile).infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
     auto multiples = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())
                          ->get_vector<int64_t>();
     CHECK(input_shape_0.size() == multiples.size());
-    ngraph::Shape output_shape_0(multiples.size());
+    nnfusion::Shape output_shape_0(multiples.size());
     for (int i = 0; i < multiples.size(); i++)
         output_shape_0[i] = multiples[i] * input_shape_0[i];
     gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);

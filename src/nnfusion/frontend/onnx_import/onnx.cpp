@@ -52,6 +52,7 @@ namespace ngraph
             } // namespace error
         }     // namespace detail
 
+        /*
         std::vector<std::shared_ptr<Function>> load_onnx_model(std::istream& sin)
         {
             onnx::ModelProto model_proto;
@@ -89,6 +90,7 @@ namespace ngraph
         {
             return load_onnx_model(path).front();
         }
+        */
 
         void register_operator(const std::string& name,
                                std::int64_t version,

@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/sqrt.hpp"
+#include "nnfusion/core/operators/sqrt.hpp"
 
 #include "core/node.hpp"
 

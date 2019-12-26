@@ -19,9 +19,9 @@ namespace nnfusion
                 void set_launch_config() override;
 
             private:
-                ngraph::Shape arg_shape;
+                nnfusion::Shape arg_shape;
                 uint32_t arg_rank;
-                ngraph::Shape result_shape;
+                nnfusion::Shape result_shape;
                 AxisSet reverse_axes;
             };
         } // namespace cuda

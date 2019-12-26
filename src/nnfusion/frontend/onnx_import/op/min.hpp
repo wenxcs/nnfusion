@@ -17,7 +17,7 @@
 #pragma once
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/minimum.hpp"
+#include "nnfusion/core/operators/minimum.hpp"
 
 #include "core/node.hpp"
 #include "utils/variadic.hpp"

@@ -19,13 +19,13 @@
 #include "gflags/gflags.h"
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/util/errors.hpp"
-//using namespace ngraph;
+//using namespace nnfusion;
 using namespace std;
 DEFINE_string(fdefault_device,
               "CUDA",
               "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
-nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
-                                     const ngraph::PartialShape& pshape,
+nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,
+                                     const nnfusion::PartialShape& pshape,
                                      const std::string& name,
                                      bool is_persistent,
                                      bool is_constant,
@@ -34,7 +34,7 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
                                      size_t group_id,
                                      size_t device_id)
     : m_element_type(element_type)
-    , m_shape(pshape.is_static() ? pshape.to_shape() : ngraph::Shape{})
+    , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
     , m_partial_shape(pshape)
     , m_name(name)
     , m_persistent(is_persistent)
@@ -53,8 +53,8 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
         m_device_type = CUDA_GPU;
 }
 
-nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
-                                     const ngraph::PartialShape& pshape,
+nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,
+                                     const nnfusion::PartialShape& pshape,
                                      const std::string& name,
                                      DeviceType device_type,
                                      bool is_persistent,
@@ -64,7 +64,7 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
                                      size_t group_id,
                                      size_t device_id)
     : m_element_type(element_type)
-    , m_shape(pshape.is_static() ? pshape.to_shape() : ngraph::Shape{})
+    , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
     , m_partial_shape(pshape)
     , m_name(name)
     , m_device_type(device_type)
@@ -77,8 +77,8 @@ nnfusion::descriptor::Tensor::Tensor(const ngraph::element::Type& element_type,
 {
 }
 
-void nnfusion::descriptor::Tensor::set_tensor_type(const ngraph::element::Type& element_type,
-                                                   const ngraph::PartialShape& pshape)
+void nnfusion::descriptor::Tensor::set_tensor_type(const nnfusion::element::Type& element_type,
+                                                   const nnfusion::PartialShape& pshape)
 {
     if (pshape.is_static())
     {
@@ -86,13 +86,13 @@ void nnfusion::descriptor::Tensor::set_tensor_type(const ngraph::element::Type& 
     }
     else
     {
-        m_shape = ngraph::Shape{};
+        m_shape = nnfusion::Shape{};
     }
     m_partial_shape = pshape;
     m_element_type = element_type;
 }
 
-const ngraph::Shape& nnfusion::descriptor::Tensor::get_shape() const
+const nnfusion::Shape& nnfusion::descriptor::Tensor::get_shape() const
 {
     if (auto tvl = get_tensor_layout())
     {

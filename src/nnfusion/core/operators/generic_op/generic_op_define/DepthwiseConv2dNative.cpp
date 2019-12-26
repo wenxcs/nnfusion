@@ -21,10 +21,10 @@ REGISTER_OP(DepthwiseConv2dNative)
         auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
 
         // [ batch, in_rows, in_cols, in_depth ]
-        const ngraph::Shape& input_shape = gnode->get_input_shape(0);
+        const Shape& input_shape = gnode->get_input_shape(0);
 
         // [ filter_rows, filter_cols, in_depth, depth_multiplier]
-        const ngraph::Shape& filter_shape = gnode->get_input_shape(1);
+        const Shape& filter_shape = gnode->get_input_shape(1);
 
         std::string data_format = op->localOpConfig.getRoot()["data_format"];
         bool is_nhwc = (data_format == "NHWC");
@@ -44,7 +44,7 @@ REGISTER_OP(DepthwiseConv2dNative)
         const int64_t out_rows = (input_rows + strides[0] - 1) / strides[0];
         const int64_t out_cols = (input_cols + strides[1] - 1) / strides[1];
 
-        ngraph::Shape output_shape({batch, out_rows, out_cols, out_depth});
+        Shape output_shape({batch, out_rows, out_cols, out_depth});
 
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape);
     });

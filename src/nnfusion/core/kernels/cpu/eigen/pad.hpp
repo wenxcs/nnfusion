@@ -17,11 +17,11 @@ namespace nnfusion
                     : EigenKernelEmitter(ctx)
                 {
                     auto pad = static_pointer_cast<nnfusion::op::Pad>(ctx->gnode->get_op_ptr());
-                    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-                    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
-                    padding_below = ngraph::Shape(pad->get_padding_below());
-                    padding_above = ngraph::Shape(pad->get_padding_above());
-                    padding_interior = ngraph::Shape(pad->get_padding_interior());
+                    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+                    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+                    padding_below = nnfusion::Shape(pad->get_padding_below());
+                    padding_above = nnfusion::Shape(pad->get_padding_above());
+                    padding_interior = nnfusion::Shape(pad->get_padding_interior());
                     input_type = ctx->inputs[0]->get_element_type().c_type_string();
                     output_type = ctx->outputs[0]->get_element_type().c_type_string();
 
@@ -102,7 +102,7 @@ out.device(*global_thread_pool_device) =
 
             private:
                 shared_ptr<KernelContext> kernel_ctx;
-                ngraph::Shape input_shape, output_shape, padding_above, padding_below,
+                nnfusion::Shape input_shape, output_shape, padding_above, padding_below,
                     padding_interior;
                 uint32_t rank;
                 string input_type, output_type;

@@ -16,7 +16,7 @@ REGISTER_OP(All)
             axis = shape_0.size() - 1;
         }
 
-        ngraph::Shape output_shape_0;
+        nnfusion::Shape output_shape_0;
         for (int i = 0; i < axis; ++i)
             output_shape_0.push_back(shape_0[i]);
         if (keep_dims)

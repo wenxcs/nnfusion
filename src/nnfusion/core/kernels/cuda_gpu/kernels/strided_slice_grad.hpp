@@ -19,7 +19,7 @@ namespace nnfusion
                 void set_launch_config() override;
 
             private:
-                ngraph::Shape x_shape, begin_shape, end_shape, strides_shape, grad_shape,
+                nnfusion::Shape x_shape, begin_shape, end_shape, strides_shape, grad_shape,
                     output_shape;
                 int x_size;
             };

@@ -19,21 +19,21 @@ void Select::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         << "Argument 0 does not have boolean element type (element type: "
         << gnode->get_input_element_type(0) << ").";
 
-    ngraph::PartialShape result_shape = gnode->get_input_partial_shape(0);
+    nnfusion::PartialShape result_shape = gnode->get_input_partial_shape(0);
 
-    OP_VALIDATION(this,
-                  ngraph::PartialShape::merge_into(result_shape, gnode->get_input_partial_shape(1)))
+    OP_VALIDATION(
+        this, nnfusion::PartialShape::merge_into(result_shape, gnode->get_input_partial_shape(1)))
         << "Argument shapes are inconsistent.";
-    OP_VALIDATION(this,
-                  ngraph::PartialShape::merge_into(result_shape, gnode->get_input_partial_shape(2)))
+    OP_VALIDATION(
+        this, nnfusion::PartialShape::merge_into(result_shape, gnode->get_input_partial_shape(2)))
         << "Argument shapes are inconsistent.";
 
-    ngraph::element::Type result_et;
+    nnfusion::element::Type result_et;
 
     OP_VALIDATION(this,
-                  ngraph::element::Type::merge(result_et,
-                                               gnode->get_input_element_type(1),
-                                               gnode->get_input_element_type(2)))
+                  nnfusion::element::Type::merge(result_et,
+                                                 gnode->get_input_element_type(1),
+                                                 gnode->get_input_element_type(2)))
         << "Argument 1 and 2 element types are inconsistent.";
 
     gnode->set_output_type_and_shape(0, result_et, result_shape);

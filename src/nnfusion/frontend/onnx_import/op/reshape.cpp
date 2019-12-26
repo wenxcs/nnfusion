@@ -19,9 +19,9 @@
 #include <vector>
 
 #include "ngraph/axis_vector.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/reshape.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/reshape.hpp"
 
 #include "exceptions.hpp"
 #include "reshape.hpp"

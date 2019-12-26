@@ -9,7 +9,7 @@
 using namespace std;
 using namespace nnfusion::op;
 
-Reshape::Reshape(const ngraph::AxisVector& input_order, const ngraph::Shape& output_shape)
+Reshape::Reshape(const nnfusion::AxisVector& input_order, const nnfusion::Shape& output_shape)
     : Op("Reshape")
     , m_input_order(input_order)
     , m_output_shape(output_shape)
@@ -45,7 +45,7 @@ void Reshape::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         }
 
         // TODO(amprocte): make a partial_shape_size() analogous to shape_size().
-        ngraph::Dimension input_shape_product = 1;
+        nnfusion::Dimension input_shape_product = 1;
         for (size_t i = 0; i < size_t(input_rank); i++)
         {
             input_shape_product *= input_shape[i];
@@ -53,7 +53,7 @@ void Reshape::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 
         if (input_shape_product.is_static())
         {
-            OP_VALIDATION(this, size_t(input_shape_product) == ngraph::shape_size(m_output_shape))
+            OP_VALIDATION(this, size_t(input_shape_product) == nnfusion::shape_size(m_output_shape))
                 << "Product of output shape dimensions does not match product of argument shape "
                    "dimensions "
                 << "(output shape: " << m_output_shape << ", argument shape: " << input_shape

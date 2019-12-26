@@ -6,9 +6,9 @@
 using namespace std;
 using namespace nnfusion::op;
 
-Slice::Slice(const ngraph::Coordinate& lower_bounds,
-             const ngraph::Coordinate& upper_bounds,
-             const ngraph::Strides& strides)
+Slice::Slice(const nnfusion::Coordinate& lower_bounds,
+             const nnfusion::Coordinate& upper_bounds,
+             const nnfusion::Strides& strides)
     : Op("Slice")
     , m_lower_bounds(lower_bounds)
     , m_upper_bounds(upper_bounds)
@@ -16,11 +16,11 @@ Slice::Slice(const ngraph::Coordinate& lower_bounds,
 {
 }
 
-Slice::Slice(const ngraph::Coordinate& lower_bounds, const ngraph::Coordinate& upper_bounds)
+Slice::Slice(const nnfusion::Coordinate& lower_bounds, const nnfusion::Coordinate& upper_bounds)
     : Op("Slice")
     , m_lower_bounds(lower_bounds)
     , m_upper_bounds(upper_bounds)
-    , m_strides(ngraph::Strides())
+    , m_strides(nnfusion::Strides())
 {
 }
 
@@ -30,7 +30,7 @@ void Slice::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     // construct the default value.
     if (m_strides.size() == 0)
     {
-        m_strides = ngraph::Strides(m_lower_bounds.size(), 1);
+        m_strides = nnfusion::Strides(m_lower_bounds.size(), 1);
     }
 
     OP_VALIDATION(this,
@@ -51,14 +51,14 @@ void Slice::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                                << " (strides: " << m_strides << ").";
     }
 
-    const ngraph::PartialShape& input_shape = gnode->get_input_partial_shape(0);
-    ngraph::Dimension input_rank = input_shape.rank();
+    const nnfusion::PartialShape& input_shape = gnode->get_input_partial_shape(0);
+    nnfusion::Dimension input_rank = input_shape.rank();
 
     OP_VALIDATION(this, input_rank.is_dynamic() || size_t(input_rank) == output_rank)
         << "Input rank does not match the rank of the lower bounds (" << m_lower_bounds
         << "), upper bounds (" << m_upper_bounds << "), and strides (" << m_strides << ").";
 
-    std::vector<ngraph::Dimension> result_dims(output_rank);
+    std::vector<nnfusion::Dimension> result_dims(output_rank);
 
     for (size_t i = 0; i < output_rank; i++)
     {
@@ -75,5 +75,5 @@ void Slice::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     }
 
     gnode->set_output_type_and_shape(
-        0, gnode->get_input_element_type(0), ngraph::PartialShape{result_dims});
+        0, gnode->get_input_element_type(0), nnfusion::PartialShape{result_dims});
 }

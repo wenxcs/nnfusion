@@ -2,7 +2,7 @@
 
 #include "validation_util.hpp"
 
-#include "ngraph/util.hpp"
+#include "nnfusion/common/util.hpp"
 
 using namespace std;
 using namespace nnfusion::op;
@@ -14,18 +14,18 @@ using namespace nnfusion::op;
 // TODO(amprocte): The messages here would be a bit friendlier if we didn't say "after
 // padding/after dilation" for cases where there is actually no padding/dilation.
 //
-ngraph::PartialShape nnfusion::op::infer_windowed_reduction_output_shape(
+nnfusion::PartialShape nnfusion::op::infer_windowed_reduction_output_shape(
     const Op* op,
-    const ngraph::PartialShape& data_shape,
-    const ngraph::Strides& data_dilation,
-    const ngraph::CoordinateDiff& data_padding_below,
-    const ngraph::CoordinateDiff& data_padding_above,
-    const ngraph::PartialShape& window_shape,
-    const ngraph::Strides& window_strides,
-    const ngraph::Strides& window_dilation,
+    const nnfusion::PartialShape& data_shape,
+    const nnfusion::Strides& data_dilation,
+    const nnfusion::CoordinateDiff& data_padding_below,
+    const nnfusion::CoordinateDiff& data_padding_above,
+    const nnfusion::PartialShape& window_shape,
+    const nnfusion::Strides& window_strides,
+    const nnfusion::Strides& window_dilation,
     bool is_window_all_in_padding_allowed)
 {
-    ngraph::PartialShape data_shape_merged{ngraph::PartialShape::dynamic()};
+    nnfusion::PartialShape data_shape_merged{nnfusion::PartialShape::dynamic()};
 
     OP_VALIDATION(op,
                   data_shape_merged.merge_rank(data_shape.rank()) &&
@@ -40,7 +40,7 @@ ngraph::PartialShape nnfusion::op::infer_windowed_reduction_output_shape(
         << "), window shape (" << window_shape << "), window strides (" << window_strides
         << "), and window dilation (" << window_dilation << ") do not match.";
 
-    ngraph::PartialShape output_shape = ngraph::PartialShape::dynamic(data_shape_merged.rank());
+    nnfusion::PartialShape output_shape = nnfusion::PartialShape::dynamic(data_shape_merged.rank());
 
     if (output_shape.rank().is_static())
     {
@@ -98,9 +98,10 @@ ngraph::PartialShape nnfusion::op::infer_windowed_reduction_output_shape(
                     << ") larger than the data shape after padding (dim: "
                     << data_padded_dilated_dim << ") at axis " << i << ".";
 
-                output_shape[i] = ngraph::ceil_div(static_cast<size_t>(data_padded_dilated_dim) -
-                                                       static_cast<size_t>(window_dilated_dim) + 1,
-                                                   window_strides[i]);
+                output_shape[i] =
+                    nnfusion::ceil_div(static_cast<size_t>(data_padded_dilated_dim) -
+                                           static_cast<size_t>(window_dilated_dim) + 1,
+                                       window_strides[i]);
             }
         }
     }
@@ -108,29 +109,29 @@ ngraph::PartialShape nnfusion::op::infer_windowed_reduction_output_shape(
     return output_shape;
 }
 
-std::tuple<ngraph::element::Type, ngraph::PartialShape>
+std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
     nnfusion::op::infer_convolution_forward(const Op* op,
-                                            ngraph::element::Type et_batch,
-                                            ngraph::element::Type et_filters,
-                                            const ngraph::PartialShape& data_batch_shape,
-                                            const ngraph::Strides& data_dilation,
-                                            const ngraph::CoordinateDiff& data_padding_below,
-                                            const ngraph::CoordinateDiff& data_padding_above,
-                                            const ngraph::PartialShape& filters_shape,
-                                            const ngraph::Strides& filter_strides,
-                                            const ngraph::Strides& filter_dilation)
+                                            nnfusion::element::Type et_batch,
+                                            nnfusion::element::Type et_filters,
+                                            const nnfusion::PartialShape& data_batch_shape,
+                                            const nnfusion::Strides& data_dilation,
+                                            const nnfusion::CoordinateDiff& data_padding_below,
+                                            const nnfusion::CoordinateDiff& data_padding_above,
+                                            const nnfusion::PartialShape& filters_shape,
+                                            const nnfusion::Strides& filter_strides,
+                                            const nnfusion::Strides& filter_dilation)
 {
-    ngraph::element::Type et_result;
+    nnfusion::element::Type et_result;
 
-    OP_VALIDATION(op, ngraph::element::Type::merge(et_result, et_batch, et_filters))
+    OP_VALIDATION(op, nnfusion::element::Type::merge(et_result, et_batch, et_filters))
         << "Element types for data batch and filters do not match (data batch element type: "
         << et_batch << ", filters element type: " << et_filters << ").";
 
-    ngraph::Rank data_batch_filters_rank{ngraph::Rank::dynamic()};
+    nnfusion::Rank data_batch_filters_rank{nnfusion::Rank::dynamic()};
 
-    OP_VALIDATION(
-        op,
-        ngraph::Rank::merge(data_batch_filters_rank, data_batch_shape.rank(), filters_shape.rank()))
+    OP_VALIDATION(op,
+                  nnfusion::Rank::merge(
+                      data_batch_filters_rank, data_batch_shape.rank(), filters_shape.rank()))
         << "Data batch and filters rank do not match (data batch shape: " << data_batch_shape
         << ", filters shape: " << filters_shape << ").";
 
@@ -142,14 +143,15 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
         << "(data batch shape: " << data_batch_shape << ", filters shape: " << filters_shape
         << ").";
 
-    ngraph::Rank spatial_rank{ngraph::Rank::dynamic()};
-    OP_VALIDATION(op,
-                  ngraph::Rank::merge(spatial_rank, spatial_rank, data_batch_filters_rank - 2) &&
-                      ngraph::Rank::merge(spatial_rank, spatial_rank, data_dilation.size()) &&
-                      ngraph::Rank::merge(spatial_rank, spatial_rank, data_padding_below.size()) &&
-                      ngraph::Rank::merge(spatial_rank, spatial_rank, data_padding_above.size()) &&
-                      ngraph::Rank::merge(spatial_rank, spatial_rank, filter_strides.size()) &&
-                      ngraph::Rank::merge(spatial_rank, spatial_rank, filter_dilation.size()))
+    nnfusion::Rank spatial_rank{nnfusion::Rank::dynamic()};
+    OP_VALIDATION(
+        op,
+        nnfusion::Rank::merge(spatial_rank, spatial_rank, data_batch_filters_rank - 2) &&
+            nnfusion::Rank::merge(spatial_rank, spatial_rank, data_dilation.size()) &&
+            nnfusion::Rank::merge(spatial_rank, spatial_rank, data_padding_below.size()) &&
+            nnfusion::Rank::merge(spatial_rank, spatial_rank, data_padding_above.size()) &&
+            nnfusion::Rank::merge(spatial_rank, spatial_rank, filter_strides.size()) &&
+            nnfusion::Rank::merge(spatial_rank, spatial_rank, filter_dilation.size()))
         << "Ranks for data item shape/filters shape (data batch has shape " << data_batch_shape
         << ", so data item rank is " << (data_batch_shape.rank() - 2) << " and filters have shape "
         << filters_shape << ", so filters spatial rank is " << (filters_shape.rank() - 2)
@@ -157,17 +159,19 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
         << "), padding above (" << data_padding_above << "), filter strides (" << filter_strides
         << "), and filter dilation (" << filter_dilation << ") do not match.";
 
-    ngraph::Dimension batch_size =
-        (data_batch_shape.rank().is_static() ? data_batch_shape[0] : ngraph::Dimension::dynamic());
-    ngraph::Dimension data_channel_count =
-        (data_batch_shape.rank().is_static() ? data_batch_shape[1] : ngraph::Dimension::dynamic());
-    ngraph::PartialShape data_spatial_shape(ngraph::PartialShape::dynamic(spatial_rank));
+    nnfusion::Dimension batch_size =
+        (data_batch_shape.rank().is_static() ? data_batch_shape[0]
+                                             : nnfusion::Dimension::dynamic());
+    nnfusion::Dimension data_channel_count =
+        (data_batch_shape.rank().is_static() ? data_batch_shape[1]
+                                             : nnfusion::Dimension::dynamic());
+    nnfusion::PartialShape data_spatial_shape(nnfusion::PartialShape::dynamic(spatial_rank));
 
-    ngraph::Dimension filter_output_channel_count =
-        (filters_shape.rank().is_static() ? filters_shape[0] : ngraph::Dimension::dynamic());
-    ngraph::Dimension filter_input_channel_count =
-        (filters_shape.rank().is_static() ? filters_shape[1] : ngraph::Dimension::dynamic());
-    ngraph::PartialShape filter_spatial_shape(ngraph::PartialShape::dynamic(spatial_rank));
+    nnfusion::Dimension filter_output_channel_count =
+        (filters_shape.rank().is_static() ? filters_shape[0] : nnfusion::Dimension::dynamic());
+    nnfusion::Dimension filter_input_channel_count =
+        (filters_shape.rank().is_static() ? filters_shape[1] : nnfusion::Dimension::dynamic());
+    nnfusion::PartialShape filter_spatial_shape(nnfusion::PartialShape::dynamic(spatial_rank));
 
     //
     // Note: spatial_rank is definitely static at this point.
@@ -189,10 +193,10 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
     OP_VALIDATION(op, batch_size.is_dynamic() || static_cast<size_t>(batch_size) > 0)
         << "Batch size is zero.";
 
-    ngraph::Dimension merged_channel_count;
+    nnfusion::Dimension merged_channel_count;
 
     OP_VALIDATION(op,
-                  ngraph::Dimension::merge(
+                  nnfusion::Dimension::merge(
                       merged_channel_count, data_channel_count, filter_input_channel_count))
         << "Data batch channel count (" << data_channel_count << ") does not match filter input "
         << "channel count (" << filter_input_channel_count << ").";
@@ -206,7 +210,7 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
                       static_cast<size_t>(filter_output_channel_count) > 0)
         << "Filter output channel count is zero.";
 
-    ngraph::PartialShape data_output_shape =
+    nnfusion::PartialShape data_output_shape =
         infer_windowed_reduction_output_shape(op,
                                               data_spatial_shape,
                                               data_dilation,
@@ -217,7 +221,7 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
                                               filter_dilation,
                                               true);
 
-    ngraph::PartialShape batch_output_shape(ngraph::PartialShape::dynamic(spatial_rank + 2));
+    nnfusion::PartialShape batch_output_shape(nnfusion::PartialShape::dynamic(spatial_rank + 2));
     batch_output_shape[0] = batch_size;
     batch_output_shape[1] = filter_output_channel_count;
 
@@ -231,13 +235,13 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
 //
 // Infers the output batch shape and element type for batched pooling fprop.
 //
-ngraph::PartialShape
+nnfusion::PartialShape
     nnfusion::op::infer_batched_pooling_forward(const Op* op,
-                                                const ngraph::PartialShape& data_batch_shape,
-                                                const ngraph::CoordinateDiff& data_padding_below,
-                                                const ngraph::CoordinateDiff& data_padding_above,
-                                                const ngraph::PartialShape& window_shape,
-                                                const ngraph::Strides& window_strides,
+                                                const nnfusion::PartialShape& data_batch_shape,
+                                                const nnfusion::CoordinateDiff& data_padding_below,
+                                                const nnfusion::CoordinateDiff& data_padding_above,
+                                                const nnfusion::PartialShape& window_shape,
+                                                const nnfusion::Strides& window_strides,
                                                 bool is_window_all_in_padding_allowed)
 {
     OP_VALIDATION(op,
@@ -247,7 +251,7 @@ ngraph::PartialShape
         << "one input-channel axis, and at least one spatial dimension) "
         << "(data batch shape: " << data_batch_shape << ").";
 
-    ngraph::PartialShape data_spatial_shape{ngraph::PartialShape::dynamic()};
+    nnfusion::PartialShape data_spatial_shape{nnfusion::PartialShape::dynamic()};
 
     OP_VALIDATION(op,
                   data_spatial_shape.merge_rank(data_batch_shape.rank() - 2) &&
@@ -260,10 +264,10 @@ ngraph::PartialShape
         << data_padding_below << "), padding above (" << data_padding_above << "), window shape ("
         << window_shape << "), and window strides (" << window_strides << ") do not match.";
 
-    ngraph::Dimension batch_size{ngraph::Dimension::dynamic()};
-    ngraph::Dimension channel_count{ngraph::Dimension::dynamic()};
-    ngraph::PartialShape data_output_spatial_shape{
-        ngraph::PartialShape::dynamic(data_spatial_shape.rank())};
+    nnfusion::Dimension batch_size{nnfusion::Dimension::dynamic()};
+    nnfusion::Dimension channel_count{nnfusion::Dimension::dynamic()};
+    nnfusion::PartialShape data_output_spatial_shape{
+        nnfusion::PartialShape::dynamic(data_spatial_shape.rank())};
 
     if (data_batch_shape.rank().is_static())
     {
@@ -282,8 +286,8 @@ ngraph::PartialShape
             << "Channel count is zero.";
 
         // For pooling ops we don't need dilation, so we fill in the identity value (all 1).
-        ngraph::Strides data_dilation(static_cast<size_t>(data_spatial_shape.rank()), 1);
-        ngraph::Strides window_dilation(static_cast<size_t>(data_spatial_shape.rank()), 1);
+        nnfusion::Strides data_dilation(static_cast<size_t>(data_spatial_shape.rank()), 1);
+        nnfusion::Strides window_dilation(static_cast<size_t>(data_spatial_shape.rank()), 1);
 
         data_output_spatial_shape =
             infer_windowed_reduction_output_shape(op,
@@ -297,8 +301,8 @@ ngraph::PartialShape
                                                   is_window_all_in_padding_allowed);
     }
 
-    ngraph::PartialShape data_batch_output_shape{
-        ngraph::PartialShape::dynamic(data_output_spatial_shape.rank() + 2)};
+    nnfusion::PartialShape data_batch_output_shape{
+        nnfusion::PartialShape::dynamic(data_output_spatial_shape.rank() + 2)};
     data_batch_output_shape[0] = batch_size;
     data_batch_output_shape[1] = channel_count;
 
@@ -312,16 +316,16 @@ ngraph::PartialShape
 
 struct ChannelShapedInputSpec
 {
-    ngraph::element::Type m_element_type;
-    ngraph::PartialShape m_shape;
+    nnfusion::element::Type m_element_type;
+    nnfusion::PartialShape m_shape;
     std::string m_input_name;
 };
 
-static std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialShape>
+static std::tuple<nnfusion::element::Type, nnfusion::PartialShape, nnfusion::PartialShape>
     infer_batch_norm_forward_helper(
         const Op* op,
-        ngraph::element::Type input_element_type,
-        const ngraph::PartialShape& input_shape,
+        nnfusion::element::Type input_element_type,
+        const nnfusion::PartialShape& input_shape,
         const std::vector<ChannelShapedInputSpec>& channel_shaped_inputs)
 {
     // Built up a slash-separated string naming all the channel-shaped inputs, for use in error
@@ -340,16 +344,16 @@ static std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialSh
     std::string channel_input_names = ss.str();
 
     // Infer output element type.
-    ngraph::element::Type et_result{input_element_type};
+    nnfusion::element::Type et_result{input_element_type};
 
     for (auto& inp : channel_shaped_inputs)
     {
-        OP_VALIDATION(op, ngraph::element::Type::merge(et_result, et_result, inp.m_element_type))
+        OP_VALIDATION(op, nnfusion::element::Type::merge(et_result, et_result, inp.m_element_type))
             << "Input element types do not match.";
     }
 
     // Extract channel dimension from input shape.
-    ngraph::Dimension channel_dim{ngraph::Dimension::dynamic()};
+    nnfusion::Dimension channel_dim{nnfusion::Dimension::dynamic()};
 
     OP_VALIDATION(op, input_shape.is_dynamic() || static_cast<size_t>(input_shape.rank()) >= 2)
         << "Input argument must have rank of at least 2 (input argument shape: " << input_shape
@@ -361,18 +365,18 @@ static std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialSh
     }
 
     // Infer gamma/beta/mu/sigma shape, which must be consistent with a vector of size "channel_dim".
-    ngraph::PartialShape channel_shape{ngraph::PartialShape::dynamic()};
+    nnfusion::PartialShape channel_shape{nnfusion::PartialShape::dynamic()};
 
     for (auto& inp : channel_shaped_inputs)
     {
-        OP_VALIDATION(op, ngraph::PartialShape::merge_into(channel_shape, inp.m_shape))
+        OP_VALIDATION(op, nnfusion::PartialShape::merge_into(channel_shape, inp.m_shape))
             << "Shapes for " << channel_input_names << " do not match.";
     }
 
     OP_VALIDATION(op, channel_shape.merge_rank(1)) << "Shape for " << channel_input_names << " ("
                                                    << channel_shape << ") does not have rank 1.";
 
-    OP_VALIDATION(op, ngraph::Dimension::merge(channel_dim, channel_dim, channel_shape[0]))
+    OP_VALIDATION(op, nnfusion::Dimension::merge(channel_dim, channel_dim, channel_shape[0]))
         << "Input channel dimension (" << channel_dim << ") does not match shape for "
         << channel_input_names << " (" << channel_shape << ").";
 
@@ -381,28 +385,28 @@ static std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialSh
 
     // Batch result shape is same as the input shape, except we may possibly have inferred more
     // information from the channel count via gamma/beta/etc.
-    ngraph::PartialShape batch_result_shape{input_shape};
+    nnfusion::PartialShape batch_result_shape{input_shape};
 
     if (batch_result_shape.rank().is_static())
     {
         batch_result_shape[1] = channel_dim;
     }
 
-    return std::make_tuple(et_result, batch_result_shape, ngraph::PartialShape{channel_dim});
+    return std::make_tuple(et_result, batch_result_shape, nnfusion::PartialShape{channel_dim});
 }
 
-std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialShape>
+std::tuple<nnfusion::element::Type, nnfusion::PartialShape, nnfusion::PartialShape>
     nnfusion::op::infer_batch_norm_forward(const Op* op,
-                                           ngraph::element::Type input_element_type,
-                                           ngraph::element::Type gamma_element_type,
-                                           ngraph::element::Type beta_element_type,
-                                           ngraph::element::Type mean_element_type,
-                                           ngraph::element::Type variance_element_type,
-                                           const ngraph::PartialShape& input_shape,
-                                           const ngraph::PartialShape& gamma_shape,
-                                           const ngraph::PartialShape& beta_shape,
-                                           const ngraph::PartialShape& mean_shape,
-                                           const ngraph::PartialShape& variance_shape)
+                                           nnfusion::element::Type input_element_type,
+                                           nnfusion::element::Type gamma_element_type,
+                                           nnfusion::element::Type beta_element_type,
+                                           nnfusion::element::Type mean_element_type,
+                                           nnfusion::element::Type variance_element_type,
+                                           const nnfusion::PartialShape& input_shape,
+                                           const nnfusion::PartialShape& gamma_shape,
+                                           const nnfusion::PartialShape& beta_shape,
+                                           const nnfusion::PartialShape& mean_shape,
+                                           const nnfusion::PartialShape& variance_shape)
 {
     return infer_batch_norm_forward_helper(op,
                                            input_element_type,
@@ -413,14 +417,14 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialShape>
                                             {variance_element_type, variance_shape, "variance"}});
 }
 
-std::tuple<ngraph::element::Type, ngraph::PartialShape, ngraph::PartialShape>
+std::tuple<nnfusion::element::Type, nnfusion::PartialShape, nnfusion::PartialShape>
     nnfusion::op::infer_batch_norm_forward(const Op* op,
-                                           ngraph::element::Type input_element_type,
-                                           ngraph::element::Type gamma_element_type,
-                                           ngraph::element::Type beta_element_type,
-                                           const ngraph::PartialShape& input_shape,
-                                           const ngraph::PartialShape& gamma_shape,
-                                           const ngraph::PartialShape& beta_shape)
+                                           nnfusion::element::Type input_element_type,
+                                           nnfusion::element::Type gamma_element_type,
+                                           nnfusion::element::Type beta_element_type,
+                                           const nnfusion::PartialShape& input_shape,
+                                           const nnfusion::PartialShape& gamma_shape,
+                                           const nnfusion::PartialShape& beta_shape)
 {
     return infer_batch_norm_forward_helper(
         op,

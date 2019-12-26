@@ -15,9 +15,8 @@
 //*****************************************************************************
 
 #include "nnfusion/common/descriptor/layout/dense_tensor_layout.hpp"
-#include "ngraph/except.hpp"
-#include "ngraph/shape.hpp"
-#include "ngraph/type/element_type.hpp"
+#include "nnfusion/common/shape.hpp"
+#include "nnfusion/common/type/element_type.hpp"
 
 nnfusion::descriptor::layout::DenseTensorLayout::DenseTensorLayout(const Tensor& tensor)
     : TensorLayout(tensor)
@@ -40,9 +39,9 @@ size_t nnfusion::descriptor::layout::DenseTensorLayout::get_index_offset(
     return result;
 }
 
-Strides nnfusion::descriptor::layout::DenseTensorLayout::get_strides() const
+nnfusion::Strides nnfusion::descriptor::layout::DenseTensorLayout::get_strides() const
 {
-    return ngraph::row_major_strides(get_shape());
+    return nnfusion::row_major_strides(get_shape());
 }
 
 bool nnfusion::descriptor::layout::DenseTensorLayout::operator==(const TensorLayout& other) const

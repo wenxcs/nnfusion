@@ -17,7 +17,7 @@ namespace nnfusion
             /// \brief Constructs a product reduction operation.
             ///
             /// \param reduction_axes The axis positions (0-based) to be eliminated.
-            Product(const ngraph::AxisSet& reduction_axes);
+            Product(const nnfusion::AxisSet& reduction_axes);
         };
     }
 }

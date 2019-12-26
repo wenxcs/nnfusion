@@ -11,15 +11,15 @@ cuda::DepthwiseConv2dNative::DepthwiseConv2dNative(shared_ptr<KernelContext> ctx
 {
     auto op = static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
 
-    const ngraph::Shape input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
+    const Shape input_shape = Shape(ctx->inputs[0]->get_shape());
     // [ filter_rows, filter_cols, in_depth, depth_multiplier]
-    const ngraph::Shape filter_shape = ngraph::Shape(ctx->inputs[1]->get_shape());
-    const ngraph::Shape output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+    const Shape filter_shape = Shape(ctx->inputs[1]->get_shape());
+    const Shape output_shape = Shape(ctx->outputs[0]->get_shape());
 
     data_format = op->localOpConfig.getRoot()["data_format"];
     std::vector<int32_t> strides = op->localOpConfig.getRoot()["strides"];
-    ngraph::CoordinateDiff padding_before = op->localOpConfig.getRoot()["padding_before"];
-    ngraph::CoordinateDiff padding_after = op->localOpConfig.getRoot()["padding_after"];
+    CoordinateDiff padding_before = op->localOpConfig.getRoot()["padding_before"];
+    CoordinateDiff padding_after = op->localOpConfig.getRoot()["padding_after"];
 
     bool is_nhwc = (data_format == "NHWC");
 

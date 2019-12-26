@@ -17,11 +17,11 @@
 #include <memory>
 #include <vector>
 
-#include "ngraph/op/abs.hpp"
-#include "ngraph/op/add.hpp"
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/divide.hpp"
 #include "ngraph/shape.hpp"
+#include "nnfusion/core/operators/abs.hpp"
+#include "nnfusion/core/operators/add.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/divide.hpp"
 
 #include "utils/broadcasting.hpp"
 

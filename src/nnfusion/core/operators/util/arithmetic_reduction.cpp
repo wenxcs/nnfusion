@@ -7,7 +7,7 @@ using namespace std;
 using namespace nnfusion::op;
 
 ArithmeticReduction::ArithmeticReduction(const std::string& node_type,
-                                         const ngraph::AxisSet& reduction_axes)
+                                         const nnfusion::AxisSet& reduction_axes)
     : Op(node_type)
     , m_reduction_axes(reduction_axes)
 {
@@ -18,11 +18,11 @@ void ArithmeticReduction::validate_and_infer_types(std::shared_ptr<graph::GNode>
     auto input_shape = gnode->get_input_partial_shape(0);
     auto input_rank = input_shape.rank();
 
-    ngraph::PartialShape result_shape{ngraph::PartialShape::dynamic()};
+    nnfusion::PartialShape result_shape{nnfusion::PartialShape::dynamic()};
 
     if (input_rank.is_static())
     {
-        std::vector<ngraph::Dimension> dims;
+        std::vector<nnfusion::Dimension> dims;
 
         for (auto axis : m_reduction_axes)
         {
@@ -40,7 +40,7 @@ void ArithmeticReduction::validate_and_infer_types(std::shared_ptr<graph::GNode>
             }
         }
 
-        result_shape = ngraph::PartialShape(dims);
+        result_shape = nnfusion::PartialShape(dims);
     }
 
     gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), result_shape);

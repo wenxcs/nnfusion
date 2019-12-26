@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "ngraph/axis_vector.hpp"
-#include "ngraph/shape.hpp"
+#include "nnfusion/common/axis_vector.hpp"
+#include "nnfusion/common/shape.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "topk.hpp"
 
@@ -11,7 +11,7 @@ using namespace std;
 using namespace nnfusion::op;
 
 TopK::TopK(size_t top_k_axis,
-           const ngraph::element::Type& index_element_type,
+           const nnfusion::element::Type& index_element_type,
            size_t k,
            bool compute_max)
     : Op("TopK")
@@ -25,15 +25,15 @@ TopK::TopK(size_t top_k_axis,
 void TopK::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
     auto input_shape = gnode->get_input_partial_shape(0);
-    ngraph::Rank input_rank = input_shape.rank();
-    ngraph::element::Type input_element_type = gnode->get_input_element_type(0);
+    nnfusion::Rank input_rank = input_shape.rank();
+    nnfusion::element::Type input_element_type = gnode->get_input_element_type(0);
 
     OP_VALIDATION(this, !m_index_element_type.is_dynamic())
         << "Argument element type must not be dynamic.";
 
     OP_VALIDATION(this,
-                  m_index_element_type == ngraph::element::i32 ||
-                      m_index_element_type == ngraph::element::i64)
+                  m_index_element_type == nnfusion::element::i32 ||
+                      m_index_element_type == nnfusion::element::i64)
         << "Argument element type must be i64 or i32 (got " << m_index_element_type << ").";
 
     OP_VALIDATION(this, input_rank.is_dynamic() || static_cast<size_t>(input_rank) > 0)
@@ -49,7 +49,7 @@ void TopK::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         << (input_rank.is_static() ? input_shape[m_top_k_axis] : 0) << ") of the TopK axis (axis "
         << m_top_k_axis << ").";
 
-    ngraph::PartialShape output_shape{input_shape};
+    nnfusion::PartialShape output_shape{input_shape};
 
     if (input_rank.is_static())
     {

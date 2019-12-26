@@ -68,8 +68,8 @@ namespace nnfusion
             /// \param window_movement_strides The window movement strides.
             SelectAndScatter(const std::shared_ptr<graph::Graph>& selection_graph,
                              const std::shared_ptr<graph::Graph>& scatter_graph,
-                             const ngraph::Shape& window_shape,
-                             const ngraph::Strides& window_movement_strides);
+                             const nnfusion::Shape& window_shape,
+                             const nnfusion::Strides& window_movement_strides);
 
             /// \return A vector of length 2 containing the selection graph as element 0, and the scatter graph as element 1.
             std::vector<std::shared_ptr<graph::Graph>> get_graphs() const
@@ -77,9 +77,9 @@ namespace nnfusion
                 return {m_selection_graph, m_scatter_graph};
             }
             /// \return The window shape.
-            const ngraph::Shape& get_window_shape() const { return m_window_shape; }
+            const nnfusion::Shape& get_window_shape() const { return m_window_shape; }
             /// \return The window movement strides.
-            const ngraph::Strides& get_window_movement_strides() const
+            const nnfusion::Strides& get_window_movement_strides() const
             {
                 return m_window_movement_strides;
             }
@@ -89,8 +89,8 @@ namespace nnfusion
 
             std::shared_ptr<graph::Graph> m_selection_graph;
             std::shared_ptr<graph::Graph> m_scatter_graph;
-            ngraph::Shape m_window_shape;
-            ngraph::Strides m_window_movement_strides;
+            nnfusion::Shape m_window_shape;
+            nnfusion::Strides m_window_movement_strides;
         };
     }
 }

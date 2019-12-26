@@ -20,7 +20,7 @@
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"
 
-#include "ngraph/op/constant.hpp"
+#include "nnfusion/core/operators/constant.hpp"
 
 #include "shape.hpp"
 

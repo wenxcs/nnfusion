@@ -18,10 +18,9 @@
 
 #include "onnx/onnx-ml.pb.h"
 
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/parameter_vector.hpp"
 #include "ngraph/shape.hpp"
 #include "ngraph/type/element_type.hpp"
+#include "nnfusion/core/operators/op_define/constant.hpp"
 
 #include "node.hpp"
 #include "tensor.hpp"

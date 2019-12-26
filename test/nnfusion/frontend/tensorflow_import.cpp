@@ -20,20 +20,38 @@
 #include <sstream>
 #include <vector>
 
+#include "../test_util/common.hpp"
 #include "gtest/gtest.h"
-#include "ngraph/ngraph.hpp"
+#include "nnfusion/engine/external/backend_manager.cpp"
 #include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
-#include "util/all_close.hpp"
-#include "util/all_close_f.hpp"
-#include "util/ndarray.hpp"
-#include "util/test_tools.hpp"
 
-#include "ngraph/file_util.hpp"
-
-using namespace ngraph;
 using namespace nnfusion;
 using Inputs = std::vector<std::vector<float>>;
 using Outputs = std::vector<std::vector<float>>;
+
+template <typename T, typename T1 = T>
+std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Graph>& graph,
+                                     std::vector<std::vector<T>> args,
+                                     const std::string& backend_id)
+{
+    auto parms_gnodes = graph->get_parameters();
+
+    CHECK(parms_gnodes.size() == args.size()) << "number of parameters and arguments don't match";
+
+    auto graph_evaluate = make_shared<nnfusion::profiler::GraphEvaluate>(graph, CUDA_GPU);
+    auto res = graph_evaluate->eval<T, T1>(args);
+
+    auto output_gnodes = graph->get_outputs();
+    CHECK(output_gnodes.size() == res.size()) << "number of outputs and results don't match";
+
+    std::vector<std::vector<T1>> result_vectors;
+    for (auto kv : res)
+    {
+        CHECK(kv.second.size() == 1);
+        result_vectors.push_back((kv.second[0]));
+    }
+    return result_vectors;
+}
 
 /* todo: support int64
 TEST(nnfusion_tensorflow_import, abs_op)
@@ -807,7 +825,7 @@ TEST(nnfusion_tensorflow_import, addn)
 
     Outputs expected_outputs{{9, 12}};
 
-    ///\todo Change ngraph::INTERPRETER into nnfusion::reference
+    ///\todo Change nnfusion::INTERPRETER into nnfusion::reference
     Outputs outputs{execute(model, inputs, "NNFusion")};
     EXPECT_EQ(outputs.size(), expected_outputs.size());
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
@@ -832,7 +850,7 @@ TEST(nnfusion_tensorflow_import, tile)
                               5, 6, 7, 8, 5, 6, 7, 8, 1, 2, 3, 4, 1, 2, 3, 4,
                               1, 2, 3, 4, 5, 6, 7, 8, 5, 6, 7, 8, 5, 6, 7, 8}};
 
-    ///\todo Change ngraph::INTERPRETER into nnfusion::reference
+    ///\todo Change nnfusion::INTERPRETER into nnfusion::reference
     Outputs outputs{execute(model, inputs, "NNFusion")};
     EXPECT_EQ(outputs.size(), expected_outputs.size());
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
@@ -855,7 +873,7 @@ TEST(nnfusion_tensorflow_import, unsorted_segment_sum)
 
     Outputs expected_outputs{{5, 5, 5, 5, 5, 6, 7, 8}};
 
-    ///\todo Change ngraph::INTERPRETER into nnfusion::reference
+    ///\todo Change nnfusion::INTERPRETER into nnfusion::reference
     Outputs outputs{execute(model, inputs, "NNFusion")};
     EXPECT_EQ(outputs.size(), expected_outputs.size());
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)

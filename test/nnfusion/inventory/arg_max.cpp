@@ -5,9 +5,8 @@
  */
 
 #include "../test_util/common.hpp"
-#include "ngraph/op/argmax.hpp"
-#include "ngraph/op/parameter.hpp"
-#include "util/ndarray.hpp"
+#include "nnfusion/core/operators/argmax.hpp"
+#include "nnfusion/core/operators/parameter.hpp"
 
 using namespace ngraph;
 
@@ -16,7 +15,7 @@ namespace nnfusion
     namespace test
     {
         template <typename T, size_t N>
-        using NDArray = ngraph::test::NDArray<T, N>;
+        using NDArray = nnfusion::test::NDArray<T, N>;
     }
 
     namespace inventory

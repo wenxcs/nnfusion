@@ -45,7 +45,7 @@ void ReverseSequence::validate_and_infer_types(std::shared_ptr<graph::GNode> gno
         Dimension merged_sequence_length;
 
         OP_VALIDATION(this,
-                      ngraph::Dimension::merge(
+                      nnfusion::Dimension::merge(
                           merged_sequence_length, input_shape[m_batch_axis], indices_shape[0]))
             << "Sequence length (" << indices_shape[0] << ") is not equal to batch axis "
             << "dimension (" << input_shape[m_batch_axis] << ") (argument shape: " << input_shape

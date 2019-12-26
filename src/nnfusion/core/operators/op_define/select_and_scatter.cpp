@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "select_and_scatter.hpp"
-#include "ngraph/util.hpp"
+#include "nnfusion/common/util.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
 
@@ -10,8 +10,8 @@ using namespace nnfusion::op;
 
 SelectAndScatter::SelectAndScatter(const std::shared_ptr<graph::Graph>& selection_graph,
                                    const std::shared_ptr<graph::Graph>& scatter_graph,
-                                   const ngraph::Shape& window_shape,
-                                   const ngraph::Strides& window_movement_strides)
+                                   const nnfusion::Shape& window_shape,
+                                   const nnfusion::Strides& window_movement_strides)
     : Op("SelectAndScatter")
     , m_selection_graph(selection_graph)
     , m_scatter_graph(scatter_graph)
@@ -77,7 +77,7 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
     // we would get if we window-reduced the selectee; in other words, this logic is
     // the same as the logic for computing the output shape of reduce-window.
     //
-    ngraph::Shape expected_source_shape;
+    nnfusion::Shape expected_source_shape;
 
     for (size_t i = 0; i < input_selectee_shape.size(); i++)
     {
@@ -98,15 +98,15 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
         << "Parameter 0 of selection graph has wrong element type";
     CHECK(selection_graph_params.at(1)->get_element_type() == arg_init->get_element_type())
         << "Parameter 1 of selection graph has wrong element type";
-    CHECK(selection_graph_params.at(0)->get_shape() == ngraph::Shape{})
+    CHECK(selection_graph_params.at(0)->get_shape() == nnfusion::Shape{})
         << "Parameter 0 of selection graph is not a scalar";
-    CHECK(selection_graph_params.at(1)->get_shape() == ngraph::Shape{})
+    CHECK(selection_graph_params.at(1)->get_shape() == nnfusion::Shape{})
         << "Parameter 1 of selection graph is not a scalar";
     CHECK(m_selection_graph->get_output_size() <= 1)
         << "Single-output selection graph was expected";
-    CHECK(m_selection_graph->get_outputs().at(0)->get_element_type() == ngraph::element::boolean)
+    CHECK(m_selection_graph->get_outputs().at(0)->get_element_type() == nnfusion::element::boolean)
         << "Return element type from selection graph is not boolean";
-    CHECK(m_selection_graph->get_outputs().at(0)->get_shape() == ngraph::Shape{})
+    CHECK(m_selection_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from selection graph is not a scalar";
     //
     // Check the type signature of the scatter graph. Should be T -> T -> T.
@@ -119,14 +119,14 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
         << "Parameter 0 of scatter graph has wrong element type";
     CHECK(scatter_graph_params.at(1)->get_element_type() == arg_init->get_element_type())
         << "Parameter 1 of scatter graph has wrong element type";
-    CHECK(scatter_graph_params.at(0)->get_shape() == ngraph::Shape{})
+    CHECK(scatter_graph_params.at(0)->get_shape() == nnfusion::Shape{})
         << "Parameter 0 of scatter graph is not a scalar";
-    CHECK(scatter_graph_params.at(1)->get_shape() == ngraph::Shape{})
+    CHECK(scatter_graph_params.at(1)->get_shape() == nnfusion::Shape{})
         << "Parameter 1 of scatter graph is not a scalar";
     CHECK(m_scatter_graph->get_output_size() <= 1) << "Single-output scatter graph was expected";
     CHECK(m_scatter_graph->get_outputs().at(0)->get_element_type() == arg_init->get_element_type())
         << "Return element type from scatter graph does not match the init value type";
-    CHECK(m_scatter_graph->get_outputs().at(0)->get_shape() == ngraph::Shape{})
+    CHECK(m_scatter_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from scatter graph is not a scalar";
     //
     // Result type is the same element type and shape as the selectee.

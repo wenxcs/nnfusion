@@ -14,7 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
-#include "ngraph/op/slice.hpp"
+#include "nnfusion/core/operators/slice.hpp"
 
 #include "op/split.hpp"
 

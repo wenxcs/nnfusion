@@ -15,8 +15,8 @@ void AllReduce::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
     auto element_type = gnode->get_input_element_type(0);
     OP_VALIDATION(this,
-                  element_type.is_dynamic() || element_type == ngraph::element::f32 ||
-                      element_type == ngraph::element::f64)
+                  element_type.is_dynamic() || element_type == nnfusion::element::f32 ||
+                      element_type == nnfusion::element::f64)
         << "Only element types f32 and f64 are supported (argument element type: " << element_type
         << ").";
 

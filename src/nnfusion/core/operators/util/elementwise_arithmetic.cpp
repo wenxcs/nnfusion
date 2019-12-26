@@ -3,8 +3,8 @@
 #include "elementwise_arithmetic.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 
-#include "ngraph/partial_shape.hpp"
-#include "ngraph/type/element_type.hpp"
+#include "nnfusion/common/partial_shape.hpp"
+#include "nnfusion/common/type/element_type.hpp"
 
 using namespace nnfusion::op;
 
@@ -17,10 +17,10 @@ void ElementwiseArithmetic::validate_and_infer_types(std::shared_ptr<graph::GNod
 {
     auto args_et_pshape = validate_and_infer_elementwise_args(gnode);
 
-    ngraph::element::Type& args_et = std::get<0>(args_et_pshape);
-    ngraph::PartialShape& args_pshape = std::get<1>(args_et_pshape);
+    nnfusion::element::Type& args_et = std::get<0>(args_et_pshape);
+    nnfusion::PartialShape& args_pshape = std::get<1>(args_et_pshape);
 
-    OP_VALIDATION(this, args_et.is_dynamic() || args_et != ngraph::element::boolean)
+    OP_VALIDATION(this, args_et.is_dynamic() || args_et != nnfusion::element::boolean)
         << "Arguments cannot have boolean element type (argument element type: " << args_et << ").";
 
     gnode->set_output_type_and_shape(0, args_et, args_pshape);

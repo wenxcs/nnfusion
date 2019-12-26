@@ -10,12 +10,12 @@ cuda::Softmax::Softmax(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
     auto node = static_pointer_cast<nnfusion::op::Softmax>(ctx->gnode->get_op_ptr());
-    input_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    output_shape = ngraph::Shape(ctx->outputs[0]->get_shape());
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
 }
 
 LanguageUnit_p
-    cuda::Softmax::cudnn_tensor_descriptor_from_shape_for_softmax(const ngraph::Shape& shape,
+    cuda::Softmax::cudnn_tensor_descriptor_from_shape_for_softmax(const nnfusion::Shape& shape,
                                                                   string desc)
 {
     LanguageUnit_p _lu(new LanguageUnit);

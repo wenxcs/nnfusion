@@ -55,9 +55,9 @@ void GNode::initialize(const std::shared_ptr<Op> op_ptr,
 
     for (size_t i = 0; i < input_gnodes.size(); ++i)
     {
-        NGRAPH_ASSERT(input_gnodes.at(i)->get_output_size() == 1)
-            << "Argument " << i << input_gnodes.at(i)->get_op_type()
-            << " must produce exactly one value.";
+        CHECK(input_gnodes.at(i)->get_output_size() == 1) << "Argument " << i
+                                                          << input_gnodes.at(i)->get_op_type()
+                                                          << " must produce exactly one value.";
         m_inputs.emplace_back(
             std::make_shared<Input>(input_gnodes.at(i)->get_outputs().at(0)->get_element_type(),
                                     input_gnodes.at(i)->get_outputs().at(0)->get_partial_shape()));
@@ -271,8 +271,8 @@ void GNode::set_output(size_t i, std::shared_ptr<Output> output)
 }
 
 void GNode::set_output_type_and_shape(size_t i,
-                                      const ngraph::element::Type& element_type,
-                                      const ngraph::PartialShape& pshape)
+                                      const nnfusion::element::Type& element_type,
+                                      const nnfusion::PartialShape& pshape)
 {
     if (i >= m_outputs.size())
     {
@@ -281,46 +281,46 @@ void GNode::set_output_type_and_shape(size_t i,
     m_outputs.at(i)->set_type_and_shape(element_type, pshape);
 }
 
-const ngraph::Shape& GNode::get_shape() const
+const nnfusion::Shape& GNode::get_shape() const
 {
     CHECK(get_output_size() == 1)
         << "get_shape() must be called on a node with exactly one output.";
     return m_outputs.at(0)->get_shape();
 }
 
-const ngraph::element::Type& GNode::get_element_type() const
+const nnfusion::element::Type& GNode::get_element_type() const
 {
     CHECK(get_output_size() == 1)
         << "get_element_type() must be called on a node with exactly one output.";
     return m_outputs.at(0)->get_element_type();
 }
 
-const ngraph::element::Type& GNode::get_output_element_type(size_t i) const
+const nnfusion::element::Type& GNode::get_output_element_type(size_t i) const
 {
     return m_outputs.at(i)->get_element_type();
 }
 
-const ngraph::Shape& GNode::get_output_shape(size_t i) const
+const nnfusion::Shape& GNode::get_output_shape(size_t i) const
 {
     return m_outputs.at(i)->get_shape();
 }
 
-const ngraph::PartialShape& GNode::get_output_partial_shape(size_t i) const
+const nnfusion::PartialShape& GNode::get_output_partial_shape(size_t i) const
 {
     return m_outputs.at(i)->get_partial_shape();
 }
 
-const ngraph::element::Type& GNode::get_input_element_type(size_t i) const
+const nnfusion::element::Type& GNode::get_input_element_type(size_t i) const
 {
     return m_inputs.at(i)->get_element_type();
 }
 
-const ngraph::Shape& GNode::get_input_shape(size_t i) const
+const nnfusion::Shape& GNode::get_input_shape(size_t i) const
 {
     return m_inputs.at(i)->get_shape();
 }
 
-const ngraph::PartialShape& GNode::get_input_partial_shape(size_t i) const
+const nnfusion::PartialShape& GNode::get_input_partial_shape(size_t i) const
 {
     return m_inputs.at(i)->get_partial_shape();
 }

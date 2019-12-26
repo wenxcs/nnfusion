@@ -9,11 +9,11 @@
 using namespace std;
 using namespace nnfusion::op;
 
-Convolution::Convolution(const ngraph::Strides& window_movement_strides,
-                         const ngraph::Strides& window_dilation_strides,
-                         const ngraph::CoordinateDiff& padding_below,
-                         const ngraph::CoordinateDiff& padding_above,
-                         const ngraph::Strides& data_dilation_strides)
+Convolution::Convolution(const nnfusion::Strides& window_movement_strides,
+                         const nnfusion::Strides& window_dilation_strides,
+                         const nnfusion::CoordinateDiff& padding_below,
+                         const nnfusion::CoordinateDiff& padding_above,
+                         const nnfusion::Strides& data_dilation_strides)
     : Op("Convolution")
     , m_window_movement_strides(window_movement_strides)
     , m_window_dilation_strides(window_dilation_strides)
@@ -25,10 +25,10 @@ Convolution::Convolution(const ngraph::Strides& window_movement_strides,
 
 void Convolution::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    const ngraph::PartialShape& data_batch_shape = gnode->get_input_partial_shape(0);
-    ngraph::element::Type data_batch_et = gnode->get_input_element_type(0);
-    const ngraph::PartialShape& filters_shape = gnode->get_input_partial_shape(1);
-    ngraph::element::Type filters_et = gnode->get_input_element_type(1);
+    const nnfusion::PartialShape& data_batch_shape = gnode->get_input_partial_shape(0);
+    nnfusion::element::Type data_batch_et = gnode->get_input_element_type(0);
+    const nnfusion::PartialShape& filters_shape = gnode->get_input_partial_shape(1);
+    nnfusion::element::Type filters_et = gnode->get_input_element_type(1);
 
     if (m_data_dilation_strides.size() == 0)
     {
@@ -55,8 +55,8 @@ void Convolution::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         m_padding_above = default_padding(this, data_batch_shape, filters_shape);
     }
 
-    ngraph::element::Type result_et;
-    ngraph::PartialShape result_shape;
+    nnfusion::element::Type result_et;
+    nnfusion::PartialShape result_shape;
 
     std::tie(result_et, result_shape) = infer_convolution_forward(this,
                                                                   data_batch_et,
@@ -72,9 +72,9 @@ void Convolution::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     gnode->set_output_type_and_shape(0, result_et, result_shape);
 }
 
-ngraph::Strides Convolution::default_strides(const Op* op,
-                                             const ngraph::PartialShape& data_batch_shape,
-                                             const ngraph::PartialShape& filters_shape)
+nnfusion::Strides Convolution::default_strides(const Op* op,
+                                               const nnfusion::PartialShape& data_batch_shape,
+                                               const nnfusion::PartialShape& filters_shape)
 {
     size_t rank;
 
@@ -91,24 +91,24 @@ ngraph::Strides Convolution::default_strides(const Op* op,
         rank = 0;
     }
 
-    return ngraph::Strides(rank, 1);
+    return nnfusion::Strides(rank, 1);
 }
 
-Convolution::Convolution(const ngraph::Strides& window_movement_strides,
-                         const ngraph::Strides& window_dilation_strides,
-                         const ngraph::CoordinateDiff& padding_below,
-                         const ngraph::CoordinateDiff& padding_above)
+Convolution::Convolution(const nnfusion::Strides& window_movement_strides,
+                         const nnfusion::Strides& window_dilation_strides,
+                         const nnfusion::CoordinateDiff& padding_below,
+                         const nnfusion::CoordinateDiff& padding_above)
     : Convolution(window_movement_strides,
                   window_dilation_strides,
                   padding_below,
                   padding_above,
-                  ngraph::Strides())
+                  nnfusion::Strides())
 {
 }
 
 CoordinateDiff Convolution::default_padding(const Op* op,
-                                            const ngraph::PartialShape& data_batch_shape,
-                                            const ngraph::PartialShape& filters_shape)
+                                            const nnfusion::PartialShape& data_batch_shape,
+                                            const nnfusion::PartialShape& filters_shape)
 {
     size_t rank;
 
@@ -125,39 +125,41 @@ CoordinateDiff Convolution::default_padding(const Op* op,
         rank = 0;
     }
 
-    return ngraph::CoordinateDiff(rank, 0);
+    return nnfusion::CoordinateDiff(rank, 0);
 }
 
-Convolution::Convolution(const ngraph::Strides& window_movement_strides,
-                         const ngraph::Strides& window_dilation_strides)
+Convolution::Convolution(const nnfusion::Strides& window_movement_strides,
+                         const nnfusion::Strides& window_dilation_strides)
     : Convolution(window_movement_strides,
                   window_dilation_strides,
-                  ngraph::CoordinateDiff(),
-                  ngraph::CoordinateDiff())
+                  nnfusion::CoordinateDiff(),
+                  nnfusion::CoordinateDiff())
 {
 }
 
-Convolution::Convolution(const ngraph::Strides& window_movement_strides)
+Convolution::Convolution(const nnfusion::Strides& window_movement_strides)
     : Convolution(window_movement_strides,
-                  ngraph::Strides(),
-                  ngraph::CoordinateDiff(),
-                  ngraph::CoordinateDiff())
+                  nnfusion::Strides(),
+                  nnfusion::CoordinateDiff(),
+                  nnfusion::CoordinateDiff())
 {
 }
 
 Convolution::Convolution()
-    : Convolution(
-          ngraph::Strides(), ngraph::Strides(), ngraph::CoordinateDiff(), ngraph::CoordinateDiff())
+    : Convolution(nnfusion::Strides(),
+                  nnfusion::Strides(),
+                  nnfusion::CoordinateDiff(),
+                  nnfusion::CoordinateDiff())
 {
 }
 
 ConvolutionBackpropData::ConvolutionBackpropData(
     const Shape& data_batch_shape,
-    const ngraph::Strides& window_movement_strides_forward,
-    const ngraph::Strides& window_dilation_strides_forward,
-    const ngraph::CoordinateDiff& padding_below_forward,
-    const ngraph::CoordinateDiff& padding_above_forward,
-    const ngraph::Strides& data_dilation_strides_forward)
+    const nnfusion::Strides& window_movement_strides_forward,
+    const nnfusion::Strides& window_dilation_strides_forward,
+    const nnfusion::CoordinateDiff& padding_below_forward,
+    const nnfusion::CoordinateDiff& padding_above_forward,
+    const nnfusion::Strides& data_dilation_strides_forward)
     : Op("ConvolutionBackpropData")
     , m_data_batch_shape(data_batch_shape)
     , m_window_movement_strides_forward(window_movement_strides_forward)
@@ -200,13 +202,13 @@ void ConvolutionBackpropData::validate_and_infer_types(std::shared_ptr<graph::GN
     // reference kernels that do the calculations of the backward parameters internally, or supply
     // utility functions to do it.)
 
-    const ngraph::PartialShape& filters_shape = gnode->get_input_partial_shape(0);
-    ngraph::element::Type filters_et = gnode->get_input_element_type(0);
-    const ngraph::PartialShape& delta_shape = gnode->get_input_partial_shape(1);
-    ngraph::element::Type delta_et = gnode->get_input_element_type(1);
+    const nnfusion::PartialShape& filters_shape = gnode->get_input_partial_shape(0);
+    nnfusion::element::Type filters_et = gnode->get_input_element_type(0);
+    const nnfusion::PartialShape& delta_shape = gnode->get_input_partial_shape(1);
+    nnfusion::element::Type delta_et = gnode->get_input_element_type(1);
 
-    ngraph::element::Type forward_result_et;
-    ngraph::PartialShape forward_result_shape;
+    nnfusion::element::Type forward_result_et;
+    nnfusion::PartialShape forward_result_shape;
 
     std::tie(forward_result_et, forward_result_shape) =
         infer_convolution_forward(this,
@@ -263,11 +265,11 @@ void ConvolutionBackpropData::validate_and_infer_types(std::shared_ptr<graph::GN
 
 ConvolutionBackpropFilters::ConvolutionBackpropFilters(
     const Shape& filters_shape,
-    const ngraph::Strides& window_movement_strides_forward,
-    const ngraph::Strides& window_dilation_strides_forward,
-    const ngraph::CoordinateDiff& padding_below_forward,
-    const ngraph::CoordinateDiff& padding_above_forward,
-    const ngraph::Strides& data_dilation_strides_forward)
+    const nnfusion::Strides& window_movement_strides_forward,
+    const nnfusion::Strides& window_dilation_strides_forward,
+    const nnfusion::CoordinateDiff& padding_below_forward,
+    const nnfusion::CoordinateDiff& padding_above_forward,
+    const nnfusion::Strides& data_dilation_strides_forward)
     : Op("ConvolutionBackpropFilters")
     , m_filters_shape(filters_shape)
     , m_window_movement_strides_forward(window_movement_strides_forward)
@@ -310,13 +312,13 @@ void ConvolutionBackpropFilters::validate_and_infer_types(std::shared_ptr<graph:
     // reference kernels that do the calculations of the backward parameters internally, or supply
     // utility functions to do it.)
 
-    const ngraph::PartialShape& data_batch_shape = gnode->get_input_partial_shape(0);
-    ngraph::element::Type data_batch_et = gnode->get_input_element_type(0);
-    const ngraph::PartialShape& delta_shape = gnode->get_input_shape(1);
-    ngraph::element::Type delta_et = gnode->get_input_element_type(1);
+    const nnfusion::PartialShape& data_batch_shape = gnode->get_input_partial_shape(0);
+    nnfusion::element::Type data_batch_et = gnode->get_input_element_type(0);
+    const nnfusion::PartialShape& delta_shape = gnode->get_input_shape(1);
+    nnfusion::element::Type delta_et = gnode->get_input_element_type(1);
 
-    ngraph::element::Type forward_result_et;
-    ngraph::PartialShape forward_result_shape;
+    nnfusion::element::Type forward_result_et;
+    nnfusion::PartialShape forward_result_shape;
 
     std::tie(forward_result_et, forward_result_shape) =
         infer_convolution_forward(this,

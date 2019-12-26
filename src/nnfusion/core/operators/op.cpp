@@ -80,17 +80,7 @@ void Op::set_name(const string& name)
     m_name = name;
 }
 
-ngraph::Placement Op::get_placement() const
-{
-    return m_placement;
-}
-
-void Op::set_placement(ngraph::Placement placement)
-{
-    m_placement = placement;
-}
-
-std::tuple<ngraph::element::Type, ngraph::PartialShape>
+std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
     Op::validate_and_infer_elementwise_args(std::shared_ptr<graph::GNode> gnode)
 {
     size_t input_size = gnode->get_input_size();
@@ -102,12 +92,12 @@ std::tuple<ngraph::element::Type, ngraph::PartialShape>
         for (size_t i = 1; i < input_size; ++i)
         {
             OP_VALIDATION(this,
-                          ngraph::element::Type::merge(
+                          nnfusion::element::Type::merge(
                               element_type, element_type, gnode->get_input_element_type(i)))
                 << "Argument element types are inconsistent.";
 
             OP_VALIDATION(
-                this, ngraph::PartialShape::merge_into(pshape, gnode->get_input_partial_shape(i)))
+                this, nnfusion::PartialShape::merge_into(pshape, gnode->get_input_partial_shape(i)))
                 << "Argument shapes are inconsistent.";
         }
     }

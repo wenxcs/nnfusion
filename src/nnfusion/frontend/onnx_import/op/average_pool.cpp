@@ -16,7 +16,7 @@
 
 #include "ngraph/node.hpp"
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/avg_pool.hpp"
+#include "nnfusion/core/operators/avg_pool.hpp"
 
 #include "utils/convpool.hpp"
 

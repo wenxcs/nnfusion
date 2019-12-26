@@ -19,10 +19,10 @@ namespace nnfusion
                 //void set_launch_config() override;
 
             protected:
-                ngraph::Shape arg_shape;
+                nnfusion::Shape arg_shape;
                 size_t arg_rank;
-                ngraph::Shape result_shape;
-                ngraph::AxisVector input_order;
+                nnfusion::Shape result_shape;
+                nnfusion::AxisVector input_order;
                 shared_ptr<nnfusion::op::Reshape> reshape;
                 bool is_memcpy;
                 bool is_noop;
@@ -81,10 +81,10 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override;
 
             private:
-                ngraph::Shape arg_shape;
+                nnfusion::Shape arg_shape;
                 size_t arg_rank;
-                ngraph::Shape result_shape;
-                ngraph::AxisVector input_order;
+                nnfusion::Shape result_shape;
+                nnfusion::AxisVector input_order;
                 shared_ptr<nnfusion::op::Reshape> reshape;
                 bool is_memcpy;
                 bool is_noop;

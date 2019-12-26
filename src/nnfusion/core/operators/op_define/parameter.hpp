@@ -21,8 +21,8 @@ namespace nnfusion
             /// \param element_type The element type of the parameter.
             /// \param pshape The partial shape of the parameter.
             /// \param cacheable True if the parameter is not expected to be frequently updated.
-            Parameter(const ngraph::element::Type& element_type,
-                      const ngraph::PartialShape& pshape,
+            Parameter(const nnfusion::element::Type& element_type,
+                      const nnfusion::PartialShape& pshape,
                       const bool cacheable = false);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
@@ -31,8 +31,8 @@ namespace nnfusion
             bool is_parameter() const override { return true; }
         protected:
             bool m_cacheable;
-            ngraph::PartialShape m_partial_shape;
-            ngraph::element::Type m_element_type;
+            nnfusion::PartialShape m_partial_shape;
+            nnfusion::element::Type m_element_type;
         };
     }
 }

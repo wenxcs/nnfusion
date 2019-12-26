@@ -10,7 +10,7 @@
 #include "cuda_kernelops.hpp"
 #include "cuda_testutil.hpp"
 
-using CodeWriter = ngraph::codegen::CodeWriter;
+using CodeWriter = nnfusion::codegen::CodeWriter;
 
 namespace nnfusion
 {
@@ -50,7 +50,7 @@ namespace nnfusion
                                                        bool register_arguments,
                                                        std::string reduced_idx = "reduced_idx");
 
-            void div_to_mul(const ngraph::NVShape& shape,
+            void div_to_mul(const nnfusion::NVShape& shape,
                             std::vector<int>& magic,
                             std::vector<int>& shift);
 

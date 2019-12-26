@@ -11,8 +11,8 @@ cpu::DotMlas::DotMlas(shared_ptr<KernelContext> ctx)
     auto dot_op = static_pointer_cast<op::Dot>(ctx->gnode->get_op_ptr());
 
     reduction_axes = dot_op->get_reduction_axes_count();
-    arg0_shape = ngraph::Shape(ctx->inputs[0]->get_shape());
-    arg1_shape = ngraph::Shape(ctx->inputs[1]->get_shape());
+    arg0_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    arg1_shape = nnfusion::Shape(ctx->inputs[1]->get_shape());
 
     std::stringstream tag;
     tag << "Mlas"
@@ -37,8 +37,8 @@ LanguageUnit_p cpu::DotMlas::emit_function_body()
 
     if (arg0_shape.empty() || arg1_shape.empty())
     {
-        M = (arg0_shape.empty()) ? 1 : ngraph::shape_size(arg0_shape);
-        N = (arg1_shape.empty()) ? 1 : ngraph::shape_size(arg1_shape);
+        M = (arg0_shape.empty()) ? 1 : nnfusion::shape_size(arg0_shape);
+        N = (arg1_shape.empty()) ? 1 : nnfusion::shape_size(arg1_shape);
         K = 1;
     }
     else if ((arg0_shape.size() == arg1_shape.size()) && (arg0_shape.size() == reduction_axes))
@@ -48,9 +48,9 @@ LanguageUnit_p cpu::DotMlas::emit_function_body()
             if (arg0_shape[i] != arg1_shape[i])
             {
                 std::vector<std::string> arg_vec{"arg0", "arg1"};
-                std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
+                std::vector<nnfusion::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+                CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
                              << " respectively, at Node " << m_context->gnode->get_name()
                              << ", do not match for dot op";
             }
@@ -58,7 +58,7 @@ LanguageUnit_p cpu::DotMlas::emit_function_body()
 
         M = 1;
         N = 1;
-        K = ngraph::shape_size(arg0_shape);
+        K = nnfusion::shape_size(arg0_shape);
     }
     else if ((arg0_shape.size() == 2) && (arg1_shape.size() == 2) && reduction_axes == 1)
     {
@@ -70,9 +70,9 @@ LanguageUnit_p cpu::DotMlas::emit_function_body()
         if (K != arg1_K)
         {
             std::vector<std::string> arg_vec{"arg0", "arg1"};
-            std::vector<ngraph::Shape> shape_vec{arg0_shape, arg1_shape};
+            std::vector<nnfusion::Shape> shape_vec{arg0_shape, arg1_shape};
 
-            CHECK_FAIL() << ngraph::join(arg_vec) << " with " << ngraph::join(shape_vec)
+            CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
                          << " respectively, at Node " << m_context->gnode->get_name()
                          << ", do not match for dot op."
                          << "transpose_A: " << trans_A_str << ", transpose_B: " << trans_B_str;

@@ -10,8 +10,8 @@
 
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
-#include "ngraph/op/pad.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
+#include "nnfusion/core/operators/pad.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion::profiler;

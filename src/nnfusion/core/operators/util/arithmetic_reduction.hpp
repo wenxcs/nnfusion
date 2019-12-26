@@ -17,14 +17,14 @@ namespace nnfusion
             ///
             /// \param reduction_axes The axis positions (0-based) to be eliminated.
             ArithmeticReduction(const std::string& node_type,
-                                const ngraph::AxisSet& reduction_axes);
+                                const nnfusion::AxisSet& reduction_axes);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             /// \return The axis positions (0-based) to be eliminated through reduction.
-            const ngraph::AxisSet& get_reduction_axes() const { return m_reduction_axes; }
+            const nnfusion::AxisSet& get_reduction_axes() const { return m_reduction_axes; }
         protected:
-            ngraph::AxisSet m_reduction_axes;
+            nnfusion::AxisSet m_reduction_axes;
         };
     }
 }

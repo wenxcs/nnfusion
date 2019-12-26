@@ -43,8 +43,8 @@ namespace nnfusion
                     if (ctx->outputs[0]->get_element_type().c_type_string() != "float")
                         return nullptr;
 
-                    ngraph::Shape input_shape_0 = ctx->inputs[0]->get_shape();
-                    ngraph::Shape input_shape_1 = ctx->inputs[1]->get_shape();
+                    nnfusion::Shape input_shape_0 = ctx->inputs[0]->get_shape();
+                    nnfusion::Shape input_shape_1 = ctx->inputs[1]->get_shape();
                     if (input_shape_0.size() != input_shape_1.size())
                         return nullptr;
 
@@ -64,8 +64,8 @@ namespace nnfusion
                     CHECK(input_shape_0[2] == input_shape_1[1]);
 
                     std::string templ;
-                    if (input_shape_0 == ngraph::Shape({16, 512, 512}) &&
-                        input_shape_1 == ngraph::Shape({16, 512, 64}))
+                    if (input_shape_0 == nnfusion::Shape({16, 512, 512}) &&
+                        input_shape_1 == nnfusion::Shape({16, 512, 64}))
                     {
                         templ =
                             "rocm_adapter/fixed_kernels/batch_gemm/"
@@ -73,8 +73,8 @@ namespace nnfusion
                         m_gridDim = dim3(1, 16, 16);
                         m_blockDim = dim3(32, 8, 1);
                     }
-                    else if (input_shape_0 == ngraph::Shape({16, 512, 64}) &&
-                             input_shape_1 == ngraph::Shape({16, 64, 512}))
+                    else if (input_shape_0 == nnfusion::Shape({16, 512, 64}) &&
+                             input_shape_1 == nnfusion::Shape({16, 64, 512}))
                     {
                         templ =
                             "rocm_adapter/fixed_kernels/batch_gemm/"

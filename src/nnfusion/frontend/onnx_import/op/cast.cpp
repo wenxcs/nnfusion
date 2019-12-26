@@ -18,8 +18,8 @@
 
 #include "onnx/onnx-ml.pb.h"
 
-#include "ngraph/op/convert.hpp"
 #include "ngraph/type/element_type.hpp"
+#include "nnfusion/core/operators/convert.hpp"
 
 #include "cast.hpp"
 #include "exceptions.hpp"

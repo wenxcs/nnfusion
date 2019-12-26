@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/tanh.hpp"
+#include "nnfusion/core/operators/tanh.hpp"
 
 #include "core/node.hpp"
 

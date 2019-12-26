@@ -19,7 +19,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/sigmoid.hpp"
+#include "nnfusion/core/operators/sigmoid.hpp"
 
 #include "core/node.hpp"
 

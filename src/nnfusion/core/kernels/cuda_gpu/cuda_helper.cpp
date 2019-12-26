@@ -2,7 +2,7 @@
 #include "cuda_helper.hpp"
 
 using namespace nnfusion::kernels;
-using CodeWriter = ngraph::codegen::CodeWriter;
+using CodeWriter = nnfusion::codegen::CodeWriter;
 
 LanguageUnit_p cuda::get_math_kernel(const std::string& name,
                                      const std::string& math_kernel,
@@ -241,7 +241,7 @@ void cuda::get_reduce_strides(NVShape input_shape,
     {
         reduce_flag[a] = 1;
     }
-    NVShape input_strides = row_major_strides(input_shape);
+    NVShape input_strides = nnfusion::row_major_strides(input_shape);
     for (int i = 0; i < rank; i++)
     {
         if (reduce_flag[i] != 0)
@@ -255,6 +255,6 @@ void cuda::get_reduce_strides(NVShape input_shape,
             non_reduce_strides_in_input.push_back(input_strides[i]);
         }
     }
-    reduce_strides = row_major_strides(reduce_shape);
-    non_reduce_strides = row_major_strides(non_reduce_shape);
+    reduce_strides = nnfusion::row_major_strides(reduce_shape);
+    non_reduce_strides = nnfusion::row_major_strides(non_reduce_shape);
 }

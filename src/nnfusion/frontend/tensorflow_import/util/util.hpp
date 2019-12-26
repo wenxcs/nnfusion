@@ -211,12 +211,12 @@ namespace nnfusion
             // false if the element type is not supported by nGraph
             // Core. Otherwise returns true.
             bool TFDataTypeToNGraphElementType(const tensorflow::DataType tf_dt,
-                                               ngraph::element::Type* ng_et);
+                                               nnfusion::element::Type* ng_et);
 
             // Converts a TensorFlow TensorShape to an nGraph Shape. Requires that none of
             // the dimension lengths in tf_shape are negative.
             bool TFTensorShapeToNGraphShape(const tensorflow::TensorShapeProto& tf_shape,
-                                            ngraph::Shape* ng_shape);
+                                            nnfusion::Shape* ng_shape);
 
             std::shared_ptr<GNode> GetInputNode(const NodeMap& all_ng_nodes,
                                                 const tensorflow::NodeDef& node,
@@ -227,13 +227,13 @@ namespace nnfusion
 
             TensorId ParseTensorName(const std::string& name);
 
-            size_t GetNumElements(const ngraph::Shape& shape,
-                                  const ngraph::AxisSet& reduction_axes);
+            size_t GetNumElements(const nnfusion::Shape& shape,
+                                  const nnfusion::AxisSet& reduction_axes);
 
             template <typename T, typename VecT = T>
             std::vector<VecT> GetValueFromConstOp(std::shared_ptr<op::Constant> ng_constant_op)
             {
-                // the data type of ngraph::shape is size_t
+                // the data type of nnfusion::Shape is size_t
                 std::vector<VecT> dst_values;
                 std::vector<T> values = ng_constant_op->get_vector<T>();
                 dst_values.resize(values.size());
@@ -266,13 +266,13 @@ namespace nnfusion
                     LOG(INFO) << "Asking for Constant value from op-type: " << gnode->get_op_type();
                     LOG(INFO) << "Type of Output Value is " << out_type.c_type_string();
 
-                    if (out_type == ngraph::element::f32)
+                    if (out_type == nnfusion::element::f32)
                         fill_values<T, float>(*values, outs[0]);
-                    else if (out_type == ngraph::element::f64)
+                    else if (out_type == nnfusion::element::f64)
                         fill_values<T, double>(*values, outs[0]);
-                    else if (out_type == ngraph::element::i32)
+                    else if (out_type == nnfusion::element::i32)
                         fill_values<T, int>(*values, outs[0]);
-                    else if (out_type == ngraph::element::u32)
+                    else if (out_type == nnfusion::element::u32)
                         fill_values<T, unsigned>(*values, outs[0]);
                     else
                     {
@@ -282,47 +282,47 @@ namespace nnfusion
                 }
                 auto ng_constant_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
                 auto ng_element_type = gnode->get_output_element_type(0);
-                if (ng_element_type == ngraph::element::f32)
+                if (ng_element_type == nnfusion::element::f32)
                 {
                     *values = GetValueFromConstOp<float, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::f64)
+                else if (ng_element_type == nnfusion::element::f64)
                 {
                     *values = GetValueFromConstOp<double, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::i8)
+                else if (ng_element_type == nnfusion::element::i8)
                 {
                     *values = GetValueFromConstOp<int8, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::i16)
+                else if (ng_element_type == nnfusion::element::i16)
                 {
                     *values = GetValueFromConstOp<int16, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::i32)
+                else if (ng_element_type == nnfusion::element::i32)
                 {
                     *values = GetValueFromConstOp<int32, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::i64)
+                else if (ng_element_type == nnfusion::element::i64)
                 {
                     *values = GetValueFromConstOp<int64, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::u8)
+                else if (ng_element_type == nnfusion::element::u8)
                 {
                     *values = GetValueFromConstOp<uint8, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::u16)
+                else if (ng_element_type == nnfusion::element::u16)
                 {
                     *values = GetValueFromConstOp<uint16, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::u32)
+                else if (ng_element_type == nnfusion::element::u32)
                 {
                     *values = GetValueFromConstOp<uint32, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::u64)
+                else if (ng_element_type == nnfusion::element::u64)
                 {
                     *values = GetValueFromConstOp<uint64, T>(ng_constant_op);
                 }
-                else if (ng_element_type == ngraph::element::boolean)
+                else if (ng_element_type == nnfusion::element::boolean)
                 {
                     *values = GetValueFromConstOp<bool, T>(ng_constant_op);
                 }
@@ -389,10 +389,10 @@ namespace nnfusion
                               "Dimensions indices cannot be equal");
                 CHECK(old_gnode->get_output_size() == 1);
                 auto& s = old_gnode->get_output_shape(0);
-                ngraph::Shape reshaped_shape{s[a], s[b], s[c], s[d]};
+                nnfusion::Shape reshaped_shape{s[a], s[b], s[c], s[d]};
 
                 auto reshape_op = std::make_shared<nnfusion::op::Reshape>(
-                    ngraph::AxisVector{a, b, c, d}, reshaped_shape);
+                    nnfusion::AxisVector{a, b, c, d}, reshaped_shape);
                 auto reshape_gnode = std::make_shared<GNode>(reshape_op, GNodeVector({old_gnode}));
                 reshape_op->revalidate_and_infer_types(reshape_gnode->shared_from_this());
 
@@ -486,9 +486,9 @@ namespace nnfusion
 
             template <typename T>
             static inline void MakePadding(const std::string& tf_padding_type,
-                                           const ngraph::Shape& ng_image_shape,
-                                           const ngraph::Shape& ng_kernel_shape,
-                                           const ngraph::Strides& ng_strides,
+                                           const nnfusion::Shape& ng_image_shape,
+                                           const nnfusion::Shape& ng_kernel_shape,
+                                           const nnfusion::Strides& ng_strides,
                                            T& ng_padding_below,
                                            T& ng_padding_above)
             {
@@ -524,14 +524,14 @@ namespace nnfusion
 
             template <typename T>
             static inline void MakePadding(const std::string& tf_padding_type,
-                                           const ngraph::Shape& ng_image_shape,
-                                           const ngraph::Shape& ng_kernel_shape,
-                                           const ngraph::Strides& ng_strides,
-                                           const ngraph::Shape& ng_dilations,
+                                           const nnfusion::Shape& ng_image_shape,
+                                           const nnfusion::Shape& ng_kernel_shape,
+                                           const nnfusion::Strides& ng_strides,
+                                           const nnfusion::Shape& ng_dilations,
                                            T& ng_padding_below,
                                            T& ng_padding_above)
             {
-                ngraph::Shape ng_dilation_kernel_shape{
+                nnfusion::Shape ng_dilation_kernel_shape{
                     (ng_kernel_shape[0] - 1) * ng_dilations[0] + 1,
                     (ng_kernel_shape[1] - 1) * ng_dilations[1] + 1};
 

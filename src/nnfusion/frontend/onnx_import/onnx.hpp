@@ -19,8 +19,6 @@
 #include <iostream>
 #include <string>
 
-#include "ngraph/function.hpp"
-
 #include "core/operator_set.hpp"
 
 namespace ngraph
@@ -33,6 +31,7 @@ namespace ngraph
                                const std::string& domain,
                                Operator fn);
 
+        /*
         // Convert on ONNX model to a vector of nGraph Functions (input stream)
         std::vector<std::shared_ptr<Function>> load_onnx_model(std::istream&);
 
@@ -44,6 +43,7 @@ namespace ngraph
 
         // Convert the first output of an ONNX model to an nGraph Function
         std::shared_ptr<Function> import_onnx_function(const std::string&);
+        */
 
     } // namespace onnx_import
 

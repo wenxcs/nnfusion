@@ -19,7 +19,7 @@ namespace nnfusion
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
                 size_t input_count;
-                ngraph::element::Type dtype;
+                nnfusion::element::Type dtype;
 
             public:
                 AddN(shared_ptr<KernelContext> ctx)
@@ -29,7 +29,7 @@ namespace nnfusion
                 {
                     threads = ctx->outputs.front()->size(false);
                     input_count = ctx->inputs.size();
-                    dtype = ngraph::element::Type(ctx->outputs[0]->get_element_type());
+                    dtype = nnfusion::element::Type(ctx->outputs[0]->get_element_type());
                 }
 
                 LanguageUnit_p emit_function_body() override

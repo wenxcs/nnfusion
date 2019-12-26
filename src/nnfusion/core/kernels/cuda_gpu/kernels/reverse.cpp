@@ -32,7 +32,7 @@ LanguageUnit_p cuda::Reverse::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    if (ngraph::is_scalar(arg_shape))
+    if (nnfusion::is_scalar(arg_shape))
     {
         lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
         lu << "if (tid < 1)\n";

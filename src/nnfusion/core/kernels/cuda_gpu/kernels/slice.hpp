@@ -21,8 +21,8 @@ namespace nnfusion
             private:
                 shared_ptr<KernelContext> kernel_ctx;
 
-                ngraph::Shape input_shape, output_shape, lower_bounds;
-                ngraph::Shape input_strides, output_strides, slice_strides;
+                nnfusion::Shape input_shape, output_shape, lower_bounds;
+                nnfusion::Shape input_strides, output_strides, slice_strides;
                 string input_type, output_type;
             };
         } // namespace cuda

@@ -116,39 +116,39 @@ namespace nnfusion
 
             void set_output(size_t i, std::shared_ptr<Output> output);
             void set_output_type_and_shape(size_t i,
-                                           const ngraph::element::Type& element_type,
-                                           const ngraph::PartialShape& pshape);
+                                           const nnfusion::element::Type& element_type,
+                                           const nnfusion::PartialShape& pshape);
             /// Checks that there is exactly one output and returns its shape
-            const ngraph::Shape& get_shape() const;
+            const nnfusion::Shape& get_shape() const;
 
             /// Checks that there is exactly one output and returns its element type
-            const ngraph::element::Type& get_element_type() const;
+            const nnfusion::element::Type& get_element_type() const;
 
             /// Returns the element type for output i
-            const ngraph::element::Type& get_output_element_type(size_t i) const;
+            const nnfusion::element::Type& get_output_element_type(size_t i) const;
 
             /// Returns the shape for output i
-            const ngraph::Shape& get_output_shape(size_t i) const;
+            const nnfusion::Shape& get_output_shape(size_t i) const;
 
             /// Returns the partial shape for output i
-            const ngraph::PartialShape& get_output_partial_shape(size_t i) const;
+            const nnfusion::PartialShape& get_output_partial_shape(size_t i) const;
 
             /// Returns the element type of input i
-            const ngraph::element::Type& get_input_element_type(size_t i) const;
+            const nnfusion::element::Type& get_input_element_type(size_t i) const;
 
             /// Returns the shape of input i
-            const ngraph::Shape& get_input_shape(size_t i) const;
+            const nnfusion::Shape& get_input_shape(size_t i) const;
 
             /// Returns the partial shape of input i
-            const ngraph::PartialShape& get_input_partial_shape(size_t i) const;
+            const nnfusion::PartialShape& get_input_partial_shape(size_t i) const;
 
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
-            std::unordered_set<descriptor::Tensor*> liveness_new_list;
-            std::unordered_set<descriptor::Tensor*> liveness_free_list;
+            std::unordered_set<nnfusion::descriptor::Tensor*> liveness_new_list;
+            std::unordered_set<nnfusion::descriptor::Tensor*> liveness_free_list;
 
         protected:
             size_t m_id; // m_id is for graph, the index in graph m_nodes

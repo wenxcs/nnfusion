@@ -30,19 +30,19 @@ namespace nnfusion
             }
 
             /// \return the element type of the output
-            const ngraph::element::Type& get_element_type() const
+            const nnfusion::element::Type& get_element_type() const
             {
                 return m_tensor->get_element_type();
             }
             /// \return the shape of the output
-            const ngraph::Shape& get_shape() const { return m_tensor->get_shape(); }
-            const ngraph::PartialShape& get_partial_shape() const
+            const nnfusion::Shape& get_shape() const { return m_tensor->get_shape(); }
+            const nnfusion::PartialShape& get_partial_shape() const
             {
                 return m_tensor->get_partial_shape();
             }
 
-            void set_type_and_shape(const ngraph::element::Type& element_type,
-                                    const ngraph::PartialShape& pshape)
+            void set_type_and_shape(const nnfusion::element::Type& element_type,
+                                    const nnfusion::PartialShape& pshape)
             {
                 m_tensor->set_tensor_type(element_type, pshape);
             }

@@ -19,9 +19,9 @@
 
 #include "ngraph/node.hpp"
 
-#include "ngraph/op/constant.hpp"
-#include "ngraph/op/maximum.hpp"
-#include "ngraph/op/minimum.hpp"
+#include "nnfusion/core/operators/constant.hpp"
+#include "nnfusion/core/operators/maximum.hpp"
+#include "nnfusion/core/operators/minimum.hpp"
 
 #include "core/node.hpp"
 #include "utils/broadcasting.hpp"

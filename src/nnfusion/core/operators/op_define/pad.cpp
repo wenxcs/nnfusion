@@ -1,15 +1,15 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "pad.hpp"
-#include "ngraph/util.hpp"
+#include "nnfusion/common/util.hpp"
 #include "nnfusion/core/graph/gnode.hpp"
 
 using namespace std;
 using namespace nnfusion::op;
 
-Pad::Pad(const ngraph::Shape& padding_below,
-         const ngraph::Shape& padding_above,
-         const ngraph::Shape& padding_interior)
+Pad::Pad(const nnfusion::Shape& padding_below,
+         const nnfusion::Shape& padding_above,
+         const nnfusion::Shape& padding_interior)
     : Op("Pad")
     , m_padding_below(padding_below)
     , m_padding_above(padding_above)
@@ -19,17 +19,17 @@ Pad::Pad(const ngraph::Shape& padding_below,
 
 void Pad::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
 {
-    ngraph::element::Type result_et;
+    nnfusion::element::Type result_et;
 
     OP_VALIDATION(this,
-                  ngraph::element::Type::merge(result_et,
-                                               gnode->get_input_element_type(0),
-                                               gnode->get_input_element_type(1)))
+                  nnfusion::element::Type::merge(result_et,
+                                                 gnode->get_input_element_type(0),
+                                                 gnode->get_input_element_type(1)))
         << "Argument element types do not match (arg0 element type: "
         << gnode->get_input_element_type(0)
         << ", arg1 element type: " << gnode->get_input_element_type(1) << ").";
 
-    OP_VALIDATION(this, gnode->get_input_partial_shape(1).compatible(ngraph::PartialShape{}))
+    OP_VALIDATION(this, gnode->get_input_partial_shape(1).compatible(nnfusion::PartialShape{}))
         << "Argument for padding value is not a scalar (shape: "
         << gnode->get_input_partial_shape(1) << ").";
 
@@ -50,7 +50,7 @@ void Pad::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
         << ", padding above: " << m_padding_above << ", interior padding: " << m_padding_interior
         << ").";
 
-    std::vector<ngraph::Dimension> result_dims(implied_rank, ngraph::Dimension::dynamic());
+    std::vector<nnfusion::Dimension> result_dims(implied_rank, nnfusion::Dimension::dynamic());
 
     if (arg_shape.rank().is_static())
     {

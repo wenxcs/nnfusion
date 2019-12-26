@@ -5,7 +5,7 @@
 
 using namespace nnfusion::op;
 
-Softmax::Softmax(const ngraph::AxisSet& axes)
+Softmax::Softmax(const nnfusion::AxisSet& axes)
     : ElementwiseArithmetic("Softmax")
     , m_axes(axes)
 {

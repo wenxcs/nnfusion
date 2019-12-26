@@ -18,7 +18,7 @@
 #include <memory>
 
 #include "ngraph/node_vector.hpp"
-#include "ngraph/op/batch_norm.hpp"
+#include "nnfusion/core/operators/batch_norm.hpp"
 
 #include "../exceptions.hpp"
 #include "../op/batch_norm.hpp"

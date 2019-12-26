@@ -35,14 +35,14 @@ namespace nnfusion
             ///
             /// \param shape        The shape of the output tensor, including the new one-hot axis.
             /// \param one_hot_axis The index within the output shape of the new one-hot axis.
-            OneHot(const ngraph::PartialShape& shape, size_t one_hot_axis);
+            OneHot(const nnfusion::PartialShape& shape, size_t one_hot_axis);
 
             /// \return The index of the one-hot axis.
             size_t get_one_hot_axis() const { return m_one_hot_axis; }
         protected:
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
-            ngraph::PartialShape m_shape;
+            nnfusion::PartialShape m_shape;
             size_t m_one_hot_axis;
         };
     }
