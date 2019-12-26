@@ -202,7 +202,7 @@ bool ReferenceRuntime::compile(const ProfilingContext::Pointer& ke)
     return true;
 }
 
-double ReferenceRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
+double ReferenceRuntime::invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
 {
     // Replacing Existed Kernel with Reference Kenel
     auto& gnode = ke->kernel->m_context->gnode;

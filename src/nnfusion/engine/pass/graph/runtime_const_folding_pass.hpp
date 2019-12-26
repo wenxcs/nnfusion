@@ -146,7 +146,7 @@ namespace nnfusion
                                 continue;
 
                             nnfusion::profiler::ProfilingContext::Pointer pctx =
-                                make_shared<nnfusion::profiler::ProfilingContext>(kernel);
+                                make_shared<nnfusion::profiler::ProfilingContext>(kernel, false);
 
                             nnfusion::profiler::Profiler prof(runtime, pctx);
                             if (!prof.mixed_type_execute(raw_inputs, raw_outputs))

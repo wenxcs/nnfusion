@@ -18,8 +18,6 @@ namespace nnfusion
 
         public:
             static Pointer Runtime();
-            double
-                execute(const ProfilingContext::Pointer& ke, void** input, void** output) override;
             bool check_env() override;
 
         private:
@@ -27,6 +25,8 @@ namespace nnfusion
             // bool codegen(const ProfilingContext::Pointer& ke) override;
             bool hipfy(const ProfilingContext::Pointer& ke);
             bool compile(const ProfilingContext::Pointer& ke) override;
+            double
+                invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
         };
     }
 }

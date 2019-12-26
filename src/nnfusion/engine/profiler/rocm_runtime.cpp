@@ -87,7 +87,7 @@ bool RocmDefaultRuntime::hipfy(const ProfilingContext::Pointer& ke)
     return true;
 }
 
-double RocmDefaultRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
+double RocmDefaultRuntime::invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
 {
     // Reuse cuda codegen.
     if (codegen(ke) == false)

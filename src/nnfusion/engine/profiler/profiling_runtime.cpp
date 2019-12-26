@@ -45,9 +45,18 @@ bool IProfilingRuntime::execute(const ProfilingContext::Pointer& ke)
     return ret;
 }
 
-double IProfilingRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
+double IProfilingRuntime::invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
 {
     if (ke->entry_point == nullptr)
         return -1.0;
     return ke->entry_point(input, output);
+}
+
+double IProfilingRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
+{
+    if (ke->using_cache)
+        return nnfusion::profiler::ProfilingCache::profile_timing_result(
+            ke, [&]() { return invoke(ke, input, output); });
+    else
+        return invoke(ke, input, output);
 }

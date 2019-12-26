@@ -43,13 +43,13 @@ namespace nnfusion
 
         public:
             static Pointer Runtime();
-            double
-                execute(const ProfilingContext::Pointer& ke, void** input, void** output) override;
 
         private:
             // Tiny codegen function for runtime
             bool codegen(const ProfilingContext::Pointer& ke);
             bool compile(const ProfilingContext::Pointer& ke);
+            double
+                invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
         };
     }
 }

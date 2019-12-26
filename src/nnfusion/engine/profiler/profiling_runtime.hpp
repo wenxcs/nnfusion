@@ -10,7 +10,10 @@
 #include <string>
 
 #include "nnfusion/core/graph/graph.hpp"
+#include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
+
 using namespace std;
 using namespace nnfusion;
 using namespace nnfusion::graph;
@@ -79,6 +82,103 @@ namespace nnfusion
         // to some database tool.
         struct ProfilingCache
         {
+            using KernelEmitter = nnfusion::kernels::KernelEmitter;
+
+            struct KernelItem
+            {
+                std::string key_op;
+                double cost;
+            };
+
+            template <typename F1>
+            static std::string get_key_code(F1 emitter)
+            {
+                auto fu = emitter->get_or_emit_source();
+                return fu->body_unit->get_code(); // TODO: need to be more specific
+            }
+
+            template <typename F1>
+            static std::string get_key_op(F1 emitter)
+            {
+                auto& ctx = emitter->m_context;
+                auto generic_op =
+                    dynamic_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
+                if (generic_op == nullptr)
+                    return "";
+                auto root = generic_op->localOpConfig.j_attrs;
+                std::vector<std::vector<ssize_t>> tensor_shapes;
+                std::vector<std::string> tensor_types;
+                nnfusion::op::OpConfig::any inputs, outputs;
+
+                for (int i = 0; i < ctx->inputs.size(); ++i)
+                {
+                    std::vector<ssize_t> tensor_shape;
+                    auto& shape = ctx->inputs[i]->get_shape();
+                    for (int j = 0; j < shape.size(); ++j)
+                        tensor_shape.push_back(shape[j]);
+                    tensor_shapes.push_back(std::move(tensor_shape));
+                }
+                root["input_shapes"] = std::move(tensor_shapes);
+                tensor_shapes.clear();
+
+                for (int i = 0; i < ctx->outputs.size(); ++i)
+                {
+                    std::vector<ssize_t> tensor_shape;
+                    auto& shape = ctx->outputs[i]->get_shape();
+                    for (int j = 0; j < shape.size(); ++j)
+                        tensor_shape.push_back(shape[j]);
+                    tensor_shapes.push_back(std::move(tensor_shape));
+                }
+                root["output_shapes"] = std::move(tensor_shapes);
+                tensor_shapes.clear();
+
+                for (int i = 0; i < ctx->dtypes.size(); ++i)
+                {
+                    tensor_types.push_back(ctx->dtypes[i]);
+                }
+                root["tensor_types"] = std::move(tensor_types);
+                tensor_types.clear();
+
+                return root.dump();
+            }
+
+            template <typename F1, typename F2>
+            static double profile_timing_result(F1 ke, F2 func)
+            {
+                auto emitter = ke->kernel;
+                if (!ke->using_cache)
+                    return func();
+
+                auto key_code = get_key_code(emitter);
+                if (key_code.size() == 0)
+                {
+                    LOG(WARNING) << "Kernel `" << emitter->m_context->gnode->get_unique_name()
+                                 << ":" << emitter->m_context->gnode->get_name()
+                                 << "` is based on V1 kernel implementation, not supporting "
+                                    "caching for function_body!";
+                    return func();
+                }
+
+                std::string device_type = emitter->get_kernel_type();
+                // device_type -> { key_code -> {.. kernel items ..} }
+                static std::unordered_map<std::string, std::unordered_map<std::string, KernelItem>>
+                    in_memory_kernel_table;
+
+                auto& secondary_table = in_memory_kernel_table[device_type];
+                auto it = secondary_table.find(key_code);
+                if (it != secondary_table.end())
+                {
+                    LOG(INFO) << device_type << "/" << emitter->get_function_name()
+                              << ": Using cached kernel time cost = " << it->second.cost;
+                    return it->second.cost;
+                }
+                double result = func();
+                secondary_table[key_code] = {get_key_op(emitter), result};
+                LOG(INFO) << device_type << "/" << emitter->get_function_name()
+                          << ": Updated cached kernel time cost = " << result;
+                // LOG(INFO) << get_key_op(emitter) << "\n" << key_code;
+                return result;
+            }
         };
 
         ///\brief Use this to manage the memory of kernels.
@@ -273,7 +373,8 @@ namespace nnfusion
             // This emitter includes the kernel context;
             ProfilingResult result;
             kernels::KernelEmitter::Pointer kernel;
-            ProfilingContext(kernels::KernelEmitter::Pointer kernel)
+            ProfilingContext(kernels::KernelEmitter::Pointer kernel, bool using_cache = false)
+                : using_cache(using_cache)
             {
                 this->kernel = kernel;
                 kernel_memory.reset(new KernelMemory(kernel->m_context));
@@ -284,6 +385,7 @@ namespace nnfusion
             ///\todo To be deprecated in future;
             // ProfilingContext(shared_ptr<ngraph::Node> node) { ; }
             KernelMemory::Pointer kernel_memory;
+            bool using_cache;
 
             void reset()
             {
@@ -338,10 +440,12 @@ namespace nnfusion
             ///\todo This interface is not safe, may access invlid memory address.
             bool execute(const ProfilingContext::Pointer& ke);
             virtual bool check_env() { return true; }
-            virtual double
-                execute(const ProfilingContext::Pointer& ke, void** input, void** output);
+            double execute(const ProfilingContext::Pointer& ke, void** input, void** output);
             // Get the result of last run;
             using Pointer = shared_ptr<IProfilingRuntime>;
+
+        private:
+            virtual double invoke(const ProfilingContext::Pointer& ke, void** input, void** output);
 
             /*
             ///\todo To be provided in future, since we cannot use runtime api here.

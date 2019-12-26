@@ -317,7 +317,7 @@ bool CudaDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     return true;
 }
 
-double CudaDefaultRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
+double CudaDefaultRuntime::invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
 {
     if (codegen(ke) == false)
         return -1.0;
