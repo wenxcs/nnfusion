@@ -27,7 +27,7 @@ nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(std::vector<nnfusion::descriptor::Tensor*>& tensors)
+void nnfusion::MemoryAllocator::allocate(std::vector<shared_ptr<descriptor::Tensor>>& tensors)
 {
     size_t rc;
     size_t total_size = 0;
@@ -56,7 +56,7 @@ void nnfusion::MemoryAllocator::allocate(std::vector<nnfusion::descriptor::Tenso
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(nnfusion::descriptor::Tensor* tensor)
+void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor)
 {
     size_t rc;
     size_t size = tensor->size();
@@ -77,7 +77,7 @@ void nnfusion::MemoryAllocator::allocate(nnfusion::descriptor::Tensor* tensor)
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(nnfusion::descriptor::Tensor* tensor, size_t offset)
+void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor, size_t offset)
 {
     tensor->set_pool_offset(offset);
     m_allocated_tensors.push_back(tensor);
@@ -170,7 +170,7 @@ size_t nnfusion::MemoryAllocator::first_fit(size_t size)
     return offset;
 }
 
-void nnfusion::MemoryAllocator::free(nnfusion::descriptor::Tensor* tensor)
+void nnfusion::MemoryAllocator::free(shared_ptr<descriptor::Tensor> tensor)
 {
     size_t offset = tensor->get_pool_offset();
     size_t search_offset = 0;
@@ -229,7 +229,7 @@ void nnfusion::MemoryAllocator::dump(ofstream& out)
     }
 }
 
-void nnfusion::MemoryAllocator::record(string symbol, nnfusion::descriptor::Tensor* tensor)
+void nnfusion::MemoryAllocator::record(string symbol, shared_ptr<descriptor::Tensor> tensor)
 {
     m_trace << symbol << " name: " << tensor->get_name()
             << "  offset: " << tensor->get_pool_offset() << "  size: " << tensor->size() << "\n";
@@ -368,7 +368,7 @@ std::unordered_map<std::string, MemoryAllocator*>
     nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory::m_allocator_list;
 
 MemoryAllocator*
-    nnfusion::MemoryAllocatorFactory::get_allocator(nnfusion::descriptor::Tensor* tensor)
+    nnfusion::MemoryAllocatorFactory::get_allocator(shared_ptr<descriptor::Tensor> tensor)
 {
     std::string device_name = this->get_device_name(tensor);
     if (m_allocator_list.find(device_name) != m_allocator_list.end())
@@ -417,7 +417,7 @@ MemoryAllocator*
     }
 }
 
-std::string nnfusion::MemoryAllocatorFactory::get_device_name(nnfusion::descriptor::Tensor* tensor)
+std::string nnfusion::MemoryAllocatorFactory::get_device_name(shared_ptr<descriptor::Tensor> tensor)
 {
     std::stringstream device_name;
 

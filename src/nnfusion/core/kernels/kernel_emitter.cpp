@@ -37,6 +37,8 @@ KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
     {
         this->dtypes.push_back(out->get_element_type().c_type_string());
     }
+
+    annotations = gnode->get_op_ptr()->get_op_annotations();
 }
 
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx)

@@ -18,11 +18,7 @@ namespace nnfusion
                         static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
                     CHECK_NOT_NULLPTR(_op) << "Node type is not Broadcast.";
                     auto& axes = _op->get_broadcast_axes();
-                    if (axes.empty())
-                    {
-                        isMemcpy = true;
-                    }
-                    else
+                    if (!axes.empty())
                     {
                         this->axes = AxisSet(axes);
                     }
@@ -59,6 +55,18 @@ namespace nnfusion
                     std::stringstream tag;
                     tag << "_s" << join(result_shape, "_") << "_rs" << join(this->axes, "_");
                     custom_tag = tag.str();
+
+                    // add inplace tag
+
+                    auto arg_shape = ctx->inputs[0]->get_shape();
+                    if (axes.empty() || shape_size(arg_shape) == shape_size(result_shape))
+                    {
+                        if (!ctx->annotations)
+                        {
+                            ctx->annotations = std::make_shared<Annotations>();
+                            ctx->annotations->add_in_place_oi_pair({0, 0, false});
+                        }
+                    }
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -150,7 +158,6 @@ namespace nnfusion
                 nnfusion::Shape result_shape;
                 size_t rank;
                 AxisSet axes;
-                bool isMemcpy = false;
             };
 
             class RocmBroadcast : public Broadcast

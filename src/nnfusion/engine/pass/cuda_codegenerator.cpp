@@ -263,9 +263,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     LanguageUnit m;
                     if ((*ins)["memcpy_pair"].is_valid())
                     {
-                        auto mempairs =
-                            (*ins)["memcpy_pair"]
-                                .as<unordered_map<descriptor::Tensor*, descriptor::Tensor*>>();
+                        auto mempairs = (*ins)["memcpy_pair"]
+                                            .as<unordered_map<shared_ptr<descriptor::Tensor>,
+                                                              shared_ptr<descriptor::Tensor>>>();
                         for (auto& it : mempairs)
                         {
                             string memcpykind = it.first->get_device_type() == GENERIC_CPU

@@ -7,7 +7,9 @@
 
 #include "gtest/gtest.h"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
+#include "nnfusion/engine/pass/graph/device_dispatcher.hpp"
 #include "nnfusion/engine/pass/graph/graph_pass.hpp"
+#include "nnfusion/engine/pass/graph/kernel_selection.hpp"
 #include "nnfusion/engine/pass/graph/manager.hpp"
 #include "nnfusion/engine/pass/graph/op_inplace_pass.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
@@ -21,25 +23,49 @@ bool run(std::shared_ptr<nnfusion::graph::Graph> graph)
     GraphPassManager pass_manager;
 
     pass_manager.register_pass<OpInplacePass>();
+
+    // The graph after this pass will have selected kernels
+    pass_manager.register_pass<DefaultDeviceDispatcher>();
+    pass_manager.register_pass<DefaultKernelSelector>();
     pass_manager.run_passes(graph);
 
     return true;
 }
+// bool check_inplace_oi_pair(shared_ptr<nnfusion::op::Op> node)
+// {
+//     if (auto op = dynamic_pointer_cast<nnfusion::op::Op>(node))
+//     {
+//         auto annotation = op->get_op_annotations();
+//         if (annotation && annotation->get_in_place_oi_pairs().size() > 0)
+//         {
+//             return true;
+//         }
+//     }
+//     return false;
+// }
 
-bool check_inplace_oi_pair(shared_ptr<nnfusion::op::Op> node)
+bool check_inplace_oi_pair(std::shared_ptr<nnfusion::graph::GNode>& node)
 {
-    if (auto op = dynamic_pointer_cast<nnfusion::op::Op>(node))
+    auto emitted_kernels =
+        (*node)["Kernel_Selection_Result"].as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+    auto emitter_iter = find_if(emitted_kernels.begin(),
+                                emitted_kernels.end(),
+                                [](pair<DeviceType, KernelEmitter::Pointer>& i) {
+                                    return (i.first == CUDA_GPU || i.first == DeviceType::ROCM_GPU);
+                                });
+
+    if (emitter_iter != emitted_kernels.end() && emitter_iter->second != nullptr &&
+        emitter_iter->second->get_or_emit_source() != nullptr)
     {
-        auto annotation = op->get_op_annotations();
-        if (annotation && annotation->get_in_place_oi_pairs().size() > 0)
-        {
+        KernelEmitter::Pointer kernel = emitter_iter->second;
+        auto annotations = kernel->m_context->annotations;
+        if (annotations && annotations->get_in_place_oi_pairs().size() > 0)
             return true;
-        }
     }
     return false;
 }
 
-TEST(nnfusion_inplace_op, reshape)
+TEST(nnfusion_inplace_kernel, reshape)
 {
     // Create graph
     std::string name = "Reshape";
@@ -59,10 +85,10 @@ TEST(nnfusion_inplace_op, reshape)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(reshape_op));
+    EXPECT_TRUE(check_inplace_oi_pair(reshape_gnode));
 }
 
-TEST(nnfusion_inplace_op, result)
+TEST(nnfusion_inplace_kernel, result)
 {
     // Create graph
     std::string name = "Result";
@@ -79,10 +105,10 @@ TEST(nnfusion_inplace_op, result)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sum)
+TEST(nnfusion_inplace_kernel, sum)
 {
     // Create graph
     std::string name = "Sum";
@@ -108,11 +134,11 @@ TEST(nnfusion_inplace_op, sum)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(sum_a_op));
-    EXPECT_TRUE(check_inplace_oi_pair(sum_b_op));
+    EXPECT_TRUE(check_inplace_oi_pair(sum_a_gnode));
+    EXPECT_TRUE(check_inplace_oi_pair(sum_b_gnode));
 }
 
-TEST(nnfusion_inplace_op, broadcast)
+TEST(nnfusion_inplace_kernel, broadcast)
 {
     // Create graph
     std::string name = "Broadcast";
@@ -140,53 +166,53 @@ TEST(nnfusion_inplace_op, broadcast)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(a_op));
-    EXPECT_TRUE(check_inplace_oi_pair(b_op));
+    EXPECT_TRUE(check_inplace_oi_pair(a_gnode));
+    EXPECT_TRUE(check_inplace_oi_pair(b_gnode));
 }
 
-TEST(nnfusion_inplace_op, max)
-{
-    // Create graph
-    std::string name = "Max";
-    auto graph = std::make_shared<nnfusion::graph::Graph>(name);
+// TEST(nnfusion_inplace_kernel, max)
+// {
+//     // Create graph
+//     std::string name = "Max";
+//     auto graph = std::make_shared<nnfusion::graph::Graph>(name);
 
-    // Prepare inputs
-    Shape shape_a{2, 3};
-    auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector{});
-    nnfusion::AxisSet reduction_axes;
+// // Prepare inputs
+// Shape shape_a{2, 3};
+// auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
+// auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector{});
+// nnfusion::AxisSet reduction_axes;
 
-    // Create node
-    auto op = std::make_shared<nnfusion::op::Max>(reduction_axes);
-    auto gnode = graph->add_node_and_edge(op, {para_gnode});
+//     // Create node
+//     auto op = std::make_shared<nnfusion::op::Max>(reduction_axes);
+//     auto gnode = graph->add_node_and_edge(op, {para_gnode});
 
-    run(graph);
+//     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
-}
+//     EXPECT_TRUE(check_inplace_oi_pair(gnode));
+// }
 
-TEST(nnfusion_inplace_op, min)
-{
-    // Create graph
-    std::string name = "Min";
-    auto graph = std::make_shared<nnfusion::graph::Graph>(name);
+// TEST(nnfusion_inplace_kernel, min)
+// {
+//     // Create graph
+//     std::string name = "Min";
+//     auto graph = std::make_shared<nnfusion::graph::Graph>(name);
 
-    // Prepare inputs
-    Shape shape_a{2, 3};
-    auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
-    auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector{});
-    nnfusion::AxisSet reduction_axes;
+//     // Prepare inputs
+//     Shape shape_a{2, 3};
+//     auto para_op = make_shared<nnfusion::op::Parameter>(element::f32, shape_a);
+//     auto para_gnode = graph->add_node_and_edge(para_op, GNodeVector{});
+//     nnfusion::AxisSet reduction_axes;
 
-    // Create node
-    auto op = std::make_shared<nnfusion::op::Min>(reduction_axes);
-    auto gnode = graph->add_node_and_edge(op, {para_gnode});
+// //     // Create node
+//     auto op = std::make_shared<nnfusion::op::Min>(reduction_axes);
+//     auto gnode = graph->add_node_and_edge(op, {para_gnode});
 
-    run(graph);
+//     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
-}
+//     EXPECT_TRUE(check_inplace_oi_pair(gnode));
+// }
 
-TEST(nnfusion_inplace_op, abs)
+TEST(nnfusion_inplace_kernel, abs)
 {
     // Create graph
     std::string name = "Abs";
@@ -203,10 +229,10 @@ TEST(nnfusion_inplace_op, abs)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, acos)
+TEST(nnfusion_inplace_kernel, acos)
 {
     // Create graph
     std::string name = "Acos";
@@ -223,10 +249,10 @@ TEST(nnfusion_inplace_op, acos)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, asin)
+TEST(nnfusion_inplace_kernel, asin)
 {
     // Create graph
     std::string name = "Asin";
@@ -243,10 +269,10 @@ TEST(nnfusion_inplace_op, asin)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, atan)
+TEST(nnfusion_inplace_kernel, atan)
 {
     // Create graph
     std::string name = "Atan";
@@ -263,10 +289,10 @@ TEST(nnfusion_inplace_op, atan)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, ceiling)
+TEST(nnfusion_inplace_kernel, ceiling)
 {
     // Create graph
     std::string name = "Ceiling";
@@ -283,10 +309,10 @@ TEST(nnfusion_inplace_op, ceiling)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, cos)
+TEST(nnfusion_inplace_kernel, cos)
 {
     // Create graph
     std::string name = "Cos";
@@ -303,10 +329,10 @@ TEST(nnfusion_inplace_op, cos)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, cosh)
+TEST(nnfusion_inplace_kernel, cosh)
 {
     // Create graph
     std::string name = "Cosh";
@@ -323,10 +349,10 @@ TEST(nnfusion_inplace_op, cosh)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, exp)
+TEST(nnfusion_inplace_kernel, exp)
 {
     // Create graph
     std::string name = "Exp";
@@ -343,10 +369,10 @@ TEST(nnfusion_inplace_op, exp)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, floor)
+TEST(nnfusion_inplace_kernel, floor)
 {
     // Create graph
     std::string name = "Floor";
@@ -363,10 +389,10 @@ TEST(nnfusion_inplace_op, floor)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, log)
+TEST(nnfusion_inplace_kernel, log)
 {
     // Create graph
     std::string name = "Log";
@@ -383,10 +409,10 @@ TEST(nnfusion_inplace_op, log)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sin)
+TEST(nnfusion_inplace_kernel, sin)
 {
     // Create graph
     std::string name = "Sin";
@@ -403,10 +429,10 @@ TEST(nnfusion_inplace_op, sin)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sinh)
+TEST(nnfusion_inplace_kernel, sinh)
 {
     // Create graph
     std::string name = "Sinh";
@@ -423,10 +449,10 @@ TEST(nnfusion_inplace_op, sinh)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sqrt)
+TEST(nnfusion_inplace_kernel, sqrt)
 {
     // Create graph
     std::string name = "Sqrt";
@@ -443,10 +469,10 @@ TEST(nnfusion_inplace_op, sqrt)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, tan)
+TEST(nnfusion_inplace_kernel, tan)
 {
     // Create graph
     std::string name = "Tan";
@@ -463,10 +489,10 @@ TEST(nnfusion_inplace_op, tan)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, tanh)
+TEST(nnfusion_inplace_kernel, tanh)
 {
     // Create graph
     std::string name = "Tanh";
@@ -483,10 +509,10 @@ TEST(nnfusion_inplace_op, tanh)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, power)
+TEST(nnfusion_inplace_kernel, power)
 {
     // Create graph
     std::string name = "Power";
@@ -505,10 +531,10 @@ TEST(nnfusion_inplace_op, power)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, subtract)
+TEST(nnfusion_inplace_kernel, subtract)
 {
     // Create graph
     std::string name = "Subtract";
@@ -527,10 +553,10 @@ TEST(nnfusion_inplace_op, subtract)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, divide)
+TEST(nnfusion_inplace_kernel, divide)
 {
     // Create graph
     std::string name = "Divide";
@@ -549,10 +575,10 @@ TEST(nnfusion_inplace_op, divide)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, divnonan)
+TEST(nnfusion_inplace_kernel, divnonan)
 {
     // Create graph
     std::string name = "DivNoNan";
@@ -571,10 +597,10 @@ TEST(nnfusion_inplace_op, divnonan)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sign)
+TEST(nnfusion_inplace_kernel, sign)
 {
     // Create graph
     std::string name = "Sign";
@@ -591,10 +617,10 @@ TEST(nnfusion_inplace_op, sign)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, relu)
+TEST(nnfusion_inplace_kernel, relu)
 {
     // Create graph
     std::string name = "Relu";
@@ -611,10 +637,10 @@ TEST(nnfusion_inplace_op, relu)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, negative)
+TEST(nnfusion_inplace_kernel, negative)
 {
     // Create graph
     std::string name = "Negative";
@@ -631,10 +657,10 @@ TEST(nnfusion_inplace_op, negative)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, select)
+TEST(nnfusion_inplace_kernel, select)
 {
     // Create graph
     std::string name = "Select";
@@ -655,10 +681,10 @@ TEST(nnfusion_inplace_op, select)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, relubackprop)
+TEST(nnfusion_inplace_kernel, relubackprop)
 {
     // Create graph
     std::string name = "ReluBackprop";
@@ -677,10 +703,10 @@ TEST(nnfusion_inplace_op, relubackprop)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, add)
+TEST(nnfusion_inplace_kernel, add)
 {
     // Create graph
     std::string name = "Add";
@@ -699,10 +725,10 @@ TEST(nnfusion_inplace_op, add)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, addn)
+TEST(nnfusion_inplace_kernel, addn)
 {
     // Create graph
     std::string name = "AddN";
@@ -724,10 +750,10 @@ TEST(nnfusion_inplace_op, addn)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, multiply)
+TEST(nnfusion_inplace_kernel, multiply)
 {
     // Create graph
     std::string name = "Multiply";
@@ -746,10 +772,10 @@ TEST(nnfusion_inplace_op, multiply)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, minimum)
+TEST(nnfusion_inplace_kernel, minimum)
 {
     // Create graph
     std::string name = "Minimum";
@@ -768,10 +794,10 @@ TEST(nnfusion_inplace_op, minimum)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, maximum)
+TEST(nnfusion_inplace_kernel, maximum)
 {
     // Create graph
     std::string name = "Maximum";
@@ -790,10 +816,10 @@ TEST(nnfusion_inplace_op, maximum)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sigmoid)
+TEST(nnfusion_inplace_kernel, sigmoid)
 {
     // Create graph
     std::string name = "Sigmoid";
@@ -812,10 +838,10 @@ TEST(nnfusion_inplace_op, sigmoid)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
-TEST(nnfusion_inplace_op, sigmoidbackprop)
+TEST(nnfusion_inplace_kernel, sigmoidbackprop)
 {
     // Create graph
     std::string name = "SigmoidBackprop";
@@ -834,7 +860,7 @@ TEST(nnfusion_inplace_op, sigmoidbackprop)
 
     run(graph);
 
-    EXPECT_TRUE(check_inplace_oi_pair(op));
+    EXPECT_TRUE(check_inplace_oi_pair(gnode));
 }
 
 // TEST(nnfusion_inplace_op, shared_UnaryElementwiseArithmetic)

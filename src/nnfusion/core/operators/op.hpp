@@ -14,7 +14,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "util/op_annotations.hpp"
+#include "util/annotations.hpp"
 
 #include "nnfusion/util/util.hpp"
 
@@ -79,11 +79,11 @@ namespace nnfusion
             virtual std::shared_ptr<Op> get_default_value() const { return nullptr; }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const Op& other) const { return m_instance_id < other.m_instance_id; }
-            void set_op_annotations(std::shared_ptr<OpAnnotations> op_annotations)
+            void set_op_annotations(std::shared_ptr<Annotations> op_annotations)
             {
                 m_op_annotations = op_annotations;
             }
-            std::shared_ptr<OpAnnotations> get_op_annotations() const { return m_op_annotations; }
+            std::shared_ptr<Annotations> get_op_annotations() const { return m_op_annotations; }
         protected:
             Op(const std::string& op_type);
 
@@ -103,7 +103,7 @@ namespace nnfusion
             static std::atomic<size_t> m_next_instance_id;
 
         private:
-            std::shared_ptr<OpAnnotations> m_op_annotations;
+            std::shared_ptr<Annotations> m_op_annotations;
         };
     }
 }

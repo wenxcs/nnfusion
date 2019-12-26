@@ -41,6 +41,16 @@ namespace nnfusion
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
 
+                    // add inplace tag
+                    if (reduce_rank == 0 || shape_size(input_shape) == shape_size(output_shape))
+                    {
+                        if (!ctx->annotations)
+                        {
+                            ctx->annotations = std::make_shared<Annotations>();
+                            ctx->annotations->add_in_place_oi_pair({0, 0, true});
+                        }
+                    }
+
                     // use to determine if it is RowReduction
                     std::vector<size_t> axes_flag(input_shape.size(), 0);
                     for (auto const& axis : reduce_axis)
@@ -497,6 +507,16 @@ if (thread_idx == 0) output0[block_idx] = val;
                         << "_" << reduce_op << "_" << input_type << "_" << output_type << "_s_"
                         << join(input_shape, "_") << "_axis_" << join(reduce_axis, "_");
                     custom_tag = tag.str();
+
+                    // add inplace tag
+                    if (reduce_rank == 0 || shape_size(input_shape) == shape_size(output_shape))
+                    {
+                        if (!ctx->annotations)
+                        {
+                            ctx->annotations = std::make_shared<Annotations>();
+                            ctx->annotations->add_in_place_oi_pair({0, 0, true});
+                        }
+                    }
                 }
 
                 LanguageUnit_p emit_function_body() override

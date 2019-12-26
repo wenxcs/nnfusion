@@ -32,6 +32,10 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     {
         is_memcpy = true;
         // LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
+        // add inplace tag
+        if (!ctx->annotations)
+            ctx->annotations = std::make_shared<Annotations>();
+        ctx->annotations->add_in_place_oi_pair({0, 0, false});
         return;
     }
 
@@ -459,6 +463,11 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     {
         is_memcpy = true;
         // LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
+
+        // add inplace tag
+        if (!ctx->annotations)
+            ctx->annotations = std::make_shared<Annotations>();
+        ctx->annotations->add_in_place_oi_pair({0, 0, false});
     }
 
     std::stringstream tag;

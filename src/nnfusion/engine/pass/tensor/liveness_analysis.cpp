@@ -21,7 +21,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 {
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, KernelEmitter::Pointer> op_kernels;
-    std::unordered_set<nnfusion::descriptor::Tensor*> persist_candidate;
+    std::unordered_set<shared_ptr<descriptor::Tensor>> persist_candidate;
     auto& p = tu->program;
     for (auto block_iter : p)
     {
@@ -75,14 +75,14 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 for (size_t i = 0; i < gnode->get_output_size(); ++i)
                 {
-                    nnfusion::descriptor::Tensor& tensor = gnode->get_output_tensor(i);
+                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
                     if (enable_rt_const_folding)
                     {
-                        persist_candidate.insert(&tensor);
+                        persist_candidate.insert(tensor);
                     }
                     else
                     {
-                        tensor.set_persistent();
+                        tensor->set_persistent();
                     }
                 }
             }
@@ -104,15 +104,15 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     bool is_const = false;
                     bool is_param = false;
-                    std::unordered_set<nnfusion::descriptor::Tensor*> tmp;
+                    std::unordered_set<shared_ptr<descriptor::Tensor>> tmp;
                     auto kernel = op_kernels[gnode];
                     auto kernel_context = kernel->m_context;
                     for (size_t i = 0; i < kernel_context->inputs.size(); i++)
                     {
                         auto tensor = kernel_context->inputs[i];
-                        if (persist_candidate.find(&*tensor) != persist_candidate.end())
+                        if (persist_candidate.find(tensor) != persist_candidate.end())
                         {
-                            tmp.insert(&*tensor);
+                            tmp.insert(tensor);
                             is_const = true;
                         }
                         else
@@ -128,7 +128,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             for (size_t i = 0; i < kernel_context->outputs.size(); i++)
                             {
                                 auto tensor = kernel_context->outputs[i];
-                                persist_candidate.insert(&*tensor);
+                                persist_candidate.insert(tensor);
                             }
                         }
 
@@ -145,7 +145,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
         }
     }
 
-    std::unordered_set<nnfusion::descriptor::Tensor*> currently_live;
+    std::unordered_set<shared_ptr<descriptor::Tensor>> currently_live;
 
     // traverse instructions in reverse order
     for (auto block_it = p.rbegin(); block_it != p.rend(); block_it++)
@@ -159,27 +159,50 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             gnode->liveness_new_list.clear();
             gnode->liveness_free_list.clear();
 
-            std::unordered_set<nnfusion::descriptor::Tensor*> input_tensor_decls;
-            std::unordered_set<nnfusion::descriptor::Tensor*> output_tensor_decls;
+            std::unordered_set<std::shared_ptr<descriptor::Tensor>> input_tensor_decls;
+            std::unordered_set<std::shared_ptr<descriptor::Tensor>> output_tensor_decls;
 
-            for (size_t i = 0; i < gnode->get_input_size(); ++i)
+            if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_output() ||
+                gnode->is_constant())
             {
-                nnfusion::descriptor::Tensor& tensor = gnode->get_input_tensor(i);
-                input_tensor_decls.insert(&tensor);
+                for (size_t i = 0; i < gnode->get_input_size(); ++i)
+                {
+                    std::shared_ptr<descriptor::Tensor> tensor = gnode->get_input_tensor_ptr(i);
+                    input_tensor_decls.insert(tensor);
+                }
+
+                for (size_t i = 0; i < gnode->get_output_size(); ++i)
+                {
+                    std::shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    output_tensor_decls.insert(tensor);
+                }
             }
 
-            for (size_t i = 0; i < gnode->get_output_size(); ++i)
+            else
             {
-                nnfusion::descriptor::Tensor& tensor = gnode->get_output_tensor(i);
-                output_tensor_decls.insert(&tensor);
+                auto kernel = op_kernels[gnode];
+                auto kernel_context = kernel->m_context;
+
+                for (size_t i = 0; i < kernel_context->inputs.size(); i++)
+                {
+                    auto tensor = kernel_context->inputs[i];
+                    input_tensor_decls.insert(tensor);
+                }
+
+                for (size_t i = 0; i < kernel_context->outputs.size(); i++)
+                {
+                    auto tensor = kernel_context->outputs[i];
+                    output_tensor_decls.insert(tensor);
+                }
             }
 
-            std::unordered_set<nnfusion::descriptor::Tensor*> free_tensor_decls;
-            std::unordered_set<nnfusion::descriptor::Tensor*> new_tensor_decls;
-            std::unordered_set<nnfusion::descriptor::Tensor*> all_tensor_decls = input_tensor_decls;
+            std::unordered_set<std::shared_ptr<descriptor::Tensor>> free_tensor_decls;
+            std::unordered_set<std::shared_ptr<descriptor::Tensor>> new_tensor_decls;
+            std::unordered_set<std::shared_ptr<descriptor::Tensor>> all_tensor_decls =
+                input_tensor_decls;
             all_tensor_decls.insert(output_tensor_decls.begin(), output_tensor_decls.end());
 
-            for (nnfusion::descriptor::Tensor* tensor_decl : all_tensor_decls)
+            for (std::shared_ptr<descriptor::Tensor> tensor_decl : all_tensor_decls)
             {
                 if (currently_live.find(tensor_decl) == currently_live.end())
                 {
@@ -190,7 +213,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
 
-            for (nnfusion::descriptor::Tensor* output_decl : output_tensor_decls)
+            for (std::shared_ptr<descriptor::Tensor> output_decl : output_tensor_decls)
             {
                 auto currently_live_it = currently_live.find(output_decl);
                 if (currently_live_it != currently_live.end())

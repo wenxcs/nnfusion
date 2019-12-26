@@ -34,12 +34,13 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
     MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
 
-    auto is_same_dev = [](const nnfusion::descriptor::Tensor* a,
-                          const nnfusion::descriptor::Tensor* b) {
+    auto is_same_dev = [](shared_ptr<const descriptor::Tensor> a,
+                          shared_ptr<const descriptor::Tensor> b) {
         return (a->get_device_type() == b->get_device_type()) &&
                (a->get_device_id() == b->get_device_id());
     };
-    std::unordered_set<nnfusion::descriptor::Tensor*> persistent_tensors;
+
+    std::unordered_set<shared_ptr<descriptor::Tensor>> persistent_tensors;
     auto& p = tu->program;
 
     for (auto iterator : p)
@@ -66,14 +67,14 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 LOG(WARNING) << "Kernel should be emitted before this pass:" << gnode->get_name();
             else
                 kernel = emitter_iter->second;
-
             // Tensors should be considered
             // Node: inputs outputs
             // Kernel Context: +tensors
 
-            std::map<nnfusion::descriptor::Tensor*, nnfusion::descriptor::Tensor*> in_place_outputs;
-            std::set<const nnfusion::descriptor::Tensor*> reused_inputs;
-            std::unordered_set<nnfusion::descriptor::Tensor*> alloc_temp;
+            std::map<std::shared_ptr<descriptor::Tensor>, std::shared_ptr<descriptor::Tensor>>
+                in_place_outputs;
+            std::set<std::shared_ptr<descriptor::Tensor>> reused_inputs;
+            std::unordered_set<std::shared_ptr<descriptor::Tensor>> alloc_temp;
 
             if (kernel != nullptr)
             {
@@ -83,21 +84,18 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     auto tensor = kernel->m_context->tensors[i];
                     if (!tensor->is_persistent())
-                        alloc_temp.insert(&*tensor);
+                        alloc_temp.insert(tensor);
                 }
-            }
 
-            if (auto op = std::dynamic_pointer_cast<op::Op>(gnode->get_op_ptr()))
-            {
                 // concat in_place_oi should be treated differently
                 if (!std::dynamic_pointer_cast<nnfusion::op::Concat>(gnode->get_op_ptr()))
                 {
-                    if (auto op_annotations = op->get_op_annotations())
+                    if (auto annotations = kernel->m_context->annotations)
                     {
-                        for (auto oi_pair : op_annotations->get_in_place_oi_pairs())
+                        for (auto oi_pair : annotations->get_in_place_oi_pairs())
                         {
-                            auto output = &gnode->get_output_tensor(oi_pair.output);
-                            auto input = &gnode->get_input_tensor(oi_pair.input);
+                            auto output = kernel->m_context->outputs[oi_pair.output];
+                            auto input = kernel->m_context->inputs[oi_pair.input];
                             auto input_gnode = gnode->get_in_edge(oi_pair.input)->get_src();
 
                             //should not overwrite constant tensor and parameter tensor
@@ -124,12 +122,13 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
-            unordered_set<descriptor::Tensor*> newlist(alloc_temp);
+
+            unordered_set<std::shared_ptr<descriptor::Tensor>> newlist(alloc_temp);
             // The output of output nodes refers to the input, so there is NO need
             // to allocate memory space for output of output nodes.
             if (!gnode->get_op_ptr()->is_output())
                 newlist.insert(gnode->liveness_new_list.begin(), gnode->liveness_new_list.end());
-            for (nnfusion::descriptor::Tensor* tensor : newlist)
+            for (std::shared_ptr<descriptor::Tensor> tensor : newlist)
             {
                 if (!tensor->is_persistent())
                 {
@@ -152,9 +151,9 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
             if (!m_disable_memory_sharing)
             {
-                unordered_set<nnfusion::descriptor::Tensor*> freelist(alloc_temp);
+                unordered_set<shared_ptr<descriptor::Tensor>> freelist(alloc_temp);
                 freelist.insert(gnode->liveness_free_list.begin(), gnode->liveness_free_list.end());
-                for (nnfusion::descriptor::Tensor* tensor : freelist)
+                for (std::shared_ptr<descriptor::Tensor> tensor : freelist)
                 {
                     if (reused_inputs.count(tensor) == 0 && !tensor->is_persistent() &&
                         !tensor->is_parameter())

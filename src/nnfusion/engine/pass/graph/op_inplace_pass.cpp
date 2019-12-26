@@ -20,58 +20,12 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
     for (auto node : graph->get_nodes())
     {
-        if (auto op = std::dynamic_pointer_cast<ArithmeticReduction>(node->get_op_ptr()))
+        if (auto op = std::dynamic_pointer_cast<Result>(node->get_op_ptr()))
         {
-            nnfusion::AxisSet reduce_axes = op->get_reduction_axes();
-            auto input_shape_product = shape_size(node->get_input_shape(0));
-            auto output_shape_product = shape_size(node->get_output_shape(0));
-            if (reduce_axes.empty() || input_shape_product == output_shape_product)
-            {
-                AddInplace(op, 0, 0, true);
-            }
+            AddInplace(op, 0, 0, false);
         }
 
-        // add inplace tag for reshape op if !op->get_is_transpose() || op element num < 2
-        else if (auto op = std::dynamic_pointer_cast<Reshape>(node->get_op_ptr()))
-        {
-            nnfusion::Shape result_shape = node->get_output_shape(0);
-            size_t result_shape_product = nnfusion::shape_size(result_shape);
-
-            if (!op->get_is_transpose() || result_shape_product < 2)
-            {
-                AddInplace(op, 0, 0, true);
-            }
-        }
-
-        else if (auto op = std::dynamic_pointer_cast<Result>(node->get_op_ptr()))
-        {
-            AddInplace(op, 0, 0, true);
-        }
-
-        else if (auto op = std::dynamic_pointer_cast<Broadcast>(node->get_op_ptr()))
-        {
-            nnfusion::AxisSet broadcast_axes = op->get_broadcast_axes();
-            auto input_shape_product = shape_size(node->get_input_shape(0));
-            auto output_shape_product = shape_size(node->get_output_shape(0));
-
-            if (broadcast_axes.empty() || input_shape_product == output_shape_product)
-            {
-                AddInplace(op, 0, 0, true);
-            }
-        }
-
-        else if (auto op = std::dynamic_pointer_cast<Reduce>(node->get_op_ptr()))
-        {
-            nnfusion::AxisSet reduce_axes = op->get_reduction_axes();
-            auto input_shape_product = shape_size(node->get_input_shape(0));
-            auto output_shape_product = shape_size(node->get_output_shape(0));
-            if (reduce_axes.empty() || input_shape_product == output_shape_product)
-            {
-                AddInplace(op, 0, 0, true);
-            }
-        }
-
-        if (auto op = std::dynamic_pointer_cast<ElementwiseArithmetic>(node->get_op_ptr()))
+        else if (auto op = std::dynamic_pointer_cast<ElementwiseArithmetic>(node->get_op_ptr()))
         {
             AddInplace(op, 0, 0, true);
         }

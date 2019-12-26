@@ -5,6 +5,7 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/core/operators/util/annotations.hpp"
 
 #include "async.hpp"
 
@@ -53,6 +54,9 @@ namespace nnfusion
             AsyncExecutionInfo async_info;
             // used for kernel fusion
             std::vector<shared_ptr<KernelEmitter>> kernels;
+
+            // map of output-input pairs for which in-place computation is valid
+            std::shared_ptr<Annotations> annotations;
         };
 
         // OpKernel defines the interfaces of generating a specific computation kernel

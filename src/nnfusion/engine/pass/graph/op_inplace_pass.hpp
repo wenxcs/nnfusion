@@ -3,7 +3,7 @@
 #pragma once
 
 #include "graph_pass_base.hpp"
-#include "nnfusion/core/operators/util/op_annotations.hpp"
+#include "nnfusion/core/operators/util/annotations.hpp"
 
 namespace nnfusion
 {
@@ -28,7 +28,7 @@ namespace nnfusion
                     }
                     else
                     {
-                        op_annotations = std::make_shared<op::OpAnnotations>();
+                        op_annotations = std::make_shared<Annotations>();
                         // pass-through
                         op_annotations->add_in_place_oi_pair({output, input, destructive});
                         op->set_op_annotations(op_annotations);
