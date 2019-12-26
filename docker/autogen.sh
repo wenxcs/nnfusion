@@ -26,7 +26,7 @@ cd NNFusion && git config credential.helper store && cd ..
 cd Thirdparty && git config credential.helper store && cd ..
 
 mkdir -p NNFusion/build && cd NNFusion/build
-cmake .. -DNGRAPH_ONNX_IMPORT_ENABLE=TRUE -DNNFUSION_THIRDPARTY_FOLDER=$(pwd)/../../Thirdparty
+cmake .. -DNGRAPH_ONNX_IMPORT_ENABLE=FALSE -DNNFUSION_THIRDPARTY_FOLDER=$(pwd)/../../Thirdparty
 make -j
 
 echo
