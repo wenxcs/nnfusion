@@ -94,6 +94,7 @@ void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
     {
         add_edge(input_gnodes[i].gnode, input_gnodes[i].index, gnode, i);
     }
+    gnode->get_op_ptr()->revalidate_and_infer_types(gnode->shared_from_this());
 }
 
 void Graph::remove_node(std::shared_ptr<GNode> node)
@@ -137,6 +138,7 @@ void Graph::replace_node(std::shared_ptr<GNode> old_node,
             }
         }
     }
+    new_node->get_op_ptr()->revalidate_and_infer_types(new_node->shared_from_this());
 
     for (auto& edge : old_node->get_out_edges())
     {
