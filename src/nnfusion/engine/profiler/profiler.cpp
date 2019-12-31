@@ -105,3 +105,8 @@ IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(DeviceType de
         return ip;
     return nullptr;
 }
+
+IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(string dev_str)
+{
+    return get_default_runtime(get_device_type(dev_str));
+}

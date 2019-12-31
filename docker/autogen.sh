@@ -9,7 +9,7 @@ if [[ "$@" != "--direct" ]]; then
 	exit 0
 fi
 
-DEB_PACKAGES="build-essential cmake clang-3.9 clang-format-3.9 git curl zlib1g zlib1g-dev libtinfo-dev unzip autoconf automake libtool ca-certificates gdb"
+DEB_PACKAGES="build-essential cmake clang-3.9 clang-format-3.9 git curl zlib1g zlib1g-dev libtinfo-dev unzip autoconf automake libtool ca-certificates gdb sqlite3 libsqlite3-dev"
 
 if ! dpkg -L $DEB_PACKAGES >/dev/null 2>&1; then
 	if [[ "$(whoami)" != "root" ]]; then

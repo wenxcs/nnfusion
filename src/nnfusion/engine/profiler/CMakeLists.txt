@@ -14,7 +14,7 @@ add_library(nnfusion_engine_profiler STATIC
 )
 
 target_link_libraries(nnfusion_engine_profiler
-    nnfusion_graph
+    nnfusion_graph sqlite3
 )
 
 set_target_properties(nnfusion_engine_profiler PROPERTIES VERSION ${NGRAPH_VERSION})

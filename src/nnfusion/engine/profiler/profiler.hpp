@@ -32,6 +32,7 @@ namespace nnfusion
     namespace profiler
     {
         IProfilingRuntime::Pointer get_default_runtime(DeviceType dev_t);
+        IProfilingRuntime::Pointer get_default_runtime(string dev_str);
 
         ///\brief Profiler will profile a operator or a subgraph. This Profiler class should be treated as interface for Host.
         //Profiler will use the Runtime to run the subject.

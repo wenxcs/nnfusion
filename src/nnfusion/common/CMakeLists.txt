@@ -18,6 +18,7 @@ set(SRC
     util.cpp
     coordinate.cpp
     coordinate_diff.cpp
+    device_type.cpp
 )
 
 add_library(nnfusion_common STATIC ${SRC})

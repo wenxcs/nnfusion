@@ -106,6 +106,9 @@ RocmDefaultRuntime::Pointer RocmDefaultRuntime::Runtime()
 {
     static RocmDefaultRuntime::Pointer predefined = nullptr;
     if (predefined == nullptr)
+    {
         predefined = make_shared<RocmDefaultRuntime>();
+        predefined->set_dt(ROCM_GPU);
+    }
     return predefined;
 }

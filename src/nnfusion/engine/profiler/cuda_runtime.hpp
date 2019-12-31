@@ -16,16 +16,16 @@ namespace nnfusion
         {
         public:
             using Pointer = shared_ptr<CudaDefaultRuntime>;
-
-        public:
             static Pointer Runtime();
-
+            CudaDefaultRuntime() { _dt = CUDA_GPU; }
         protected:
             // Tiny codegen function for runtime
             virtual bool codegen(const ProfilingContext::Pointer& ke);
             virtual bool compile(const ProfilingContext::Pointer& ke);
             double
                 invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
+
+            void set_dt(DeviceType dt) { _dt = dt; }
         };
     }
 }

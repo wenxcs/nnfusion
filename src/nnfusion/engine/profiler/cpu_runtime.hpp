@@ -43,7 +43,7 @@ namespace nnfusion
 
         public:
             static Pointer Runtime();
-
+            ReferenceRuntime() { _dt = GENERIC_CPU; }
         private:
             // Tiny codegen function for runtime
             bool codegen(const ProfilingContext::Pointer& ke);

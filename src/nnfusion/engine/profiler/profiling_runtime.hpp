@@ -9,6 +9,11 @@
 #include <memory>
 #include <string>
 
+#include <pwd.h>
+#include <sqlite3.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "nnfusion/core/graph/graph.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
@@ -143,11 +148,28 @@ namespace nnfusion
             }
 
             template <typename F1, typename F2>
-            static double profile_timing_result(F1 ke, F2 func)
+            static double profile_timing_result(F1 ke, F2 func, string device_type)
             {
                 auto emitter = ke->kernel;
                 if (!ke->using_cache)
                     return func();
+
+                static sqlite3* sqldb = NULL;
+                if (!sqldb)
+                {
+                    CHECK(SQLITE_OK == sqlite3_open((getpwuid(getuid())->pw_dir +
+                                                     std::string("/.cache/nnfusion_cache.db"))
+                                                        .c_str(),
+                                                    &sqldb));
+                    const char* table_create = R"(
+CREATE TABLE IF NOT EXISTS KernelCache(
+  key_code TEXT PRIMARY KEY NOT NULL,
+  key_op TEXT NOT NULL,
+  device_type TEXT NOT NULL,
+  cost REAL );
+)";
+                    CHECK(SQLITE_OK == sqlite3_exec(sqldb, table_create, NULL, 0, NULL));
+                }
 
                 auto key_code = get_key_code(emitter);
                 if (key_code.size() == 0)
@@ -159,24 +181,38 @@ namespace nnfusion
                     return func();
                 }
 
-                std::string device_type = emitter->get_kernel_type();
-                // device_type -> { key_code -> {.. kernel items ..} }
-                static std::unordered_map<std::string, std::unordered_map<std::string, KernelItem>>
-                    in_memory_kernel_table;
+                sqlite3_stmt* pStmt;
 
-                auto& secondary_table = in_memory_kernel_table[device_type];
-                auto it = secondary_table.find(key_code);
-                if (it != secondary_table.end())
+                const char* table_query_body = R"(
+SELECT cost FROM KernelCache WHERE key_code = ?;
+)";
+                CHECK(SQLITE_OK == sqlite3_prepare(sqldb, table_query_body, -1, &pStmt, 0));
+                sqlite3_bind_text(pStmt, 1, key_code.data(), key_code.size(), SQLITE_STATIC);
+                if (SQLITE_DONE != sqlite3_step(pStmt))
                 {
+                    double cost = sqlite3_column_double(pStmt, 0);
+                    CHECK(SQLITE_DONE == sqlite3_step(pStmt));
+                    CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
                     LOG(INFO) << device_type << "/" << emitter->get_function_name()
-                              << ": Using cached kernel time cost = " << it->second.cost;
-                    return it->second.cost;
+                              << ": Using cached kernel time cost = " << cost;
+                    return cost;
                 }
                 double result = func();
-                secondary_table[key_code] = {get_key_op(emitter), result};
+                auto key_op = get_key_op(emitter);
                 LOG(INFO) << device_type << "/" << emitter->get_function_name()
                           << ": Updated cached kernel time cost = " << result;
                 // LOG(INFO) << get_key_op(emitter) << "\n" << key_code;
+
+                const char* table_insert = R"(
+INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
+)";
+                CHECK(SQLITE_OK == sqlite3_prepare(sqldb, table_insert, -1, &pStmt, 0));
+                sqlite3_bind_text(pStmt, 1, key_code.data(), key_code.size(), SQLITE_STATIC);
+                sqlite3_bind_text(pStmt, 2, key_op.data(), key_op.size(), SQLITE_STATIC);
+                sqlite3_bind_text(pStmt, 3, device_type.data(), device_type.size(), SQLITE_STATIC);
+                sqlite3_bind_double(pStmt, 4, result);
+                CHECK(SQLITE_DONE == sqlite3_step(pStmt));
+                CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
                 return result;
             }
         };
@@ -376,6 +412,7 @@ namespace nnfusion
             ProfilingContext(kernels::KernelEmitter::Pointer kernel, bool using_cache = false)
                 : using_cache(using_cache)
             {
+                // this->using_cache = true;
                 this->kernel = kernel;
                 kernel_memory.reset(new KernelMemory(kernel->m_context));
             }
@@ -443,10 +480,14 @@ namespace nnfusion
             double execute(const ProfilingContext::Pointer& ke, void** input, void** output);
             // Get the result of last run;
             using Pointer = shared_ptr<IProfilingRuntime>;
-
+            string get_device_name() { return nnfusion::get_device_str(_dt); };
+            DeviceType get_device_type() { return _dt; };
+            virtual string get_name() { return get_device_name(); };
         private:
             virtual double invoke(const ProfilingContext::Pointer& ke, void** input, void** output);
 
+        protected:
+            DeviceType _dt;
             /*
             ///\todo To be provided in future, since we cannot use runtime api here.
             // We use Profiler class as Host here.

@@ -55,8 +55,9 @@ double IProfilingRuntime::invoke(const ProfilingContext::Pointer& ke, void** inp
 double IProfilingRuntime::execute(const ProfilingContext::Pointer& ke, void** input, void** output)
 {
     if (ke->using_cache)
+        //\todo(wenxh): what should be index for the profiling result.
         return nnfusion::profiler::ProfilingCache::profile_timing_result(
-            ke, [&]() { return invoke(ke, input, output); });
+            ke, [&]() { return invoke(ke, input, output); }, this->get_name());
     else
         return invoke(ke, input, output);
 }
