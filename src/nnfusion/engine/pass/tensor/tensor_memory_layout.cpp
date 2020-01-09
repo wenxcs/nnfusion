@@ -167,7 +167,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             if (dump_trace)
             {
                 mem_log << gnode->get_name() << "\n";
-                for (auto allocator : MemoryAllocatorFactory::get_allocator_list())
+                for (const auto& allocator : MemoryAllocatorFactory::get_allocator_list())
                 {
                     allocator.second->dump(mem_log);
                 }
@@ -186,7 +186,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
     if (dump_trace)
     {
         mem_log << "----allocate persistent tensors----\n";
-        for (auto allocator : MemoryAllocatorFactory::get_allocator_list())
+        for (const auto& allocator : MemoryAllocatorFactory::get_allocator_list())
         {
             allocator.second->dump(mem_log);
         }

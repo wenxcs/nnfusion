@@ -13,6 +13,8 @@ namespace nnfusion
 {
     class MemoryAllocator
     {
+        friend class MemoryAllocatorFactory;
+
     public:
         enum class block_state
         {
@@ -37,10 +39,6 @@ namespace nnfusion
             block_state m_state;
         };
 
-        MemoryAllocator(size_t alignment = 1,
-                        bool disable_reuse = false,
-                        DeviceType device_type = CUDA_GPU,
-                        size_t device_id = 0);
         // allocate a set of tensors.
         virtual void allocate(std::vector<shared_ptr<descriptor::Tensor>>& tensors);
         // allocate one tensor.
@@ -63,13 +61,14 @@ namespace nnfusion
         std::list<node>::const_iterator end() const { return m_node_list.cend(); }
         const std::list<node>& get_node_list() const { return m_node_list; }
         size_t max_allocated() const { return m_max_allocated; }
-        size_t cur_allocated();
-        size_t memory_in_use();
+        size_t cur_allocated() const;
+        size_t memory_in_use() const;
         void set_alloc_scheme(allocation_scheme alloc_schem) { m_scheme = alloc_schem; }
         allocation_scheme get_alloc_scheme() const { return m_scheme; }
         void set_alignment(size_t alignment) { m_alignment = alignment; }
         size_t get_alignment() const { return m_alignment; }
-        virtual std::string get_name();
+        const std::string& get_symbol() const { return m_symbol; }
+        const std::string& get_name() const { return m_name; }
         size_t get_device_id() const { return m_device_id; }
         DeviceType get_device_type() const { return m_device_type; }
     protected:
@@ -86,58 +85,77 @@ namespace nnfusion
         std::vector<shared_ptr<descriptor::Tensor>> m_allocated_tensors;
         std::stringstream m_trace;
         bool record_trace = FLAGS_fmem_trace;
+        std::string m_symbol;
+        std::string m_name;
+        MemoryAllocator(size_t alignment = 1,
+                        bool disable_reuse = false,
+                        DeviceType device_type = CUDA_GPU,
+                        size_t device_id = 0,
+                        const std::string& symbol = "");
     };
 
     class CUDAMemoryAllocator : public MemoryAllocator
     {
-    public:
+        friend class MemoryAllocatorFactory;
+
+    private:
         CUDAMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
                             DeviceType device_type = CUDA_GPU,
-                            size_t device_id = 0)
-            : MemoryAllocator(alignment, disable_reuse, device_type, device_id)
+                            size_t device_id = 0,
+                            const std::string& symbol = "")
+            : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
         {
         }
     };
 
     class HostMemoryAllocator : public MemoryAllocator
     {
+        friend class MemoryAllocatorFactory;
+
     public:
+        LanguageUnit_p emit_memory_alloc() override;
+        LanguageUnit_p emit_memory_free() override;
+
+    private:
         HostMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
                             DeviceType device_type = GENERIC_CPU,
-                            size_t device_id = 0)
-            : MemoryAllocator(alignment, disable_reuse, device_type, device_id)
+                            size_t device_id = 0,
+                            const std::string& symbol = "")
+            : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
         {
         }
-        LanguageUnit_p emit_memory_alloc() override;
-        LanguageUnit_p emit_memory_free() override;
     };
 
     class RocmMemoryAllocator : public MemoryAllocator
     {
-    public:
+        friend class MemoryAllocatorFactory;
+
+    private:
         RocmMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
                             DeviceType device_type = ROCM_GPU,
-                            size_t device_id = 0)
-            : MemoryAllocator(alignment, disable_reuse, device_type, device_id)
+                            size_t device_id = 0,
+                            const std::string& symbol = "")
+            : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
         {
         }
     };
 
     class RDMAMemoryAllocator : public MemoryAllocator
     {
-    public:
+        friend class MemoryAllocatorFactory;
+
+    private:
         RDMAMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
                             DeviceType device_type = CUDA_GPU,
-                            size_t device_id = 0)
-            : MemoryAllocator(alignment, disable_reuse, device_type, device_id)
+                            size_t device_id = 0,
+                            const std::string& symbol = "RDMA")
+            : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
         {
         }
-
-        std::string get_name() override;
     };
 
     class MemoryAllocatorFactory
@@ -145,7 +163,6 @@ namespace nnfusion
     public:
         MemoryAllocatorFactory(size_t alignment = 1, bool disable_reuse = false);
         MemoryAllocator* get_allocator(shared_ptr<descriptor::Tensor> tensor);
-        std::string get_device_name(shared_ptr<descriptor::Tensor> tensor);
         size_t get_alignment() const { return m_alignment; }
         static const std::unordered_map<std::string, MemoryAllocator*>& get_allocator_list()
         {

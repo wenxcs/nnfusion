@@ -152,6 +152,13 @@ void nnfusion::descriptor::Tensor::set_tensor_layout(
     m_tensor_layout = tensor_layout;
 }
 
+std::string nnfusion::descriptor::Tensor::get_device_name() const
+{
+    std::string dt_str = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[m_device_type];
+    std::string device_name = (m_RDMA ? "RDMA_" : "_") + dt_str + "_" + std::to_string(m_device_id);
+    return device_name;
+}
+
 ostream& operator<<(ostream& out, const nnfusion::descriptor::Tensor& tensor)
 {
     out << "Tensor(" << tensor.get_name() << ")";

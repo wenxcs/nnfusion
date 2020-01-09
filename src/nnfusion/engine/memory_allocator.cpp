@@ -10,12 +10,16 @@ nnfusion::MemoryAllocator::node::node(size_t size, block_state state)
 nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
                                            bool disable_memory_reuse,
                                            DeviceType device_type,
-                                           size_t device_id)
+                                           size_t device_id,
+                                           const std::string& symbol)
     : m_alignment{alignment}
     , m_scheme{disable_memory_reuse ? allocation_scheme::NO_REUSE : allocation_scheme::FIRST_FIT}
     , m_device_type(device_type)
     , m_device_id(device_id)
     , m_max_allocated{0}
+    , m_symbol(symbol)
+    , m_name(symbol + "_" + (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type] +
+             "_" + std::to_string(device_id) + "_allocator")
 {
     CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
@@ -297,22 +301,14 @@ size_t nnfusion::MemoryAllocator::align(size_t size, size_t alignment)
     return size;
 }
 
-std::string nnfusion::MemoryAllocator::get_name()
-{
-    std::stringstream m_name;
-    m_name << (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[m_device_type] << "_"
-           << m_device_id << "_allocator";
-    return m_name.str();
-}
-
-size_t nnfusion::MemoryAllocator::cur_allocated()
+size_t nnfusion::MemoryAllocator::cur_allocated() const
 {
     return (prev(m_node_list.end())->m_state == block_state::FREE)
                ? numeric_limits<size_t>::max() - prev(m_node_list.end())->m_size
                : numeric_limits<size_t>::max();
 }
 
-size_t nnfusion::MemoryAllocator::memory_in_use()
+size_t nnfusion::MemoryAllocator::memory_in_use() const
 {
     size_t allocated = 0;
     for (const node& n : m_node_list)
@@ -347,15 +343,6 @@ LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_free()
     return _lu;
 }
 
-std::string nnfusion::RDMAMemoryAllocator::get_name()
-{
-    std::stringstream m_name;
-    m_name << "RDMA_" << (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[m_device_type]
-           << "_" << m_device_id;
-
-    return m_name.str();
-}
-
 nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory(size_t alignment, bool disable_reuse)
     : m_alignment(alignment)
     , m_disable_reuse(disable_reuse)
@@ -370,7 +357,7 @@ std::unordered_map<std::string, MemoryAllocator*>
 MemoryAllocator*
     nnfusion::MemoryAllocatorFactory::get_allocator(shared_ptr<descriptor::Tensor> tensor)
 {
-    std::string device_name = this->get_device_name(tensor);
+    auto device_name = tensor->get_device_name();
     if (m_allocator_list.find(device_name) != m_allocator_list.end())
     {
         return m_allocator_list[device_name];
@@ -415,19 +402,4 @@ MemoryAllocator*
             return allocator;
         }
     }
-}
-
-std::string nnfusion::MemoryAllocatorFactory::get_device_name(shared_ptr<descriptor::Tensor> tensor)
-{
-    std::stringstream device_name;
-
-    auto device_type = tensor->get_device_type();
-    size_t device_id = tensor->get_device_id();
-    if (tensor->is_RDMA_tensor())
-    {
-        device_name << "RDMA_";
-    }
-    device_name << (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type] << "_"
-                << device_id;
-    return device_name.str();
 }

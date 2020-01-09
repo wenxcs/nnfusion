@@ -98,6 +98,8 @@ namespace nnfusion
             DeviceType get_device_type() const { return m_device_type; }
             void set_device_id(size_t device_id) { m_device_id = device_id; }
             size_t get_device_id() const { return m_device_id; }
+            std::string get_device_name() const;
+
         protected:
             nnfusion::element::Type m_element_type;
 
