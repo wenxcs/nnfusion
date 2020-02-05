@@ -41,7 +41,7 @@ namespace nnfusion
 
                     auto code = nnfusion::op::create_code_from_template(
                         R"(
-                        CUDA_SAFE_CALL(cudaMemcpy(output0, input0, @size@, cudaMemcpyDeviceToDevice));
+                        CUDA_SAFE_CALL(cudaMemcpyAsync(output0, input0, @size@, cudaMemcpyDeviceToDevice, stream));
                     )",
                         {
                             {"size",

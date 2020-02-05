@@ -96,7 +96,8 @@ namespace nnfusion
                         writer << get_function_name() << kernel << "<<<dim3("
                                << split_aligned_grid_size_x[n] << ", " << 1 << ", " << 1
                                << "), dim3(" << block_size_x << ", " << 1 << ", " << 1 << "), " << 0
-                               << ", " << 0 << ">>>(" << join(args_list) << ");\n";
+                               << ", stream"
+                               << ">>>(" << join(args_list) << ");\n";
                     }
                     return _lu;
                 }

@@ -489,9 +489,9 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_function_body()
     if (is_memcpy)
     {
         lu << "if (input0 != output0) {\n"
-           << "   cudaMemcpy(output0, input0, " << static_cast<uint32_t>(shape_size(arg_shape))
+           << "   cudaMemcpyAsync(output0, input0, " << static_cast<uint32_t>(shape_size(arg_shape))
            << " * sizeof(" << m_context->dtypes[0] << ")"
-           << ", cudaMemcpyDeviceToDevice);\n"
+           << ", cudaMemcpyDeviceToDevice, stream);\n"
            << "}\n";
     }
     else

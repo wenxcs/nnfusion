@@ -26,9 +26,8 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
                     auto data_size = m_context->inputs.front()->size(false);
-
-                    lu << "super_scaler_all_reduce(input0, output0, " << data_size
-                       << ", &applygradient_stream);";
+                    // allreduce and applygradient use the same stream.
+                    lu << "super_scaler_all_reduce(input0, output0, " << data_size << ", &stream);";
                     return _lu;
                 }
 
@@ -37,8 +36,8 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
                     _lu->require(header::super_scaler); // This require nccl, mpi
-                    _lu->require(declaration::allreduce_stream);
-                    _lu->require(declaration::applygradient_stream);
+                    // _lu->require(declaration::allreduce_stream);
+                    // _lu->require(declaration::applygradient_stream);
                     return _lu;
                 }
             };

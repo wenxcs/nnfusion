@@ -111,7 +111,7 @@ atomicAdd(output0 + output_index, input0[tid]);
                     size_t output_block_cnt = align_to_block_size(output_size, block_size_x);
                     auto code = nnfusion::op::create_code_from_template(
                         R"(
-@func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1)>>>(output0);
+@func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1), 0, stream>>>(output0);
 )",
                         {{"func_name", reset_memory_func_name},
                          {"block_cnt", output_block_cnt},
@@ -121,7 +121,7 @@ atomicAdd(output0 + output_index, input0[tid]);
                     size_t input_block_cnt = align_to_block_size(input_size, block_size_x);
                     code = nnfusion::op::create_code_from_template(
                         R"(
-@func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1)>>>(input0, input1, output0);
+@func_name@<<<dim3(@block_cnt@, 1, 1), dim3(@block_size_x@, 1, 1), 0, stream>>>(input0, input1, output0);
 )",
                         {{"func_name", unsorted_segment_func_name},
                          {"block_cnt", input_block_cnt},

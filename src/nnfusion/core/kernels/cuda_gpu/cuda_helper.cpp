@@ -45,12 +45,12 @@ void cuda::emit_memcpyDtD(CodeWriter& writer,
 {
     if (buffer_size == 0)
     {
-        writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst->get_name() << ", " << src->get_name() << ", "
-               << dst->size() << ", cudaMemcpyDeviceToDevice));\n";
+        writer << "CUDA_SAFE_CALL(cudaMemcpyAsync(" << dst->get_name() << ", " << src->get_name()
+               << ", " << dst->size() << ", cudaMemcpyDeviceToDevice, stream));\n";
         return;
     }
-    writer << "CUDA_SAFE_CALL(cudaMemcpy(" << dst->get_name() << ", " << src->get_name() << ", "
-           << buffer_size << ", cudaMemcpyDeviceToDevice));\n";
+    writer << "CUDA_SAFE_CALL(cudaMemcpyAsync(" << dst->get_name() << ", " << src->get_name()
+           << ", " << buffer_size << ", cudaMemcpyDeviceToDevice, stream));\n";
     return;
 }
 

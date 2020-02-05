@@ -8,11 +8,13 @@
 
 //#include "nnfusion/core/operators/constant.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 
 using namespace std;
 using namespace nnfusion;
 using namespace nnfusion::pass;
 using namespace nnfusion::kernels;
+using namespace nnfusion::async;
 
 DEFINE_bool(frt_const_folding, false, "Add runtime constant folding.");
 
@@ -22,12 +24,52 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, KernelEmitter::Pointer> op_kernels;
     std::unordered_set<shared_ptr<descriptor::Tensor>> persist_candidate;
+    std::unordered_set<shared_ptr<descriptor::Tensor>> no_free;
+
     auto& p = tu->program;
     for (auto block_iter : p)
     {
         for (auto ins : *block_iter)
         {
             auto gnode = ins->getGNode();
+            if (!(*gnode)["Async_info"].is_valid())
+            {
+                CHECK_FAIL() << "Async info should be assigned before this pass："
+                             << gnode->get_name();
+            }
+            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            auto stream = async_info.execution_stream;
+
+            std::vector<Stream> sister_stream;
+            for (auto& in_edge : gnode->get_in_edges())
+            {
+                if (in_edge->is_control_edge())
+                    continue;
+                auto input_gnode = in_edge->get_src();
+                int idx = in_edge->get_src_output();
+                auto tensor = input_gnode->get_output_tensor_ptr(idx);
+                for (auto& out_edge : input_gnode->get_out_edges())
+                {
+                    if (out_edge->get_src_output() == idx)
+                    {
+                        auto sister_gnode = out_edge->get_dst();
+                        if (!(*sister_gnode)["Async_info"].is_valid())
+                        {
+                            CHECK_FAIL() << "Async info should be assigned before this pass："
+                                         << sister_gnode->get_name();
+                        }
+                        auto& sister_async_info =
+                            (*sister_gnode)["Async_info"].as<AsyncExecutionInfo>();
+                        auto sister_stream = sister_async_info.execution_stream;
+                        if (sister_stream->get_stream_id() != stream->get_stream_id())
+                        {
+                            no_free.insert(tensor);
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
                 !gnode->get_op_ptr()->is_constant())
             {
@@ -209,7 +251,8 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     // this is the last node that value is seen in
                     // delete it at the end of the op
                     currently_live.insert(tensor_decl);
-                    free_tensor_decls.insert(tensor_decl);
+                    if (no_free.find(tensor_decl) == no_free.end())
+                        free_tensor_decls.insert(tensor_decl);
                 }
             }
 

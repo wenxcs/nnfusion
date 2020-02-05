@@ -36,8 +36,6 @@ namespace nnfusion
             LU_DECLARE(global_cudnn_handle);
             LU_DECLARE(num_SMs);
             LU_DECLARE(cuda_reduce_primitive);
-            LU_DECLARE(allreduce_stream);
-            LU_DECLARE(applygradient_stream);
         } // namespace declaration
     }     // namespace kernels
 } // namespace nnfusion

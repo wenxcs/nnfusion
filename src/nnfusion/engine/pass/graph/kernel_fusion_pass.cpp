@@ -496,6 +496,7 @@ private:
                         auto fused_op = std::make_shared<nnfusion::op::NoOp>("fused_kernel");
                         GNodeVector empty_inputs;
                         auto fused_node = std::make_shared<GNode>(fused_op, empty_inputs);
+                        ctx->gnode = fused_node;
 
                         (*fused_node)["Kernel_Selection_Result"] =
                             vector<pair<DeviceType, KernelEmitter::Pointer>>();

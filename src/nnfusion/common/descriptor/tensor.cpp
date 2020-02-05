@@ -45,12 +45,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
     , m_device_id(device_id)
 {
     auto default_device = FLAGS_fdefault_device.c_str();
-    if (strcasecmp(default_device, "ROCm") == 0)
-        m_device_type = ROCM_GPU;
-    else if (strcasecmp(default_device, "CPU") == 0)
-        m_device_type = GENERIC_CPU;
-    else
-        m_device_type = CUDA_GPU;
+    m_device_type = nnfusion::get_device_type(default_device);
 }
 
 nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,

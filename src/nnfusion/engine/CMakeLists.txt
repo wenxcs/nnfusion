@@ -11,6 +11,7 @@ if (NNFUSION_ENABLE)
         interpreter.cpp
         op.cpp
         memory_allocator.cpp
+        async_manager.cpp
         external/backend_manager.cpp
         external/backend.cpp
     )

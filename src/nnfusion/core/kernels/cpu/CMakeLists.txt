@@ -3,6 +3,7 @@
 set(SRC
     cpu_kernel_emitter.cpp
     cpu_langunit.cpp
+    barrier.cpp
 )
 
 file(GLOB eigen_kernels eigen/*.cpp)

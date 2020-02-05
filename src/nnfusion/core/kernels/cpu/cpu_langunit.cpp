@@ -10,6 +10,7 @@ LU_DEFINE(header::eigen_tensor,
 LU_DEFINE(header::eigen_utils, "#include \"eigen_utils.hpp\"\n");
 LU_DEFINE(header::cblas, "#include \"cblas.h\"\n");
 LU_DEFINE(header::mlas, "#include \"mlas/inc/mlas.h\"\n#include \"mlas/inc/threadpool.h\"\n");
+LU_DEFINE(header::barrier, "#include \"barrier.h\"\n");
 
 // Macro
 

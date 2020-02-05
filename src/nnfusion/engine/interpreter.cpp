@@ -8,7 +8,6 @@
 #include <strings.h>
 #include "pass/tensor/liveness_analysis.hpp"
 #include "pass/tensor/tensor_memory_layout.hpp"
-#include "pass/train/async_execution.hpp"
 using namespace nnfusion::pass;
 
 DECLARE_string(fdefault_device);
@@ -19,26 +18,14 @@ Interpreter::Interpreter()
 {
     // Todo: find another way
     auto dev_name = FLAGS_fdefault_device.c_str();
-    DeviceType default_device;
-    if (strcasecmp(dev_name, "ROCm") == 0)
-        default_device = ROCM_GPU;
-    else if (strcasecmp(dev_name, "CPU") == 0)
-        default_device = GENERIC_CPU;
-    else
-        default_device = CUDA_GPU;
+    DeviceType default_device = nnfusion::get_device_type(dev_name);
 
     // kernel selection
     // m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
     // m_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
     // m_passes->push_back(make_shared<DefaultKernelSelector>());
 
-    /*
-        This is disabled since we did use same stream for allreduce or applygradient;
-        m_passes->push_back(make_shared<TrainningAsyncExecution>());
-    */
-
     m_passes->push_back(make_shared<TensorLivenessAnalysis>());
-    // m_passes->push_back(make_shared<HostTensorAllocation>());
     m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
 
     switch (default_device)

@@ -9,14 +9,17 @@
 #include "cpu_codegenerator.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
 // For reference kernels
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
+#include "nnfusion/core/kernels/cpu/barrier.hpp"
 #include "nnfusion/core/kernels/cpu/reference/reference_common.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
+using namespace nnfusion::async;
 
 namespace
 {
@@ -78,6 +81,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     setpwd();
 
     auto& allocator_list = MemoryAllocatorFactory::get_allocator_list();
+    auto async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cpp"));
@@ -91,6 +95,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit lu_main_init("main_init");         //cuda_init()
     LanguageUnit lu_mem_plan_init("mem_plan_init"); // memory_pool planning in cuda_init()
     LanguageUnit lu_main_free("naive_free");        //cuda_free()
+    LanguageUnit lu_thread_func_call("THREAD_FUNCTION_CALL");
 
     bool rc = true;
 
@@ -101,6 +106,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *iterator)
         {
             string op_name = ins->getGNode()->get_op_type();
+            if (!(*ins)["Async_info"].is_valid())
+            {
+                CHECK_FAIL() << "Async info should be be assigned before this pass:"
+                             << ins->getGNode()->get_name();
+            }
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
             std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
@@ -148,6 +158,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(header::sstream);
         re.require(header::fstream);
         re.require(header::thread);
+        if (async_manager->num_event() > 0)
+            re.require(header::barrier);
         //re.require(declaration::typedef_int);
 
         for (auto kernel : kernels)
@@ -166,7 +178,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     }
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
-
+    // std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels;
     // Collect Function Definition
     {
         unordered_set<string> declared;
@@ -211,6 +223,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
+        // stream and event declaration
+        if (async_manager->num_stream() > 0)
+            lu << async_manager->emit_stream_decl()->get_code();
+        if (async_manager->num_event() > 0)
+            lu << async_manager->emit_event_decl()->get_code();
         /*
         {
             //hard coded order
@@ -241,15 +258,20 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             save_file(reference_common_header);
         }
+        if (async_manager->num_event() > 0)
+            save_file(barrier_header);
     }
 
     // Generate caller function body
     {
         unordered_set<string> allocated;
+        std::string kernel_entry_params;
+        std::string kernel_entry_args;
         lu_kernel_entry << "extern \"C\" int kernel_entry(";
         // Add param
         {
             vector<string> params;
+            vector<string> args;
             for (int i = 0; i < tu->arg.size(); i++)
             {
                 auto tv = tu->arg[i];
@@ -258,6 +280,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 ss << type << "* " << tv->get_name();
                 allocated.insert(tv->get_name());
                 params.push_back(ss.str());
+                args.push_back(tv->get_name());
             }
 
             for (int i = 0; i < tu->out.size(); i++)
@@ -268,15 +291,21 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 ss << type << "* " << tv->get_name();
                 allocated.insert(tv->get_name());
                 params.push_back(ss.str());
+                args.push_back(tv->get_name());
             }
+            kernel_entry_params = join(params, ", ");
+            kernel_entry_args = join(args, ", ");
 
-            lu_kernel_entry << join(params, ", ");
+            lu_kernel_entry << kernel_entry_params;
         }
 
         lu_kernel_entry << ")";
         lu_kernel_entry_header << lu_kernel_entry.get_code();
         lu_kernel_entry << "\n";
         lu_kernel_entry.block_begin();
+
+        // reset event/notification
+        lu_kernel_entry << async_manager->emit_event_reset()->get_code();
 
         //Planning
         for (const auto& allocator : allocator_list)
@@ -306,18 +335,118 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                 "thread_count ? thread_count : 1);\n";
             }
 
+            std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels_entry;
             for (auto kernel : kernels)
             {
+                auto gnode = kernel->m_context->gnode;
+                auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+                auto stream = async_info.execution_stream;
+
                 FunctionUnit_p fu = kernel->get_or_emit_source();
-                std::string read_const = fu->call_unit->get_code();
-                if (read_const.compare(0, 10, "read_const") == 0)
+                //std::string read_const = fu->call_unit->get_code();
+                std::string func_name = fu->name_unit->get_code();
+                // emit function calls in cpu_init()
+                //if (read_const.compare(0, 10, "read_const") == 0)
+                if (func_name.compare(0, 9, "Constant_") == 0)
                 {
+                    CHECK(stream->is_default_stream()) << "Kernel function calls in cpu_init() "
+                                                          "should use default/main stream/thread.";
+
+                    // if (!async_info.wait_events.empty())
+                    // {
+                    //     for (auto event : async_info.wait_events)
+                    //     {
+                    //         lu_main_init << async_manager->emit_event_wait(async_info.execution_stream, event)->get_code();
+                    //     }
+                    // }
+                    lu_main_init << fu->name_unit->get_code();
                     lu_main_init << fu->call_unit->get_code();
+
+                    // if (async_info.record_event != nullptr)
+                    // {
+                    //     lu_main_init << async_manager->emit_event_record(async_info.record_event)->get_code();
+                    // }
+                }
+                // organize kernels according to their streams/threads
+                else
+                {
+                    std::string stream_name =
+                        stream->is_default_stream() ? "default" : stream->get_name();
+                    stream_kernels_entry[stream_name].push_back(kernel);
+                }
+            }
+            // emit function calls in kernel_entry()
+            for (auto& sk : stream_kernels_entry)
+            {
+                auto& stream_name = sk.first;
+                if (stream_name != "default")
+                {
+                    // add thread_calls definition
+                    lu_thread_func_call << "extern \"C\" void " << stream_name << "_Call(";
+                    lu_thread_func_call << kernel_entry_params << ")\n";
+                    lu_thread_func_call.block_begin();
+                    for (auto kernel : sk.second)
+                    {
+                        auto gnode = kernel->m_context->gnode;
+                        auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+
+                        if (!async_info.wait_events.empty())
+                        {
+                            for (auto event : async_info.wait_events)
+                            {
+                                lu_thread_func_call
+                                    << async_manager
+                                           ->emit_event_wait(async_info.execution_stream, event)
+                                           ->get_code();
+                            }
+                        }
+
+                        FunctionUnit_p fu = kernel->get_or_emit_source();
+                        lu_thread_func_call << fu->name_unit->get_code();
+                        lu_thread_func_call << fu->call_unit->get_code();
+
+                        if (async_info.record_event != nullptr)
+                        {
+                            lu_thread_func_call
+                                << async_manager->emit_event_record(async_info.record_event)
+                                       ->get_code();
+                        }
+                    }
+                    lu_thread_func_call.block_end();
+                    // add function call to kernel entry
+                    lu_kernel_entry << "std::thread " << stream_name << "(";
+                    lu_kernel_entry << stream_name << "_Call, ";
+                    lu_kernel_entry << kernel_entry_args << ");\n";
                 }
                 else
                 {
-                    lu_kernel_entry << fu->name_unit->get_code();
-                    lu_kernel_entry << fu->call_unit->get_code();
+                    for (auto kernel : sk.second)
+                    {
+                        FunctionUnit_p fu = kernel->get_or_emit_source();
+
+                        {
+                            auto gnode = kernel->m_context->gnode;
+                            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+                            if (!async_info.wait_events.empty())
+                            {
+                                for (auto event : async_info.wait_events)
+                                {
+                                    lu_kernel_entry
+                                        << async_manager
+                                               ->emit_event_wait(async_info.execution_stream, event)
+                                               ->get_code();
+                                }
+                            }
+                            lu_kernel_entry << fu->name_unit->get_code();
+                            lu_kernel_entry << fu->call_unit->get_code();
+                            if (async_info.record_event != nullptr)
+                            {
+                                lu_kernel_entry
+                                    << async_manager->emit_event_record(async_info.record_event)
+                                           ->get_code();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -339,6 +468,9 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main_free << "free(mlas_global_thread_pool);\n";
         }
 
+        // emit cpu stream/threads joining
+        if (async_manager->num_stream() > 0)
+            lu_kernel_entry << async_manager->emit_stream_join()->get_code();
         lu_kernel_entry << "\nreturn 0;\n";
         lu_kernel_entry.block_end();
     }
@@ -363,6 +495,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu.block_end();
     }
     lu << "\n";
+    lu << lu_thread_func_call.get_code() << "\n";
     lu << lu_kernel_entry.get_code() << "\n\n";
 
     // generate main() function

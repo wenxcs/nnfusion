@@ -9,10 +9,12 @@
 #include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
+using namespace nnfusion::async;
 
 DEFINE_bool(fcodegen_debug, false, "Add debug functions in Codegen-ed project.");
 DEFINE_bool(fcodegen_timing, false, "Add timing functions in Codegen-ed project.");
@@ -211,6 +213,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     setpwd();
 
     auto& allocator_list = MemoryAllocatorFactory::get_allocator_list();
+    auto async_manager = AsyncManagerFactory::get_async_manager(CUDA_GPU);
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cu"));
@@ -235,12 +238,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         std::vector<shared_ptr<KernelEmitter>> block_kernels;
         for (auto ins : *iterator)
         {
+            if (!(*ins)["Async_info"].is_valid())
+            {
+                CHECK_FAIL() << "Async info should be be assigned before this pass:"
+                             << ins->getGNode()->get_name();
+            }
             string op_name = ins->getGNode()->get_op_type();
             if (op_name == "Parameter")
             {
                 continue;
             }
-
             if (ins->getGNode()->is_constant())
             {
                 auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
@@ -260,6 +267,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (matched_kernel)
                 {
                     block_kernels.push_back(matched_kernel);
+
                     LanguageUnit m;
                     if ((*ins)["memcpy_pair"].is_valid())
                     {
@@ -289,7 +297,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
         }
-
         kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
     }
 
@@ -325,11 +332,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
+    std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_stream;
+
     // Collect Function Definition
     {
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
+            //get kernel's stream name
+            auto gnode = kernel->m_context->gnode;
+            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            if (async_info.execution_stream->is_default_stream())
+                kernel_stream[kernel] = "0";
+            else
+                kernel_stream[kernel] = async_info.execution_stream->get_name();
+
             FunctionUnit_p fu = kernel->get_or_emit_source();
             for (auto& it : fu->body_unit->local_symbol)
             {
@@ -344,21 +361,20 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (kernel->is_static_function() ||
                 decleard_function_LU.find(func_key) == decleard_function_LU.end())
             {
-                def << "\n";
-                def << fu->comment_unit->get_code();
-                def << fu->get_specialized_signature() << "\n";
-                def.block_begin();
-                def << fu->body_unit->get_code() << "\n";
-                def.block_end();
-                if (!kernel->is_static_function())
-                {
-                    decleard_function_LU[func_key] = fu->name_unit;
-                }
-
                 std::string sig = fu->get_specialized_signature();
                 int pos = sig.find(" __global__ "), next;
                 if (pos >= 0)
                 {
+                    def << "\n";
+                    def << fu->comment_unit->get_code();
+                    def << sig << "\n";
+                    def.block_begin();
+                    def << fu->body_unit->get_code() << "\n";
+                    def.block_end();
+                    if (!kernel->is_static_function())
+                    {
+                        decleard_function_LU[func_key] = fu->name_unit;
+                    }
                     while (pos < sig.size() && sig[pos] == ' ')
                         ++pos;
                     sig = sig.substr(pos + 12);
@@ -390,6 +406,25 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         def << "}\n";
                     }
                 }
+                // add stream parameter
+                else
+                {
+                    int pos = sig.find("(");
+                    if (pos >= 0)
+                    {
+                        sig.insert(pos + 1, "cudaStream_t stream, ");
+                    }
+                    def << "\n";
+                    def << fu->comment_unit->get_code();
+                    def << sig << "\n";
+                    def.block_begin();
+                    def << fu->body_unit->get_code() << "\n";
+                    def.block_end();
+                    if (!kernel->is_static_function())
+                    {
+                        decleard_function_LU[func_key] = fu->name_unit;
+                    }
+                }
             }
             else
             {
@@ -410,6 +445,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
+        // stream and event declaration
+        if (async_manager->num_stream() > 0)
+            lu << async_manager->emit_stream_decl()->get_code();
+        if (async_manager->num_event() > 0)
+            lu << async_manager->emit_event_decl()->get_code();
         //Write Code
         lu << def.collect_code() << "\n";
     }
@@ -496,7 +536,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
             lu_main_init << allocator.second->emit_memory_alloc()->get_code();
         }
-
         //Function Call
         {
             if (global_required.count("declaration::global_cublas_handle") > 0)
@@ -512,15 +551,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
-            if (global_required.count("declaration::applygradient_stream"))
-            {
-                lu_main_init << "cudaStreamCreate(&applygradient_stream);\n";
-            }
-            if (global_required.count("declaration::allreduce_stream"))
-            {
-                lu_main_init << "cudaStreamCreate(&allreduce_stream);\n";
-            }
-
+            if (async_manager->num_stream() > 0)
+                lu_main_init << async_manager->emit_stream_init()->get_code();
+            if (async_manager->num_event() > 0)
+                lu_main_init << async_manager->emit_event_init()->get_code();
             if (enable_timing)
             {
                 lu_kernel_entry << "static cudaEvent_t hEvents[" << kernels.size() << "];\n";
@@ -534,6 +568,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             size_t kernel_order = 0;
             for (auto kernel : kernels)
             {
+                auto gnode = kernel->m_context->gnode;
+                auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
                 FunctionUnit_p fu = kernel->get_or_emit_source();
                 std::string func_name;
                 if (kernel->is_static_function())
@@ -549,7 +585,32 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
                 if (func_name.compare(0, 9, "Constant_") == 0)
                 {
-                    lu_main_init << func_name << fu->call_unit->get_code();
+                    CHECK(async_info.execution_stream->is_default_stream())
+                        << "Kernel function calls in cuda_init() should use default stream.";
+                    std::string function_call = fu->call_unit->get_code();
+                    // add stream info
+                    int pos = function_call.find("(");
+                    if (pos >= 0)
+                    {
+                        std::string stream_name = kernel_stream[kernel] + ", ";
+                        function_call.insert(pos + 1, stream_name);
+                    }
+                    // if (!async_info.wait_events.empty())
+                    // {
+                    //     for (auto event : async_info.wait_events)
+                    //     {
+                    //         lu_main_init
+                    //             << async_manager->emit_event_wait(async_info.execution_stream, event)
+                    //                     ->get_code();
+                    //     }
+                    // }
+                    lu_main_init << func_name << function_call;
+                    // if (async_info.record_event != nullptr)
+                    // {
+                    //     lu_main_init
+                    //         << async_manager->emit_event_record(async_info.record_event)->get_code();
+                    // }
+
                     if (enable_rt_const_folding)
                     {
                         for (auto& out : kernel->m_context->output_names)
@@ -577,6 +638,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     }
 
                     auto& call_place = const_inputs ? lu_main_init : lu_kernel_entry;
+                    if (const_inputs)
+                        CHECK(async_info.execution_stream->is_default_stream())
+                            << "Kernel function calls in cuda_init() should use default stream.";
 
                     const string node_name = (kernel->m_context->gnode)
                                                  ? kernel->m_context->gnode->get_name()
@@ -595,10 +659,34 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         std::string builder = function_call.substr(0, pos_left) + "_Call(";
                         builder +=
                             function_call.substr(pos_left + 3, pos_right - pos_left - 3) + ", ";
+                        // add stream info
+                        builder += kernel_stream[kernel] + ", ";
                         builder += function_call.substr(pos_right + 4);
                         function_call = std::move(builder);
                     }
+                    // add stream for cudalib emitter function call
+                    else
+                    {
+                        int pos = function_call.find("(");
+                        std::string stream_name = kernel_stream[kernel] + ", ";
+                        function_call.insert(pos + 1, stream_name);
+                    }
+
+                    if (!async_info.wait_events.empty())
+                    {
+                        for (auto event : async_info.wait_events)
+                        {
+                            call_place << async_manager
+                                              ->emit_event_wait(async_info.execution_stream, event)
+                                              ->get_code();
+                        }
+                    }
                     call_place << function_call;
+                    if (async_info.record_event != nullptr)
+                    {
+                        call_place << async_manager->emit_event_record(async_info.record_event)
+                                          ->get_code();
+                    }
 
                     if (enable_debug && !const_inputs)
                     {
@@ -623,17 +711,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
+            // destroy cuda stream and event
+            if (async_manager->num_stream() > 0)
+                lu_main_free << async_manager->emit_stream_destroy()->get_code();
+            if (async_manager->num_event() > 0)
+                lu_main_free << async_manager->emit_event_destroy()->get_code();
 
-            if (global_required.count("declaration::allreduce_stream"))
-            {
-                lu_kernel_entry << "cudaStreamSynchronize(allreduce_stream);\n";
-                lu_main_free << "cudaStreamDestroy(allreduce_stream);\n";
-            }
-            if (global_required.count("declaration::applygradient_stream"))
-            {
-                lu_kernel_entry << "cudaStreamSynchronize(applygradient_stream);\n";
-                lu_main_free << "cudaStreamDestroy(applygradient_stream);\n";
-            }
             if (global_required.count("declaration::global_cublas_handle") > 0)
             {
                 lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";

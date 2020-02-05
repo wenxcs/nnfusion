@@ -45,12 +45,6 @@ namespace nnfusion
                         lu << "// input0[tid] = input0[tid] - lr * input1[tid];\n";
                     }
                     lu.block_end();
-
-                    // We assign applygradient to use it's default stream.
-                    auto& async_info = m_context->async_info;
-                    async_info.execution_stream.number = 2;
-                    async_info.execution_stream.name = "applygradient_stream";
-
                     return _lu;
                 }
 
@@ -58,7 +52,6 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
-                    _lu->require(declaration::applygradient_stream);
                     return _lu;
                 }
 

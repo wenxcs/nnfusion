@@ -38,6 +38,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
 
     //lu.block_begin();
     {
+        lu << "CUBLAS_SAFE_CALL(cublasSetStream(global_cublas_handle, stream));\n";
         // case 1: Scalar * Tensor
         if (arg0_shape.empty() || arg1_shape.empty())
         {

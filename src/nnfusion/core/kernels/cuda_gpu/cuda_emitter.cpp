@@ -3,6 +3,7 @@
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
+using namespace nnfusion::async;
 
 LanguageUnit_p cuda::CudaEmitter::emit_function_call()
 {
@@ -10,16 +11,13 @@ LanguageUnit_p cuda::CudaEmitter::emit_function_call()
     auto& lu = *_lu;
     vector<string> names;
     set_launch_config();
-    // Default stream shouled be none
-    string exe_stream = m_context->async_info.execution_stream.is_default_stream()
-                            ? ", 0, 0"
-                            // todo: add config for shared_memory
-                            : ", 0, " + m_context->async_info.execution_stream.name;
+
+    //set stream during codegen
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
     names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
     lu << "<<<dim3(" << m_gridDim.x << ", " << m_gridDim.y << ", " << m_gridDim.z << "), dim3("
-       << m_blockDim.x << ", " << m_blockDim.y << ", " << m_blockDim.z << ")" << exe_stream
-       << ">>>(" << join(names, ", ") << ");\n";
+       << m_blockDim.x << ", " << m_blockDim.y << ", " << m_blockDim.z << "), 0>>>("
+       << join(names, ", ") << ");\n";
 
     return _lu;
 }

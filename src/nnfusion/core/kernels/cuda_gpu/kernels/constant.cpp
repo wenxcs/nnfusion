@@ -44,8 +44,8 @@ namespace nnfusion
                            // << "cudaMalloc((void**)out, " << op->get_data_size() << ");\n"
                            << "char* tmp_mem = new char[" << op->get_data_size() << "];\n"
                            << "bin_file.read(tmp_mem, " << op->get_data_size() << ");\n"
-                           << "cudaMemcpy(output0, tmp_mem, " << op->get_data_size()
-                           << ", cudaMemcpyHostToDevice);\n"
+                           << "cudaMemcpyAsync(output0, tmp_mem, " << op->get_data_size()
+                           << ", cudaMemcpyHostToDevice, stream);\n"
                            << "bin_file.close();\n";
                     return _lu;
                 }

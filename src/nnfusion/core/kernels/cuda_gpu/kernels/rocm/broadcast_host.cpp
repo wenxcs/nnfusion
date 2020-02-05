@@ -72,6 +72,7 @@ namespace nnfusion
 
                     std::string code = nnfusion::op::create_code_from_template(
                         R"(
+    CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));
     float alpha = 1.0f, beta = 0.0f;
     miopenTensorDescriptor_t in_desc, out_desc;
     CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&in_desc));

@@ -137,10 +137,10 @@ namespace nnfusion
                     auto& lu = *_lu;
 
                     lu << "if (input0 != output0) {\n"
-                       << "   cudaMemcpy(output0, input0, "
+                       << "   cudaMemcpyAsync(output0, input0, "
                        << static_cast<uint32_t>(shape_size(input_shape)) << " * sizeof("
                        << input_type << ")"
-                       << ", cudaMemcpyDeviceToDevice);\n"
+                       << ", cudaMemcpyDeviceToDevice, stream);\n"
                        << "}\n";
 
                     return _lu;
@@ -537,9 +537,9 @@ if (thread_idx == 0) output0[block_idx] = val;
 
                     //emit_memcpyDtD(lu, dst, src);
                     lu << "if (input0 != output0) {\n"
-                       << "    CUDA_SAFE_CALL(cudaMemcpy(" << dst->get_name() << ", "
+                       << "    CUDA_SAFE_CALL(cudaMemcpyAsync(" << dst->get_name() << ", "
                        << src->get_name() << ", " << dst->size()
-                       << ", cudaMemcpyDeviceToDevice));\n"
+                       << ", cudaMemcpyDeviceToDevice, stream));\n"
                        << "}\n";
 
                     return _lu;

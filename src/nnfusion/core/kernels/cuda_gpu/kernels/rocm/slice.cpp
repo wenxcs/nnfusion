@@ -72,7 +72,7 @@ namespace nnfusion
 
                     std::string code = nnfusion::op::create_code_from_template(
                         R"(
-	CUDA_SAFE_CALL(hipMemcpy(output0, input0 + @offset@LU, @size@, hipMemcpyDeviceToDevice));
+	CUDA_SAFE_CALL(hipMemcpyAsync(output0, input0 + @offset@LU, @size@, hipMemcpyDeviceToDevice, stream));
 )",
                         {{"offset", offset}, {"size", num_out * sizeof(float)}});
 

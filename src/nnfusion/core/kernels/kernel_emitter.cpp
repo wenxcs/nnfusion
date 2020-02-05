@@ -62,7 +62,6 @@ LanguageUnit_p KernelEmitter::emit_function_name()
     lu << m_context->gnode->get_op_type() << "_" << join(m_context->dtypes, "_") << "_"
        << m_kernel_type << "_"
        << m_context->gnode->get_op_ptr()->get_unique_name(); //<< custom_tag;
-
     return _lu;
 }
 
@@ -111,7 +110,6 @@ LanguageUnit_p KernelEmitter::emit_function_call()
     names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
     names.insert(names.end(), m_context->tensor_names.begin(), m_context->tensor_names.end());
     lu << "(" << join(names, ", ") << ");\n";
-
     return _lu;
 }
 
@@ -157,8 +155,7 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
 {
     if (m_is_emitted)
     {
-        if (!m_context->async_info.execution_stream.is_default_stream())
-            m_function_unit->call_unit = emit_function_call();
+        m_function_unit->call_unit = emit_function_call();
         return m_function_unit;
     }
 
@@ -183,6 +180,7 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     {
         return nullptr;
     }
+
     CHECK_NOT_NULLPTR(fu->call_unit = emit_function_call());
     CHECK_NOT_NULLPTR(fu->dep_unit = emit_dependency());
     CHECK_NOT_NULLPTR(fu->comment_unit = emit_comments());
@@ -198,10 +196,8 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     // orgnize dep
     CHECK(fu->body_unit->require(fu->dep_unit));
     CHECK(fu->call_unit->require(fu->body_unit));
-
     m_function_unit = fu;
     m_is_emitted = true;
-
     return fu;
 }
 

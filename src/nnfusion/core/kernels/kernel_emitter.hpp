@@ -7,8 +7,6 @@
 #include "nnfusion/common/languageunit.hpp"
 #include "nnfusion/core/operators/util/annotations.hpp"
 
-#include "async.hpp"
-
 namespace nnfusion
 {
     namespace kernels
@@ -51,7 +49,6 @@ namespace nnfusion
             // The number of gpu streaming multiprocessor
             uint32_t gpu_num_sm;
 
-            AsyncExecutionInfo async_info;
             // used for kernel fusion
             std::vector<shared_ptr<KernelEmitter>> kernels;
 

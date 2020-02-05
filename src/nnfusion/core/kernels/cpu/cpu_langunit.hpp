@@ -13,6 +13,7 @@ namespace nnfusion
             LU_DECLARE(eigen_utils);
             LU_DECLARE(cblas);
             LU_DECLARE(mlas);
+            LU_DECLARE(barrier);
         }
 
         namespace macro

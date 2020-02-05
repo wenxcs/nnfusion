@@ -56,6 +56,7 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_body()
     // emit code
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
+    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
 
     Shape padding_below(padding_below_diff.size(), 0);
 

@@ -289,7 +289,7 @@ LanguageUnit_p cuda::AvgPoolmD::emit_function_body()
 
     auto input_desc = cudnn_tensor_descriptor_from_shape(input_shape, "input_desc");
     auto output_desc = cudnn_tensor_descriptor_from_shape(output_shape, "output_desc");
-
+    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
     lu << input_desc->get_code();
     lu << output_desc->get_code();
 

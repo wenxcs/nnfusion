@@ -80,6 +80,7 @@ namespace nnfusion
                     }
 
                     {
+                        lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
                         // lu << "cudnnDataType_t data_type = " << get_cudnn_datatype(dtype) << ";\n";
                         lu << cudnn_tensor_descriptor_from_shape(input_shape, "tensor_desc_0")
                                   ->get_code();

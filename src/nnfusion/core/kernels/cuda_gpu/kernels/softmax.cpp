@@ -65,7 +65,7 @@ LanguageUnit_p cuda::Softmax::emit_function_body()
     {
         return nullptr;
     }
-
+    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
     lu << input_tensor_desc->get_code();
     lu << output_tensor_desc->get_code();
     lu << "const float alpha = 1.0;\n";

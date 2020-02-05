@@ -28,6 +28,7 @@ LanguageUnit_p cuda::BatchNorm::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
     auto tensor_desc = cudnn_tensor_descriptor_from_shape(tensor_shape, "tensor_desc");
+    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
     lu << tensor_desc->get_code();
     // derived_param_desc
     lu << "cudnnTensorDescriptor_t derived_param_desc;\n";

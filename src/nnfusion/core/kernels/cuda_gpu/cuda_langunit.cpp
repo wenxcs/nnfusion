@@ -135,8 +135,6 @@ LU_DEFINE(
 LU_DEFINE(declaration::num_SMs, "int num_SMs = 0;\n");
 LU_DEFINE(declaration::global_cublas_handle, "cublasHandle_t global_cublas_handle;\n");
 LU_DEFINE(declaration::global_cudnn_handle, "cudnnHandle_t global_cudnn_handle;\n");
-LU_DEFINE(declaration::allreduce_stream, "cudaStream_t allreduce_stream;\n");
-LU_DEFINE(declaration::applygradient_stream, "cudaStream_t applygradient_stream;\n");
 LU_DEFINE(
     declaration::division_by_invariant_multiplication,
     R"(__device__ __forceinline__ int division_by_invariant_multiplication(int value, int magic, int shift)

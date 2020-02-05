@@ -3,6 +3,7 @@
 #include "cuda_helper.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 
 namespace nnfusion
 {

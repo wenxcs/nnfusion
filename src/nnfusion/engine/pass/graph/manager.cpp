@@ -24,8 +24,8 @@ bool GraphPassManager::run_passes(std::shared_ptr<Graph> graph)
     for (auto& pass : m_pass_list)
     {
         status = pass->run_on_graph(graph);
-        if (!status)
-            break;
+        // if (!status)
+        //     break;
     }
     return status;
 }
