@@ -58,7 +58,7 @@ for pbfile in os.listdir(models):
     if not os.path.exists("nnfusion_rt/rocm_codegen/main_test"):
         logging.error("Failed at nvcc compiling phase.")
         exit(3)
-    os.system("cd nnfusion_rt/rocm_codegen/ && HIP_VISIBLE_DEVICES=0 ./main_test > result.txt")
+    os.system("cd nnfusion_rt/rocm_codegen/ && ./main_test > result.txt")
     if not os.path.exists("nnfusion_rt/rocm_codegen/result.txt"):
         logging.error("Failed at nvcc compiling phase.")
         exit(4)
