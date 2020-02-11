@@ -9,7 +9,8 @@ LU_DEFINE(header::eigen_tensor,
           "#define EIGEN_USE_THREADS\n#include <unsupported/Eigen/CXX11/Tensor>\n");
 LU_DEFINE(header::eigen_utils, "#include \"eigen_utils.hpp\"\n");
 LU_DEFINE(header::cblas, "#include \"cblas.h\"\n");
-LU_DEFINE(header::mlas, "#include \"mlas/inc/mlas.h\"\n#include \"mlas/inc/threadpool.h\"\n");
+LU_DEFINE(header::mlas, "#include \"mlas.h\"\n");
+LU_DEFINE(header::threadpool, "#include \"numa_aware_threadpool.h\"\n");
 LU_DEFINE(header::barrier, "#include \"barrier.h\"\n");
 
 // Macro
@@ -37,4 +38,5 @@ void cblas_sgemm_batch(const CBLAS_LAYOUT Layout,
         const int64_t group_count,
         const int64_t* group_size);
 })")
-LU_DEFINE(declaration::mlas_global_thread_pool, "MLAS_THREADPOOL *mlas_global_thread_pool;\n")
+LU_DEFINE(declaration::worker_thread_pool,
+          "concurrency::NumaAwareThreadPool *worker_thread_pool;\n")

@@ -117,7 +117,7 @@ MlasConvPrepare(&parameters,
                 filter_count,
                 &activation,
                 &working_buffer_size,
-                mlas_global_thread_pool);
+                mlas_thread_pool);
 
 float* working_buffer = new float[working_buffer_size];
 
@@ -127,7 +127,7 @@ MlasConv(&parameters,
          nullptr,
          working_buffer,
          output0,
-         mlas_global_thread_pool);
+         mlas_thread_pool);
 
 delete[] working_buffer;
 
@@ -159,7 +159,6 @@ LanguageUnit_p cpu::ConvolutionMlas::emit_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
     _lu->require(header::mlas);
-    _lu->require(declaration::mlas_global_thread_pool);
 
     return _lu;
 }

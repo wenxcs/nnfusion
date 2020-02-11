@@ -94,7 +94,7 @@ LanguageUnit_p cpu::DotMlas::emit_function_body()
        << "input1, " << ldb << ", "
        << "0.0, "
        << "output0, " << ldc << ", "
-       << "mlas_global_thread_pool);";
+       << "mlas_thread_pool);";
 
     return _lu;
 }
@@ -103,7 +103,6 @@ LanguageUnit_p cpu::DotMlas::emit_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
     _lu->require(header::mlas);
-    _lu->require(declaration::mlas_global_thread_pool);
 
     return _lu;
 }

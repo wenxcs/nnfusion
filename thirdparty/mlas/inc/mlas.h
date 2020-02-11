@@ -49,13 +49,11 @@ typedef enum { CblasLeft=141, CblasRight=142} CBLAS_SIDE;
 // standalone MLAS test executables smaller.
 //
 
-namespace onnxruntime {
-    namespace concurrency {
-        class ThreadPool;
-    };
+namespace concurrency {
+    class ThreadPool;
 };
 
-using MLAS_THREADPOOL = onnxruntime::concurrency::ThreadPool;
+using MLAS_THREADPOOL = concurrency::ThreadPool;
 
 //
 // Platform routines.

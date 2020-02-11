@@ -6,6 +6,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include "util.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -21,9 +22,53 @@
 #pragma warning(pop)
 #endif
 
-namespace onnxruntime {
-
 namespace concurrency {
+
+struct NumaEnvironment {
+  int numa_node_;
+
+  NumaEnvironment(int numa_node = kNUMANoAffinity)
+      : numa_node_(numa_node) {}
+
+  struct Task
+  {
+    std::function<void()> f;
+  };
+
+  // EnvThread constructor must start the thread,
+  // destructor must join the thread.
+  class EnvThread {
+   public:
+    EnvThread(std::function<void()> f) : thr_(std::move(f)) {}
+    ~EnvThread() { thr_.join(); }
+    // This function is called when the threadpool is cancelled.
+    void OnCancel() { }
+
+   private:
+    std::thread thr_;
+  };
+
+  EnvThread* StartThread(std::function<void()> fn)
+  {
+    return new EnvThread(std::move(fn));
+  }
+
+  EnvThread* CreateThread(std::function<void()> f)
+  {
+
+    return StartThread([=]()
+    {
+      if (numa_node_ != kNUMANoAffinity)
+      {
+        NUMASetThreadNodeAffinity(numa_node_);
+      }
+      f();
+    });
+  }
+
+  Task CreateTask(std::function<void()> f) { return Task{std::move(f)}; }
+  void ExecuteTask(const Task& t) { t.f(); }
+};
 
 /**
  * Generic class for instantiating thread pools.
@@ -34,12 +79,17 @@ class ThreadPool {
   /*
   Initializes a thread pool given the current environment.
   */
-  ThreadPool(const std::string& name, int num_threads);
+  ThreadPool(int num_threads, int numa_node=kNUMANoAffinity);
 
   /*
   Enqueue a unit of work.
   */
   void Schedule(std::function<void()> fn);
+
+  /*
+  Enqueue a unit of work and wait for execution.
+  */
+  void ScheduleSync(std::function<void()> fn);
 
   /*
   Schedule work in the interval [0, total).
@@ -58,11 +108,11 @@ class ThreadPool {
 
   int CurrentThreadId() const;
 
-  Eigen::ThreadPool& GetHandler() { return impl_; }
+  //Eigen::ThreadPool& GetHandler() { return impl_; }
 
  private:
-  Eigen::ThreadPool impl_;
+  std::unique_ptr<Eigen::ThreadPoolTempl<NumaEnvironment>> impl_;
+  int numa_node_;
 };
 
 }  // namespace concurrency
-}  // namespace onnxruntime

@@ -21,6 +21,9 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 using namespace nnfusion::async;
 
+DEFINE_int32(fnuma_node_num, 1, "");
+DEFINE_int32(fthread_num_per_node, 0, "");
+
 namespace
 {
     bool create_dir(std::string tar_path)
@@ -158,6 +161,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(header::sstream);
         re.require(header::fstream);
         re.require(header::thread);
+        re.require(header::threadpool);
+        re.require(declaration::worker_thread_pool);
         if (async_manager->num_event() > 0)
             re.require(header::barrier);
         //re.require(declaration::typedef_int);
@@ -197,7 +202,27 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             def << fu->comment_unit->get_code();
             if (declared.count(fu->body_unit->symbol) == 0)
             {
-                def << fu->get_specialized_signature() << "\n";
+                string sig = fu->get_specialized_signature();
+
+                std::string op_name = kernel->m_context->gnode->get_op_type();
+
+                shared_ptr<const KernelRegistration> kernel_reg =
+                    KernelRegistry::Global()->FindKernelRegistration(
+                        op_name, GENERIC_CPU, DT_FLOAT);
+
+                if (kernel_reg != nullptr)
+                {
+                    string op_tag = kernel_reg->m_tag;
+                    if (op_tag.compare("mlas") == 0)
+                    {
+                        int pos = sig.find("(");
+                        if (pos >= 0)
+                        {
+                            sig.insert(pos + 1, "MLAS_THREADPOOL* mlas_thread_pool, ");
+                        }
+                    }
+                }
+                def << sig << "\n";
                 def.block_begin();
                 def << fu->body_unit->get_code() << "\n";
                 def.block_end();
@@ -328,12 +353,9 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                 "Eigen::ThreadPoolDevice(global_thread_pool, "
                                 "global_thread_pool->NumThreads());";
             }
-            if (global_required.count("declaration::mlas_global_thread_pool") > 0)
-            {
-                lu_main_init << "int thread_count = std::thread::hardware_concurrency() >> 1;\n"
-                             << "mlas_global_thread_pool = new MLAS_THREADPOOL(\"mlas\", "
-                                "thread_count ? thread_count : 1);\n";
-            }
+
+            lu_main_init << "worker_thread_pool = new concurrency::NumaAwareThreadPool("
+                         << FLAGS_fnuma_node_num << ", " << FLAGS_fthread_num_per_node << ");\n";
 
             std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels_entry;
             for (auto kernel : kernels)
@@ -376,6 +398,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
             // emit function calls in kernel_entry()
+            int stream_index = 0;
             for (auto& sk : stream_kernels_entry)
             {
                 auto& stream_name = sk.first;
@@ -385,6 +408,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     lu_thread_func_call << "extern \"C\" void " << stream_name << "_Call(";
                     lu_thread_func_call << kernel_entry_params << ")\n";
                     lu_thread_func_call.block_begin();
+                    int func_call_count = 1;
                     for (auto kernel : sk.second)
                     {
                         auto gnode = kernel->m_context->gnode;
@@ -401,9 +425,55 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             }
                         }
 
-                        FunctionUnit_p fu = kernel->get_or_emit_source();
-                        lu_thread_func_call << fu->name_unit->get_code();
-                        lu_thread_func_call << fu->call_unit->get_code();
+                        std::string op_name = gnode->get_op_type();
+                        shared_ptr<const KernelRegistration> kernel_reg =
+                            KernelRegistry::Global()->FindKernelRegistration(
+                                op_name, GENERIC_CPU, DT_FLOAT);
+
+                        // For mlas kernels, the function call is:
+                        //   kernel_func_name(worker_thread_pool->GetRawThreadPool(numa_node_id), param1, param2, ...);
+                        // For other kernels, the function call is:
+                        //   auto func1 = std::bind(kernel_func_name, param1, param2, ...);
+                        //   worker_thread_pool->ScheduleSync(func1, numa_node_id);
+                        if (kernel_reg != nullptr)
+                        {
+                            int numa_node = stream_index % FLAGS_fnuma_node_num;
+                            ++stream_index;
+                            FunctionUnit_p fu = kernel->get_or_emit_source();
+                            string call_str = fu->call_unit->get_code();
+                            string op_tag = kernel_reg->m_tag;
+                            if (op_tag.compare("mlas") == 0)
+                            {
+                                std::string threadpool_param =
+                                    "worker_thread_pool->GetRawThreadPool(";
+                                threadpool_param +=
+                                    (std::to_string(numa_node) + std::string("), "));
+                                call_str.insert(1, threadpool_param);
+                                lu_thread_func_call << fu->name_unit->get_code();
+                                lu_thread_func_call << call_str;
+                            }
+                            else
+                            {
+                                call_str.insert(1, fu->name_unit->get_code() + std::string(", "));
+                                std::string std_func_name =
+                                    std::string("func") + std::to_string(func_call_count);
+                                std::string std_func_call = std::string("auto ") + std_func_name +
+                                                            std::string(" = std::bind") + call_str;
+                                lu_thread_func_call << std_func_call;
+                                std::string threadpool_call =
+                                    std::string("worker_thread_pool->ScheduleSync(");
+                                threadpool_call += (std_func_name + std::string(", ") +
+                                                    std::to_string(numa_node) + ");\n");
+                                lu_thread_func_call << threadpool_call;
+                                ++func_call_count;
+                            }
+                        }
+                        else
+                        {
+                            FunctionUnit_p fu = kernel->get_or_emit_source();
+                            lu_thread_func_call << fu->name_unit->get_code();
+                            lu_thread_func_call << fu->call_unit->get_code();
+                        }
 
                         if (async_info.record_event != nullptr)
                         {
@@ -437,8 +507,33 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                                ->get_code();
                                 }
                             }
+
+                            std::string op_name = gnode->get_op_type();
+                            shared_ptr<const KernelRegistration> kernel_reg =
+                                KernelRegistry::Global()->FindKernelRegistration(
+                                    op_name, GENERIC_CPU, DT_FLOAT);
+
                             lu_kernel_entry << fu->name_unit->get_code();
-                            lu_kernel_entry << fu->call_unit->get_code();
+                            if (kernel_reg != nullptr)
+                            {
+                                string call_str = fu->call_unit->get_code();
+                                string op_tag = kernel_reg->m_tag;
+                                if (op_tag.compare("mlas") == 0)
+                                {
+                                    std::string threadpool_param =
+                                        "worker_thread_pool->GetRawThreadPool(), ";
+                                    call_str.insert(1, threadpool_param);
+                                    lu_kernel_entry << call_str;
+                                }
+                                else
+                                {
+                                    lu_kernel_entry << fu->call_unit->get_code();
+                                }
+                            }
+                            else
+                            {
+                                lu_kernel_entry << fu->call_unit->get_code();
+                            }
                             if (async_info.record_event != nullptr)
                             {
                                 lu_kernel_entry
@@ -463,10 +558,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             lu_main_free << "free(global_thread_pool_device);\n";
         }
-        if (global_required.count("declaration::mlas_global_thread_pool") > 0)
-        {
-            lu_main_free << "free(mlas_global_thread_pool);\n";
-        }
+        lu_main_free << "delete worker_thread_pool;\n";
 
         // emit cpu stream/threads joining
         if (async_manager->num_stream() > 0)
@@ -638,34 +730,45 @@ endforeach()
         lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread)\n\n";
     }
 
+    char exe_path[PATH_MAX];
+    size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
+    const char* path;
+    if (count != -1)
+    {
+        path = dirname(exe_path);
+    }
+    else
+    {
+        throw std::runtime_error("Failed to get the directory of executable file.\n");
+    }
+
+    std::string threadpool_path = std::string(path) + std::string("/threadpool");
+    std::string cmd = std::string("cp -R ") + threadpool_path + std::string(" .");
+    if (0 != system(cmd.c_str()))
+    {
+        throw std::runtime_error("Failed to copy threadpool source files.\n");
+    }
+
+    lu_cmake << "find_package(Threads REQUIRED)\n";
+    lu_cmake << "include(threadpool/threadpool.cmake)\n";
+
     if (global_required.count("header::mlas") > 0)
     {
-        lu_cmake << "find_package(Threads REQUIRED)\n";
         lu_cmake << "include(mlas/mlas.cmake)\n";
-        lu_cmake << "target_link_libraries(nnfusion_cpu_rt Threads::Threads mlas)\n\n";
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt mlas)\n\n";
 
-        char exe_path[PATH_MAX];
-        size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
-        const char* path;
-        if (count != -1)
-        {
-            path = dirname(exe_path);
-        }
-        else
-        {
-            throw std::runtime_error("Failed to get the directory of executable file.\n");
-        }
         std::string mlas_path = std::string(path) + std::string("/mlas");
-        std::string cmd = std::string("cp -R ") + mlas_path + std::string(" .");
+        cmd = std::string("cp -R ") + mlas_path + std::string(" .");
         if (0 != system(cmd.c_str()))
         {
             throw std::runtime_error("Failed to copy mlas source files.\n");
         }
     }
+    lu_cmake << "target_link_libraries(nnfusion_cpu_rt Threads::Threads threadpool)\n\n";
 
     lu_cmake << "target_compile_options(nnfusion_cpu_rt PRIVATE \"-fPIC\")\n"
              << "add_executable(main_test main_test.cpp)\n"
-             << "target_link_libraries(main_test nnfusion_cpu_rt)\n";
+             << "target_link_libraries(main_test nnfusion_cpu_rt threadpool)\n";
 
     if (global_required.count("header::mlas") > 0)
     {
