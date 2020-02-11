@@ -40,3 +40,5 @@ void cblas_sgemm_batch(const CBLAS_LAYOUT Layout,
 })")
 LU_DEFINE(declaration::worker_thread_pool,
           "concurrency::NumaAwareThreadPool *worker_thread_pool;\n")
+LU_DEFINE(declaration::schedule_thread_pool,
+          "concurrency::NumaAwareThreadPool *schedule_thread_pool;\n")

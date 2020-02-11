@@ -78,6 +78,7 @@ public:
                                 const shared_ptr<nnfusion::op::Op>& op,
                                 const string& symbol = "");
     int num_stream() const { return m_stream_list.size(); }
+    int num_non_default_stream() const { return m_num_non_default_stream; }
     int num_event() const { return m_event_list.size(); }
     DeviceType get_device_type() const { return m_device_type; }
     virtual LanguageUnit_p emit_stream_decl();
@@ -87,7 +88,6 @@ public:
     virtual LanguageUnit_p emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event) = 0;
     virtual LanguageUnit_p emit_event_record(shared_ptr<Event> event) = 0;
     virtual LanguageUnit_p emit_event_reset();
-    virtual LanguageUnit_p emit_stream_join();
     virtual LanguageUnit_p emit_stream_destroy();
     virtual LanguageUnit_p emit_event_destroy();
 
@@ -96,6 +96,7 @@ protected:
     std::unordered_map<std::string, shared_ptr<Stream>> m_stream_list;
     std::unordered_map<std::string, shared_ptr<Event>> m_event_list;
     DeviceType m_device_type;
+    int m_num_non_default_stream;
 };
 
 class nnfusion::async::CUDAAsyncManager : nnfusion::async::AsyncManager
@@ -126,7 +127,6 @@ public:
     LanguageUnit_p emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event) override;
     LanguageUnit_p emit_event_record(shared_ptr<Event> event) override;
     LanguageUnit_p emit_event_reset() override;
-    LanguageUnit_p emit_stream_join() override;
 
 private:
     CPUAsyncManager()

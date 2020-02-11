@@ -30,6 +30,7 @@ Event::Event(size_t event_id,
 
 AsyncManager::AsyncManager(DeviceType device_type)
     : m_device_type(device_type)
+    , m_num_non_default_stream{0}
 {
 }
 
@@ -47,6 +48,10 @@ shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symb
         size_t stream_id = m_stream_list.size();
         shared_ptr<Stream> stream(new Stream(stream_id, m_device_type, device_id, symbol));
         m_stream_list[search_name] = stream;
+
+        if (symbol != "default")
+            m_num_non_default_stream += 1;
+
         return stream;
     }
 }
@@ -96,12 +101,6 @@ LanguageUnit_p AsyncManager::emit_event_init()
 LanguageUnit_p AsyncManager::emit_event_reset()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_reset"));
-    return _lu;
-}
-
-LanguageUnit_p AsyncManager::emit_stream_join()
-{
-    LanguageUnit_p _lu(new LanguageUnit("stream_join"));
     return _lu;
 }
 
@@ -278,22 +277,6 @@ LanguageUnit_p CPUAsyncManager::emit_event_reset()
     for (auto event_pair : m_event_list)
     {
         lu << event_pair.second->get_name() << ".Reset();\n";
-    }
-    return _lu;
-}
-
-// emit code for synchronizing all cpu streams/threads.
-// It blocks the main/default thread until other threads execution has completed.
-LanguageUnit_p CPUAsyncManager::emit_stream_join()
-{
-    LanguageUnit_p _lu(new LanguageUnit("stream_join"));
-    auto& lu = *_lu;
-    for (auto stream_pair : m_stream_list)
-    {
-        if (!stream_pair.second->is_default_stream())
-        {
-            lu << stream_pair.second->get_name() << ".join();\n";
-        }
     }
     return _lu;
 }
