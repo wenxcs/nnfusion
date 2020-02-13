@@ -40,6 +40,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         if (it.second->symbol.find("declaration::") != string::npos)
             writer << it.second->get_code();
     writer << "\n";
+    writer << "cudaStream_t stream = 0;\n";
 
     // Write function definition
     writer << fu->comment_unit->get_code();
