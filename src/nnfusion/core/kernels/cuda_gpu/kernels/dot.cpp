@@ -45,15 +45,17 @@ LanguageUnit_p cuda::Dot::emit_function_body()
             auto& second = (arg0_shape.empty() ? arg1_shape : arg0_shape);
             size_t count = nnfusion::shape_size(second);
 
-            string firstarg = (arg0_shape.empty() ? "input0" : "input1");
-            string secondarg = (arg0_shape.empty() ? "input1" : "input0");
+            string firstarg = (arg0_shape.empty() ? "input1" : "input0");
+            string secondarg = (arg0_shape.empty() ? "input0" : "input1");
+
+            lu << "cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_DEVICE);\n";
 
             lu << "CUBLAS_SAFE_CALL(cublasScopy(global_cublas_handle, " << count
                << ", static_cast<const float*>(" << firstarg
                << "), 1, static_cast<float*>(output0),1));\n";
             lu << "CUBLAS_SAFE_CALL(cublasSscal(global_cublas_handle, " << count
                << ", static_cast<const float*>(" << secondarg
-               << ", static_cast<float*>(output0),1));\n";
+               << "), static_cast<float*>(output0),1));\n";
         }
         // case 2: 1d Dot
         else if ((arg0_shape.size() == arg1_shape.size()) && (arg0_shape.size() == reduction_axes))
@@ -72,19 +74,16 @@ LanguageUnit_p cuda::Dot::emit_function_body()
             }
 
             size_t count = nnfusion::shape_size(arg0_shape);
+            lu << "cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_DEVICE);\n";
+
             lu << "CUBLAS_SAFE_CALL(cublasSdot(global_cublas_handle, " << count
-               << ", static_cast<const float*>(input0), 1, static_cast<const float*>(input0), 1, "
+               << ", static_cast<const float*>(input0), 1, static_cast<const float*>(input1), 1, "
                   "static_cast<float*>(output0)));\n";
         }
         // matrix * vector
         else if ((arg0_shape.size() == 2) && (arg1_shape.size() == 1) && (reduction_axes == 1))
         {
-            /*
             lu << "const float alpha = 1.0;\n const float beta = 0;\n";
-              <<"CUBLAS_SAFE_CALL(
-                    cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_HOST));
-              \n ";
-              */
             lu << "CUBLAS_SAFE_CALL(cublasSgemv(global_cublas_handle, ";
             if (trans_A)
                 lu << "CUBLAS_OP_N, " << arg0_shape[0] << ", " << arg0_shape[1] << ", ";

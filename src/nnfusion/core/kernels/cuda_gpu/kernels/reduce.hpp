@@ -23,11 +23,31 @@ namespace nnfusion
                             dynamic_pointer_cast<nnfusion::op::Reduce>(ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
+                        init_value = " = 0.0";
+                    }
+                    else if (auto reduce =
+                                 dynamic_pointer_cast<nnfusion::op::Max>(ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                        init_value = " = input0[in_idx]";
+                    }
+                    else if (auto reduce =
+                                 dynamic_pointer_cast<nnfusion::op::Min>(ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                        init_value = " = input0[in_idx]";
+                    }
+                    else if (auto reduce = dynamic_pointer_cast<nnfusion::op::Product>(
+                                 ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                        init_value = " = 1.0";
                     }
                     else if (auto reduce =
                                  dynamic_pointer_cast<nnfusion::op::Sum>(ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
+                        init_value = " = 0.0";
                     }
                     else
                     {
@@ -40,6 +60,7 @@ namespace nnfusion
                     data_bytes = ctx->inputs[0]->get_element_type().size();
                     rank = input_shape.size();
                     out_rank = rank - reduce_rank;
+                    reduce_op = CudaOpMap<T>::op;
 
                     // add inplace tag
                     if (reduce_rank == 0 || shape_size(input_shape) == shape_size(output_shape))
@@ -76,7 +97,14 @@ namespace nnfusion
                     }
                     // `is_row_reduction` is not working on ROCm, using old implementation
                     if (FLAGS_fdefault_device == "ROCm")
+                    {
                         is_row_reduction = false;
+                    }
+                    // current row_reduction implementation is now working for max/min/prod reduction if width is not warp alignment
+                    if (reduce_op != "Add") // && width % 32 != 0)
+                    {
+                        is_row_reduction = false;
+                    }
                     if (is_row_reduction)
                         expected_block_size =
                             width > 512
@@ -86,10 +114,8 @@ namespace nnfusion
                     uint32_t block_size_x_acc = 256;
                     nthreads_acc = ctx->gpu_num_sm * block_size_x_acc;
 
-                    reduce_op = CudaOpMap<T>::op;
                     input_type = ctx->inputs[0]->get_element_type().c_type_string();
                     output_type = ctx->outputs[0]->get_element_type().c_type_string();
-
                     std::stringstream tag;
                     tag << "cuda"
                         << "_reduce"
@@ -226,7 +252,6 @@ if (thread_idx == 0) output0[block_idx] = val;
                             lu << "uint32_t dim_idx_generator = tid;\n";
                         }
                         lu << "uint32_t in_idx = 0;\n";
-                        lu << output_type << " r = 0;\n";
 
                         // Loop through all reduction axis.
                         for (int64_t i = 0; i < static_cast<int64_t>(out_rank); i++)
@@ -235,6 +260,9 @@ if (thread_idx == 0) output0[block_idx] = val;
                                << ") * non_reduce_strides" << i << ";\n";
                             lu << "dim_idx_generator %= out_strides" << i << ";\n";
                         }
+
+                        lu << output_type << " r" << init_value << ";\n";
+
                         int64_t last_r_idx = static_cast<int64_t>(reduce_rank) - 1;
                         for (int64_t j = 0; j < last_r_idx; j++)
                         {
@@ -308,7 +336,7 @@ if (thread_idx == 0) output0[block_idx] = val;
                     lu << "uint32_t step = blockDim.x; \n";
                     lu << "sdata[tid] = 0;\n";
                     lu << "uint32_t in_idx = tid;\n";
-                    lu << output_type << " r = 0;\n";
+                    lu << output_type << " r" << init_value << ";\n";
                     lu << "if(in_idx < " << nthreads << ")\n";
                     lu.block_begin();
                     lu << "r = input0[in_idx];\n";
@@ -464,7 +492,7 @@ if (thread_idx == 0) output0[block_idx] = val;
                 nnfusion::NVShape input_strides, non_reduce_strides, reduce_strides, reduce_shape;
                 size_t data_bytes, rank, reduce_rank, out_rank;
                 uint32_t nthreads_acc;
-                string reduce_op, input_type, output_type;
+                string reduce_op, input_type, output_type, init_value;
                 size_t height, width, expected_block_size;
                 bool is_row_reduction;
             };
@@ -478,6 +506,21 @@ if (thread_idx == 0) output0[block_idx] = val;
                 {
                     if (auto reduce =
                             dynamic_pointer_cast<nnfusion::op::Reduce>(ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else if (auto reduce =
+                                 dynamic_pointer_cast<nnfusion::op::Max>(ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else if (auto reduce =
+                                 dynamic_pointer_cast<nnfusion::op::Min>(ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else if (auto reduce = dynamic_pointer_cast<nnfusion::op::Product>(
+                                 ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
                     }

@@ -12,7 +12,7 @@ cuda::DynamicStitch::DynamicStitch(shared_ptr<KernelContext> ctx)
     auto dynamic_stitch_node =
         static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr());
 
-    std::vector<std::vector<int64_t>> indices_inputs =
+    std::vector<std::vector<int32_t>> indices_inputs =
         dynamic_stitch_node->localOpConfig.getRoot()["indices_inputs"];
     num_partitions = dynamic_stitch_node->localOpConfig.getRoot()["N"];
     CHECK(num_partitions == indices_inputs.size());
@@ -22,7 +22,7 @@ cuda::DynamicStitch::DynamicStitch(shared_ptr<KernelContext> ctx)
     auto output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
     output_size = shape_size(output_shape);
 
-    int64_t max_index = -1;
+    int32_t max_index = -1;
     int first_dim_size;
     int data_elements_size = 0;
 
@@ -81,7 +81,7 @@ LanguageUnit_p cuda::DynamicStitch::emit_function_body()
     // extern "C" __global__ void kernel(m_context->dtypes[0]* input0, m_context->dtypes[0]* input1, m_context->dtypes[2]* output0)
     lu.block_begin();
     {
-        lu << "const uint32_t data_indices[] = {" << join(indices_flat) << "};\n";
+        lu << "const int32_t data_indices[] = {" << join(indices_flat) << "};\n";
         lu << "const " << m_context->dtypes[num_partitions] << "* data_ptrs[] = {"
            << join(data_flat) << "};\n";
 

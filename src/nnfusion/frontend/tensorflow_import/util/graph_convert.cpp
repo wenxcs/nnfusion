@@ -2536,11 +2536,11 @@ namespace nnfusion
 
                     if (i < num_partitions)
                     {
-                        std::vector<int64> in_value;
-                        CHECK(GetValueFromNGraphOp<int64>(input_gnode, &in_value))
+                        std::vector<int32> in_value;
+                        CHECK(GetValueFromNGraphOp<int32>(input_gnode, &in_value))
                             << "DynamicStitch currently do not support dynamic tensor shape";
                         auto const_op =
-                            std::make_shared<op::Constant>(element::i64, input_shape, in_value);
+                            std::make_shared<op::Constant>(element::i32, input_shape, in_value);
                         auto const_gnode = m_graph->add_node_and_edge(const_op, GNodeVector({}));
                         input_gnodes.push_back(const_gnode);
                     }

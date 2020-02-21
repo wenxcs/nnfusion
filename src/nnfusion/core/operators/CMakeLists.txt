@@ -50,7 +50,6 @@ set(SRC
     op_define/negative.cpp
     op_define/not_equal.cpp
     op_define/not.cpp
-    op_define/one_hot.cpp
     op_define/or.cpp
     op_define/pad.cpp
     op_define/parameter.cpp

@@ -1154,7 +1154,7 @@ void cpu_reference_floor(const T* arg, T* out, size_t count)
 {
     for (size_t i = 0; i < count; i++)
     {
-        out[i] = std::cpu_reference_floor(arg[i]);
+        out[i] = std::floor(arg[i]);
     }
 }
 )");
@@ -1940,7 +1940,7 @@ void cpu_reference_sqrt(const T* arg, T* out, size_t count)
 {
     for (size_t i = 0; i < count; i++)
     {
-        out[i] = std::cpu_reference_sqrt(arg[i]);
+        out[i] = std::sqrt(arg[i]);
     }
 }
 )");
@@ -2427,7 +2427,7 @@ namespace nnfusion
                     {
                         lu << "in_args.push_back( input" << t << ");";
                         lu << "in_shapes.push_back(Shape({"
-                           << join(m_context->inputs[0]->get_shape()) << "});";
+                           << join(m_context->inputs[t]->get_shape()) << "}));";
                     }
                     lu << "cpu_reference_concat<float>(in_args,output0, in_shapes,Shape({"
                        << join(m_context->outputs[0]->get_shape()) << "}), "
@@ -2506,7 +2506,7 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     auto in_type = m_context->inputs[0]->get_element_type().c_type_string();
-                    auto out_type = m_context->outputs[0]->get_element_type();
+                    auto out_type = m_context->outputs[0]->get_element_type().c_type_string();
                     lu << "cpu_reference_convert<" << in_type << ", " << out_type
                        << ">(input0, output0," << m_context->outputs[0]->size(false) << ");";
                     return std::make_shared<LanguageUnit>(std::move(lu));
@@ -2973,9 +2973,9 @@ namespace nnfusion
                 {
                     LanguageUnit lu(get_function_name());
                     lu << "cpu_reference_max<float>(input0,output0,Shape({"
-                       << join(m_context->inputs[0]->get_shape()) << "}),Shape("
-                       << join(m_context->outputs[0]->get_shape()) << "),AxisSet("
-                       << join(op->get_reduction_axes()) << "));";
+                       << join(m_context->inputs[0]->get_shape()) << "}),Shape({"
+                       << join(m_context->outputs[0]->get_shape()) << "}),AxisSet({"
+                       << join(op->get_reduction_axes()) << "}));";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
@@ -3150,6 +3150,44 @@ namespace nnfusion
                 "Multiply",                                                    // op_name
                 Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
                 MultiplyRef)                                                   // constructor
+
+            class NegativeRef : public KernelEmitter
+            {
+            public:
+                NegativeRef(shared_ptr<KernelContext> ctx)
+                    : KernelEmitter(ctx, "reference")
+                {
+                    op = static_pointer_cast<op::Negative>(ctx->gnode->get_op_ptr());
+                    std::stringstream tag;
+                    tag << op->get_name();
+                    custom_tag = tag.str();
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    LanguageUnit lu(get_function_name());
+                    lu << "cpu_reference_negate<float>(input0,output0,"
+                       << m_context->outputs[0]->size(false) << ");";
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit lu(get_function_name() + "_dep");
+                    lu.require(cpu_reference_common);
+                    lu.require(cpu_reference_negate);
+                    return std::make_shared<LanguageUnit>(std::move(lu));
+                }
+
+            private:
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<op::Negative> op;
+            };
+
+            REGISTER_KERNEL_EMITTER(
+                "Negative",                                                    // op_name
+                Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("reference"), // attrs
+                NegativeRef)                                                   // constructor
 
             class PowerRef : public KernelEmitter
             {

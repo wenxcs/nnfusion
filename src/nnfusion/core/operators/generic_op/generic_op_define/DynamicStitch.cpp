@@ -13,10 +13,10 @@ REGISTER_OP(DynamicStitch)
         CHECK(num_partitions * 2 == input_size);
 
         bool all_indices_constant = true;
-        int64_t max_index = 0;
+        int32_t max_index = 0;
         nnfusion::Shape output_shape;
         nnfusion::element::Type type;
-        std::vector<std::vector<int64_t>> indices_inputs;
+        std::vector<std::vector<int32_t>> indices_inputs;
         for (int i = 0; i < num_partitions; ++i)
         {
             auto indices_node = gnode->get_in_edge(i)->get_src();
@@ -25,9 +25,9 @@ REGISTER_OP(DynamicStitch)
                 auto ng_constant_op =
                     std::dynamic_pointer_cast<nnfusion::op::Constant>(indices_node->get_op_ptr());
                 auto ng_element_type = indices_node->get_element_type();
-                CHECK(ng_element_type == nnfusion::element::i64);
-                std::vector<int64_t> values;
-                values = ng_constant_op->get_vector<int64_t>();
+                CHECK(ng_element_type == nnfusion::element::i32);
+                std::vector<int32_t> values;
+                values = ng_constant_op->get_vector<int32_t>();
 
                 indices_inputs.push_back(values);
                 for (size_t i = 0; i < values.size(); i++)
@@ -47,9 +47,9 @@ REGISTER_OP(DynamicStitch)
             type = gnode->get_input_element_type(i + num_partitions);
 
             // calculate the sub-shape
-            int64_t start = indices_shape.size();
-            const int64_t rank = data_shape.size();
-            int64_t end = rank;
+            int32_t start = indices_shape.size();
+            const int32_t rank = data_shape.size();
+            int32_t end = rank;
             if (start > rank)
                 start = rank;
             nnfusion::Shape dims;

@@ -66,7 +66,6 @@
 #include "nnfusion/core/operators/op_define/negative.hpp"
 #include "nnfusion/core/operators/op_define/not.hpp"
 #include "nnfusion/core/operators/op_define/not_equal.hpp"
-#include "nnfusion/core/operators/op_define/one_hot.hpp"
 #include "nnfusion/core/operators/op_define/or.hpp"
 #include "nnfusion/core/operators/op_define/pad.hpp"
 #include "nnfusion/core/operators/op_define/parameter.hpp"

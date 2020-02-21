@@ -5,13 +5,29 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-#define REGISTER_GPU_KERNEL(OP_NAME)                                                               \
-    REGISTER_KERNEL_EMITTER("Reduce",                                                              \
-                            Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel" #OP_NAME), \
-                            cuda::Reduce<nnfusion::op::OP_NAME>)
+REGISTER_KERNEL_EMITTER("Max",
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        cuda::Reduce<nnfusion::op::Max>)
 
-REGISTER_GPU_KERNEL(Max)
-REGISTER_GPU_KERNEL(Min)
+REGISTER_KERNEL_EMITTER("Max",                                                     // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::ReduceMemcpy<nnfusion::op::Max>)
+
+REGISTER_KERNEL_EMITTER("Min",
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        cuda::Reduce<nnfusion::op::Min>)
+
+REGISTER_KERNEL_EMITTER("Min",                                                     // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::ReduceMemcpy<nnfusion::op::Min>)
+
+REGISTER_KERNEL_EMITTER("Product",
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        cuda::Reduce<nnfusion::op::Multiply>)
+
+REGISTER_KERNEL_EMITTER("Product",                                                 // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::ReduceMemcpy<nnfusion::op::Multiply>)
 
 REGISTER_KERNEL_EMITTER("Sum",
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
