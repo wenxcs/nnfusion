@@ -45,11 +45,13 @@ std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Grap
     CHECK(output_gnodes.size() == res.size()) << "number of outputs and results don't match";
 
     std::vector<std::vector<T1>> result_vectors;
-    for (auto kv : res)
+    for (auto output_gnode : output_gnodes)
     {
-        CHECK(kv.second.size() == 1);
-        result_vectors.push_back((kv.second[0]));
+        auto gonde_res = res[output_gnode->get_unique_name()];
+        CHECK(gonde_res.size() == 1);
+        result_vectors.push_back((gonde_res[0]));
     }
+
     return result_vectors;
 }
 
@@ -538,7 +540,7 @@ TEST(nnfusion_tensorflow_import, splitV_op)
 
     // input size : {5, 30}, splits : {3, 9, 18}, axis : 1,
     std::vector<std::vector<int>> inputs{};
-    std::vector<std::vector<int>> expected_outputs{{90}, {45}, {15}};
+    std::vector<std::vector<int>> expected_outputs{{15}, {45}, {90}};
 
     std::vector<std::vector<int>> outputs{execute(model, inputs, "NNFusion")};
     EXPECT_EQ(outputs.size(), expected_outputs.size());

@@ -10,13 +10,11 @@ if (NNFUSION_ENABLE)
     file(GLOB nnfusion_testutil_files nnfusion/test_util/*.cpp)
     file(GLOB nnfusion_frontend_files nnfusion/frontend/*.cpp)
     list(APPEND SRC ${nnfusion_core_files}
-        #${nnfusion_engine_files}
-        #${nnfusion_inventory_files}
-        #${nnfusion_kernels_files}
+        ${nnfusion_engine_files}
+        ${nnfusion_inventory_files}
+        ${nnfusion_kernels_files}
         ${nnfusion_testutil_files}
         ${nnfusion_frontend_files}
-        nnfusion/inventory/abs.cpp
-        nnfusion/kernels/batch_test.cpp
         )
 endif()
 

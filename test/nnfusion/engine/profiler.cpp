@@ -4,7 +4,6 @@
  * \author wenxh
  */
 
-#include <iostream>
 #include <set>
 #include <string>
 #include <vector>
@@ -18,8 +17,7 @@ using namespace nnfusion::profiler;
 TEST(nnfusion_engine_profiler, basic_utils)
 {
     // Prepare
-    auto node = nnfusion::inventory::create_object<op::Pad>(0);
-    auto gnode = make_shared<GNode>(node);
+    auto gnode = inventory::create_object<op::Pad, float>(0);
 
     EXPECT_TRUE(gnode != nullptr);
 
@@ -29,7 +27,6 @@ TEST(nnfusion_engine_profiler, basic_utils)
     shared_ptr<KernelContext> ctx(new KernelContext(gnode));
 
     // Gnerate Test data
-
     auto input = nnfusion::inventory::generate_input<op::Pad, float>(0);
     auto output = nnfusion::inventory::generate_output<op::Pad, float>(0);
     vector<vector<float>> inputs;
@@ -57,7 +54,7 @@ TEST(nnfusion_engine_profiler, basic_utils)
             auto res_val = ref_prof.execute(inputs);
             EXPECT_EQ(res_val.size(), outputs.size());
             for (int i = 0; i < res_val.size(); i++)
-                EXPECT_TRUE(ngraph::test::all_close_f(res_val[i], outputs[i]));
+                EXPECT_TRUE(test::all_close_f(res_val[i], outputs[i]));
             LOG(INFO) << "Profiling of Pad operator has correct result.";
         }
     }

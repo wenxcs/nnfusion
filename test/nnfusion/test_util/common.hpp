@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 #include "all_close.hpp"
@@ -55,15 +54,6 @@ namespace nnfusion
 {
     namespace test
     {
-        template <typename T>
-        extern bool all_close(const std::vector<T>& a, const std::vector<T>& b);
-
-        template <>
-        bool all_close<float>(const std::vector<float>& a, const std::vector<float>& b);
-
-        template <>
-        bool all_close<int>(const std::vector<int>& a, const std::vector<int>& b);
-
         bool check_kernel(shared_ptr<GNode> gnode,
                           DeviceType dev_t,
                           const vector<float>& IN,
@@ -76,6 +66,10 @@ namespace nnfusion
                           const vector<T>& OUT)
         {
             auto rt = get_default_runtime(dev_t);
+            if (rt == nullptr)
+            {
+                return false;
+            }
             std::vector<shared_ptr<const KernelRegistration>> available_kernels =
                 KernelRegistry::Global()->FindKernelRegistrations(
                     gnode->get_op_type(), dev_t, DT_FLOAT);
@@ -83,6 +77,9 @@ namespace nnfusion
             bool kernel_found = false;
             for (auto& kernel_reg : available_kernels)
             {
+                // TODO: Eigen kernel uses tensor_layout in codegen while tensor_layout doesn't be set in profiler
+                if (kernel_reg->m_tag == "eigen")
+                    continue;
                 auto kernel = kernel_reg->m_factory(ctx);
                 if (kernel->get_or_emit_source())
                 {
@@ -108,18 +105,21 @@ namespace nnfusion
                         return false;
                     }
 
-                    if (!all_close(res_first, OUT))
+                    if (!all_close<T>(res_first, OUT))
                         return false;
 
-                    LOG(INFO) << "Kernel pass unit-test.";
+                    LOG(INFO) << "Kernel with tag '" << kernel_reg->m_tag << "' pass unit-test.";
                 }
                 else
                 {
-                    LOG(WARNING) << "Kernel is not available.";
+                    LOG(WARNING) << "Kernel with tag '" << kernel_reg->m_tag
+                                 << "' is not available.";
                 }
             }
             if (!kernel_found)
-                LOG(WARNING) << "No available found!";
+            {
+                LOG(ERROR) << "There is no available kernel found!";
+            }
             return kernel_found;
         }
     }

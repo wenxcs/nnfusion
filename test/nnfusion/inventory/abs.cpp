@@ -23,19 +23,13 @@ namespace nnfusion
             {
             case 0:
             {
-                //Shape shape{2, 2};
-                //auto A = make_shared<op::Parameter>(element::f32, shape);
-                //return make_shared<op::Abs>(A);
-
                 auto graph = std::make_shared<graph::Graph>();
-
-                Shape shape_a{2, 2};
-                auto para_a_op = make_shared<op::Parameter>(element::f32, shape_a);
-                auto para_a_gnode = graph->add_node_and_edge(para_a_op, GNodeVector({}));
-
-                auto op = std::make_shared<op::Abs>();
-                auto gnode = graph->add_node_and_edge(op, {para_a_gnode});
-                return gnode;
+                Shape shape{2, 2};
+                auto A = make_shared<op::Parameter>(element::f32, shape);
+                auto A_gnode = graph->add_node_and_edge(A, GNodeVector({}));
+                auto r = make_shared<op::Abs>();
+                auto r_gnode = graph->add_node_and_edge(r, {A_gnode});
+                return r_gnode;
             }
             default: return nullptr;
             }

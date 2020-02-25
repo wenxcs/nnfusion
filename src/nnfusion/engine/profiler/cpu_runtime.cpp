@@ -48,7 +48,8 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
         if (it.second->symbol.find("macro::") != string::npos)
             writer << it.second->get_code();
 
-    writer << "#include <chrono>\n#include<ctime>\n#include<ratio>\n";
+    writer << "#include <chrono>\n#include <ctime>\n#include <ratio>\n#include <cmath>\n#include "
+              "<numeric>\n";
     for (auto& it : re->local_symbol)
         if (it.second->symbol.find("declaration::") != string::npos)
             writer << it.second->get_code();

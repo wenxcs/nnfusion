@@ -5,10 +5,6 @@
  */
 
 #include "../test_util/common.hpp"
-#include "nnfusion/core/operators/argmin.hpp"
-#include "nnfusion/core/operators/parameter.hpp"
-
-using namespace ngraph;
 
 namespace nnfusion
 {
@@ -21,21 +17,29 @@ namespace nnfusion
     namespace inventory
     {
         template <>
-        shared_ptr<op::ArgMin> create_object<op::ArgMin, float>(int option)
+        shared_ptr<graph::GNode> create_object<op::ArgMin, float>(int option)
         {
             switch (option)
             {
             case 0:
             {
+                auto graph = std::make_shared<graph::Graph>();
                 Shape shape{4, 3};
                 auto A = make_shared<op::Parameter>(element::f32, shape);
-                return make_shared<op::ArgMin>(A, 0, element::f32);
+                auto A_gnode = graph->add_node_and_edge(A, GNodeVector({}));
+                auto r = make_shared<op::ArgMin>(0, element::f32);
+                auto r_gnode = graph->add_node_and_edge(r, {A_gnode});
+                return r_gnode;
             }
             case 1:
             {
+                auto graph = std::make_shared<graph::Graph>();
                 Shape shape{2, 2, 5, 5};
                 auto A = make_shared<op::Parameter>(element::f32, shape);
-                return make_shared<op::ArgMin>(A, 3, element::f32);
+                auto A_gnode = graph->add_node_and_edge(A, GNodeVector({}));
+                auto r = make_shared<op::ArgMin>(3, element::f32);
+                auto r_gnode = graph->add_node_and_edge(r, {A_gnode});
+                return r_gnode;
             }
             default: return nullptr;
             }

@@ -10,14 +10,13 @@
 #include <vector>
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
-#include "nnfusion/core/operators/pad.hpp"
+#include "nnfusion/core/operators/op_define/pad.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 TEST(nnfusion_core_kernels, sample)
 {
     // Prepare
-    auto node = nnfusion::inventory::create_object<op::Pad>(0);
-    auto gnode = make_shared<GNode>(node);
+    auto gnode = inventory::create_object<op::Pad, float>(0);
     EXPECT_TRUE(gnode != nullptr);
 
     // Filter out the kernels meeting the requirement;
@@ -59,7 +58,7 @@ TEST(nnfusion_core_kernels, sample)
                 auto res = prof.execute(inputs);
                 EXPECT_EQ(res.size(), outputs.size());
                 for (int i = 0; i < res.size(); i++)
-                    EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+                    EXPECT_TRUE(nnfusion::test::all_close_f(res[i], outputs[i]));
             }
             // Cuda
             if (true /*Check Cuda Runtime*/)
@@ -76,7 +75,7 @@ TEST(nnfusion_core_kernels, sample)
                 auto res = prof.execute(inputs);
                 EXPECT_EQ(res.size(), outputs.size());
                 for (int i = 0; i < res.size(); i++)
-                    EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+                    EXPECT_TRUE(nnfusion::test::all_close_f(res[i], outputs[i]));
             }
 
             // Cpu Reference
@@ -89,7 +88,7 @@ TEST(nnfusion_core_kernels, sample)
                 auto res = ref_prof.execute(inputs);
                 EXPECT_EQ(res.size(), outputs.size());
                 for (int i = 0; i < res.size(); i++)
-                    EXPECT_TRUE(ngraph::test::all_close_f(res[i], outputs[i]));
+                    EXPECT_TRUE(nnfusion::test::all_close_f(res[i], outputs[i]));
             }
         }
     }

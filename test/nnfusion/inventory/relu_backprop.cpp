@@ -5,41 +5,45 @@
  */
 
 #include "../test_util/common.hpp"
-#include "nnfusion/core/operators/parameter.hpp"
-#include "nnfusion/core/operators/relu.hpp"
-
-using namespace ngraph;
 
 namespace nnfusion
 {
     namespace test
     {
         template <typename T, size_t N>
-        using NDArray = nnfusion::test::NDArrayay<T, N>;
+        using NDArray = nnfusion::test::NDArray<T, N>;
     }
 
     namespace inventory
     {
         template <>
-        shared_ptr<op::ReluBackprop> create_object<op::ReluBackprop, float>(int option)
+        shared_ptr<graph::GNode> create_object<op::ReluBackprop, float>(int option)
         {
             switch (option)
             {
             case 0:
             {
+                auto graph = std::make_shared<graph::Graph>();
                 auto shape_a = Shape{2, 5};
                 auto A = make_shared<op::Parameter>(element::f32, shape_a);
+                auto A_gnode = graph->add_node_and_edge(A, GNodeVector({}));
                 auto delta_val = make_shared<op::Parameter>(element::f32, shape_a);
-                auto relu = make_shared<op::ReluBackprop>(A, delta_val);
-                return relu;
+                auto delta_val_gnode = graph->add_node_and_edge(delta_val, GNodeVector({}));
+                auto relu = make_shared<op::ReluBackprop>();
+                auto relu_gnode = graph->add_node_and_edge(relu, {A_gnode, delta_val_gnode});
+                return relu_gnode;
             }
             case 1:
             {
+                auto graph = std::make_shared<graph::Graph>();
                 auto shape_a = Shape{2, 2, 2, 2};
                 auto A = make_shared<op::Parameter>(element::f32, shape_a);
+                auto A_gnode = graph->add_node_and_edge(A, GNodeVector({}));
                 auto delta_val = make_shared<op::Parameter>(element::f32, shape_a);
-                auto relu = make_shared<op::ReluBackprop>(A, delta_val);
-                return relu;
+                auto delta_val_gnode = graph->add_node_and_edge(delta_val, GNodeVector({}));
+                auto relu = make_shared<op::ReluBackprop>();
+                auto relu_gnode = graph->add_node_and_edge(relu, {A_gnode, delta_val_gnode});
+                return relu_gnode;
             }
             default: return nullptr;
             }
