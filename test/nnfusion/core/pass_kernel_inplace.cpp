@@ -46,18 +46,11 @@ bool run(std::shared_ptr<nnfusion::graph::Graph> graph)
 
 bool check_inplace_oi_pair(std::shared_ptr<nnfusion::graph::GNode>& node)
 {
-    auto emitted_kernels =
-        (*node)["Kernel_Selection_Result"].as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-    auto emitter_iter = find_if(emitted_kernels.begin(),
-                                emitted_kernels.end(),
-                                [](pair<DeviceType, KernelEmitter::Pointer>& i) {
-                                    return (i.first == CUDA_GPU || i.first == DeviceType::ROCM_GPU);
-                                });
-
-    if (emitter_iter != emitted_kernels.end() && emitter_iter->second != nullptr &&
-        emitter_iter->second->get_or_emit_source() != nullptr)
+    auto emitted_kernel =
+        (*node)["Kernel_Selection_Result"].as<pair<DeviceType, KernelEmitter::Pointer>>();
+    if (emitted_kernel.second->get_or_emit_source() != nullptr)
     {
-        KernelEmitter::Pointer kernel = emitter_iter->second;
+        KernelEmitter::Pointer kernel = emitted_kernel.second;
         auto annotations = kernel->m_context->annotations;
         if (annotations && annotations->get_in_place_oi_pairs().size() > 0)
             return true;

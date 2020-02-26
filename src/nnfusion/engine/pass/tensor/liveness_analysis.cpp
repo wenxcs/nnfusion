@@ -73,22 +73,14 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
                 !gnode->get_op_ptr()->is_constant())
             {
-                auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
-                                           .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-                auto emitter_iter = find_if(emitted_kernels.begin(),
-                                            emitted_kernels.end(),
-                                            [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
-                                                return (i.first == DeviceType::CUDA_GPU ||
-                                                        i.first == DeviceType::ROCM_GPU);
-                                            });
-
-                if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr ||
-                    emitter_iter->second->get_or_emit_source() == nullptr)
+                auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
+                                          .as<pair<DeviceType, KernelEmitter::Pointer>>();
+                if (emitted_kernel.second->get_or_emit_source() == nullptr)
                 {
                     CHECK_FAIL() << "Kernel should be emitted before this pass:"
                                  << gnode->get_name();
                 }
-                op_kernels[gnode] = emitter_iter->second;
+                op_kernels[gnode] = emitted_kernel.second;
             }
 
             if (gnode->get_op_ptr()->is_parameter())

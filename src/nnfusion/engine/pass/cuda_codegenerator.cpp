@@ -193,19 +193,19 @@ std::vector<shared_ptr<const KernelRegistration>>
     return KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
 }
 
-KernelEmitter::Pointer
-    CudaCodeGenerator::match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res)
-{
-    for (auto& k : res)
-    {
-        if (k.second != nullptr && k.first == device_type() &&
-            k.second->get_or_emit_source() != nullptr)
-        {
-            return k.second;
-        }
-    }
-    return nullptr;
-}
+// KernelEmitter::Pointer
+//     CudaCodeGenerator::match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res)
+// {
+//     for (auto& k : res)
+//     {
+//         if (k.second != nullptr && k.first == device_type() &&
+//             k.second->get_or_emit_source() != nullptr)
+//         {
+//             return k.second;
+//         }
+//     }
+//     return nullptr;
+// }
 
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
@@ -262,11 +262,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if ((*ins)["Kernel_Selection_Result"].is_valid())
             {
                 auto res = (*ins)["Kernel_Selection_Result"]
-                               .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-                auto matched_kernel = match_kernel(res);
-                if (matched_kernel)
+                               .as<pair<DeviceType, KernelEmitter::Pointer>>();
+                if (res.second->get_or_emit_source() != nullptr)
                 {
-                    block_kernels.push_back(matched_kernel);
+                    block_kernels.push_back(res.second);
 
                     LanguageUnit m;
                     if ((*ins)["memcpy_pair"].is_valid())
@@ -282,7 +281,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             m << "cudaMemcpy(" << it.first->get_name() << ", "
                               << it.second->get_name() << ", " << memcpykind << ");\n";
                         }
-                        kernel_memcpy[matched_kernel.get()] = m.get_code();
+                        // kernel_memcpy[matched_kernel.get()] = m.get_code();
+                        kernel_memcpy[res.second.get()] = m.get_code();
                     }
                 }
                 else

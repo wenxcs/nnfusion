@@ -51,22 +51,14 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             // do not allocate parameter tensors.
             if (gnode->get_op_ptr()->is_parameter())
                 continue;
-            auto emitted_kernels = (*ins)["Kernel_Selection_Result"]
-                                       .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-            auto emitter_iter =
-                find_if(emitted_kernels.begin(),
-                        emitted_kernels.end(),
-                        [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
-                            return (i.first == CUDA_GPU || i.first == DeviceType::ROCM_GPU);
-                        });
-
+            auto emitted_kernel =
+                (*ins)["Kernel_Selection_Result"].as<pair<DeviceType, KernelEmitter::Pointer>>();
             KernelEmitter::Pointer kernel = nullptr;
 
-            if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr)
+            if (emitted_kernel.second->get_or_emit_source() == nullptr)
                 // Can assign tensor layout even kernel is not emitted.
                 LOG(WARNING) << "Kernel should be emitted before this pass:" << gnode->get_name();
-            else
-                kernel = emitter_iter->second;
+            kernel = emitted_kernel.second;
             // Tensors should be considered
             // Node: inputs outputs
             // Kernel Context: +tensors

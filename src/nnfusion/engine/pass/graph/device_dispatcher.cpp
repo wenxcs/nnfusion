@@ -7,9 +7,12 @@ using namespace nnfusion;
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 
+DECLARE_string(fdefault_device);
+
 bool DefaultDeviceDispatcher::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
-    DeviceType dt = DeviceType::CUDA_GPU;
+    auto dev_name = FLAGS_fdefault_device.c_str();
+    DeviceType dt = nnfusion::get_device_type(dev_name);
     /* for debug purpose
     switch(default_device)
     {

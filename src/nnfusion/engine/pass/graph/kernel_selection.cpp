@@ -14,6 +14,7 @@ using namespace nnfusion::profiler;
 
 DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
 DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
+DECLARE_string(fdefault_device);
 
 pair<DeviceType, kernels::KernelEmitter::Pointer> ProfilingBasedKernelSelector::profiling_best(
     shared_ptr<GNode> gnode, DeviceType devtype, IProfilingRuntime::Pointer runtime)
@@ -73,10 +74,16 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
     if (!enable_tuning)
         return true;
 
+    auto dev_name = FLAGS_fdefault_device.c_str();
+    DeviceType default_device = nnfusion::get_device_type(dev_name);
+
     // Config area
     vector<string> white_list{"Broadcast"};
-    bool all_device = false;
+    //bool all_device = false;
     DeviceType the_device = ROCM_GPU;
+
+    if (the_device != default_device)
+        return true;
 
     // Currently *ONLY* has BroadCast Selection
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
@@ -87,8 +94,8 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
             if (opname == rule)
             {
                 (*it)["Enable_Kernel_Selection"] = true;
-                if (!all_device)
-                    (*it)["Kernel_Selection_Device"] = the_device;
+                // if (!all_device)
+                //     (*it)["Kernel_Selection_Device"] = the_device;
             }
     }
 
@@ -97,22 +104,35 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
         if ((*it)["Enable_Kernel_Selection"].is_valid() &&
             (*it)["Enable_Kernel_Selection"].as<bool>())
         {
-            (*it)["Kernel_Selection_Result"] = vector<pair<DeviceType, KernelEmitter::Pointer>>();
-            auto& res = (*it)["Kernel_Selection_Result"]
-                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-
-            vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
-            for (auto t : dev_type)
+            auto ans = profiling_best(it, default_device, get_default_runtime(default_device));
+            if (ans.second != nullptr)
+                (*it)["Kernel_Selection_Result"] = ans;
+            else
             {
-                if ((*it)["Kernel_Selection_Device"].is_valid() &&
-                    (*it)["Kernel_Selection_Device"].as<DeviceType>() != t)
-                    continue;
-
-                auto ans = profiling_best(it, t, get_default_runtime(t));
-
-                if (ans.second != nullptr)
-                    res.push_back(ans);
+                if (default_device == ROCM_GPU)
+                {
+                    auto ans_cuda = profiling_best(it, CUDA_GPU, get_default_runtime(CUDA_GPU));
+                    if (ans_cuda.second != nullptr)
+                        (*it)["Kernel_Selection_Result"] = ans_cuda;
+                }
             }
+
+            // (*it)["Kernel_Selection_Result"] = vector<pair<DeviceType, KernelEmitter::Pointer>>();
+            // auto& res = (*it)["Kernel_Selection_Result"]
+            //                 .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+
+            // vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+            // for (auto t : dev_type)
+            // {
+            //     if ((*it)["Kernel_Selection_Device"].is_valid() &&
+            //         (*it)["Kernel_Selection_Device"].as<DeviceType>() != t)
+            //         continue;
+
+            //     auto ans = profiling_best(it, t, get_default_runtime(t));
+
+            //     if (ans.second != nullptr)
+            //         res.push_back(ans);
+            // }
         }
     }
 
@@ -189,44 +209,62 @@ pair<DeviceType, kernels::KernelEmitter::Pointer>
 
 bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
+    auto dev_name = FLAGS_fdefault_device.c_str();
+    DeviceType default_device = nnfusion::get_device_type(dev_name);
+
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
     for (auto it : nodes)
     {
         if (!(*it)["Kernel_Selection_Result"].is_valid())
-            (*it)["Kernel_Selection_Result"] = vector<pair<DeviceType, KernelEmitter::Pointer>>();
-        auto& res =
-            (*it)["Kernel_Selection_Result"].as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-
-        vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
-        for (auto t : dev_type)
         {
-            if ((*it)["Kernel_Selection_Device"].is_valid() &&
-                (*it)["Kernel_Selection_Device"].as<DeviceType>() != t)
-                continue;
-
-            bool selected = false;
-            for (auto& p : res)
-            {
-                if (p.first == t)
-                {
-                    selected = true;
-                    break;
-                }
-            }
-            if (selected)
-                continue;
-
-            if (t == ROCM_GPU)
+            if (default_device == ROCM_GPU)
             {
                 auto ans = pick_first_rocm(it);
-                res.push_back(ans);
+                if (ans.second != nullptr)
+                    (*it)["Kernel_Selection_Result"] = ans;
             }
             else
             {
-                auto ans = pick_first(it, t);
-                res.push_back(ans);
+                auto ans = pick_first(it, default_device);
+                if (ans.second != nullptr)
+                    (*it)["Kernel_Selection_Result"] = ans;
             }
         }
+        // if (!(*it)["Kernel_Selection_Result"].is_valid())
+        //     (*it)["Kernel_Selection_Result"] = vector<pair<DeviceType, KernelEmitter::Pointer>>();
+        // auto& res =
+        //     (*it)["Kernel_Selection_Result"].as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+
+        // vector<DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+        // for (auto t : dev_type)
+        // {
+        //     if ((*it)["Kernel_Selection_Device"].is_valid() &&
+        //         (*it)["Kernel_Selection_Device"].as<DeviceType>() != t)
+        //         continue;
+
+        //     bool selected = false;
+        //     for (auto& p : res)
+        //     {
+        //         if (p.first == t)
+        //         {
+        //             selected = true;
+        //             break;
+        //         }
+        //     }
+        //     if (selected)
+        //         continue;
+
+        //     if (t == ROCM_GPU)
+        //     {
+        //         auto ans = pick_first_rocm(it);
+        //         res.push_back(ans);
+        //     }
+        //     else
+        //     {
+        //         auto ans = pick_first(it, t);
+        //         res.push_back(ans);
+        //     }
+        // }
     }
 
     return true;

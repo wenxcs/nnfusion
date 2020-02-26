@@ -452,22 +452,11 @@ private:
                         auto node = m_nodes[elem_id]->node;
                         CHECK_NOT_NULLPTR(node);
 
-                        auto emitted_kernels =
-                            (*node)["Kernel_Selection_Result"]
-                                .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-                        auto emitter_iter =
-                            find_if(emitted_kernels.begin(),
-                                    emitted_kernels.end(),
-                                    [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
-                                        return (i.first == DeviceType::CUDA_GPU ||
-                                                i.first == DeviceType::ROCM_GPU);
-                                    });
-
+                        auto emitted_kernel = (*node)["Kernel_Selection_Result"]
+                                                  .as<pair<DeviceType, KernelEmitter::Pointer>>();
                         KernelEmitter::Pointer kernel = nullptr;
 
-                        if (emitter_iter == emitted_kernels.end() ||
-                            emitter_iter->second == nullptr ||
-                            emitter_iter->second->get_or_emit_source() == nullptr)
+                        if (emitted_kernel.second->get_or_emit_source() == nullptr)
                         {
                             LOG(WARNING) << "Kernel should be emitted before this pass:"
                                          << node->get_name();
@@ -476,8 +465,8 @@ private:
                         }
                         else
                         {
-                            kernel = emitter_iter->second;
-                            dev_type = emitter_iter->first;
+                            kernel = emitted_kernel.second;
+                            dev_type = emitted_kernel.first;
                             block_kernels.push_back(kernel);
                         }
                     }
@@ -498,11 +487,13 @@ private:
                         auto fused_node = std::make_shared<GNode>(fused_op, empty_inputs);
                         ctx->gnode = fused_node;
 
-                        (*fused_node)["Kernel_Selection_Result"] =
-                            vector<pair<DeviceType, KernelEmitter::Pointer>>();
-                        auto& res = (*fused_node)["Kernel_Selection_Result"]
-                                        .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-                        res.push_back(std::make_pair(dev_type, kernel));
+                        // (*fused_node)["Kernel_Selection_Result"] =
+                        //     vector<pair<DeviceType, KernelEmitter::Pointer>>();
+                        // auto& res = (*fused_node)["Kernel_Selection_Result"]
+                        //                 .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                        // res.push_back(std::make_pair(dev_type, kernel));
+
+                        (*fused_node)["Kernel_Selection_Result"] = std::make_pair(dev_type, kernel);
 
                         // replace original nodes with the fused node on graph
                         m_graph->add_node(fused_node);

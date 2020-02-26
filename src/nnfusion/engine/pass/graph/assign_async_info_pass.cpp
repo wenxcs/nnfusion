@@ -96,24 +96,15 @@ void AssignAsyncInfoPass::assign_stream_info(AsyncManager* async_manager, shared
                 if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
                     !gnode->is_constant())
                 {
-                    auto emitted_kernels =
-                        (*gnode)["Kernel_Selection_Result"]
-                            .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
-                    auto emitter_iter =
-                        find_if(emitted_kernels.begin(),
-                                emitted_kernels.end(),
-                                [this](pair<DeviceType, KernelEmitter::Pointer>& i) {
-                                    return (i.first == DeviceType::CUDA_GPU ||
-                                            i.first == DeviceType::ROCM_GPU);
-                                });
+                    auto emitted_kernel = (*gnode)["Kernel_Selection_Result"]
+                                              .as<pair<DeviceType, KernelEmitter::Pointer>>();
 
-                    if (emitter_iter == emitted_kernels.end() || emitter_iter->second == nullptr ||
-                        emitter_iter->second->get_or_emit_source() == nullptr)
+                    if (emitted_kernel.second->get_or_emit_source() == nullptr)
                     {
-                        CHECK_FAIL() << "Kernel should be emitted before this pass:"
+                        LOG(WARNING) << "Kernel should be emitted before this pass:"
                                      << gnode->get_name();
                     }
-                    auto kernel = emitter_iter->second;
+                    auto kernel = emitted_kernel.second;
                     for (auto& in : kernel->m_context->input_names)
                     {
                         if (constant_vals.find(in) == constant_vals.end())
