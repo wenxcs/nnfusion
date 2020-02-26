@@ -44,6 +44,7 @@ KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
 KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx)
     : m_context(ctx)
     , m_is_emitted(false)
+    , m_intra_op_parallelism(false)
 {
 }
 
@@ -51,6 +52,7 @@ KernelEmitter::KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type)
     : m_context(ctx)
     , m_is_emitted(false)
     , m_kernel_type(kernel_type)
+    , m_intra_op_parallelism(false)
 {
 }
 

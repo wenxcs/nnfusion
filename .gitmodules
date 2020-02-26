@@ -7,3 +7,6 @@
 [submodule "thirdparty/gflags"]
 	path = thirdparty/gflags
 	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.gflags
+[submodule "thirdparty/curl"]
+	path = thirdparty/curl
+	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.curl

@@ -71,7 +71,7 @@ int64_t padding[] = { int64_t(padding_left_height), int64_t(padding_left_width),
 int64_t stride_shape[] = { int64_t(stride_height), int64_t(stride_width) };
 int64_t output_shape[] = { int64_t(batch_count), int64_t(input_channels), int64_t(output_height), int64_t(output_width) };
 
-MlasPool(MlasMaximumPooling, 2, input_shape, kernel_shape, padding, stride_shape, output_shape, input0, output0, mlas_thread_pool);
+MlasPool(MlasMaximumPooling, 2, input_shape, kernel_shape, padding, stride_shape, output_shape, input0, output0, thread_pool);
 
 )",
         {{"batch_count", batch_count},

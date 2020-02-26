@@ -23,6 +23,7 @@ namespace nnfusion
             using any = nlohmann::json;
             using constrait_func_t = bool (*)(const OpConfig::any& config);
             using infershape_func_t = void (*)(std::shared_ptr<graph::GNode> gnode);
+            using translate_func_t = std::string (*)(std::shared_ptr<graph::GNode> gnode);
 
             // OpConfig(): f_infershape(infershape::copy_shape_from_inputs) { }
 
@@ -51,6 +52,12 @@ namespace nnfusion
                 return *this;
             }
 
+            OpConfig& translate(const translate_func_t& func)
+            {
+                f_translate = func;
+                return *this;
+            }
+
             OpConfig& show()
             {
                 LOG(INFO) << getRoot();
@@ -71,6 +78,7 @@ namespace nnfusion
             OpConfig::any& get(std::string key) { return getRoot()[key]; }
             std::vector<constrait_func_t> f_constraits;
             infershape_func_t f_infershape;
+            translate_func_t f_translate;
             OpConfig::any j_attrs;
         };
 
@@ -172,9 +180,15 @@ namespace nnfusion
             {
                 localOpConfig.check_constrait();
                 localOpConfig.f_infershape(gnode);
+
+                if (localOpConfig.f_translate != nullptr && !m_expression.size())
+                {
+                    m_expression = localOpConfig.f_translate(gnode);
+                }
             }
 
             mutable OpConfig localOpConfig;
+            std::string m_expression;
         };
 
         namespace infershape

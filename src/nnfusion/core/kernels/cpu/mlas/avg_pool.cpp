@@ -74,7 +74,7 @@ int64_t output_shape[] = { int64_t(batch_count), int64_t(input_channels), int64_
 
 MLAS_POOLING_KIND pooling_kind = @include_pad@ ? MlasAveragePoolingIncludePad : MlasAveragePoolingExcludePad;
 
-MlasPool(pooling_kind, 2, input_shape, kernel_shape, padding, stride_shape, output_shape, input0, output0, mlas_thread_pool);
+MlasPool(pooling_kind, 2, input_shape, kernel_shape, padding, stride_shape, output_shape, input0, output0, thread_pool);
 
 )",
         {{"batch_count", batch_count},

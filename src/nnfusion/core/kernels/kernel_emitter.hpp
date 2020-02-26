@@ -76,6 +76,7 @@ namespace nnfusion
             // function declaration will be deduplicated only if the kernel function is
             // not static
             virtual bool is_static_function() { return false; }
+            virtual bool is_parallelism() { return m_intra_op_parallelism; };
             // The context for this kernel
             shared_ptr<KernelContext> m_context;
 
@@ -148,6 +149,9 @@ namespace nnfusion
 
             // emitted function unit
             FunctionUnit_p m_function_unit;
+
+            // if the kernel can be executed in parallel.
+            bool m_intra_op_parallelism;
         };
     } // namespace kernels
 } // namespace nnfusion

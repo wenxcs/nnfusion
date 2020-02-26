@@ -53,7 +53,27 @@ namespace nnfusion
                 MlasKernelEmitter(shared_ptr<KernelContext> ctx)
                     : CpuKernelEmitter(ctx)
                 {
+                    m_intra_op_parallelism = true;
                 }
+            };
+
+            class AntaresCpuKernelEmitter : public CpuKernelEmitter
+            {
+            public:
+                AntaresCpuKernelEmitter(shared_ptr<KernelContext> ctx)
+                    : CpuKernelEmitter(ctx)
+                {
+                    m_intra_op_parallelism = true;
+                }
+
+                virtual LanguageUnit_p emit_function_body() override;
+                virtual LanguageUnit_p emit_dependency() override;
+
+                virtual void initialize(const std::string& expression);
+
+            protected:
+                std::string m_expression;
+                std::string m_args;
             };
 
         } // namespace cpu

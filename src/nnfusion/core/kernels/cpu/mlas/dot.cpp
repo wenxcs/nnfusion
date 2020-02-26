@@ -94,7 +94,7 @@ LanguageUnit_p cpu::DotMlas::emit_function_body()
        << "input1, " << ldb << ", "
        << "0.0, "
        << "output0, " << ldc << ", "
-       << "mlas_thread_pool);";
+       << "thread_pool);";
 
     return _lu;
 }

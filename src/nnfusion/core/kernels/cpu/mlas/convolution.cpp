@@ -117,7 +117,7 @@ MlasConvPrepare(&parameters,
                 filter_count,
                 &activation,
                 &working_buffer_size,
-                mlas_thread_pool);
+                thread_pool);
 
 float* working_buffer = new float[working_buffer_size];
 
@@ -127,7 +127,7 @@ MlasConv(&parameters,
          nullptr,
          working_buffer,
          output0,
-         mlas_thread_pool);
+         thread_pool);
 
 delete[] working_buffer;
 

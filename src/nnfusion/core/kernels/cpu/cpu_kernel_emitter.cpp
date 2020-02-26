@@ -1,8 +1,17 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "cpu_kernel_emitter.hpp"
+#include <cstring>
+#include <sstream>
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
+#include "nnfusion/util/curl_request.hpp"
+#include "nnfusion/util/logging.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
+
+DEFINE_string(fantares_cpu_server,
+              "10.150.145.98:8882",
+              "Antares cpu server address and port, format: <ip>:<port>");
 
 LanguageUnit_p cpu::EigenKernelEmitter::emit_eigen_utils()
 {
@@ -133,4 +142,77 @@ std::string
        << ", " << join(tw->get_shape()) << ", " << join(tw->get_tensor_layout()->get_strides())
        << ")";
     return ss.str();
+}
+
+LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
+{
+    // emit code.
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+    auto& lu = *_lu;
+    CurlRequest req(FLAGS_fantares_cpu_server);
+    req.add_custom_header(m_expression.c_str());
+    req.add_custom_header(m_args.c_str());
+
+    std::string response;
+    bool ret = req.send_request(response);
+    if (ret)
+    {
+        const char* s_func_pattern = "// [thread_compute]\n";
+        const char* e_func_pattern = "\n}\n";
+        const char* s_rank_pattern = "__rank__ = ";
+        const char* e_rank_pattern = "\n";
+        std::string::size_type s_func_pos = response.find(s_func_pattern);
+        std::string::size_type e_func_pos = response.rfind(e_func_pattern);
+        if (s_func_pos != std::string::npos && e_func_pos != std::string::npos)
+        {
+            std::string func_body =
+                response.substr(s_func_pos + strlen(s_func_pattern),
+                                e_func_pos - s_func_pos - strlen(s_func_pattern));
+            std::string::size_type s_rank_pos = func_body.find(s_rank_pattern);
+            std::string::size_type e_rank_pos = func_body.find(e_rank_pattern);
+            std::string rank_str =
+                func_body.substr(s_rank_pos + strlen(s_rank_pattern),
+                                 e_rank_pos - s_rank_pos - strlen(s_rank_pattern));
+            int rank = atoi(rank_str.c_str());
+            auto code = op::create_code_from_template(
+                R"(
+int64_t rank = @rank@;
+
+auto func = [&](int __rank__)
+    {
+        @func_body@
+    };
+
+thread_pool->ParallelFor(rank, func);
+)",
+                {{"rank", rank}, {"func_body", func_body}});
+
+            lu.block_begin();
+            lu << code << "\n";
+            lu.block_end();
+            return _lu;
+        }
+        else
+        {
+            LOG(WARNING) << "Extract kernel function from Antares response failed.";
+        }
+    }
+    else
+    {
+        LOG(WARNING) << "Curl request Antares kernel failed.";
+    }
+
+    return nullptr;
+}
+
+LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_dependency()
+{
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+    return _lu;
+}
+
+void cpu::AntaresCpuKernelEmitter::initialize(const std::string& expr)
+{
+    m_expression = std::string("COMPUTE_V1: ") + expr;
+    m_args = std::string("ARGS: ");
 }

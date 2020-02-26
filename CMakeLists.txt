@@ -313,6 +313,11 @@ else()
     endif()
 endif()
 
+find_package(CURL)
+if(CURL_FOUND)
+    include_directories("${CURL_INCLUDE_DIR}/curl")
+endif()
+
 add_definitions(-DPROJECT_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(thirdparty)
