@@ -38,7 +38,6 @@ LanguageUnit_p cuda::Dot::emit_function_body()
 
     //lu.block_begin();
     {
-        lu << "CUBLAS_SAFE_CALL(cublasSetStream(global_cublas_handle, stream));\n";
         // case 1: Scalar * Tensor
         if (arg0_shape.empty() || arg1_shape.empty())
         {
@@ -48,12 +47,12 @@ LanguageUnit_p cuda::Dot::emit_function_body()
             string firstarg = (arg0_shape.empty() ? "input1" : "input0");
             string secondarg = (arg0_shape.empty() ? "input0" : "input1");
 
-            lu << "cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_DEVICE);\n";
+            lu << "cublasSetPointerMode(cublas_handle, CUBLAS_POINTER_MODE_DEVICE);\n";
 
-            lu << "CUBLAS_SAFE_CALL(cublasScopy(global_cublas_handle, " << count
+            lu << "CUBLAS_SAFE_CALL(cublasScopy(cublas_handle, " << count
                << ", static_cast<const float*>(" << firstarg
                << "), 1, static_cast<float*>(output0),1));\n";
-            lu << "CUBLAS_SAFE_CALL(cublasSscal(global_cublas_handle, " << count
+            lu << "CUBLAS_SAFE_CALL(cublasSscal(cublas_handle, " << count
                << ", static_cast<const float*>(" << secondarg
                << "), static_cast<float*>(output0),1));\n";
         }
@@ -74,9 +73,9 @@ LanguageUnit_p cuda::Dot::emit_function_body()
             }
 
             size_t count = nnfusion::shape_size(arg0_shape);
-            lu << "cublasSetPointerMode(global_cublas_handle, CUBLAS_POINTER_MODE_DEVICE);\n";
+            lu << "cublasSetPointerMode(cublas_handle, CUBLAS_POINTER_MODE_DEVICE);\n";
 
-            lu << "CUBLAS_SAFE_CALL(cublasSdot(global_cublas_handle, " << count
+            lu << "CUBLAS_SAFE_CALL(cublasSdot(cublas_handle, " << count
                << ", static_cast<const float*>(input0), 1, static_cast<const float*>(input1), 1, "
                   "static_cast<float*>(output0)));\n";
         }
@@ -84,7 +83,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
         else if ((arg0_shape.size() == 2) && (arg1_shape.size() == 1) && (reduction_axes == 1))
         {
             lu << "const float alpha = 1.0;\n const float beta = 0;\n";
-            lu << "CUBLAS_SAFE_CALL(cublasSgemv(global_cublas_handle, ";
+            lu << "CUBLAS_SAFE_CALL(cublasSgemv(cublas_handle, ";
             if (trans_A)
                 lu << "CUBLAS_OP_N, " << arg0_shape[0] << ", " << arg0_shape[1] << ", ";
             else
@@ -106,7 +105,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
 
             lu << "const float alpha = 1.0;\nconst float beta = 0;\n";
 
-            lu << "CUBLAS_SAFE_CALL(cublasSgemm(global_cublas_handle,"
+            lu << "CUBLAS_SAFE_CALL(cublasSgemm(cublas_handle,"
                << (trans_B ? " CUBLAS_OP_T," : " CUBLAS_OP_N,")
                << (trans_A ? " CUBLAS_OP_T," : " CUBLAS_OP_N,") << " " << m << ","
                << " " << n << ","
@@ -182,7 +181,7 @@ LanguageUnit_p cuda::Dot::emit_function_body()
 
             lu << "const float alpha = 1.0;\nconst float beta = 0;\n";
 
-            lu << "CUBLAS_SAFE_CALL(cublasSgemm(global_cublas_handle,"
+            lu << "CUBLAS_SAFE_CALL(cublasSgemm(cublas_handle,"
                << " CUBLAS_OP_N,"
                << " CUBLAS_OP_N,"
                << " " << n << ","
@@ -210,7 +209,7 @@ LanguageUnit_p cuda::Dot::emit_dependency()
     _lu->require(header::stdexcept);
     _lu->require(header::sstream);
     _lu->require(macro::CUBLAS_SAFE_CALL);
-    _lu->require(declaration::global_cublas_handle);
+    //_lu->require(declaration::cublas_handle);
     return _lu;
 }
 

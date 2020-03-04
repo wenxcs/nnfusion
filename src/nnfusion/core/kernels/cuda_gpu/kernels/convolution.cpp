@@ -56,7 +56,6 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_body()
     // emit code
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
-    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
 
     Shape padding_below(padding_below_diff.size(), 0);
 
@@ -83,9 +82,9 @@ if (!selected_algo) {
     int max_algos = 0;
     // cudnnGetConvolutionForwardAlgorithm_v7;
     CUDNN_SAFE_CALL(
-        cudnnGetConvolutionForwardAlgorithmMaxCount(global_cudnn_handle, &max_algos));
+        cudnnGetConvolutionForwardAlgorithmMaxCount(cudnn_handle, &max_algos));
     std::vector<cudnnConvolutionFwdAlgoPerf_t> results(max_algos);
-    CUDNN_SAFE_CALL(cudnnFindConvolutionForwardAlgorithm(global_cudnn_handle,
+    CUDNN_SAFE_CALL(cudnnFindConvolutionForwardAlgorithm(cudnn_handle,
                                             tensor_desc_0,
                                             filter_desc,
                                             conv_desc,
@@ -110,7 +109,7 @@ if (!selected_algo) {
            << "static size_t workspace_size_in_bytes = 0;\n";
         lu << "if (!workspace_ptr)\n";
         lu.block_begin();
-        lu << "CUDNN_SAFE_CALL(cudnnGetConvolutionForwardWorkspaceSize(global_cudnn_handle, "
+        lu << "CUDNN_SAFE_CALL(cudnnGetConvolutionForwardWorkspaceSize(cudnn_handle, "
            << "tensor_desc_0, "
            << "filter_desc, "
            << "conv_desc, "
@@ -120,7 +119,7 @@ if (!selected_algo) {
         //lu << "void *workspace_ptr;\n"
         lu << "CUDA_SAFE_CALL(cudaMalloc(&workspace_ptr, workspace_size_in_bytes));\n";
         lu.block_end();
-        lu << "CUDNN_SAFE_CALL(cudnnConvolutionForward(global_cudnn_handle, "
+        lu << "CUDNN_SAFE_CALL(cudnnConvolutionForward(cudnn_handle, "
            << "&alpha, "
            << "tensor_desc_0, "
            << "input0,"
@@ -148,7 +147,7 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_dependency()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
 
     _lu->require(header::cudnn);
-    _lu->require(declaration::global_cudnn_handle);
+    //_lu->require(declaration::cudnn_handle);
     _lu->require(macro::CUDNN_SAFE_CALL);
     _lu->require(header::vector);
 

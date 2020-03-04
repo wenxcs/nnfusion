@@ -65,12 +65,11 @@ LanguageUnit_p cuda::Softmax::emit_function_body()
     {
         return nullptr;
     }
-    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
     lu << input_tensor_desc->get_code();
     lu << output_tensor_desc->get_code();
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
-    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxForward(global_cudnn_handle, "
+    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxForward(cudnn_handle, "
        << "CUDNN_SOFTMAX_ACCURATE, "
        << "CUDNN_SOFTMAX_MODE_INSTANCE, "
        << "&alpha, "
@@ -90,7 +89,7 @@ LanguageUnit_p cuda::Softmax::emit_dependency()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
     _lu->require(header::cuda);
     _lu->require(header::cudnn);
-    _lu->require(declaration::global_cudnn_handle);
+    //_lu->require(declaration::cudnn_handle);
     _lu->require(macro::CUDNN_SAFE_CALL);
     return _lu;
 }

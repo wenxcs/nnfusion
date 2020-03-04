@@ -72,14 +72,13 @@ namespace nnfusion
 
                     std::string code = nnfusion::op::create_code_from_template(
                         R"(
-    CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));
     float alpha = 1.0f, beta = 0.0f;
     miopenTensorDescriptor_t in_desc, out_desc;
     CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&in_desc));
     CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&out_desc));
     CUDNN_SAFE_CALL(miopenSet4dTensorDescriptor(in_desc, miopenFloat, @in_0@, @in_1@, @in_2@, @in_3@));
     CUDNN_SAFE_CALL(miopenSet4dTensorDescriptor(out_desc, miopenFloat, @out_0@, @out_1@, @out_2@, @out_3@));
-    CUDNN_SAFE_CALL(miopenOpTensor(global_cudnn_handle, miopenTensorOpAdd, &beta, out_desc, output0, &alpha, in_desc, input0, &beta, out_desc, output0));
+    CUDNN_SAFE_CALL(miopenOpTensor(cudnn_handle, miopenTensorOpAdd, &beta, out_desc, output0, &alpha, in_desc, input0, &beta, out_desc, output0));
     CUDNN_SAFE_CALL(miopenDestroyTensorDescriptor(in_desc));
     CUDNN_SAFE_CALL(miopenDestroyTensorDescriptor(out_desc));
 )",
@@ -118,7 +117,7 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
-                    _lu->require(declaration::global_cudnn_handle);
+                    //_lu->require(declaration::cudnn_handle);
                     _lu->require(macro::CUDNN_SAFE_CALL);
                     return _lu;
                 }

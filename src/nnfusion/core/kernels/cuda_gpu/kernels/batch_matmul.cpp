@@ -97,14 +97,13 @@ namespace nnfusion
                         static const float alpha = @alpha@F, beta = @beta@F;
                         if (!@hCublas@)
                             CUBLAS_SAFE_CALL(@api_create@(&@hCublas@));
-                        CUBLAS_SAFE_CALL(cublasSetStream(@hCublas@, stream));
                         CUBLAS_SAFE_CALL(@api_exec@(
                             @hCublas@, @transA@, @transB@, @m@, @n@, @k@,
                             &alpha, input1, @lda@, @stride_a@, input0, @ldb@, @stride_b@,
                             &beta, output0, @ldc@, @stride_c@, @batch@));
                     )",
                         {
-                            {"hCublas", "global_cublas_handle"},
+                            {"hCublas", "cublas_handle"},
                             {"api_create", "cublasCreate"},
                             {"api_exec", "cublasSgemmStridedBatched"},
                             {"transA", transB ? "CUBLAS_OP_T" : "CUBLAS_OP_N"},
@@ -140,7 +139,7 @@ namespace nnfusion
                     LanguageUnit_p _lu_header(new LanguageUnit(get_function_name() + "_dep"));
                     _lu_header->require(header::cuda);
                     _lu_header->require(header::cublas);
-                    _lu_header->require(declaration::global_cublas_handle);
+                    //_lu_header->require(declaration::cublas_handle);
                     _lu_header->require(macro::CUBLAS_SAFE_CALL);
                     return _lu_header;
                 }

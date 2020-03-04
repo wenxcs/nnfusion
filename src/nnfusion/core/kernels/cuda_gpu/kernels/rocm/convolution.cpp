@@ -80,7 +80,6 @@ namespace nnfusion
                     }
 
                     {
-                        lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
                         // lu << "cudnnDataType_t data_type = " << get_cudnn_datatype(dtype) << ";\n";
                         lu << cudnn_tensor_descriptor_from_shape(input_shape, "tensor_desc_0")
                                   ->get_code();
@@ -102,7 +101,7 @@ namespace nnfusion
 	if (!inited) {
 		inited = true;
 		fprintf(stderr, "[MIOpen] Convolution running auto-tune for Forward-Data;\n");
-		CUDNN_SAFE_CALL(miopenFindConvolutionForwardAlgorithm(global_cudnn_handle,
+		CUDNN_SAFE_CALL(miopenFindConvolutionForwardAlgorithm(cudnn_handle,
 			tensor_desc_0, input0, filter_desc, input1, conv_desc, tensor_desc_1, output0,
 			4, &returnedAlgoCount, perfResults, workspace_ptr, workspace_size_in_bytes, false));
 		for (int i = 1; i < returnedAlgoCount; ++i)
@@ -111,7 +110,7 @@ namespace nnfusion
 		workspace_size_in_bytes = perfResults[fastest].memory;
 		CUDA_SAFE_CALL(cudaMalloc(&workspace_ptr, workspace_size_in_bytes));
 	}
-	CUDNN_SAFE_CALL(miopenConvolutionForward(global_cudnn_handle,
+	CUDNN_SAFE_CALL(miopenConvolutionForward(cudnn_handle,
 		&alpha, tensor_desc_0, input0, filter_desc, input1, conv_desc, perfResults[fastest].fwd_algo,
 		&beta, tensor_desc_1, output0, workspace_ptr, workspace_size_in_bytes));
 	CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_0));
@@ -129,7 +128,7 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
 
                     _lu->require(header::cudnn);
-                    _lu->require(declaration::global_cudnn_handle);
+                    //_lu->require(declaration::cudnn_handle);
                     _lu->require(macro::CUDNN_SAFE_CALL);
 
                     return _lu;

@@ -42,11 +42,19 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     writer << "\n";
     writer << "cudaStream_t stream = 0;\n";
 
+    std::string body_unit = fu->body_unit->get_code();
+    int pos_cudnn_handle = body_unit.find("cudnn_handle");
+    int pos_cublas_handle = body_unit.find("cublas_handle");
+    if (pos_cudnn_handle >= 0)
+        writer << "cudnnHandle_t cudnn_handle;\n";
+    if (pos_cublas_handle >= 0)
+        writer << "cublasHandle_t cublas_handle;\n";
+
     // Write function definition
     writer << fu->comment_unit->get_code();
     writer << fu->get_specialized_signature() << "\n";
     writer.block_begin();
-    writer << fu->body_unit->get_code() << "\n";
+    writer << body_unit << "\n";
     writer.block_end();
 
     // Write Test Calls
@@ -86,14 +94,14 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
     writer.block_begin();
     {
-        if (re->local_symbol.count("declaration::global_cublas_handle") > 0)
+        if (pos_cublas_handle >= 0)
         {
-            writer << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
+            writer << "CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle));\n";
         }
 
-        if (re->local_symbol.count("declaration::global_cudnn_handle") > 0)
+        if (pos_cudnn_handle >= 0)
         {
-            writer << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
+            writer << "CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle));\n";
         }
 
         if (re->local_symbol.count("declaration::num_SMs") > 0)
@@ -230,14 +238,14 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
                 writer << tensor_free_host(tensor);
         }
 
-        if (re->local_symbol.count("declaration::global_cublas_handle") > 0)
+        if (pos_cublas_handle >= 0)
         {
-            writer << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
+            writer << "CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle));\n";
         }
 
-        if (re->local_symbol.count("declaration::global_cudnn_handle") > 0)
+        if (pos_cudnn_handle >= 0)
         {
-            writer << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+            writer << "CUDNN_SAFE_CALL(cudnnDestroy(cudnn_handle));\n";
         }
         writer << "return milliseconds/" << ke->runtime_times << ";\n";
     }

@@ -125,7 +125,6 @@ LanguageUnit_p cuda::MaxPoolmD::emit_function_body()
 
     auto input_desc = cudnn_tensor_descriptor_from_shape(input_shape, "input_desc");
     auto output_desc = cudnn_tensor_descriptor_from_shape(output_shape, "output_desc");
-    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
     lu << input_desc->get_code();
     lu << output_desc->get_code();
 
@@ -176,7 +175,7 @@ LanguageUnit_p cuda::MaxPoolmD::emit_function_body()
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
 
-    lu << "CUDNN_SAFE_CALL(cudnnPoolingForward(global_cudnn_handle,"
+    lu << "CUDNN_SAFE_CALL(cudnnPoolingForward(cudnn_handle,"
        << " desc,"
        << " &alpha,"
        << " input_desc,"
@@ -197,7 +196,7 @@ LanguageUnit_p cuda::MaxPoolmD::emit_dependency()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
 
     _lu->require(header::cudnn);
-    _lu->require(declaration::global_cudnn_handle);
+    //_lu->require(declaration::cudnn_handle);
     _lu->require(macro::CUDNN_SAFE_CALL);
 
     return _lu;

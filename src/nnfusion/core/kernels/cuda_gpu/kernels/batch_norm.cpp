@@ -28,7 +28,6 @@ LanguageUnit_p cuda::BatchNorm::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
     auto tensor_desc = cudnn_tensor_descriptor_from_shape(tensor_shape, "tensor_desc");
-    lu << "CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));\n";
     lu << tensor_desc->get_code();
     // derived_param_desc
     lu << "cudnnTensorDescriptor_t derived_param_desc;\n";
@@ -37,7 +36,7 @@ LanguageUnit_p cuda::BatchNorm::emit_function_body()
           "CUDNN_BATCHNORM_SPATIAL));\n";
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
-    lu << "CUDNN_SAFE_CALL(cudnnBatchNormalizationForwardInference(global_cudnn_handle,"
+    lu << "CUDNN_SAFE_CALL(cudnnBatchNormalizationForwardInference(cudnn_handle,"
        << " CUDNN_BATCHNORM_SPATIAL,"
        << " &alpha,"
        << " &beta,"
@@ -64,8 +63,8 @@ LanguageUnit_p cuda::BatchNorm::emit_dependency()
     _lu->require(header::cudnn);
     _lu->require(header::stdexcept);
     _lu->require(header::sstream);
-    _lu->require(macro::CUBLAS_SAFE_CALL);
-    _lu->require(declaration::global_cublas_handle);
+    _lu->require(macro::CUDNN_SAFE_CALL);
+    //_lu->require(declaration::cudnn_handle);
     return _lu;
 }
 

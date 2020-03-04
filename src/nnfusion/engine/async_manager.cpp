@@ -186,7 +186,7 @@ LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shar
         lu << "cudaStreamWaitEvent(0, " << event->get_name() << ", 0 );\n";
     else
         lu << "cudaStreamWaitEvent(" << stream->get_name() << ", " << event->get_name()
-           << ", 0 );\n";
+           << ", 0);\n";
     return _lu;
 }
 

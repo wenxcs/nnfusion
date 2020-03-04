@@ -357,19 +357,25 @@ std::unordered_map<std::string, MemoryAllocator*>
 MemoryAllocator*
     nnfusion::MemoryAllocatorFactory::get_allocator(shared_ptr<descriptor::Tensor> tensor)
 {
-    auto device_name = tensor->get_device_name();
-    if (m_allocator_list.find(device_name) != m_allocator_list.end())
+    int group_id = tensor->get_group_id();
+    CHECK(group_id != -1);
+    std::string search_name = tensor->get_device_name() + "_" + to_string(group_id);
+    if (m_allocator_list.find(search_name) != m_allocator_list.end())
     {
-        return m_allocator_list[device_name];
+        return m_allocator_list[search_name];
     }
     else
     {
         if (tensor->is_RDMA_tensor())
         {
             auto device_type = tensor->get_device_type();
-            RDMAMemoryAllocator* allocator = new RDMAMemoryAllocator(
-                m_alignment, m_disable_reuse, device_type, tensor->get_device_id());
-            m_allocator_list[device_name] = allocator;
+            RDMAMemoryAllocator* allocator =
+                new RDMAMemoryAllocator(m_alignment,
+                                        m_disable_reuse,
+                                        device_type,
+                                        tensor->get_device_id(),
+                                        "group" + to_string(group_id) + "_RDMA");
+            m_allocator_list[search_name] = allocator;
             return allocator;
         }
         else
@@ -379,26 +385,35 @@ MemoryAllocator*
             {
             case CUDA_GPU:
             {
-                allocator = new CUDAMemoryAllocator(
-                    m_alignment, m_disable_reuse, CUDA_GPU, tensor->get_device_id());
+                allocator = new CUDAMemoryAllocator(m_alignment,
+                                                    m_disable_reuse,
+                                                    CUDA_GPU,
+                                                    tensor->get_device_id(),
+                                                    "group" + to_string(group_id));
                 break;
             }
             case ROCM_GPU:
             {
-                allocator = new RocmMemoryAllocator(
-                    m_alignment, m_disable_reuse, ROCM_GPU, tensor->get_device_id());
+                allocator = new RocmMemoryAllocator(m_alignment,
+                                                    m_disable_reuse,
+                                                    ROCM_GPU,
+                                                    tensor->get_device_id(),
+                                                    "group" + to_string(group_id));
                 break;
             }
             case GENERIC_CPU:
             {
-                allocator = new HostMemoryAllocator(
-                    m_alignment, m_disable_reuse, GENERIC_CPU, tensor->get_device_id());
+                allocator = new HostMemoryAllocator(m_alignment,
+                                                    m_disable_reuse,
+                                                    GENERIC_CPU,
+                                                    tensor->get_device_id(),
+                                                    "group" + to_string(group_id));
                 break;
             }
-            default: LOG(ERROR) << "No valid allocator found: " << device_name; break;
+            default: LOG(ERROR) << "No valid allocator found: " << search_name; break;
             }
             if (allocator != nullptr)
-                m_allocator_list[device_name] = allocator;
+                m_allocator_list[search_name] = allocator;
             return allocator;
         }
     }

@@ -40,7 +40,6 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                (a->get_device_id() == b->get_device_id());
     };
 
-    std::unordered_set<shared_ptr<descriptor::Tensor>> persistent_tensors;
     auto& p = tu->program;
 
     for (auto iterator : p)
@@ -71,12 +70,11 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             if (kernel != nullptr)
             {
                 CHECK_NOT_NULLPTR(kernel->m_context);
-                // Allocate NoneResuseable Space for Persistent Tensors
+                // Allocate temp tensors
                 for (size_t i = 0; i < kernel->m_context->tensors.size(); i++)
                 {
                     auto tensor = kernel->m_context->tensors[i];
-                    if (!tensor->is_persistent())
-                        alloc_temp.insert(tensor);
+                    alloc_temp.insert(tensor);
                 }
 
                 // concat in_place_oi should be treated differently
@@ -122,22 +120,15 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 newlist.insert(gnode->liveness_new_list.begin(), gnode->liveness_new_list.end());
             for (std::shared_ptr<descriptor::Tensor> tensor : newlist)
             {
-                if (!tensor->is_persistent())
+                auto allocator = maf.get_allocator(tensor);
+                if (in_place_outputs.count(tensor))
                 {
-                    auto allocator = maf.get_allocator(tensor);
-                    if (in_place_outputs.count(tensor))
-                    {
-                        size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
-                        allocator->allocate(tensor, offset);
-                    }
-                    else
-                    {
-                        allocator->allocate(tensor);
-                    }
+                    size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
+                    allocator->allocate(tensor, offset);
                 }
                 else
                 {
-                    persistent_tensors.insert(tensor);
+                    allocator->allocate(tensor);
                 }
             }
 
@@ -167,21 +158,9 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             }
         }
     }
-    // allocate persistent tensors with NO_REUSE scheme.
-    for (auto tensor : persistent_tensors)
-    {
-        auto allocator = maf.get_allocator(tensor);
-        allocator->set_alloc_scheme(nnfusion::MemoryAllocator::allocation_scheme::NO_REUSE);
-        allocator->allocate(tensor);
-    }
 
     if (dump_trace)
     {
-        mem_log << "----allocate persistent tensors----\n";
-        for (const auto& allocator : MemoryAllocatorFactory::get_allocator_list())
-        {
-            allocator.second->dump(mem_log);
-        }
         // close memory log file.
         mem_log.close();
     }

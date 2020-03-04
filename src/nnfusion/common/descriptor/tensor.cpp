@@ -31,7 +31,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
                                      bool is_constant,
                                      bool is_parameter,
                                      bool is_RDMA_tensor,
-                                     size_t group_id,
+                                     int group_id,
                                      size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
@@ -56,7 +56,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
                                      bool is_constant,
                                      bool is_parameter,
                                      bool is_RDMA_tensor,
-                                     size_t group_id,
+                                     int group_id,
                                      size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})

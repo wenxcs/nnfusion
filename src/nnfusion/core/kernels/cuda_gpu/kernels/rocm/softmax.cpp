@@ -64,12 +64,11 @@ namespace nnfusion
 
                     auto code = nnfusion::op::create_code_from_template(
                         R"(
-    CUDNN_SAFE_CALL(cudnnSetStream(global_cudnn_handle, stream));
     float alpha = 1.0f, beta = 0.0f;
     miopenTensorDescriptor_t desc;
     CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&desc));
     CUDNN_SAFE_CALL(miopenSet4dTensorDescriptor(desc, miopenFloat, @height@, @width@, 1, 1));
-    CUDNN_SAFE_CALL(miopenSoftmaxForward(global_cudnn_handle, &alpha, desc, input0, &beta, desc, output0));
+    CUDNN_SAFE_CALL(miopenSoftmaxForward(cudnn_handle, &alpha, desc, input0, &beta, desc, output0));
     CUDNN_SAFE_CALL(miopenDestroyTensorDescriptor(desc));
 )",
                         {{"height", height}, {"width", width}});
@@ -84,7 +83,7 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
-                    _lu->require(declaration::global_cudnn_handle);
+                    //_lu->require(declaration::cudnn_handle);
                     _lu->require(macro::CUDNN_SAFE_CALL);
                     return _lu;
                 }

@@ -333,10 +333,14 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu << "#include \"nnfusion_rt.h\"\n\n";
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
     std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_stream;
+    std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_handle;
+    std::unordered_map<string, string> cudnn_handle_stream;
+    std::unordered_map<string, string> cublas_handle_stream;
 
     // Collect Function Definition
     {
         LanguageUnit def("FUNCTIONS");
+        int count_k = 0;
         for (auto kernel : kernels)
         {
             //get kernel's stream name
@@ -356,8 +360,35 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     global_required.insert(it.second->symbol);
                 }
             }
+            // get kernel's handle name
+            string body_unit = fu->body_unit->get_code();
+            int handle_cudnn = body_unit.find("cudnn_handle");
+            int handle_cublas = body_unit.find("cublas_handle");
+            if (handle_cudnn >= 0)
+            {
+                kernel_handle[kernel] = "cudnn_handle_" + kernel_stream[kernel];
+                cudnn_handle_stream[kernel_handle[kernel]] = kernel_stream[kernel];
+            }
+            if (handle_cublas >= 0)
+            {
+                kernel_handle[kernel] = "cublas_handle_" + kernel_stream[kernel];
+                cublas_handle_stream[kernel_handle[kernel]] = kernel_stream[kernel];
+            }
 
-            string func_key = fu->signature_unit->get_code() + fu->body_unit->get_code();
+            // conv kernels in the the stream shares the same workspace_ptr
+            if (gnode->get_op_type() == "Convolution")
+            {
+                std::string s_workspace =
+                    "workspace_ptr_" + to_string(async_info.execution_stream->get_stream_id());
+                int pos = body_unit.find("workspace_ptr");
+                while (pos >= 0)
+                {
+                    body_unit.replace(pos, 13, s_workspace);
+                    pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
+                }
+            }
+
+            string func_key = fu->signature_unit->get_code() + body_unit;
             if (kernel->is_static_function() ||
                 decleard_function_LU.find(func_key) == decleard_function_LU.end())
             {
@@ -368,6 +399,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     def << "\n";
                     def << fu->comment_unit->get_code();
                     def << sig << "\n";
+
                     def.block_begin();
                     def << fu->body_unit->get_code() << "\n";
                     def.block_end();
@@ -406,19 +438,26 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         def << "}\n";
                     }
                 }
-                // add stream parameter
+                // cuda lib kernel
                 else
                 {
+                    // add stream or handle parameter for cuda lib kernel
                     int pos = sig.find("(");
-                    if (pos >= 0)
-                    {
+                    if (handle_cudnn >= 0)
+                        sig.insert(pos + 1, "cudnnHandle_t cudnn_handle, ");
+
+                    if (handle_cublas >= 0)
+                        sig.insert(pos + 1, "cublasHandle_t cublas_handle, ");
+
+                    if (fu->body_unit->get_code().find("stream") != string::npos)
                         sig.insert(pos + 1, "cudaStream_t stream, ");
-                    }
+
                     def << "\n";
                     def << fu->comment_unit->get_code();
+                    def << "\n";
                     def << sig << "\n";
                     def.block_begin();
-                    def << fu->body_unit->get_code() << "\n";
+                    def << body_unit << "\n";
                     def.block_end();
                     if (!kernel->is_static_function())
                     {
@@ -444,6 +483,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
+        lu << "\n";
+        // cublas and cudnn handle decl
+        for (auto cudnn_handle : cudnn_handle_stream)
+        {
+            lu << "cudnnHandle_t " << cudnn_handle.first << ";\n";
+        }
+        for (auto cublas_handle : cublas_handle_stream)
+        {
+            lu << "cublasHandle_t " << cublas_handle.first << ";\n";
+        }
         lu << "\n";
         // stream and event declaration
         if (async_manager->num_stream() > 0)
@@ -531,6 +580,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu_kernel_entry.block_begin();
 
         //Planning
+        size_t total_alloc = 0;
+        for (const auto& allocator : allocator_list)
+        {
+            total_alloc += allocator.second->max_allocated();
+        }
+        lu_main_init << "// total memory: " << total_alloc << "\n";
         for (const auto& allocator : allocator_list)
         {
             lu_mem_plan_init << allocator.second->emit_memory_init()->get_code();
@@ -538,23 +593,38 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
         //Function Call
         {
-            if (global_required.count("declaration::global_cublas_handle") > 0)
+            if (async_manager->num_stream() > 0)
+                lu_main_init << async_manager->emit_stream_init()->get_code();
+            if (async_manager->num_event() > 0)
+                lu_main_init << async_manager->emit_event_init()->get_code();
+
+            for (auto cudnn_handle : cudnn_handle_stream)
             {
-                lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
+                lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&" << cudnn_handle.first << "));\n";
+                if (cudnn_handle.second != "0")
+                    lu_main_init << "CUDNN_SAFE_CALL(cudnnSetStream(" << cudnn_handle.first << ", "
+                                 << cudnn_handle.second << "));\n";
             }
-            if (global_required.count("declaration::global_cudnn_handle") > 0)
+            for (auto cublas_handle : cublas_handle_stream)
             {
-                lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
+                lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&" << cublas_handle.first << "));\n";
+                if (cublas_handle.second != "0")
+                    lu_main_init << "CUBLAS_SAFE_CALL(cublasSetStream(" << cublas_handle.first
+                                 << ", " << cublas_handle.second << "));\n";
             }
+            // if (global_required.count("declaration::global_cublas_handle") > 0)
+            // {
+            //     lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
+            // }
+            // if (global_required.count("declaration::global_cudnn_handle") > 0)
+            // {
+            //     lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
+            // }
             if (global_required.count("declaration::num_SMs") > 0)
             {
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
-            if (async_manager->num_stream() > 0)
-                lu_main_init << async_manager->emit_stream_init()->get_code();
-            if (async_manager->num_event() > 0)
-                lu_main_init << async_manager->emit_event_init()->get_code();
             if (enable_timing)
             {
                 lu_kernel_entry << "static cudaEvent_t hEvents[" << kernels.size() << "];\n";
@@ -578,7 +648,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
-                    string func_key = fu->signature_unit->get_code() + fu->body_unit->get_code();
+                    std::string body_unit = fu->body_unit->get_code();
+                    // conv kernels in the the stream shares the same workspace_ptr
+                    if (gnode->get_op_type() == "Convolution")
+                    {
+                        std::string s_workspace =
+                            "workspace_ptr_" +
+                            to_string(async_info.execution_stream->get_stream_id());
+                        int pos = body_unit.find("workspace_ptr");
+                        while (pos >= 0)
+                        {
+                            body_unit.replace(pos, 13, s_workspace);
+                            pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
+                        }
+                    }
+                    string func_key = fu->signature_unit->get_code() + body_unit;
                     CHECK(decleard_function_LU.find(func_key) != decleard_function_LU.end());
                     func_name = decleard_function_LU[func_key]->get_code();
                 }
@@ -664,12 +748,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         builder += function_call.substr(pos_right + 4);
                         function_call = std::move(builder);
                     }
-                    // add stream for cudalib emitter function call
+                    // add stream or handle for cudalib emitter function call
                     else
                     {
                         int pos = function_call.find("(");
-                        std::string stream_name = kernel_stream[kernel] + ", ";
-                        function_call.insert(pos + 1, stream_name);
+                        if (kernel_handle.find(kernel) != kernel_handle.end())
+                            function_call.insert(pos + 1, kernel_handle[kernel] + ", ");
+
+                        if (fu->body_unit->get_code().find("stream") != string::npos)
+                            function_call.insert(pos + 1, kernel_stream[kernel] + ", ");
                     }
 
                     if (!async_info.wait_events.empty())
@@ -716,15 +803,23 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_free << async_manager->emit_stream_destroy()->get_code();
             if (async_manager->num_event() > 0)
                 lu_main_free << async_manager->emit_event_destroy()->get_code();
-
-            if (global_required.count("declaration::global_cublas_handle") > 0)
+            // destroy handle
+            for (auto cudnn_handle : cudnn_handle_stream)
             {
-                lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
+                lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(" << cudnn_handle.first << "));\n";
             }
-            if (global_required.count("declaration::global_cudnn_handle") > 0)
+            for (auto cublas_handle : cublas_handle_stream)
             {
-                lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+                lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(" << cublas_handle.first << "));\n";
             }
+            // if (global_required.count("declaration::global_cublas_handle") > 0)
+            // {
+            //     lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
+            // }
+            // if (global_required.count("declaration::global_cudnn_handle") > 0)
+            // {
+            //     lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
+            // }
             if (global_required.count("header::super_scaler"))
             {
                 lu_kernel_entry << "super_scaler_sync();\n";
@@ -799,6 +894,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
      }
              )";
     }
+
     lu << lu_kernel_entry.get_code() << "\n\n";
 
     // // Test function

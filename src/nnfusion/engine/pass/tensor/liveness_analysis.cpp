@@ -24,7 +24,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, KernelEmitter::Pointer> op_kernels;
     std::unordered_set<shared_ptr<descriptor::Tensor>> persist_candidate;
-    std::unordered_set<shared_ptr<descriptor::Tensor>> no_free;
+    std::unordered_set<shared_ptr<descriptor::Tensor>> cross_stream;
 
     auto& p = tu->program;
     for (auto block_iter : p)
@@ -39,36 +39,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             }
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             auto stream = async_info.execution_stream;
-
-            std::vector<Stream> sister_stream;
-            for (auto& in_edge : gnode->get_in_edges())
-            {
-                if (in_edge->is_control_edge())
-                    continue;
-                auto input_gnode = in_edge->get_src();
-                int idx = in_edge->get_src_output();
-                auto tensor = input_gnode->get_output_tensor_ptr(idx);
-                for (auto& out_edge : input_gnode->get_out_edges())
-                {
-                    if (out_edge->get_src_output() == idx)
-                    {
-                        auto sister_gnode = out_edge->get_dst();
-                        if (!(*sister_gnode)["Async_info"].is_valid())
-                        {
-                            CHECK_FAIL() << "Async info should be assigned before this pass："
-                                         << sister_gnode->get_name();
-                        }
-                        auto& sister_async_info =
-                            (*sister_gnode)["Async_info"].as<AsyncExecutionInfo>();
-                        auto sister_stream = sister_async_info.execution_stream;
-                        if (sister_stream->get_stream_id() != stream->get_stream_id())
-                        {
-                            no_free.insert(tensor);
-                            break;
-                        }
-                    }
-                }
-            }
+            auto stream_id = stream->get_stream_id();
 
             if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
                 !gnode->get_op_ptr()->is_constant())
@@ -81,27 +52,56 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                  << gnode->get_name();
                 }
                 op_kernels[gnode] = emitted_kernel.second;
+                // add cross_stream tensor
+                auto kernel_context = op_kernels[gnode]->m_context;
+                for (size_t i = 0; i < kernel_context->inputs.size(); i++)
+                {
+                    auto tensor = kernel_context->inputs[i];
+                    auto group_id = tensor->get_group_id();
+                    if (group_id != stream_id)
+                        cross_stream.insert(tensor);
+                }
+                // set output tensor's group id
+                for (size_t i = 0; i < kernel_context->outputs.size(); i++)
+                {
+                    auto tensor = kernel_context->outputs[i];
+                    tensor->set_group_id(stream_id);
+                }
+                // set temp tensor's group id
+                for (size_t i = 0; i < kernel_context->tensors.size(); i++)
+                {
+                    auto tensor = kernel_context->tensors[i];
+                    tensor->set_group_id(stream_id);
+                }
             }
 
             if (gnode->get_op_ptr()->is_parameter())
             {
                 for (size_t i = 0; i < gnode->get_output_size(); ++i)
                 {
-                    nnfusion::descriptor::Tensor& tensor = gnode->get_output_tensor(i);
-                    tensor.set_parameter();
+                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    tensor->set_parameter();
+                    // set tensor's group id
+                    tensor->set_group_id(stream_id);
                 }
             }
             if (gnode->get_op_ptr()->is_output())
             {
                 for (size_t i = 0; i < gnode->get_output_size(); ++i)
                 {
-                    nnfusion::descriptor::Tensor& tensor = gnode->get_output_tensor(i);
-                    tensor.set_persistent();
+                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    tensor->set_persistent();
+                    // set tensor's group id
+                    tensor->set_group_id(stream_id);
                 }
                 for (size_t i = 0; i < gnode->get_input_size(); ++i)
                 {
-                    auto& tensor = gnode->get_input_tensor(i);
-                    tensor.set_persistent();
+                    shared_ptr<descriptor::Tensor> tensor = gnode->get_input_tensor_ptr(i);
+                    tensor->set_persistent();
+                    // add cross_stream tensor
+                    auto group_id = tensor->get_group_id();
+                    if (group_id != stream_id)
+                        cross_stream.insert(tensor);
                 }
             }
             if (auto constant_node =
@@ -118,10 +118,13 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         tensor->set_persistent();
                     }
+                    // set tensor's group id
+                    tensor->set_group_id(stream_id);
                 }
             }
         }
     }
+
     if (enable_rt_const_folding)
     {
         for (auto block_iter : p)
@@ -243,7 +246,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     // this is the last node that value is seen in
                     // delete it at the end of the op
                     currently_live.insert(tensor_decl);
-                    if (no_free.find(tensor_decl) == no_free.end())
+                    if (cross_stream.find(tensor_decl) == cross_stream.end())
                         free_tensor_decls.insert(tensor_decl);
                 }
             }
