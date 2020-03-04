@@ -83,6 +83,7 @@ namespace nnfusion
         };
 
         std::unordered_map<std::string, OpConfig>& get_op_configs();
+        std::string get_translation(std::shared_ptr<nnfusion::graph::GNode>& gnode);
 
         inline const OpConfig& lookup_op_config(const std::string& opname)
         {
@@ -201,6 +202,13 @@ namespace nnfusion
                     gnode->set_output_type_and_shape(
                         0, gnode->get_input_element_type(i), gnode->get_input_shape(i));
                 }
+            }
+
+            // unimplemented that will notify exception when migrating to op_v2 mode
+            inline void unimplemented_and_not_used(std::shared_ptr<graph::GNode> gnode)
+            {
+                throw std::runtime_error(
+                    ("Not implemented infershape for Op: " + gnode->get_op_ptr()->get_op_type()));
             }
         } // namespace infershape
     }     // namespace op

@@ -18,20 +18,7 @@ namespace nnfusion
                 BroadcastAntares(shared_ptr<KernelContext> ctx)
                     : AntaresCpuKernelEmitter(ctx)
                 {
-                    auto _op =
-                        static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
-                    CHECK_NOT_NULLPTR(_op) << "Node type is not Broadcast.";
-
-                    nnfusion::Shape input_shape = ctx->inputs[0]->get_shape();
-                    nnfusion::Shape output_shape = ctx->outputs[0]->get_shape();
-
-                    auto expression = op::create_code_from_template(
-                        R"(- input("input0", @input_shape@); output(@output_shape@, topi=topi.broadcast_to(args("input0"), @output_shape@));
-)",
-                        {{"input_shape", vector_to_string(input_shape)},
-                         {"output_shape", vector_to_string(output_shape)}});
-
-                    initialize(expression);
+                    initialize(nnfusion::op::get_translation(ctx->gnode));
                 }
             };
         } // namespace cpu
