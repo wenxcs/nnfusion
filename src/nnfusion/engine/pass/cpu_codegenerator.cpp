@@ -239,6 +239,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("header::") != string::npos)
                 lu << it.second->get_code();
         lu << "#include<cstring>\n";
+        lu << "using namespace std;\n";
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("macro::") != string::npos)
