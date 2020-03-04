@@ -361,15 +361,21 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
 
             // Both intra_node parallelism and multi-stream need worker_thread_pool.
-            if (need_intra_node_threadpool || async_manager->num_non_default_stream() > 0)
-            {
-                lu_main_init << "worker_thread_pool = new concurrency::NumaAwareThreadPool("
-                             << FLAGS_fnuma_node_num << ", " << FLAGS_fthread_num_per_node
-                             << ");\n";
-            }
+            // If multi-stream is not enabled, numa-aware can be ignored.
+            int numa_node_num = FLAGS_fnuma_node_num;
             if (async_manager->num_non_default_stream() > 0)
             {
                 lu_main_init << "schedule_thread_pool = new concurrency::NumaAwareThreadPool();\n";
+            }
+            else
+            {
+                numa_node_num = 1;
+            }
+
+            if (need_intra_node_threadpool || async_manager->num_non_default_stream() > 0)
+            {
+                lu_main_init << "worker_thread_pool = new concurrency::NumaAwareThreadPool("
+                             << numa_node_num << ", " << FLAGS_fthread_num_per_node << ");\n";
             }
 
             std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels_entry;
@@ -446,8 +452,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         // For other kernels, the function call is:
                         //   auto func1 = std::bind(kernel_func_name, param1, param2, ...);
                         //   worker_thread_pool->ScheduleSync(func1, numa_node_id);
-                        int numa_node = stream_index % FLAGS_fnuma_node_num;
-                        ++stream_index;
+                        int numa_node = stream_index % numa_node_num;
                         FunctionUnit_p fu = kernel->get_or_emit_source();
                         string call_str = fu->call_unit->get_code();
                         if (kernel->is_parallelism())
@@ -494,10 +499,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                                        thread_call_str;
                     lu_kernel_entry << std_thread_func_call;
                     std::string t_threadpool_call = std::string("schedule_thread_pool->Schedule(");
-                    t_threadpool_call += (std_thread_func_name + std::string(", 0);\n"));
+                    t_threadpool_call += (std_thread_func_name + std::string(");\n"));
                     lu_kernel_entry << t_threadpool_call;
                     ++thread_func_call_count;
                 }
+                ++stream_index;
             }
 
             if (stream_kernels_entry.find("default") != stream_kernels_entry.end())
