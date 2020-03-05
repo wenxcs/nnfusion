@@ -8,7 +8,7 @@
 #include "device_dispatcher.hpp"
 #include "gemm_fusion_pass.hpp"
 #include "gradient_weight_mapping_pass.hpp"
-#include "graph_core_codegen_pass.hpp"
+#include "graphcore_codegen_pass.hpp"
 #include "kernel_fusion_pass.hpp"
 #include "kernel_selection.hpp"
 #include "multi_reshape_folding_pass.hpp"

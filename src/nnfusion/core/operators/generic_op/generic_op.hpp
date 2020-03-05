@@ -208,7 +208,8 @@ namespace nnfusion
             inline void unimplemented_and_not_used(std::shared_ptr<graph::GNode> gnode)
             {
                 throw std::runtime_error(
-                    ("Not implemented infershape for Op: " + gnode->get_op_ptr()->get_op_type()));
+                    ("Not implemented infershape for Op: " + gnode->get_op_ptr()->get_op_type())
+                        .c_str());
             }
         } // namespace infershape
     }     // namespace op
