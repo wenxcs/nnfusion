@@ -661,6 +661,10 @@ namespace nnfusion
                 Shape ng_image_shape(2);
                 Shape ng_kernel_shape(2);
 
+                auto& filter_shape = filter_gnode->get_shape();
+                ng_kernel_shape[0] = filter_shape[0];
+                ng_kernel_shape[1] = filter_shape[1];
+
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_dilations, ng_dilations);
@@ -680,8 +684,8 @@ namespace nnfusion
                 op_config["padding_type"] = tf_padding_type;
                 op_config["strides"] = ng_strides;
                 op_config["dilations"] = ng_dilations;
-                op_config["padding_before"] = ng_padding_above;
-                op_config["padding_after"] = ng_padding_below;
+                op_config["padding_before"] = ng_padding_below;
+                op_config["padding_after"] = ng_padding_above;
 
                 auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(), "DepthwiseConv2dNative", op_config);

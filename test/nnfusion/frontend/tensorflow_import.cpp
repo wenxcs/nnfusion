@@ -284,6 +284,32 @@ TEST(nnfusion_tensorflow_import, conv2d_op)
     }
 }
 */
+
+TEST(nnfusion_tensorflow_import, depthwise_conv2d_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_depthwise_conv2d_graph.pb"));
+    Inputs inputs;
+    inputs.emplace_back(
+        test::NDArray<float, 4>{{{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}, {{9, 10}, {11, 12}}}}
+            .get_vector());
+    inputs.emplace_back(test::NDArray<float, 4>{{{{1}, {2}}, {{7}, {8}}, {{13}, {14}}},
+                                                {{{3}, {4}}, {{9}, {10}}, {{15}, {16}}},
+                                                {{{5}, {6}}, {{11}, {12}}, {{17}, {18}}}}
+                            .get_vector());
+    Outputs expected_outputs{test::NDArray<float, 3>{
+        {{228, 300}, {132, 180}},
+        {{482, 596}, {266, 344}},
+        {{372, 452}, {180, 236}}}.get_vector()};
+
+    Outputs outputs{execute<float>(model, inputs, "NNFusion")};
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs[i]));
+    }
+}
+
 TEST(nnfusion_tensorflow_import, bias_add_op)
 {
     auto model = frontend::load_tensorflow_model(file_util::path_join(
