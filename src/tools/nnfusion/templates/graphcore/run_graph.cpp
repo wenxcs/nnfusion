@@ -12,10 +12,19 @@
 #include <poplar/Graph.hpp>
 #include <poplar/IPUModel.hpp>
 
-// #include <poplin/MatMul.hpp>
-// #include <popops/Reduce.hpp>
-// #include <popops/codelets.hpp>
-// #include <popops/ElementWise.hpp>
+#include <poplin/Convolution.hpp>
+#include <poplin/MatMul.hpp>
+#include <poplin/codelets.hpp>
+
+#include <popnn/BatchNorm.hpp>
+#include <popnn/Pooling.hpp>
+#include <popnn/SpatialSoftMax.hpp>
+#include <popnn/codelets.hpp>
+
+#include <popops/ElementWise.hpp>
+#include <popops/Pad.hpp>
+#include <popops/Reduce.hpp>
+#include <popops/codelets.hpp>
 
 poplar::Device device;
 std::vector<poplar::ComputeSet> compsets;
@@ -23,7 +32,7 @@ poplar::program::Sequence prog;
 
 const int NUM_TILES = 1216;
 
-namespace utils
+namespace
 {
     // Return a HW device with the requested number of IPUs.
     // Exception is thrown if no devices with the requested
@@ -51,6 +60,15 @@ namespace utils
         poplar::IPUModel ipuModel;
         ipuModel.numIPUs = numIpus;
         return ipuModel.createDevice();
+    }
+
+    void DEBUG(const char* notation)
+    {
+        static int use_debug = -1;
+        if (use_debug < 0)
+            use_debug = getenv("DEBUG") ? 1 : 0;
+        if (use_debug)
+            printf("[DEBUG] Preparing %s..\n", notation);
     }
 }
 
@@ -96,6 +114,14 @@ poplar::Tensor compute_task(poplar::Graph& g,
     using namespace poplar;
 
     assert(shards.size() == inputs.size() + 1);
+    static int disable_blockfusion = -1, normal_step = 0;
+    if (disable_blockfusion < 0)
+        disable_blockfusion = getenv("NO_FUSE") ? 1 : 0;
+    if (disable_blockfusion)
+    {
+        step = normal_step++;
+        tails -= offset, offset = 0;
+    }
 
     // Parse thread_extents
     std::vector<std::string> thread_names;
@@ -181,8 +207,10 @@ poplar::Tensor compute_task(poplar::Graph& g,
 
 extern "C" float tanhf(float);
 extern "C" float expf(float);
-
 #define __expf expf
+
+template <class T> inline T max(const T &x, const T &y) { return x > y ? x : y; }
+template <class T> inline T min(const T &x, const T &y) { return x < y ? x : y; }
 
 using namespace poplar;
 
@@ -282,10 +310,14 @@ int main(int argc, char** argv)
 {
     using namespace poplar;
 
-    device = getenv("IPU") ? utils::getIpuHwDevice(1) : utils::getIpuModelDevice(1);
+    device = getenv("IPU") ? getIpuHwDevice(1) : getIpuModelDevice(1);
     printf("Ipu Device Id = %d\n", (int)device.getId());
 
     Graph g(device.getTarget());
+
+    poplin::addCodelets(g);
+    popnn::addCodelets(g);
+    popops::addCodelets(g);
 
     do
     {
@@ -308,6 +340,6 @@ int main(int argc, char** argv)
     if (getenv("PROF"))
         engine.printProfileSummary(std::cout, {{"showExecutionSteps", "false"}});
 
-    run(10);
+    run(100);
     return EXIT_SUCCESS;
 }

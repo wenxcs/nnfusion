@@ -41,9 +41,18 @@ namespace
 
     inline int get_type_id(nnfusion::element::Type type)
     {
+        // TODO: fill more type cases
         if (type == nnfusion::element::f32)
             return DT_FLOAT;
         throw std::runtime_error("Not supported element type.");
+    }
+
+    template <class T>
+    inline std::shared_ptr<T> get_op_object(std::shared_ptr<GNode>& curr)
+    {
+        auto _op = static_pointer_cast<T>(curr->get_op_ptr());
+        CHECK_NOT_NULLPTR(_op) << "Node type is not " << curr->get_op_ptr()->get_op_type();
+        return _op;
     }
 
     inline void UNHANDLED_CASE(std::shared_ptr<GNode>& curr)
@@ -53,7 +62,7 @@ namespace
             printf(">> in-%d : %s\n", i, vector_to_string(curr->get_input_shape(i)).c_str());
         for (int i = 0; i < curr->get_output_size(); ++i)
             printf(">> out-%d: %s\n", i, vector_to_string(curr->get_output_shape(i)).c_str());
-        _exit(1);
+        exit(1);
     };
 }
 
@@ -71,9 +80,7 @@ namespace nnfusion
                     {
                         if (curr->get_op_ptr()->get_op_type() == "Dot")
                         {
-                            auto _op = static_pointer_cast<nnfusion::op::Dot>(curr->get_op_ptr());
-                            CHECK_NOT_NULLPTR(_op) << "Node type is not "
-                                                   << curr->get_op_ptr()->get_op_type();
+                            auto _op = get_op_object<nnfusion::op::Dot>(curr);
 
                             CHECK(_op->get_transpose_A() == false);
                             if (_op->get_transpose_B() == false)
@@ -86,9 +93,7 @@ namespace nnfusion
                                     << "Only for 2D weight optimization.";
                                 CHECK(weight->get_output_element_type(0) == nnfusion::element::f32);
 
-                                auto p_const =
-                                    std::dynamic_pointer_cast<op::Constant>(weight->get_op_ptr());
-                                CHECK(p_const != nullptr);
+                                auto p_const = get_op_object<op::Constant>(weight);
 
                                 _op->get_transpose_B() = true;
                                 decltype(weight_shape) trans_shape = {weight_shape[1],
@@ -212,10 +217,6 @@ namespace nnfusion
                     }
 
                     CHECK(0 == system("mkdir -p nnfusion_rt/graphcore_codegen"));
-                    nnfusion::codegen::copy_file_from_templates(
-                        "graphcore/Makefile", "nnfusion_rt/graphcore_codegen/Makefile");
-                    nnfusion::codegen::copy_file_from_templates(
-                        "graphcore/run_graph.cpp", "nnfusion_rt/graphcore_codegen/run_graph.cpp");
 
                     std::ofstream fout("nnfusion_rt/graphcore_codegen/nnfusion_rt.h");
                     // Perform blockfusion
@@ -230,6 +231,12 @@ namespace nnfusion
                             ++step, offset = 0;
                     };
 
+                    auto no_scaler = [](const std::string& str) {
+                        if (str.size())
+                            return str;
+                        return std::string("1");
+                    };
+
                     while (gen_q.size() > 0 || pend_q.size() > 0)
                     {
                         // Move to new super step if satisifed
@@ -240,11 +247,7 @@ namespace nnfusion
                         gen_q.pop_front();
                         visited.insert(curr);
 
-                        auto no_scaler = [](const std::string& str) {
-                            if (str.size())
-                                return str;
-                            return std::string("1");
-                        };
+                        // fout << "DEBUG(\"" << arg_names[curr] << "\");\n";
 
                         // Print codes for each Op
                         if (curr->get_op_ptr()->get_op_type() == "Constant")
@@ -338,6 +341,10 @@ namespace nnfusion
                                     {"Negative",
                                      []() { return "topi=topi.negative(args(\"input0\"))"; }},
                                     {"Tanh", []() { return "topi=topi.tanh(args(\"input0\"))"; }},
+                                    {"Relu",
+                                     []() { return "topi=topi.nn.relu(args(\"input0\"))"; }},
+                                    {"Relu6",
+                                     []() { return "topi=topi.clip(args(\"input0\"), 0, 6)"; }},
                                 };
 
                             if (elementwise_ops.count(curr->get_op_ptr()->get_op_type()))
@@ -359,8 +366,7 @@ namespace nnfusion
                                         break;
                                     }
 
-                                for (auto& it : shards)
-                                    it = y;
+                                shards = std::vector<int>(1 + curr->get_input_size(), y);
                                 code = autogen(op::create_code_from_template(
                                     expr,
                                     {{"common_shape",
@@ -368,20 +374,29 @@ namespace nnfusion
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Broadcast")
                             {
-                                code = autogen(nnfusion::op::get_translation(curr));
+                                auto _op = get_op_object<nnfusion::op::Broadcast>(curr);
+                                auto axes = _op->get_broadcast_axes();
+                                standard_kernel = false;
+                                fout << "Tensor " << arg_names[curr] << " = "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ".reshape({"
+                                     << join_collections(curr->get_output_shape(0),
+                                                         [&](int idx, ssize_t val) {
+                                                             return axes.count(idx)
+                                                                        ? std::string("1")
+                                                                        : std::to_string(val);
+                                                         })
+                                     << "});\n";
+                                for (auto it : axes)
+                                    fout << arg_names[curr] << " = " << arg_names[curr]
+                                         << ".broadcast(" << curr->get_output_shape(0)[it] << ", "
+                                         << it << ");\n";
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Reshape")
                             {
-                                nnfusion::Shape simp_in, simp_out;
-                                for (auto& it : curr->get_input_shape(0))
-                                    if (it > 1)
-                                        simp_in.push_back(it);
-                                for (auto& it : curr->get_output_shape(0))
-                                    if (it > 1)
-                                        simp_out.push_back(it);
-                                if (simp_out == simp_in)
-                                { // Memcpy
-                                    standard_kernel = false;
+                                auto _op = get_op_object<nnfusion::op::Reshape>(curr);
+                                standard_kernel = false;
+                                if (!_op->get_is_transpose())
+                                {
                                     fout << "Tensor " << arg_names[curr] << " = "
                                          << arg_names[curr->get_in_edge(0)->get_src()]
                                          << ".reshape({"
@@ -393,32 +408,33 @@ namespace nnfusion
                                 }
                                 else
                                 {
-                                    // Using poplar::Tensor::dimShuffle()
-                                    UNHANDLED_CASE(curr);
+                                    fout << "Tensor " << arg_names[curr] << " = "
+                                         << arg_names[curr->get_in_edge(0)->get_src()]
+                                         << ".dimShuffle({"
+                                         << join_collections(_op->get_input_order(),
+                                                             [](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "});\n";
                                 }
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Concat")
                             {
-                                auto _op =
-                                    static_pointer_cast<nnfusion::op::Concat>(curr->get_op_ptr());
-                                CHECK_NOT_NULLPTR(_op) << "Node type is not "
-                                                       << curr->get_op_ptr()->get_op_type();
+                                auto _op = get_op_object<nnfusion::op::Concat>(curr);
 
                                 auto axis = _op->get_concatenation_axis();
-                                CHECK(curr->get_input_size() == 2);
 
                                 standard_kernel = false;
-                                fout << "Tensor " << arg_names[curr] << " = concat("
-                                     << arg_names[curr->get_in_edge(0)->get_src()] << ", "
-                                     << arg_names[curr->get_in_edge(1)->get_src()] << ", " << axis
-                                     << ");\n";
+                                fout << "Tensor " << arg_names[curr] << " = "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ";\n";
+                                for (int i = 1; i < curr->get_input_size(); ++i)
+                                    fout << arg_names[curr] << " = concat(" << arg_names[curr]
+                                         << ", " << arg_names[curr->get_in_edge(1)->get_src()]
+                                         << ", " << axis << ");\n";
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Slice")
                             {
-                                auto _op =
-                                    static_pointer_cast<nnfusion::op::Slice>(curr->get_op_ptr());
-                                CHECK_NOT_NULLPTR(_op) << "Node type is not "
-                                                       << curr->get_op_ptr()->get_op_type();
+                                auto _op = get_op_object<nnfusion::op::Slice>(curr);
 
                                 bool builtin_slice = true;
                                 for (auto& it : _op->get_strides())
@@ -446,27 +462,15 @@ namespace nnfusion
                                 }
                                 else
                                 {
-                                    code = autogen(op::create_code_from_template(
-                                        R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.strided_slice(args("input0"), begin=@begin@, end=@end@, strides=@strides@)); )",
-                                        {{"input_shape",
-                                          vector_to_string(curr->get_input_shape(0))},
-                                         {"output_shape",
-                                          vector_to_string(curr->get_output_shape(0))},
-                                         {"begin", vector_to_string(_op->get_lower_bounds())},
-                                         {"end", vector_to_string(_op->get_upper_bounds())},
-                                         {"strides", vector_to_string(_op->get_strides())}}));
+                                    UNHANDLED_CASE(curr);
                                 }
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Dot")
                             {
-                                auto _op =
-                                    static_pointer_cast<nnfusion::op::Dot>(curr->get_op_ptr());
-                                CHECK_NOT_NULLPTR(_op) << "Node type is not "
-                                                       << curr->get_op_ptr()->get_op_type();
+                                auto _op = get_op_object<nnfusion::op::Dot>(curr);
 
                                 CHECK(_op->get_transpose_A() == false);
                                 CHECK(_op->get_transpose_B() == false);
-                                convert_input[1] = ".transpose()";
 
                                 auto shape_0 = curr->get_input_shape(0);
                                 auto shape_1 = curr->get_in_edge(1)->get_src()->get_output_shape(0);
@@ -474,6 +478,7 @@ namespace nnfusion
 
                                 if (N == 1 && M <= max_tiles)
                                 {
+                                    convert_input[1] = ".transpose()";
                                     shards = {1, M, M};
                                     code = autogen(op::create_code_from_template(
                                         R"( - input("input0", @input_shape_0@); input("input1", @input_shape_1@); k = loop(@K@); output(@output_shape@, lambda i: tvm.sum(args("input0")[k] * args("input1")[k], axis=k)); )",
@@ -484,8 +489,401 @@ namespace nnfusion
                                 }
                                 else
                                 {
+                                    new_super_step();
+
+                                    standard_kernel = false;
+                                    assert(curr->get_output_element_type(0) ==
+                                           nnfusion::element::f32);
+
+                                    fout << op::create_code_from_template(
+                                        "Tensor @out_name@ = poplin::matMul(g, @A@, @B@, prog, "
+                                        "FLOAT);\n",
+                                        {
+                                            {"out_name", arg_names[curr]},
+                                            {"A", arg_names[curr->get_in_edge(0)->get_src()]},
+                                            {"B", arg_names[curr->get_in_edge(1)->get_src()]},
+                                        });
+                                }
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "Convolution")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                auto _op = get_op_object<nnfusion::op::Convolution>(curr);
+                                for (auto& it : _op->get_data_dilation_strides())
+                                    CHECK(it == 1);
+
+                                auto data_shape = curr->get_input_shape(0);
+                                auto weight_shape = curr->get_input_shape(1);
+                                auto out_shape = curr->get_output_shape(0);
+
+                                fout << op::create_code_from_template(
+                                    "Tensor @out_name@ = poplin::convolution(g, @data@, @weight@, "
+                                    "poplin::ConvParams(FLOAT, FLOAT, @N@, {@HI@, @WI@}, {@HK@, "
+                                    "@WK@}, @CI@, @CO@, 1, poplin::ConvParams::InputTransform({0, "
+                                    "0}, {0, 0}, {1, 1}, {@pad_lower_h@, @pad_lower_w@}, "
+                                    "{@pad_upper_h@, @pad_upper_w@}, {false, false}), "
+                                    "poplin::ConvParams::InputTransform(2), "
+                                    "poplin::ConvParams::OutputTransform({0, 0}, {0, 0}, "
+                                    "{@stride_h@, @stride_w@}, {0, 0}, {0, 0})), false, "
+                                    "prog).reshape({@out_shape@});\n",
+                                    {
+                                        {"out_name", arg_names[curr]},
+                                        {"out_shape",
+                                         join_collections(out_shape,
+                                                          [](int idx, ssize_t val) {
+                                                              return std::to_string(val);
+                                                          })},
+                                        {"data", arg_names[curr->get_in_edge(0)->get_src()]},
+                                        {"weight", arg_names[curr->get_in_edge(1)->get_src()]},
+                                        {"N", data_shape[0]},
+                                        {"HI", data_shape[2]},
+                                        {"WI", data_shape[3]},
+                                        {"HK", weight_shape[2]},
+                                        {"WK", weight_shape[3]},
+                                        {"CI", data_shape[1]},
+                                        {"CO", weight_shape[0]},
+                                        {"pad_lower_h", _op->get_padding_below()[0]},
+                                        {"pad_lower_w", _op->get_padding_below()[1]},
+                                        {"pad_upper_h", _op->get_padding_above()[0]},
+                                        {"pad_upper_w", _op->get_padding_above()[1]},
+                                        {"stride_h", _op->get_window_movement_strides()[0]},
+                                        {"stride_w", _op->get_window_movement_strides()[1]},
+                                    });
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "AvgPool")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                auto _op = get_op_object<nnfusion::op::AvgPool>(curr);
+
+                                bool use_padding = false;
+                                for (auto& it : _op->get_padding_below())
+                                    if (it != 0)
+                                        use_padding = true;
+                                for (auto& it : _op->get_padding_above())
+                                    if (it != 0)
+                                        use_padding = true;
+
+                                if (use_padding)
+                                {
+                                    CHECK(_op->get_include_padding_in_avg_computation() == true);
+
+                                    auto pad_lower = _op->get_padding_below();
+                                    auto pad_upper = _op->get_padding_above();
+
+                                    fout << "Tensor T0_" << arg_names[curr] << " = popops::pad(g, "
+                                         << arg_names[curr->get_in_edge(0)->get_src()] << ", {"
+                                         << join_collections(_op->get_padding_below(),
+                                                             [](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "}, {"
+                                         << join_collections(_op->get_padding_below(),
+                                                             [](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "}, 0.0f);\n";
+                                }
+                                else
+                                {
+                                    fout << "Tensor &T0_" << arg_names[curr] << " = "
+                                         << arg_names[curr->get_in_edge(0)->get_src()] << ";";
+                                }
+
+                                auto data_shape = curr->get_input_shape(0);
+                                auto win_shape = _op->get_window_shape();
+                                auto mov_stride = _op->get_window_movement_strides();
+                                auto out_shape = curr->get_output_shape(0);
+
+                                CHECK(data_shape.size() == 4);
+                                CHECK(win_shape.size() == 2);
+                                CHECK(mov_stride.size() == 2);
+                                CHECK(out_shape.size() == 4);
+
+                                fout << "Tensor " << arg_names[curr]
+                                     << " = popnn::pooling::pool(g, "
+                                        "popnn::pooling::PoolParams(popnn::PoolingType::AVG, {"
+                                     << data_shape[2] << ", " << data_shape[3] << "}, {"
+                                     << win_shape[0] << "," << win_shape[1] << "}, {"
+                                     << mov_stride[0] << ", " << mov_stride[1] << "}, "
+                                     << "{0, 0}, {0, 0}, " << data_shape[1] << ", " << data_shape[0]
+                                     << ", FLOAT), T0_" << arg_names[curr] << ", prog).reshape({"
+                                     << join_collections(curr->get_output_shape(0),
+                                                         [&](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "});\n";
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "BatchNormInference")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                // auto _op = get_op_object<nnfusion::op::BatchNormInference>(curr);
+
+                                fout << "Tensor " << arg_names[curr]
+                                     << " = popnn::bn::batchNormalise(g, "
+                                     << arg_names[curr->get_in_edge(2)->get_src()] << ", "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ", "
+                                     << arg_names[curr->get_in_edge(1)->get_src()] << ", "
+                                     << arg_names[curr->get_in_edge(3)->get_src()] << ", "
+                                     << arg_names[curr->get_in_edge(4)->get_src()]
+                                     << ", prog).first.reshape({"
+                                     << join_collections(curr->get_output_shape(0),
+                                                         [&](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "});\n";
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "Pad")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                auto _op = get_op_object<nnfusion::op::Pad>(curr);
+                                for (auto& it : _op->get_padding_interior())
+                                    CHECK(it == 0);
+
+                                float pad_value;
+                                auto fill_const = curr->get_in_edge(1)->get_src();
+                                if (fill_const->get_op_ptr()->get_op_type() == "Constant")
+                                {
+                                    pad_value = *(float*)get_op_object<op::Constant>(fill_const)
+                                                     ->get_data_ptr();
+                                }
+                                else
+                                {
+                                    // TODO: ought to be constant input, but not handled
                                     UNHANDLED_CASE(curr);
                                 }
+
+                                auto pad_lower = _op->get_padding_below();
+                                auto pad_upper = _op->get_padding_above();
+
+                                fout << "Tensor " << arg_names[curr] << " = popops::pad(g, "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ", {"
+                                     << join_collections(_op->get_padding_below(),
+                                                         [](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "}, {" << join_collections(_op->get_padding_below(),
+                                                                   [](int idx, ssize_t val) {
+                                                                       return std::to_string(val);
+                                                                   })
+                                     << "}, " << pad_value << ").reshape({"
+                                     << join_collections(curr->get_output_shape(0),
+                                                         [&](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "});\n";
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "Sum")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+
+                                auto _op = get_op_object<nnfusion::op::Sum>(curr);
+                                auto axes = _op->get_reduction_axes();
+
+                                fout << "Tensor " << arg_names[curr] << " = popops::reduce(g, "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ", {"
+                                     << join_collections(axes,
+                                                         [](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "}, popops::ReduceParams(popops::Operation::ADD), "
+                                        "prog).reshape({"
+                                     << join_collections(curr->get_output_shape(0),
+                                                         [&](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "});\n";
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "MaxPool")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                auto _op = get_op_object<nnfusion::op::MaxPool>(curr);
+                                bool use_padding = false;
+                                for (auto& it : _op->get_padding_below())
+                                    if (it != 0)
+                                        use_padding = true;
+                                for (auto& it : _op->get_padding_above())
+                                    if (it != 0)
+                                        use_padding = true;
+
+                                if (use_padding)
+                                {
+                                    auto pad_lower = _op->get_padding_below();
+                                    auto pad_upper = _op->get_padding_above();
+
+                                    fout << "Tensor T0_" << arg_names[curr] << " = popops::pad(g, "
+                                         << arg_names[curr->get_in_edge(0)->get_src()] << ", {"
+                                         << join_collections(_op->get_padding_below(),
+                                                             [](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "}, {"
+                                         << join_collections(_op->get_padding_below(),
+                                                             [](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "}, 0.0f);\n";
+                                }
+                                else
+                                {
+                                    fout << "Tensor &T0_" << arg_names[curr] << " = "
+                                         << arg_names[curr->get_in_edge(0)->get_src()] << ";";
+                                }
+
+                                auto data_shape = curr->get_input_shape(0);
+                                auto win_shape = _op->get_window_shape();
+                                auto mov_stride = _op->get_window_movement_strides();
+                                auto out_shape = curr->get_output_shape(0);
+
+                                CHECK(data_shape.size() == 4);
+                                CHECK(win_shape.size() == 2);
+                                CHECK(mov_stride.size() == 2);
+                                CHECK(out_shape.size() == 4);
+
+                                fout << "Tensor " << arg_names[curr]
+                                     << " = popnn::pooling::pool(g, "
+                                        "popnn::pooling::PoolParams(popnn::PoolingType::MAX, {"
+                                     << data_shape[2] << ", " << data_shape[3] << "}, {"
+                                     << win_shape[0] << "," << win_shape[1] << "}, {"
+                                     << mov_stride[0] << ", " << mov_stride[1] << "}, "
+                                     << "{0, 0}, {0, 0}, " << data_shape[1] << ", " << data_shape[0]
+                                     << ", FLOAT), T0_" << arg_names[curr] << ", prog).reshape({"
+                                     << join_collections(curr->get_output_shape(0),
+                                                         [&](int idx, ssize_t val) {
+                                                             return std::to_string(val);
+                                                         })
+                                     << "});\n";
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "Softmax")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                auto _op = get_op_object<nnfusion::op::Softmax>(curr);
+                                auto axes = _op->get_axes();
+                                auto data_shape = curr->get_input_shape(0);
+                                int groups = 1, sample_size = 1;
+                                for (int i = 0; i < axes.size(); ++i)
+                                {
+                                    CHECK(axes.count(data_shape.size() - 1 - i));
+                                    sample_size *= data_shape[data_shape.size() - 1 - i];
+                                }
+                                for (int i = 0; i < data_shape.size() - axes.size(); ++i)
+                                    groups *= data_shape[i];
+
+                                bool use_builtin = false;
+                                if (use_builtin)
+                                {
+                                    fout << "Tensor " << arg_names[curr]
+                                         << " = popnn::spatialSoftMax2D(g, prog, "
+                                         << arg_names[curr->get_in_edge(0)->get_src()]
+                                         << ".reshape({" << groups << ", " << sample_size
+                                         << ", 1}), 1.0f, false).first;\n";
+                                }
+                                else
+                                {
+                                    fout << "Tensor T0_" << arg_names[curr]
+                                         << " = popops::map(g, "
+                                            "popops::expr::Exp(popops::expr::_1), {"
+                                         << arg_names[curr->get_in_edge(0)->get_src()]
+                                         << "}, prog).reshape({" << groups << ", " << sample_size
+                                         << "});\n";
+
+                                    fout << "Tensor T1_" << arg_names[curr]
+                                         << " = popops::reduce(g, "
+                                         << "T0_" << arg_names[curr]
+                                         << ", {1}, popops::ReduceParams(popops::Operation::ADD), "
+                                            "prog).reshape({"
+                                         << groups << ", 1}).broadcast(" << sample_size
+                                         << ", 1);\n";
+
+                                    fout << "Tensor " << arg_names[curr]
+                                         << " = popops::map(g, "
+                                            "popops::expr::Divide(popops::expr::_1, "
+                                            "popops::expr::_2), {"
+                                         << "T0_" << arg_names[curr] << ", T1_" << arg_names[curr]
+                                         << "}, prog);\n";
+                                }
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "DepthwiseConv2dNative")
+                            {
+                                new_super_step();
+
+                                standard_kernel = false;
+                                assert(curr->get_output_element_type(0) == nnfusion::element::f32);
+
+                                auto _op = get_op_object<nnfusion::op::GenericOp>(curr);
+                                auto& cfg = _op->localOpConfig.getRoot();
+
+                                CHECK(cfg["padding_type"] == "SAME");
+                                CHECK(cfg["data_format"] == "NHWC");
+
+                                for (auto& it : cfg["dilations"])
+                                    CHECK(it == 1);
+
+                                auto data_shape = curr->get_input_shape(0);   // NHWC -> NCHW
+                                auto weight_shape = curr->get_input_shape(1); // KKCF -> CF1KK
+                                auto out_shape = curr->get_output_shape(0);   // NHW(FxC)
+
+                                fout << op::create_code_from_template(
+                                    "Tensor @out_name@ = poplin::convolution(g, "
+                                    "@data@.dimShuffle({0, 3, 1, 2}), "
+                                    "@weight@.dimShuffle({2, 3, 0, 1}).reshape({@CI@, @CO@, 1, "
+                                    "@HK@, @WK@}), "
+                                    "poplin::ConvParams(FLOAT, FLOAT, @N@, {@HI@, @WI@}, {@HK@, "
+                                    "@WK@}, 1, @CO@, @CI@, poplin::ConvParams::InputTransform({0, "
+                                    "0}, {0, 0}, {1, 1}, {@pad_lower_h@, @pad_lower_w@}, "
+                                    "{@pad_upper_h@, @pad_upper_w@}, {false, false}), "
+                                    "poplin::ConvParams::InputTransform(2), "
+                                    "poplin::ConvParams::OutputTransform({0, 0}, {0, 0}, "
+                                    "{@stride_h@, @stride_w@}, {0, 0}, {0, 0})), false, "
+                                    "prog).dimShuffle({0, 2, 3, 1}).reshape({@out_shape@});\n",
+                                    {
+                                        {"out_name", arg_names[curr]},
+                                        {"out_shape",
+                                         join_collections(out_shape,
+                                                          [](int idx, ssize_t val) {
+                                                              return std::to_string(val);
+                                                          })},
+                                        {"data", arg_names[curr->get_in_edge(0)->get_src()]},
+                                        {"weight", arg_names[curr->get_in_edge(1)->get_src()]},
+                                        {"N", data_shape[0]},
+                                        {"HI", data_shape[1]},
+                                        {"WI", data_shape[2]},
+                                        {"HK", weight_shape[0]},
+                                        {"WK", weight_shape[1]},
+                                        {"CI", data_shape[3]},
+                                        {"CO", weight_shape[3]},
+                                        {"pad_lower_h", cfg["padding_before"][0]},
+                                        {"pad_lower_w", cfg["padding_before"][1]},
+                                        {"pad_upper_h", cfg["padding_after"][0]},
+                                        {"pad_upper_w", cfg["padding_after"][1]},
+                                        {"stride_h", cfg["strides"][0]},
+                                        {"stride_w", cfg["strides"][1]},
+                                    });
                             }
                             else
                             {
@@ -494,7 +892,7 @@ namespace nnfusion
 
                             if (standard_kernel)
                             {
-                                int tiles = shards.back(), pos = 0, next;
+                                int tiles = 1, pos = 0, next;
                                 while (next = code.find("// [thread_extent] threadIdx_", pos),
                                        next >= 0)
                                 {
@@ -503,6 +901,8 @@ namespace nnfusion
                                     tiles *= atoi(code.c_str() + eq + 3);
                                     pos = eq;
                                 }
+                                CHECK(tiles == 1);
+                                tiles *= shards.back();
 
                                 // if no enough tiles, then new_super_step()
                                 if (FLAGS_fgc_apply_blockfusion == false ||
@@ -579,6 +979,10 @@ namespace nnfusion
                              << arg_names[curr] << ");\n";
                         fout << std::endl;
                     }
+                    nnfusion::codegen::copy_file_from_templates(
+                        "graphcore/Makefile", "nnfusion_rt/graphcore_codegen/Makefile");
+                    nnfusion::codegen::copy_file_from_templates(
+                        "graphcore/run_graph.cpp", "nnfusion_rt/graphcore_codegen/run_graph.cpp");
                     LOG(INFO) << "GraphCore codegen finished.";
                     exit(0);
                     return true;
