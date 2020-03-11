@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "../cpu_kernel_emitter.hpp"
-#include "elementwise_ops.hpp"
+#include "antares_ops.hpp"
 
 namespace nnfusion
 {

@@ -36,4 +36,16 @@ using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("Tile",                                                      //op_name
                         Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("antares"), //attrs
-                        cpu::GenericAntares)                                         // constructor
+                        cpu::GenericAntares)                                         //constructor
+
+REGISTER_KERNEL_EMITTER("GatherV2",                                                  //op_name
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("antares"), //attrs
+                        cpu::GenericAntares)                                         //constructor
+
+REGISTER_KERNEL_EMITTER("OneHot",                                                    //op_name
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("antares"), //attrs
+                        cpu::GenericAntares)                                         //constructor
+
+REGISTER_KERNEL_EMITTER("BatchMatMul",                                               //op_name
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("antares"), //attrs
+                        cpu::GenericAntares)                                         //constructor

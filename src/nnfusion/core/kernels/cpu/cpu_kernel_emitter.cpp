@@ -144,17 +144,34 @@ std::string
     return ss.str();
 }
 
+std::unordered_map<std::string, std::string> cpu::AntaresCpuKernelEmitter::s_cached_kernels;
+
 LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
 {
     // emit code.
+    if (m_expression.empty())
+    {
+        return nullptr;
+    }
+
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
-    CurlRequest req(FLAGS_fantares_cpu_server);
-    req.add_custom_header(m_expression.c_str());
-    req.add_custom_header(m_args.c_str());
 
+    bool ret = true;
     std::string response;
-    bool ret = req.send_request(response);
+    auto it = s_cached_kernels.find(m_expression);
+    if (it != s_cached_kernels.end())
+    {
+        response = it->second;
+    }
+    else
+    {
+        CurlRequest req(FLAGS_fantares_cpu_server);
+        req.add_custom_header(m_expression.c_str());
+        req.add_custom_header(m_args.c_str());
+
+        ret = req.send_request(response);
+    }
     if (ret)
     {
         const char* s_func_pattern = "// [thread_compute]\n";
@@ -165,6 +182,7 @@ LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
         std::string::size_type e_func_pos = response.rfind(e_func_pattern);
         if (s_func_pos != std::string::npos && e_func_pos != std::string::npos)
         {
+            s_cached_kernels[m_expression] = response;
             std::string func_body =
                 response.substr(s_func_pos + strlen(s_func_pattern),
                                 e_func_pos - s_func_pos - strlen(s_func_pattern));
@@ -195,6 +213,8 @@ thread_pool->ParallelFor(rank, func);
         else
         {
             LOG(WARNING) << "Extract kernel function from Antares response failed.";
+            LOG(WARNING) << "Function: " << get_function_name() << ". Expression: " << m_expression;
+            LOG(WARNING) << "Response: " << response;
         }
     }
     else
@@ -213,6 +233,9 @@ LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_dependency()
 
 void cpu::AntaresCpuKernelEmitter::initialize(const std::string& expr)
 {
-    m_expression = std::string("COMPUTE_V1: ") + expr;
+    if (!expr.empty())
+    {
+        m_expression = std::string("COMPUTE_V1: ") + expr;
+    }
     m_args = std::string("ARGS: ");
 }

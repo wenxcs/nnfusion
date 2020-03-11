@@ -45,4 +45,26 @@ REGISTER_OP(OneHot)
         for (int i = axis + 1; i < shape_0.size(); ++i)
             output_shape_0.push_back(shape_0[i]);
         gnode->set_output_type_and_shape(0, type, output_shape_0);
+    })
+    .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
+        auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
+        int depth = generic_op->localOpConfig.getRoot()["depth"];
+        float on_value = generic_op->localOpConfig.getRoot()["on_value"];
+        float off_value = generic_op->localOpConfig.getRoot()["off_value"];
+        int axis = generic_op->localOpConfig.getRoot()["axis"];
+
+        std::string dtype;
+        bool ret =
+            element::Type::ngraph_element_type_to_dtype_string(gnode->get_element_type(), dtype);
+        CHECK(ret);
+
+        return op::create_code_from_template(
+            R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.one_hot(args("input0"), depth=@depth@, on_value=@on_value@, off_value=@off_value@, axis=@axis@, dtype="@dtype@")); )",
+            {{"input_shape", vector_to_string(gnode->get_input_shape(0))},
+             {"output_shape", vector_to_string(gnode->get_output_shape(0))},
+             {"depth", depth},
+             {"on_value", on_value},
+             {"off_value", off_value},
+             {"axis", axis},
+             {"dtype", dtype}});
     });

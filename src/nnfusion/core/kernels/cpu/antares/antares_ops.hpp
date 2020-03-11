@@ -38,8 +38,6 @@ namespace nnfusion
         class Not;
         class Relu;
         class ReluBackprop;
-        class Max;
-        class Min;
         class Negative;
         class Not;
         class Sqrt;
@@ -49,6 +47,10 @@ namespace nnfusion
         class Nop;
         class Sigmoid;
         class SigmoidBackprop;
+        class Sum;
+        class Product;
+        class Max;
+        class Min;
     }
 }
 
@@ -128,13 +130,13 @@ namespace nnfusion
             };
 
             template <>
-            struct TvmOpMap<nnfusion::op::Max>
+            struct TvmOpMap<nnfusion::op::Maximum>
             {
                 static constexpr const char* op = "topi.maximum";
             };
 
             template <>
-            struct TvmOpMap<nnfusion::op::Min>
+            struct TvmOpMap<nnfusion::op::Minimum>
             {
                 static constexpr const char* op = "topi.minimum";
             };
@@ -303,18 +305,6 @@ namespace nnfusion
                 static constexpr const char* op = "topi.multiply";
             };
 
-            template <>
-            struct TvmOpMap<nnfusion::op::Minimum>
-            {
-                static constexpr const char* op = "topi.minimum";
-            };
-
-            template <>
-            struct TvmOpMap<nnfusion::op::Maximum>
-            {
-                static constexpr const char* op = "topi.maximum";
-            };
-
             /*
             template <>
             struct TvmOpMap<nnfusion::op::Nop>
@@ -339,6 +329,30 @@ namespace nnfusion
                 static constexpr const char* math_kernel = "x1 / (2 + expf(-x0) + expf(x0))";
             };
 */
+
+            template <>
+            struct TvmOpMap<nnfusion::op::Sum>
+            {
+                static constexpr const char* op = "topi.sum";
+            };
+
+            template <>
+            struct TvmOpMap<nnfusion::op::Product>
+            {
+                static constexpr const char* op = "topi.prod";
+            };
+
+            template <>
+            struct TvmOpMap<nnfusion::op::Max>
+            {
+                static constexpr const char* op = "topi.max";
+            };
+
+            template <>
+            struct TvmOpMap<nnfusion::op::Min>
+            {
+                static constexpr const char* op = "topi.min";
+            };
         }
     }
 }

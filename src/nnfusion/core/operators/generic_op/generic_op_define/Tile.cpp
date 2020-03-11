@@ -1,7 +1,6 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
-#include "nnfusion/core/operators/op_define/constant.hpp"
 
 REGISTER_OP(Tile)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
@@ -31,8 +30,7 @@ REGISTER_OP(Tile)
                              ->get_vector<int64_t>();
 
         auto expression = op::create_code_from_template(
-            R"(- input("input0", @input_shape@); output(@output_shape@, topi=topi.tile(args("input0"), @multiples@));
-)",
+            R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.tile(args("input0"), @multiples@)); )",
             {{"input_shape", vector_to_string(input_shape)},
              {"output_shape", vector_to_string(output_shape)},
              {"multiples", vector_to_string(multiples)}});

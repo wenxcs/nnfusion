@@ -2620,6 +2620,111 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateSquareOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+
+                // Create a constant tensor populated with the value 2.
+                // (Square(x) = x^2)
+                auto shape = input_gnode->get_shape();
+                std::vector<std::string> constant_values(nnfusion::shape_size(shape), "2");
+
+                auto exponent_op = std::make_shared<op::Constant>(
+                    input_gnode->get_element_type(), shape, constant_values);
+                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, GNodeVector({}));
+
+                // Raise each element of the input to the power 2.
+                auto power_op = std::make_shared<op::Power>();
+                power_op->set_name(node.name());
+                auto power_gnode =
+                    m_graph->add_node_and_edge(power_op, {input_gnode, exponent_gnode});
+
+                NamedNodeVector ret{{node.name(), power_gnode}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateShapeOp(const tensorflow::NodeDef& node,
+                                             const NodeMap& all_ng_nodes,
+                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+
+                tensorflow::DataType dtype;
+                bool status = GetNodeAttr(node.attr(), "out_type", dtype);
+                CHECK(status);
+                nnfusion::element::Type ng_et;
+                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                CHECK(status);
+
+                CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
+
+                nnfusion::op::OpConfig::any myConfig;
+                myConfig["out_type"] = ng_et.c_type_string();
+
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateUnpackOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                nnfusion::Shape input_shape = input_gnode->get_shape();
+                int rank = input_shape.size();
+
+                // axis : Dimension along which to unpack.
+                int32 axis;
+                bool status = GetNodeAttr(node.attr(), "axis", axis);
+                CHECK(status);
+                axis = axis + (axis < 0 ? rank : 0);
+
+                // num : value of input_shape[axis]
+                int32 num;
+                status = GetNodeAttr(node.attr(), "num", num);
+                CHECK(status);
+
+                std::vector<size_t> lower;
+                std::vector<size_t> upper;
+                nnfusion::Shape output_shape;
+                for (int i = 0; i < rank; ++i)
+                {
+                    lower.push_back(0);
+                    upper.push_back(input_shape[i]);
+                    if (i != axis)
+                    {
+                        output_shape.push_back(input_shape[i]);
+                    }
+                }
+                std::vector<size_t> shape_dimensions(input_shape.size());
+                std::iota(shape_dimensions.begin(), shape_dimensions.end(), 0);
+
+                int cursor = 0;
+                NamedNodeVector ret;
+
+                for (size_t i = 0; i < num; ++i)
+                {
+                    lower[axis] = cursor++;
+                    upper[axis] = cursor;
+                    auto slice_op = std::make_shared<op::Slice>(lower, upper);
+                    slice_op->set_name(node.name() + "_slice" + std::to_string(i));
+                    auto slice_gnode = m_graph->add_node_and_edge(slice_op, {input_gnode});
+
+                    auto reshape_op = std::make_shared<op::Reshape>(shape_dimensions, output_shape);
+                    reshape_op->set_name(node.name() + "_reshape_" + std::to_string(i));
+                    auto reshape_gnode = m_graph->add_node_and_edge(reshape_op, {slice_gnode});
+
+                    ret.push_back({node.name(), reshape_gnode});
+                }
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<op::Abs>},
                 {"Add", TranslateBinaryOp<op::Add>},
@@ -2694,7 +2799,10 @@ namespace nnfusion
                 {"Tile", TranslateTileOp},
                 //{"", TranslateTransposeOp},
                 {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
-                {"Transpose", TranslateTransposeToReshapeOp}};
+                {"Transpose", TranslateTransposeToReshapeOp},
+                {"Square", TranslateSquareOp},
+                {"Shape", TranslateShapeOp},
+                {"Unpack", TranslateUnpackOp}};
 
             struct InputInfo
             {

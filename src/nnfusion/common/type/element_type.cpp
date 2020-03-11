@@ -52,6 +52,37 @@ std::vector<const element::Type*> element::Type::get_known_types()
     return rc;
 }
 
+bool element::Type::ngraph_element_type_to_dtype_string(const element::Type& ng_et,
+                                                        std::string& dtype)
+{
+    if (ng_et == element::boolean)
+        dtype = "bool";
+    else if (ng_et == element::f32)
+        dtype = "float32";
+    else if (ng_et == element::f64)
+        dtype = "float64";
+    else if (ng_et == element::i8)
+        dtype = "int8";
+    else if (ng_et == element::i16)
+        dtype = "int16";
+    else if (ng_et == element::i32)
+        dtype = "int32";
+    else if (ng_et == element::i64)
+        dtype = "int64";
+    else if (ng_et == element::u8)
+        dtype = "uint8";
+    else if (ng_et == element::u16)
+        dtype = "uint16";
+    else if (ng_et == element::u32)
+        dtype = "uint32";
+    else if (ng_et == element::u64)
+        dtype = "uint64";
+    else
+        return false;
+
+    return true;
+}
+
 element::Type::Type(
     size_t bitwidth, bool is_real, bool is_signed, bool is_quantized, const std::string& cname)
     : m_bitwidth{bitwidth}

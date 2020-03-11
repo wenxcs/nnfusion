@@ -74,6 +74,7 @@ namespace nnfusion
             protected:
                 std::string m_expression;
                 std::string m_args;
+                static std::unordered_map<std::string, std::string> s_cached_kernels;
             };
 
         } // namespace cpu
