@@ -49,18 +49,18 @@ namespace nnfusion
                    bool is_constant = false,
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
-                   int group_id = -1,
+                   int group = -1,
                    size_t device_id = 0);
 
             Tensor(const nnfusion::element::Type& element_type,
                    const nnfusion::PartialShape& pshape,
                    const std::string& name,
-                   NNFusion_DeiveType device_type,
+                   NNFusion_DeviceType device_type,
                    bool is_persistent = false,
                    bool is_constant = false,
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
-                   int group_id = -1,
+                   int group = -1,
                    size_t device_id = 0);
 
             const std::string& get_name() const { return m_name; }
@@ -91,11 +91,10 @@ namespace nnfusion
             void set_constant(bool value = true) { m_constant = value; }
             void set_parameter(bool value = true) { m_parameter = value; }
             void set_RDMA(bool value = true) { m_RDMA = value; }
-            //The default group_id is -1, which means the tensor does not belong to any specific group.
-            void set_group_id(size_t group_id) { m_group_id = group_id; }
-            size_t get_group_id() const { return m_group_id; }
-            void set_device_type(NNFusion_DeiveType device_type) { m_device_type = device_type; }
-            NNFusion_DeiveType get_device_type() const { return m_device_type; }
+            void set_group(int group) { m_group = group; }
+            int get_group() const { return m_group; }
+            void set_device_type(NNFusion_DeviceType device_type) { m_device_type = device_type; }
+            NNFusion_DeviceType get_device_type() const { return m_device_type; }
             void set_device_id(size_t device_id) { m_device_id = device_id; }
             size_t get_device_id() const { return m_device_id; }
             std::string get_device_name() const;
@@ -117,8 +116,8 @@ namespace nnfusion
             bool m_constant;
             bool m_parameter;
             bool m_RDMA;
-            size_t m_group_id;
-            NNFusion_DeiveType m_device_type;
+            int m_group;
+            NNFusion_DeviceType m_device_type;
             size_t m_device_id;
         };
 

@@ -18,7 +18,7 @@ Interpreter::Interpreter()
 {
     // Todo: find another way
     auto dev_name = FLAGS_fdefault_device.c_str();
-    NNFusion_DeiveType default_device = nnfusion::get_device_type(dev_name);
+    NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
 
     // kernel selection
     // m_passes->push_back(make_shared<DefaultDeviceDispatcher>());

@@ -62,7 +62,7 @@ namespace nnfusion
         ///\todo Maybe a better/general way
 
         template <typename T, typename val_t = float>
-        bool check_kernels(NNFusion_DeiveType dev_t, DataType data_t)
+        bool check_kernels(NNFusion_DeviceType dev_t, DataType data_t)
         {
             for (int case_id = 0;; case_id++)
             {

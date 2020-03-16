@@ -485,13 +485,13 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             // Get the result of last run;
             using Pointer = shared_ptr<IProfilingRuntime>;
             string get_device_name() { return nnfusion::get_device_str(_dt); };
-            NNFusion_DeiveType get_device_type() { return _dt; };
+            NNFusion_DeviceType get_device_type() { return _dt; };
             virtual string get_name() { return get_device_name(); };
         private:
             virtual double invoke(const ProfilingContext::Pointer& ke, void** input, void** output);
 
         protected:
-            NNFusion_DeiveType _dt;
+            NNFusion_DeviceType _dt;
             /*
             ///\todo To be provided in future, since we cannot use runtime api here.
             // We use Profiler class as Host here.

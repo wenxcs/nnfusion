@@ -5,15 +5,23 @@ DECLARE_string(fdefault_device);
 using namespace nnfusion::async;
 
 Stream::Stream(size_t stream_id,
-               NNFusion_DeiveType device_type,
+               NNFusion_DeviceType device_type,
                size_t device_id,
                const string& symbol)
     : m_stream_id(stream_id)
     , m_device_type(device_type)
     , m_device_id(device_id)
     , m_symbol(symbol)
-    , m_name(symbol + "_stream_" + std::to_string(stream_id))
 {
+    if (device_type == GENERIC_CPU)
+    {
+        m_name = symbol + "_thread_" + std::to_string(stream_id);
+    }
+    else
+    {
+        m_name = symbol + "_stream_" + std::to_string(stream_id);
+    }
+
     std::string dt_name = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type];
     m_device_name = dt_name + "_" + std::to_string(device_id);
 }
@@ -26,21 +34,27 @@ Event::Event(size_t event_id,
     , m_stream(stream)
     , m_op(op)
     , m_symbol(symbol)
-    , m_name(symbol + "_" + op->get_unique_name() + "_event_" + std::to_string(event_id))
-
 {
+    if (get_device_type() == GENERIC_CPU)
+    {
+        m_name = symbol + "_" + op->get_unique_name() + "_barrier_" + std::to_string(event_id);
+    }
+    else
+    {
+        m_name = symbol + "_" + op->get_unique_name() + "_event_" + std::to_string(event_id);
+    }
 }
 
-AsyncManager::AsyncManager(NNFusion_DeiveType device_type)
+AsyncManager::AsyncManager(NNFusion_DeviceType device_type)
     : m_device_type(device_type)
     , m_num_non_default_stream{0}
 {
 }
 
-// create a new stream if not exists, return one if exists.
+// create a new thread/stream if not exists, return one if exists.
 shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symbol)
 {
-    std::string search_name = std::to_string(device_id) + "_" + symbol + "_stream";
+    std::string search_name = std::to_string(device_id) + "_" + symbol;
     if (m_stream_list.find(search_name) != m_stream_list.end())
     {
         auto stream = m_stream_list[search_name];
@@ -58,12 +72,12 @@ shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symb
         return stream;
     }
 }
-// create a new event if not exists, return one if exists.
+// create a new barrier/event if not exists, return one if exists.
 shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream,
                                           const shared_ptr<nnfusion::op::Op>& op,
                                           const string& symbol)
 {
-    std::string search_name = stream->get_name() + symbol + "_" + op->get_unique_name() + "_event";
+    std::string search_name = stream->get_name() + symbol + "_" + op->get_unique_name();
     if (m_event_list.find(search_name) != m_event_list.end())
     {
         return m_event_list[search_name];
@@ -182,9 +196,9 @@ LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shar
         << "Unsupported event wait operation: synchronize streams on two different devices";
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
-    if (!event->is_recorded())
-        throw nnfusion::errors::RuntimeError("CUDA event error.");
-    //NNFUSION_CHECK(NNFUSION_WARNING) << "CUDA event error.";
+    // if (!event->is_recorded())
+    //     throw nnfusion::errors::RuntimeError("CUDA event error.");
+    //LOG(WARNING) << "CUDA event error.";
     if (stream->is_default_stream())
         lu << "cudaStreamWaitEvent(0, " << event->get_name() << ", 0 );\n";
     else
@@ -228,7 +242,7 @@ LanguageUnit_p CUDAAsyncManager::emit_event_record(shared_ptr<Event> event)
     else
         lu << "cudaEventRecord(" << event->get_name() << ", " << event->get_stream()->get_name()
            << ");\n";
-    event->set_recorded();
+    // event->set_recorded();
 
     return _lu;
 }
@@ -286,7 +300,7 @@ LanguageUnit_p CPUAsyncManager::emit_event_reset()
 
 std::unordered_map<std::string, AsyncManager*> AsyncManagerFactory::m_async_manager;
 
-AsyncManager* AsyncManagerFactory::get_async_manager(NNFusion_DeiveType device_type)
+AsyncManager* AsyncManagerFactory::get_async_manager(NNFusion_DeviceType device_type)
 {
     std::string dt_name = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type];
     if (m_async_manager.find(dt_name) != m_async_manager.end())

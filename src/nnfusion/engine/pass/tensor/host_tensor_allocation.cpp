@@ -21,11 +21,11 @@ bool HostTensorAllocation::run(std::shared_ptr<InterpreterContext> ctx,
 
             auto emitted_kernels =
                 (*ins)["Kernel_Selection_Result"]
-                    .as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
+                    .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
             auto emitter_iter =
                 find_if(emitted_kernels.begin(),
                         emitted_kernels.end(),
-                        [this](pair<NNFusion_DeiveType, KernelEmitter::Pointer>& i) {
+                        [this](pair<NNFusion_DeviceType, KernelEmitter::Pointer>& i) {
                             return i.first == this->m_device;
                         });
 

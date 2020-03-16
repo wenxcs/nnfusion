@@ -10,7 +10,7 @@ KernelRegistration::KernelRegistration(const string op_name)
 {
 }
 
-KernelRegistration& KernelRegistration::Device(const NNFusion_DeiveType device_type)
+KernelRegistration& KernelRegistration::Device(const NNFusion_DeviceType device_type)
 {
     m_device_type = device_type;
     return *this;
@@ -63,7 +63,7 @@ shared_ptr<const KernelRegistration>
 }
 
 shared_ptr<const KernelRegistration> KernelRegistry::FindKernelRegistration(
-    const string op_name, const NNFusion_DeiveType& device_type, const DataType data_type)
+    const string op_name, const NNFusion_DeviceType& device_type, const DataType data_type)
 {
     std::vector<shared_ptr<const KernelRegistration>> matched_regs;
     auto regs = m_kernel_registry.equal_range(op_name);
@@ -88,7 +88,7 @@ shared_ptr<const KernelRegistration> KernelRegistry::FindKernelRegistration(
 }
 
 std::vector<shared_ptr<const KernelRegistration>> KernelRegistry::FindKernelRegistrations(
-    const string op_name, const NNFusion_DeiveType& device_type, const DataType data_type)
+    const string op_name, const NNFusion_DeviceType& device_type, const DataType data_type)
 {
     std::vector<shared_ptr<const KernelRegistration>> matched_regs;
     auto regs = m_kernel_registry.equal_range(op_name);

@@ -210,7 +210,7 @@ const shared_ptr<nnfusion::descriptor::Tensor> KernelEmitter::allocate_tensor(Sh
                                                                               bool is_constant,
                                                                               bool is_parameter,
                                                                               bool is_RDMA_tensor,
-                                                                              size_t group_id,
+                                                                              int group,
                                                                               size_t device_id)
 {
     // Internal access of this tensor should be like temp0, temp1 ...
@@ -230,7 +230,7 @@ const shared_ptr<nnfusion::descriptor::Tensor> KernelEmitter::allocate_tensor(Sh
                                                                  is_constant,
                                                                  is_parameter,
                                                                  is_RDMA_tensor,
-                                                                 group_id,
+                                                                 group,
                                                                  device_id);
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);
@@ -241,14 +241,14 @@ const shared_ptr<nnfusion::descriptor::Tensor> KernelEmitter::allocate_tensor(Sh
 
 const shared_ptr<nnfusion::descriptor::Tensor>
     KernelEmitter::allocate_tensor(Shape shape,
-                                   NNFusion_DeiveType device_type,
+                                   NNFusion_DeviceType device_type,
                                    element::Type elt,
                                    string name,
                                    bool is_persistent,
                                    bool is_constant,
                                    bool is_parameter,
                                    bool is_RDMA_tensor,
-                                   size_t group_id,
+                                   int group,
                                    size_t device_id)
 {
     // Internal access of this tensor should be like temp0, temp1 ...
@@ -269,7 +269,7 @@ const shared_ptr<nnfusion::descriptor::Tensor>
                                                                  is_constant,
                                                                  is_parameter,
                                                                  is_RDMA_tensor,
-                                                                 group_id,
+                                                                 group,
                                                                  device_id);
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);

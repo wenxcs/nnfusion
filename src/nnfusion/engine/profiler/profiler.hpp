@@ -31,7 +31,7 @@ namespace nnfusion
 {
     namespace profiler
     {
-        IProfilingRuntime::Pointer get_default_runtime(NNFusion_DeiveType dev_t);
+        IProfilingRuntime::Pointer get_default_runtime(NNFusion_DeviceType dev_t);
         IProfilingRuntime::Pointer get_default_runtime(string dev_str);
 
         ///\brief Profiler will profile a operator or a subgraph. This Profiler class should be treated as interface for Host.
@@ -197,7 +197,7 @@ namespace nnfusion
         class GraphEvaluate
         {
         public:
-            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph, NNFusion_DeiveType dev_t)
+            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph, NNFusion_DeviceType dev_t)
                 : gctx(GraphEvaluationContext(graph))
                 , dev_type(dev_t)
             {
@@ -253,7 +253,7 @@ namespace nnfusion
         private:
             GraphEvaluationContext gctx;
             IProfilingRuntime::Pointer rt;
-            NNFusion_DeiveType dev_type;
+            NNFusion_DeviceType dev_type;
             std::unordered_map<std::shared_ptr<GNode>, int> parameter_map;
 
             void create_profiling_contexts(shared_ptr<GNode> node);

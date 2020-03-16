@@ -70,7 +70,7 @@ namespace nnfusion
         const std::string& get_symbol() const { return m_symbol; }
         const std::string& get_name() const { return m_name; }
         size_t get_device_id() const { return m_device_id; }
-        NNFusion_DeiveType get_device_type() const { return m_device_type; }
+        NNFusion_DeviceType get_device_type() const { return m_device_type; }
     protected:
         size_t first_fit(size_t size);
         size_t best_fit(size_t size);
@@ -79,7 +79,7 @@ namespace nnfusion
         std::list<node> m_node_list;
         size_t m_alignment;
         allocation_scheme m_scheme;
-        NNFusion_DeiveType m_device_type;
+        NNFusion_DeviceType m_device_type;
         size_t m_device_id;
         size_t m_max_allocated;
         std::vector<shared_ptr<descriptor::Tensor>> m_allocated_tensors;
@@ -89,7 +89,7 @@ namespace nnfusion
         std::string m_name;
         MemoryAllocator(size_t alignment = 1,
                         bool disable_reuse = false,
-                        NNFusion_DeiveType device_type = CUDA_GPU,
+                        NNFusion_DeviceType device_type = CUDA_GPU,
                         size_t device_id = 0,
                         const std::string& symbol = "");
     };
@@ -101,7 +101,7 @@ namespace nnfusion
     private:
         CUDAMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
-                            NNFusion_DeiveType device_type = CUDA_GPU,
+                            NNFusion_DeviceType device_type = CUDA_GPU,
                             size_t device_id = 0,
                             const std::string& symbol = "")
             : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
@@ -120,7 +120,7 @@ namespace nnfusion
     private:
         HostMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
-                            NNFusion_DeiveType device_type = GENERIC_CPU,
+                            NNFusion_DeviceType device_type = GENERIC_CPU,
                             size_t device_id = 0,
                             const std::string& symbol = "")
             : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
@@ -135,7 +135,7 @@ namespace nnfusion
     private:
         RocmMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
-                            NNFusion_DeiveType device_type = ROCM_GPU,
+                            NNFusion_DeviceType device_type = ROCM_GPU,
                             size_t device_id = 0,
                             const std::string& symbol = "")
             : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)
@@ -150,7 +150,7 @@ namespace nnfusion
     private:
         RDMAMemoryAllocator(size_t alignment = 1,
                             bool disable_reuse = false,
-                            NNFusion_DeiveType device_type = CUDA_GPU,
+                            NNFusion_DeviceType device_type = CUDA_GPU,
                             size_t device_id = 0,
                             const std::string& symbol = "RDMA")
             : MemoryAllocator(alignment, disable_reuse, device_type, device_id, symbol)

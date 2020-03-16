@@ -20,11 +20,14 @@ namespace nnfusion
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
 
             private:
+                void assign_thread_info(nnfusion::async::AsyncManager* CPU_async_manager,
+                                        std::shared_ptr<Graph>& graph);
                 void naive_assign_stream_info(nnfusion::async::AsyncManager* async_manager,
                                               std::shared_ptr<Graph>& graph);
-                void assign_event_info(nnfusion::async::AsyncManager* async_manager,
+                void assign_event_info(nnfusion::async::AsyncManager* CUDA_async_manager,
+                                       nnfusion::async::AsyncManager* CPU_async_manager,
                                        std::shared_ptr<Graph>& graph);
-                NNFusion_DeiveType m_device;
+                NNFusion_DeviceType m_device;
             };
         }
     }

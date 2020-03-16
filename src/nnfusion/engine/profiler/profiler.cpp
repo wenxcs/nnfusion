@@ -92,7 +92,7 @@ void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
                         << " (op type : " << gnode->get_op_type() << ").";
 }
 
-IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(NNFusion_DeiveType dev_t)
+IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(NNFusion_DeviceType dev_t)
 {
     IProfilingRuntime::Pointer ip = nullptr;
     switch (dev_t)

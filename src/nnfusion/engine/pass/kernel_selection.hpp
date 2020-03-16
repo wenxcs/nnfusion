@@ -14,9 +14,9 @@ namespace nnfusion
         bool run(std::shared_ptr<InterpreterContext> ctx,
                  std::shared_ptr<TranslationUnit> tu) override;
 
-        pair<NNFusion_DeiveType, nnfusion::kernels::KernelEmitter::Pointer>
+        pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
             profiling_best(shared_ptr<graph::GNode> gnode,
-                           NNFusion_DeiveType devtype,
+                           NNFusion_DeviceType devtype,
                            nnfusion::profiler::IProfilingRuntime::Pointer runtime);
     };
 
@@ -25,9 +25,9 @@ namespace nnfusion
     public:
         bool run(std::shared_ptr<InterpreterContext> ctx,
                  std::shared_ptr<TranslationUnit> tu) override;
-        pair<NNFusion_DeiveType, nnfusion::kernels::KernelEmitter::Pointer>
-            pick_first(shared_ptr<graph::GNode> gnode, NNFusion_DeiveType devtype);
-        pair<NNFusion_DeiveType, nnfusion::kernels::KernelEmitter::Pointer>
+        pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+            pick_first(shared_ptr<graph::GNode> gnode, NNFusion_DeviceType devtype);
+        pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
             pick_first_rocm(shared_ptr<graph::GNode> gnode);
     };
 }

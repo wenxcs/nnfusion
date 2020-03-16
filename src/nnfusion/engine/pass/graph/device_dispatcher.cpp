@@ -12,7 +12,7 @@ DECLARE_string(fdefault_device);
 bool DefaultDeviceDispatcher::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
     auto dev_name = FLAGS_fdefault_device.c_str();
-    NNFusion_DeiveType dt = nnfusion::get_device_type(dev_name);
+    NNFusion_DeviceType dt = nnfusion::get_device_type(dev_name);
     /* for debug purpose
     switch(default_device)
     {
@@ -30,7 +30,7 @@ bool DefaultDeviceDispatcher::run_on_graph(std::shared_ptr<nnfusion::graph::Grap
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
     for (auto it : nodes)
     {
-        it->Set<NNFusion_DeiveType>("Device", move(dt));
+        it->Set<NNFusion_DeviceType>("Device", move(dt));
     }
 
     return true;

@@ -443,7 +443,7 @@ private:
                 {
                     std::vector<std::shared_ptr<KernelEmitter>> block_kernels;
                     bool all_kernel_emitted = true;
-                    NNFusion_DeiveType dev_type;
+                    NNFusion_DeviceType dev_type;
 
                     // find and check whether all kernels are emitted
                     for (auto elem_id : tn->elem_group->nodes)
@@ -454,7 +454,7 @@ private:
 
                         auto emitted_kernel =
                             (*node)["Kernel_Selection_Result"]
-                                .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
+                                .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
                         KernelEmitter::Pointer kernel = nullptr;
 
                         if (emitted_kernel.second->get_or_emit_source() == nullptr)
@@ -489,9 +489,9 @@ private:
                         ctx->gnode = fused_node;
 
                         // (*fused_node)["Kernel_Selection_Result"] =
-                        //     vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
+                        //     vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
                         // auto& res = (*fused_node)["Kernel_Selection_Result"]
-                        //                 .as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
+                        //                 .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
                         // res.push_back(std::make_pair(dev_type, kernel));
 
                         (*fused_node)["Kernel_Selection_Result"] = std::make_pair(dev_type, kernel);

@@ -31,7 +31,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
                                      bool is_constant,
                                      bool is_parameter,
                                      bool is_RDMA_tensor,
-                                     int group_id,
+                                     int group,
                                      size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
@@ -41,7 +41,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
     , m_constant(is_constant)
     , m_parameter(is_parameter)
     , m_RDMA(is_RDMA_tensor)
-    , m_group_id(group_id)
+    , m_group(group)
     , m_device_id(device_id)
 {
     auto default_device = FLAGS_fdefault_device.c_str();
@@ -51,12 +51,12 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
 nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,
                                      const nnfusion::PartialShape& pshape,
                                      const std::string& name,
-                                     NNFusion_DeiveType device_type,
+                                     NNFusion_DeviceType device_type,
                                      bool is_persistent,
                                      bool is_constant,
                                      bool is_parameter,
                                      bool is_RDMA_tensor,
-                                     int group_id,
+                                     int group,
                                      size_t device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
@@ -67,7 +67,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
     , m_constant(is_constant)
     , m_parameter(is_parameter)
     , m_RDMA(is_RDMA_tensor)
-    , m_group_id(group_id)
+    , m_group(group)
     , m_device_id(device_id)
 {
 }

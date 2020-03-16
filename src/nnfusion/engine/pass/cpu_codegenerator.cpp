@@ -384,7 +384,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto gnode = kernel->m_context->gnode;
                 auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                auto stream = async_info.execution_stream;
+                auto stream = async_info.execution_thread;
 
                 FunctionUnit_p fu = kernel->get_or_emit_source();
                 //std::string read_const = fu->call_unit->get_code();
@@ -397,19 +397,19 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         << "Kernel function calls in cpu_init() "
                            "should use default/main stream/thread.";
 
-                    // if (!async_info.wait_events.empty())
+                    // if (!async_info.wait_barriers.empty())
                     // {
-                    //     for (auto event : async_info.wait_events)
+                    //     for (auto event : async_info.wait_barriers)
                     //     {
-                    //         lu_main_init << async_manager->emit_event_wait(async_info.execution_stream, event)->get_code();
+                    //         lu_main_init << async_manager->emit_event_wait(async_info.execution_thread, event)->get_code();
                     //     }
                     // }
                     lu_main_init << fu->name_unit->get_code();
                     lu_main_init << fu->call_unit->get_code();
 
-                    // if (async_info.record_event != nullptr)
+                    // if (async_info.notify_barrier != nullptr)
                     // {
-                    //     lu_main_init << async_manager->emit_event_record(async_info.record_event)->get_code();
+                    //     lu_main_init << async_manager->emit_event_record(async_info.notify_barrier)->get_code();
                     // }
                 }
                 // organize kernels according to their streams/threads
@@ -438,13 +438,13 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         auto gnode = kernel->m_context->gnode;
                         auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
 
-                        if (!async_info.wait_events.empty())
+                        if (!async_info.wait_barriers.empty())
                         {
-                            for (auto event : async_info.wait_events)
+                            for (auto event : async_info.wait_barriers)
                             {
                                 lu_thread_func_call
                                     << async_manager
-                                           ->emit_event_wait(async_info.execution_stream, event)
+                                           ->emit_event_wait(async_info.execution_thread, event)
                                            ->get_code();
                             }
                         }
@@ -481,10 +481,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             ++func_call_count;
                         }
 
-                        if (async_info.record_event != nullptr)
+                        if (async_info.notify_barrier != nullptr)
                         {
                             lu_thread_func_call
-                                << async_manager->emit_event_record(async_info.record_event)
+                                << async_manager->emit_event_record(async_info.notify_barrier)
                                        ->get_code();
                         }
                     }
@@ -517,13 +517,13 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         auto gnode = kernel->m_context->gnode;
                         auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                        if (!async_info.wait_events.empty())
+                        if (!async_info.wait_barriers.empty())
                         {
-                            for (auto event : async_info.wait_events)
+                            for (auto event : async_info.wait_barriers)
                             {
                                 lu_kernel_entry
                                     << async_manager
-                                           ->emit_event_wait(async_info.execution_stream, event)
+                                           ->emit_event_wait(async_info.execution_thread, event)
                                            ->get_code();
                             }
                         }
@@ -543,10 +543,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             lu_kernel_entry << fu->call_unit->get_code();
                         }
 
-                        if (async_info.record_event != nullptr)
+                        if (async_info.notify_barrier != nullptr)
                         {
                             lu_kernel_entry
-                                << async_manager->emit_event_record(async_info.record_event)
+                                << async_manager->emit_event_record(async_info.notify_barrier)
                                        ->get_code();
                         }
                     }

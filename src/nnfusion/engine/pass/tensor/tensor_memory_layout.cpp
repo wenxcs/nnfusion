@@ -51,7 +51,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             if (gnode->get_op_ptr()->is_parameter())
                 continue;
             auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
-                                      .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
+                                      .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
             KernelEmitter::Pointer kernel = nullptr;
 
             if (emitted_kernel.second->get_or_emit_source() == nullptr)

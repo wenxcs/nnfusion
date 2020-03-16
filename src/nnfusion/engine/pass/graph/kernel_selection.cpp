@@ -9,16 +9,16 @@ using namespace nnfusion::pass::graph;
 using namespace nnfusion::profiler;
 
 // Register_Tag(Enable_Kernel_Selection, bool);
-// Register_Tag(Kernel_Selection_Device, NNFusion_DeiveType);
-// Register_Tag(Kernel_Selection_Result, vector<pair<NNFusion_DeiveType, KernelEmitter>>);
+// Register_Tag(Kernel_Selection_Device, NNFusion_DeviceType);
+// Register_Tag(Kernel_Selection_Result, vector<pair<NNFusion_DeviceType, KernelEmitter>>);
 
 DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
 DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
 DECLARE_string(fdefault_device);
 
-pair<NNFusion_DeiveType, kernels::KernelEmitter::Pointer>
+pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     ProfilingBasedKernelSelector::profiling_best(shared_ptr<GNode> gnode,
-                                                 NNFusion_DeiveType devtype,
+                                                 NNFusion_DeviceType devtype,
                                                  IProfilingRuntime::Pointer runtime)
 {
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
@@ -77,12 +77,12 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
         return true;
 
     auto dev_name = FLAGS_fdefault_device.c_str();
-    NNFusion_DeiveType default_device = nnfusion::get_device_type(dev_name);
+    NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
 
     // Config area
     vector<string> white_list{"Broadcast"};
     //bool all_device = false;
-    NNFusion_DeiveType the_device = ROCM_GPU;
+    NNFusion_DeviceType the_device = ROCM_GPU;
 
     if (the_device != default_device)
         return true;
@@ -119,15 +119,15 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
                 }
             }
 
-            // (*it)["Kernel_Selection_Result"] = vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
+            // (*it)["Kernel_Selection_Result"] = vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
             // auto& res = (*it)["Kernel_Selection_Result"]
-            //                 .as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
+            //                 .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
 
-            // vector<NNFusion_DeiveType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+            // vector<NNFusion_DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
             // for (auto t : dev_type)
             // {
             //     if ((*it)["Kernel_Selection_Device"].is_valid() &&
-            //         (*it)["Kernel_Selection_Device"].as<NNFusion_DeiveType>() != t)
+            //         (*it)["Kernel_Selection_Device"].as<NNFusion_DeviceType>() != t)
             //         continue;
 
             //     auto ans = profiling_best(it, t, get_default_runtime(t));
@@ -141,8 +141,8 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
     return true;
 }
 
-pair<NNFusion_DeiveType, kernels::KernelEmitter::Pointer>
-    DefaultKernelSelector::pick_first(shared_ptr<GNode> gnode, NNFusion_DeiveType devtype)
+pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
+    DefaultKernelSelector::pick_first(shared_ptr<GNode> gnode, NNFusion_DeviceType devtype)
 {
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
         KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
@@ -163,7 +163,7 @@ pair<NNFusion_DeiveType, kernels::KernelEmitter::Pointer>
     return std::make_pair(devtype, nullptr);
 }
 
-pair<NNFusion_DeiveType, kernels::KernelEmitter::Pointer>
+pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     DefaultKernelSelector::pick_first_rocm(shared_ptr<GNode> gnode)
 {
     shared_ptr<KernelContext> ctx(new KernelContext(gnode));
@@ -212,7 +212,7 @@ pair<NNFusion_DeiveType, kernels::KernelEmitter::Pointer>
 bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
     auto dev_name = FLAGS_fdefault_device.c_str();
-    NNFusion_DeiveType default_device = nnfusion::get_device_type(dev_name);
+    NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
 
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
     for (auto it : nodes)
@@ -233,15 +233,15 @@ bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>
             }
         }
         // if (!(*it)["Kernel_Selection_Result"].is_valid())
-        //     (*it)["Kernel_Selection_Result"] = vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
+        //     (*it)["Kernel_Selection_Result"] = vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
         // auto& res =
-        //     (*it)["Kernel_Selection_Result"].as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
+        //     (*it)["Kernel_Selection_Result"].as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
 
-        // vector<NNFusion_DeiveType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
+        // vector<NNFusion_DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
         // for (auto t : dev_type)
         // {
         //     if ((*it)["Kernel_Selection_Device"].is_valid() &&
-        //         (*it)["Kernel_Selection_Device"].as<NNFusion_DeiveType>() != t)
+        //         (*it)["Kernel_Selection_Device"].as<NNFusion_DeviceType>() != t)
         //         continue;
 
         //     bool selected = false;

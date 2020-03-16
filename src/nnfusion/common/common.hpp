@@ -202,7 +202,7 @@ using namespace nnfusion;
 
 // namespace nnfusion
 // {
-//     enum NNFusion_DeiveType
+//     enum NNFusion_DeviceType
 //     {
 //         CUDA_GPU,
 //         ROCM_GPU,

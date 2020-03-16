@@ -114,19 +114,19 @@ namespace nnfusion
                                 bool is_constant = false,
                                 bool is_parameter = false,
                                 bool is_RDMA_tensor = false,
-                                size_t group_id = -1,
+                                int group = -1,
                                 size_t device_id = 0);
 
             virtual const shared_ptr<nnfusion::descriptor::Tensor>
                 allocate_tensor(Shape shape,
-                                NNFusion_DeiveType device_type,
+                                NNFusion_DeviceType device_type,
                                 element::Type elt = element::f32,
                                 string name = "",
                                 bool is_persistent = false,
                                 bool is_constant = false,
                                 bool is_parameter = false,
                                 bool is_RDMA_tensor = false,
-                                size_t group_id = -1,
+                                int group = -1,
                                 size_t device_id = 0);
 
             // A kernel only emits kernel code once

@@ -19,7 +19,7 @@ namespace nnfusion
 
             // Required: specify the device type (e.g., CUDA_GPU) this kernel supports.
             // Return *this
-            KernelRegistration& Device(const NNFusion_DeiveType device_type);
+            KernelRegistration& Device(const NNFusion_DeviceType device_type);
 
             // Specify the data (inputs/outputs) types this kernel supports
             // Return *this
@@ -50,7 +50,7 @@ namespace nnfusion
         public:
             friend class KernelRegistry;
             string m_op_name;
-            NNFusion_DeiveType m_device_type;
+            NNFusion_DeviceType m_device_type;
             DataType m_data_type;
             string m_tag;
             Factory m_factory;
@@ -71,11 +71,11 @@ namespace nnfusion
             bool RegisterKernel(const string op_name, shared_ptr<KernelRegistration> registration);
             shared_ptr<const KernelRegistration>
                 FindKernelRegistration(const string op_name,
-                                       const NNFusion_DeiveType& device_type,
+                                       const NNFusion_DeviceType& device_type,
                                        const DataType data_type);
             std::vector<shared_ptr<const KernelRegistration>>
                 FindKernelRegistrations(const string op_name,
-                                        const NNFusion_DeiveType& device_type,
+                                        const NNFusion_DeviceType& device_type,
                                         const DataType data_type);
             shared_ptr<const KernelRegistration>
                 KernelSelect(std::vector<shared_ptr<const KernelRegistration>>& matched_regs);

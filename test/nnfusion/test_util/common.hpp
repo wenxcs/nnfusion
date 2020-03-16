@@ -55,13 +55,13 @@ namespace nnfusion
     namespace test
     {
         bool check_kernel(shared_ptr<GNode> gnode,
-                          NNFusion_DeiveType dev_t,
+                          NNFusion_DeviceType dev_t,
                           const vector<float>& IN,
                           const vector<float>& OUT);
 
         template <typename T = float>
         bool check_kernel(shared_ptr<GNode> gnode,
-                          NNFusion_DeiveType dev_t,
+                          NNFusion_DeviceType dev_t,
                           const vector<T>& IN,
                           const vector<T>& OUT)
         {

@@ -25,7 +25,7 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
         {
             std::vector<shared_ptr<KernelEmitter>> block_kernels;
             bool all_kernel_emitted = true;
-            NNFusion_DeiveType dev_type;
+            NNFusion_DeviceType dev_type;
             for (auto ins : *block_iter)
             {
                 auto gnode = ins->getGNode();
@@ -34,13 +34,13 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
 
                 auto emitted_kernels =
                     (*ins)["Kernel_Selection_Result"]
-                        .as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
+                        .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
                 auto emitter_iter =
                     find_if(emitted_kernels.begin(),
                             emitted_kernels.end(),
-                            [this](pair<NNFusion_DeiveType, KernelEmitter::Pointer>& i) {
-                                return (i.first == NNFusion_DeiveType::CUDA_GPU ||
-                                        i.first == NNFusion_DeiveType::ROCM_GPU);
+                            [this](pair<NNFusion_DeviceType, KernelEmitter::Pointer>& i) {
+                                return (i.first == NNFusion_DeviceType::CUDA_GPU ||
+                                        i.first == NNFusion_DeviceType::ROCM_GPU);
                             });
 
                 KernelEmitter::Pointer kernel = nullptr;
@@ -78,9 +78,9 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
                     fused_op, nnfusion::graph::GNodeVector());
                 ins->setGNode(fused_node);
                 (*ins)["Kernel_Selection_Result"] =
-                    vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
+                    vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
                 auto& res = (*ins)["Kernel_Selection_Result"]
-                                .as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
+                                .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
                 res.push_back(std::make_pair(dev_type, kernel));
                 block_iter->clear();
                 block_iter->push_back(ins);

@@ -19,7 +19,7 @@ namespace nnfusion
     class RocmCodeGenerator : public CudaCodeGenerator
     {
     public:
-        NNFusion_DeiveType device_type() override { return NNFusion_DeiveType::ROCM_GPU; }
+        NNFusion_DeviceType device_type() override { return NNFusion_DeviceType::ROCM_GPU; }
         virtual std::string get_generate_cmakelists(void) override
         {
             LanguageUnit lu;
@@ -113,7 +113,7 @@ endif()
         }
 
         virtual KernelEmitter::Pointer
-            match_kernel(std::vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>& res)
+            match_kernel(std::vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>& res)
         {
             for (auto& k : res)
             {
@@ -126,7 +126,7 @@ endif()
             // if there is no valid ROCm kernel, use the CUDA kernel
             for (auto& k : res)
             {
-                if (k.second != nullptr && k.first == NNFusion_DeiveType::CUDA_GPU &&
+                if (k.second != nullptr && k.first == NNFusion_DeviceType::CUDA_GPU &&
                     k.second->get_or_emit_source() != nullptr)
                 {
                     return k.second;

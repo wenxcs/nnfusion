@@ -5,7 +5,7 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 
-nnfusion::NNFusion_DeiveType default_device;
+nnfusion::NNFusion_DeviceType default_device;
 
 namespace nnfusion
 {
