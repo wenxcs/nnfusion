@@ -6,7 +6,7 @@ REGISTER_OP(All)
     .attr<int>("axis", -1)
     .attr<bool>("keep_dims", false)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(1 == gnode->get_input_size());
+        NNFUSION_CHECK(1 == gnode->get_input_size());
         auto& shape_0 = gnode->get_input_shape(0);
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         bool keep_dims = generic_op->localOpConfig.getRoot()["keep_dims"];

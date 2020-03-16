@@ -124,14 +124,14 @@ namespace nnfusion
             {
                 tensorflow::DataType dtype;
                 auto status = GetNodeAttr(node.attr(), "dtype", dtype);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 tensorflow::TensorShapeProto tf_shape = node.attr().at("shape").shape();
                 nnfusion::Shape ng_shape;
                 status = TFTensorShapeToNGraphShape(tf_shape, &ng_shape);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 auto input_op = std::make_shared<T>(ng_et, ng_shape);
                 input_op->set_name(node.name());
@@ -178,9 +178,9 @@ namespace nnfusion
                 bool transpose_a = false;
                 bool transpose_b = false;
                 bool status = GetNodeAttr(node.attr(), "transpose_a", transpose_a);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "transpose_b", transpose_b);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 // if (transpose_a)
                 // {
                 //     ng_lhs = nnfusion::graph::numpy_transpose(ng_lhs, nnfusion::AxisVector{1, 0});
@@ -212,9 +212,9 @@ namespace nnfusion
                 bool adj_y = false;
 
                 bool status = GetNodeAttr(node.attr(), "adj_x", adj_x);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "adj_y", adj_y);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int input_dims = lhs_gnode->get_output_shape(0).size();
                 nnfusion::AxisVector ng_axis_order;
@@ -258,15 +258,15 @@ namespace nnfusion
                 auto bias_gnode = GetInputNode(all_ng_nodes, node, 1);
                 std::string tf_data_format;
                 bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "BiasAdd data format is neither NHWC nor NCHW";
 
                 auto input_shape = input_gnode->get_shape();
                 auto bias_shape = bias_gnode->get_shape();
 
-                CHECK(bias_shape.size() == 1)
+                NNFUSION_CHECK(bias_shape.size() == 1)
                     << "Bias argument to BiasAdd does not have one dimension";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
@@ -329,19 +329,19 @@ namespace nnfusion
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 std::string tf_data_format;
                 bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 if (tf_data_format == "")
                 {
                     tf_data_format = "NHWC";
                 }
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "BiasAddGrad data format is neither NHWC nor NCHW";
 
                 auto input_shape = input_gnode->get_shape();
 
-                CHECK(input_shape.size() >= 2) << "Input tensor must be at least 2D";
+                NNFUSION_CHECK(input_shape.size() >= 2) << "Input tensor must be at least 2D";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
 
@@ -384,7 +384,7 @@ namespace nnfusion
 
                 std::vector<int64> shape;
                 bool status = GetValueFromNGraphOp<int64>(shape_gnode, &shape);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 size_t output_rank = shape.size();
                 size_t num_input_elements = nnfusion::shape_size(input_gnode->get_shape());
@@ -398,7 +398,7 @@ namespace nnfusion
                 {
                     if (shape[i] == -1)
                     {
-                        CHECK(!seen_inferred);
+                        NNFUSION_CHECK(!seen_inferred);
                         //if (seen_inferred)
                         //{
                         //    return errors::InvalidArgument("Multiple -1 dimensions in result shape");
@@ -424,7 +424,7 @@ namespace nnfusion
                             num_input_elements, ")");
                     }
                     */
-                    CHECK(num_input_elements % product_of_rest == 0);
+                    NNFUSION_CHECK(num_input_elements % product_of_rest == 0);
                     shape[inferred_pos] = num_input_elements / product_of_rest;
                 }
 
@@ -454,10 +454,10 @@ namespace nnfusion
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "DstT", dtype);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 auto cast_op = std::make_shared<op::Convert>(ng_et);
                 cast_op->set_name(node.name());
                 auto cast_gnode = m_graph->add_node_and_edge(cast_op, {input_gnode});
@@ -478,15 +478,15 @@ namespace nnfusion
 
                 bool status;
                 status = GetNodeAttr(node.attr(), "strides", tf_strides);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "ksize", tf_ksize);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "MaxPool data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
@@ -558,15 +558,15 @@ namespace nnfusion
 
                 bool status;
                 status = GetNodeAttr(node.attr(), "strides", tf_strides);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "dilations", tf_dilations);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "Conv2D data format is neither NHWC nor NCHW";
                 bool is_nhwc = (tf_data_format == "NHWC");
                 nnfusion::Strides ng_strides(2);
@@ -644,15 +644,15 @@ namespace nnfusion
 
                 bool status;
                 status = GetNodeAttr(node.attr(), "strides", tf_strides);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "dilations", tf_dilations);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "Conv2D data format is neither NHWC nor NCHW";
                 bool is_nhwc = (tf_data_format == "NHWC");
 
@@ -707,15 +707,15 @@ namespace nnfusion
 
                 bool status;
                 status = GetNodeAttr(node.attr(), "strides", tf_strides);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "ksize", tf_ksize);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "padding", tf_padding_type);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "AvgPool data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
@@ -782,7 +782,7 @@ namespace nnfusion
 
                 std::vector<size_t> dims_vec;
                 bool status = GetValueFromNGraphOp<size_t>(shape_gnode, &dims_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 nnfusion::Shape ng_output_shape(dims_vec.size());
                 nnfusion::AxisSet ng_axis_set;
@@ -809,9 +809,9 @@ namespace nnfusion
 
                 std::vector<int64> paddings;
                 bool status = GetValueFromNGraphOp<int64>(padding_gnode, &paddings);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(paddings.size() % 2 == 0)
+                NNFUSION_CHECK(paddings.size() % 2 == 0)
                     << "Constant node for paddings does not have an even number of elements";
 
                 nnfusion::Shape padding_below(paddings.size() / 2);
@@ -851,14 +851,14 @@ namespace nnfusion
 
                 std::vector<int64> paddings;
                 bool status = GetValueFromNGraphOp<int64>(padding_gnode, &paddings);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(constant_value_gnode->get_op_type() == "Constant");
+                NNFUSION_CHECK(constant_value_gnode->get_op_type() == "Constant");
                 auto constant_value_op =
                     std::dynamic_pointer_cast<op::Constant>(constant_value_gnode->get_op_ptr());
                 auto constant_values = constant_value_op->get_value_strings();
 
-                CHECK(paddings.size() % 2 == 0)
+                NNFUSION_CHECK(paddings.size() % 2 == 0)
                     << "Constant node for paddings does not have an even number of elements";
 
                 nnfusion::Shape padding_below(paddings.size() / 2);
@@ -894,7 +894,7 @@ namespace nnfusion
                 bool tf_is_training;
                 if (!GetNodeAttr(node.attr(), "is_training", tf_is_training))
                 {
-                    LOG(INFO) << "is_training attribute not present, setting to true";
+                    NNFUSION_LOG(INFO) << "is_training attribute not present, setting to true";
                     tf_is_training = true;
                 }
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
@@ -905,16 +905,16 @@ namespace nnfusion
 
                 std::string tf_data_format;
                 bool status = GetNodeAttr(node.attr(), "data_format", tf_data_format);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
+                NNFUSION_CHECK(tf_data_format == "NHWC" || tf_data_format == "NCHW")
                     << "FusedBatchNorm data format is neither NHWC nor NCHW";
 
                 bool is_nhwc = (tf_data_format == "NHWC");
                 float tf_epsilon;
                 if (!GetNodeAttr(node.attr(), "epsilon", tf_epsilon))
                 {
-                    LOG(INFO) << "epsilon attribute not present, setting to 0.0001";
+                    NNFUSION_LOG(INFO) << "epsilon attribute not present, setting to 0.0001";
                     // TensorFlow default
                     tf_epsilon = 0.0001;
                 }
@@ -958,9 +958,9 @@ namespace nnfusion
                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 const int input_cnt = node.input_size();
-                CHECK(input_cnt >= 3) << "\"" << node.name()
-                                      << "\" requires at least 3 inputs, got " << input_cnt
-                                      << " instead";
+                NNFUSION_CHECK(input_cnt >= 3) << "\"" << node.name()
+                                               << "\" requires at least 3 inputs, got " << input_cnt
+                                               << " instead";
 
                 GNodeVector arg_gnodes;
                 for (int i = 0; i < input_cnt - 1; i++)
@@ -972,7 +972,7 @@ namespace nnfusion
                 auto concat_axis_gnode = GetInputNode(all_ng_nodes, node, input_cnt - 1);
                 std::vector<int> tf_concat_axis_vec;
                 bool status = GetValueFromNGraphOp<int>(concat_axis_gnode, &tf_concat_axis_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int64 concat_axis = tf_concat_axis_vec[0];
 
@@ -1035,13 +1035,13 @@ namespace nnfusion
 
                 std::vector<int64> sum_axes;
                 bool status = GetValueFromNGraphOp<int64>(axes_gnode, &sum_axes);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 nnfusion::Shape input_shape = input_gnode->get_shape();
                 size_t input_rank = input_shape.size();
 
                 status = CheckAxisDimInRange(sum_axes, input_rank);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 std::vector<size_t> ng_reduction_axes_vect(sum_axes.size());
                 std::transform(
@@ -1094,7 +1094,7 @@ namespace nnfusion
                 // value.shape[split_dim]
                 int32 num_split;
                 bool status = GetNodeAttr(node.attr(), "num_split", num_split);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 nnfusion::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower;
@@ -1106,7 +1106,7 @@ namespace nnfusion
                 }
                 std::vector<int> split_dim_vec;
                 status = GetValueFromNGraphOp<int>(split_dim_gnode, &split_dim_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
                 int size = shape[split_dim] / num_split;
                 int cursor = 0;
@@ -1140,7 +1140,7 @@ namespace nnfusion
 
                 std::vector<int> lengths;
                 bool status = GetValueFromNGraphOp<int>(length_gnode, &lengths);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 nnfusion::Shape shape = input_gnode->get_shape();
                 int rank = shape.size();
                 std::vector<size_t> lower(rank, 0);
@@ -1148,13 +1148,13 @@ namespace nnfusion
 
                 std::vector<int64> split_dim_vec;
                 status = GetValueFromNGraphOp<int64>(split_dim_gnode, &split_dim_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 // there should be at least one element specified as axis and not more than
                 // one as axis is 0-D
-                CHECK(split_dim_vec.size() == 1)
+                NNFUSION_CHECK(split_dim_vec.size() == 1)
                     << "split_dim_tensor must have exactly one element.";
                 status = CheckAxisDimInRange(split_dim_vec, rank);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int split_dim = split_dim_vec[0] + (split_dim_vec[0] < 0 ? (int64)rank : 0);
 
@@ -1171,7 +1171,7 @@ namespace nnfusion
                     }
                     else
                     {
-                        CHECK(!has_one_neg) << "size_splits can only have one -1";
+                        NNFUSION_CHECK(!has_one_neg) << "size_splits can only have one -1";
 
                         idx = i;
                         has_one_neg = true;
@@ -1184,8 +1184,8 @@ namespace nnfusion
                     lengths[idx] = shape[split_dim] - length;
                 }
 
-                CHECK((!has_one_neg && length == shape[split_dim]) ||
-                      (has_one_neg && lengths[idx] >= 0))
+                NNFUSION_CHECK((!has_one_neg && length == shape[split_dim]) ||
+                               (has_one_neg && lengths[idx] >= 0))
                     << "The length of size_splits must sum to the value of the dimension along "
                        "split_dim";
 
@@ -1235,10 +1235,10 @@ namespace nnfusion
 
                 std::vector<int64> mean_axes;
                 bool status = GetValueFromNGraphOp<int64>(axes_gnode, &mean_axes);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 status = CheckAxisDimInRange(mean_axes, rank);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 std::vector<size_t> ng_reduction_axes_vect(mean_axes.size());
                 std::transform(mean_axes.begin(),
@@ -1306,11 +1306,11 @@ namespace nnfusion
                 std::vector<int64> lower_vec;
                 std::vector<int64> size_vec;
                 bool status = GetValueFromNGraphOp<int64>(begin_gnode, &lower_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 status = GetValueFromNGraphOp<int64>(size_gnode, &size_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(lower_vec.size() == size_vec.size())
+                NNFUSION_CHECK(lower_vec.size() == size_vec.size())
                     << "Cannot translate sliceop: Size of lower = " << lower_vec.size()
                     << ", size of size_vec = " << size_vec.size() << ". Expected them to match.";
 
@@ -1348,9 +1348,10 @@ namespace nnfusion
                     }
 
                     err_msg = err_stream.str();
-                    CHECK(err_msg.empty()) << "Cannot translate sliceop at position " << i << " of "
-                                           << size_vec.size() << ". The reasons are:\n"
-                                           << err_msg;
+                    NNFUSION_CHECK(err_msg.empty()) << "Cannot translate sliceop at position " << i
+                                                    << " of " << size_vec.size()
+                                                    << ". The reasons are:\n"
+                                                    << err_msg;
                 }
 
                 std::vector<size_t> l(lower_vec.begin(), lower_vec.end());
@@ -1372,7 +1373,7 @@ namespace nnfusion
 
                 std::vector<int64> permutation;
                 bool status = GetValueFromNGraphOp<int64>(permutation_gnode, &permutation);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 nnfusion::AxisVector ng_axis_order;
                 ng_axis_order.reserve(permutation.size());
@@ -1403,7 +1404,7 @@ namespace nnfusion
 
                 std::vector<int64> permutation;
                 bool status = GetValueFromNGraphOp<int64>(permutation_gnode, &permutation);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 // Check to make sure that the permutation requested for transpose
                 // is valid for example:
@@ -1421,7 +1422,8 @@ namespace nnfusion
                 }
                 for (int i = 0; i < input_rank; i++)
                 {
-                    CHECK(count[i]) << i << " is missing from {" << join(permutation) << "}.";
+                    NNFUSION_CHECK(count[i]) << i << " is missing from {" << join(permutation)
+                                             << "}.";
                 }
 
                 nnfusion::AxisVector ng_axis_order;
@@ -1456,35 +1458,35 @@ namespace nnfusion
 
                 std::vector<int> depth;
                 bool status = GetValueFromNGraphOp<int>(depth_gnode, &depth);
-                CHECK(status);
-                CHECK(depth.size() == 1) << "OneHot Op: depth of one hot dimension must be scalar "
-                                         << depth.size();
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(depth.size() == 1)
+                    << "OneHot Op: depth of one hot dimension must be scalar " << depth.size();
 
                 std::vector<float> on_value;
                 status = GetValueFromNGraphOp<float>(ong_gnode, &on_value);
-                CHECK(status);
-                CHECK(on_value.size() == 1)
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(on_value.size() == 1)
                     << "OneHot Op: on value of one hot dimension must be scalar "
                     << on_value.size();
 
                 std::vector<float> off_value;
                 status = GetValueFromNGraphOp<float>(off_gnode, &off_value);
-                CHECK(status);
-                CHECK(off_value.size() == 1)
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(off_value.size() == 1)
                     << "OneHot Op: off value of one hot dimension must be scalar "
                     << off_value.size();
 
                 int one_hot_axis;
                 status = GetNodeAttr(node.attr(), "axis", one_hot_axis);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 tensorflow::DataType dtype;
                 status = GetNodeAttr(node.attr(), "T", dtype);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(ng_et == nnfusion::element::f32);
+                NNFUSION_CHECK(ng_et == nnfusion::element::f32);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["axis"] = one_hot_axis;
@@ -1530,10 +1532,10 @@ namespace nnfusion
 
                 std::vector<int64> tf_axis;
                 bool status = GetValueFromNGraphOp<int64>(axis_gnode, &tf_axis);
-                CHECK(status);
-                CHECK(tf_axis.size() == 1) << "Found axis in GatherV2 op (" << node.name()
-                                           << ") translation to be non scalar, of size "
-                                           << tf_axis.size();
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(tf_axis.size() == 1) << "Found axis in GatherV2 op (" << node.name()
+                                                    << ") translation to be non scalar, of size "
+                                                    << tf_axis.size();
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["axis"] = tf_axis[0];
@@ -1578,13 +1580,13 @@ namespace nnfusion
                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 const int input_cnt = node.input_size();
-                CHECK(input_cnt >= 1) << "\"" << node.name()
-                                      << "\" requires at least 1 inputs, got " << input_cnt
-                                      << " instead";
+                NNFUSION_CHECK(input_cnt >= 1) << "\"" << node.name()
+                                               << "\" requires at least 1 inputs, got " << input_cnt
+                                               << " instead";
 
                 int pack_axis = 0;
                 bool status = GetNodeAttr(node.attr(), "axis", pack_axis);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 GNodeVector input_gnodes;
                 for (int i = 0; i < input_cnt; i++)
@@ -1635,7 +1637,7 @@ namespace nnfusion
                 else
                 {
                     // TODO: option2, implement pack kernel
-                    CHECK_FAIL() << "Pack kernel not implemented yet";
+                    NNFUSION_CHECK_FAIL() << "Pack kernel not implemented yet";
 
                     nnfusion::op::OpConfig::any myConfig;
                     myConfig["axis"] = pack_axis;
@@ -1658,14 +1660,14 @@ namespace nnfusion
 
                 std::vector<int> tf_axis;
                 bool status = GetValueFromNGraphOp<int>(axis_gnode, &tf_axis);
-                CHECK(status);
-                CHECK(tf_axis.size() == 1) << "Found axis in All op (" << node.name()
-                                           << ") translation to be non scalar, of size "
-                                           << tf_axis.size();
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(tf_axis.size() == 1) << "Found axis in All op (" << node.name()
+                                                    << ") translation to be non scalar, of size "
+                                                    << tf_axis.size();
 
                 bool keep_dims = false;
                 status = GetNodeAttr(node.attr(), "keep_dims", keep_dims);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 nnfusion::op::OpConfig::any myConfig;
                 if (tf_axis.size() > 0)
@@ -1691,7 +1693,7 @@ namespace nnfusion
 
                 std::vector<int32> tf_axis;
                 bool status = GetNodeAttr(node.attr(), "squeeze_dims", tf_axis);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 // If input dimension is negative, make it positive
                 for (int i = 0; i < tf_axis.size(); i++)
@@ -1720,7 +1722,7 @@ namespace nnfusion
                         bool skip = false;
                         if (axis_set.find(i) != axis_set.end())
                         {
-                            CHECK(input_shape[i] == 1)
+                            NNFUSION_CHECK(input_shape[i] == 1)
                                 << "Tried to explicitly squeeze dimension " << i
                                 << " but dimension was not 1: " << input_shape[i];
                             skip = true;
@@ -1757,9 +1759,10 @@ namespace nnfusion
 
                 std::vector<int64> dim_vec;
                 bool status = GetValueFromNGraphOp<int64>(dim_gnode, &dim_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(dim_vec.size() == 1) << "The size of argument dim is not 1 for ExpandDims";
+                NNFUSION_CHECK(dim_vec.size() == 1)
+                    << "The size of argument dim is not 1 for ExpandDims";
 
                 auto& shape = input_gnode->get_shape();
                 auto shape_size = shape.size();
@@ -1819,14 +1822,14 @@ namespace nnfusion
                 input_gnodes.push_back(delta_gnode);
 
                 std::vector<int64> start_vec;
-                CHECK(GetValueFromNGraphOp<int64>(starg_gnode, &start_vec) == true);
-                CHECK(start_vec.size() > 0);
+                NNFUSION_CHECK(GetValueFromNGraphOp<int64>(starg_gnode, &start_vec) == true);
+                NNFUSION_CHECK(start_vec.size() > 0);
                 std::vector<int64> limit_vec;
-                CHECK(GetValueFromNGraphOp<int64>(limit_gnode, &limit_vec) == true);
-                CHECK(limit_vec.size() > 0);
+                NNFUSION_CHECK(GetValueFromNGraphOp<int64>(limit_gnode, &limit_vec) == true);
+                NNFUSION_CHECK(limit_vec.size() > 0);
                 std::vector<int64> delta_vec;
-                CHECK(GetValueFromNGraphOp<int64>(delta_gnode, &delta_vec) == true);
-                CHECK(delta_vec.size() > 0);
+                NNFUSION_CHECK(GetValueFromNGraphOp<int64>(delta_gnode, &delta_vec) == true);
+                NNFUSION_CHECK(delta_vec.size() > 0);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["start"] = start_vec[0];
@@ -1912,33 +1915,33 @@ namespace nnfusion
 
                 std::vector<int64> begin_vec;
                 bool status = GetValueFromNGraphOp<int64>(begin_gnode, &begin_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 std::vector<int64> end_vec;
                 status = GetValueFromNGraphOp<int64>(end_gnode, &end_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 std::vector<int64> stride_vec;
                 status = GetValueFromNGraphOp<int64>(stride_gnode, &stride_vec);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_shrink_axis_mask;
                 status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_end_mask;
                 status = GetNodeAttr(node.attr(), "end_mask", tf_end_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_begin_mask;
                 status = GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_new_axis_mask;
                 status = GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_ellipsis_mask;
                 status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 auto& input_shape = input_gnode->get_shape();
 
@@ -2134,9 +2137,9 @@ namespace nnfusion
                 auto dim_vec = input_gnode->get_shape();
                 auto in_rank = dim_vec.size();
 
-                CHECK(begin_vec.size() <= in_rank) << "Index out of range using input dim "
-                                                   << begin_vec.size() << "; input has only "
-                                                   << in_rank << " dims";
+                NNFUSION_CHECK(begin_vec.size() <= in_rank)
+                    << "Index out of range using input dim " << begin_vec.size()
+                    << "; input has only " << in_rank << " dims";
 
                 // TODO/Note/Question: Are begin, end and stride vectors are of equal length
 
@@ -2202,7 +2205,7 @@ namespace nnfusion
                         else
                         {
                             // TODO: must it equal 1 or can it be 0 too?
-                            CHECK(ng_end_vec[i] - ng_begin_vec[i] <= 1)
+                            NNFUSION_CHECK(ng_end_vec[i] - ng_begin_vec[i] <= 1)
                                 << "Trying to shrink specification " << i
                                 << "where tf begin, end, strides are: " << begin_vec[i] << ":"
                                 << end_vec[i] << ":" << stride_vec[i]
@@ -2248,7 +2251,7 @@ namespace nnfusion
                 auto grad_gnode = GetInputNode(all_ng_nodes, node, 4);
 
                 std::vector<int32> x_value;
-                CHECK(GetValueFromNGraphOp<int32>(x_gnode, &x_value))
+                NNFUSION_CHECK(GetValueFromNGraphOp<int32>(x_gnode, &x_value))
                     << "StridedSliceGradOp currently do not support dynamic output tensor shape";
                 auto x_shape = x_gnode->get_shape();
                 auto x_const_op = std::make_shared<op::Constant>(element::i32, x_shape, x_value);
@@ -2256,23 +2259,23 @@ namespace nnfusion
 
                 int tf_shrink_axis_mask;
                 bool status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_end_mask;
                 status = GetNodeAttr(node.attr(), "end_mask", tf_end_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_begin_mask;
                 status = GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_new_axis_mask;
                 status = GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 int tf_ellipsis_mask;
                 status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["begin_mask"] = tf_begin_mask;
@@ -2307,7 +2310,7 @@ namespace nnfusion
                 auto multiples_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 std::vector<int64> in_value;
-                CHECK(GetValueFromNGraphOp<int64>(multiples_gnode, &in_value))
+                NNFUSION_CHECK(GetValueFromNGraphOp<int64>(multiples_gnode, &in_value))
                     << "TileOp currently do not support dynamic tensor shape";
                 auto input_shape = multiples_gnode->get_shape();
                 auto const_op = std::make_shared<op::Constant>(element::i64, input_shape, in_value);
@@ -2331,7 +2334,7 @@ namespace nnfusion
                 auto seg_num_gnode = GetInputNode(all_ng_nodes, node, 2);
 
                 std::vector<int> in_value;
-                CHECK(GetValueFromNGraphOp<int>(seg_num_gnode, &in_value))
+                NNFUSION_CHECK(GetValueFromNGraphOp<int>(seg_num_gnode, &in_value))
                     << "We only accept the sgements number as Constant.";
                 auto const_op = std::make_shared<op::Constant>(
                     element::i32, seg_num_gnode->get_shape(), in_value);
@@ -2354,7 +2357,7 @@ namespace nnfusion
                 auto input_shape = input_gnode->get_shape();
                 nnfusion::AxisSet ng_axes_softmax;
                 auto rank = input_shape.size();
-                CHECK(rank >= 1) << "TF Softmax logits must be >=1 dimension";
+                NNFUSION_CHECK(rank >= 1) << "TF Softmax logits must be >=1 dimension";
 
                 ng_axes_softmax.insert(rank - 1);
 
@@ -2388,7 +2391,7 @@ namespace nnfusion
                 auto input2_gnode = GetInputNode(all_ng_nodes, node, 1);
                 auto input3_gnode = GetInputNode(all_ng_nodes, node, 2);
 
-                CHECK(input2_gnode->get_shape() == input3_gnode->get_shape())
+                NNFUSION_CHECK(input2_gnode->get_shape() == input3_gnode->get_shape())
                     << "Input tensors 2 and 3 should have same shape";
 
                 auto input1_shape = input1_gnode->get_shape();
@@ -2397,9 +2400,9 @@ namespace nnfusion
                 auto input1_rank = input1_shape.size();
                 auto input2_rank = input2_shape.size();
 
-                CHECK(((input1_shape == input2_shape) ||
-                       ((input1_rank == 1) && (input2_rank > input1_rank) &&
-                        (input2_shape[0] == input1_shape[0]))))
+                NNFUSION_CHECK(((input1_shape == input2_shape) ||
+                                ((input1_rank == 1) && (input2_rank > input1_rank) &&
+                                 (input2_shape[0] == input1_shape[0]))))
                     << "Input tensor may have the same shape as condition. If condition is "
                     << "rank 1, input may have higher rank, but its first dimension must "
                     << "match the size of condition.";
@@ -2455,9 +2458,9 @@ namespace nnfusion
                     auto input_gnode = GetInputNode(all_ng_nodes, node, i);
                     input_gnodes.push_back(input_gnode);
                     auto input_shape = input_gnode->get_shape();
-                    CHECK(input_shape.size() == 1) << "input" << i << "must be a vector";
+                    NNFUSION_CHECK(input_shape.size() == 1) << "input" << i << "must be a vector";
                     std::vector<int64> in_value;
-                    CHECK(GetValueFromNGraphOp<int64>(input_gnode, &in_value));
+                    NNFUSION_CHECK(GetValueFromNGraphOp<int64>(input_gnode, &in_value));
 
                     BCast::Vec vec;
                     for (int64 i = 0; i < shape_size(input_shape); ++i)
@@ -2468,7 +2471,7 @@ namespace nnfusion
                 }
 
                 BCast bcast(shapes[0], shapes[1]);
-                CHECK(bcast.IsValid());
+                NNFUSION_CHECK(bcast.IsValid());
                 // <<
                 // "Incompatible shapes: [" << str_util::Join(shapes[0], ","),
                 // "] vs. [", str_util::Join(shapes[1], ","), "]"));
@@ -2531,7 +2534,7 @@ namespace nnfusion
                 int32 num_partitions;
                 GNodeVector input_gnodes;
                 bool status = GetNodeAttr(node.attr(), "N", num_partitions);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 for (int i = 0; i < num_partitions * 2; i++)
                 {
@@ -2541,7 +2544,7 @@ namespace nnfusion
                     if (i < num_partitions)
                     {
                         std::vector<int32> in_value;
-                        CHECK(GetValueFromNGraphOp<int32>(input_gnode, &in_value))
+                        NNFUSION_CHECK(GetValueFromNGraphOp<int32>(input_gnode, &in_value))
                             << "DynamicStitch currently do not support dynamic tensor shape";
                         auto const_op =
                             std::make_shared<op::Constant>(element::i32, input_shape, in_value);
@@ -2653,12 +2656,12 @@ namespace nnfusion
 
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "out_type", dtype);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 nnfusion::element::Type ng_et;
                 status = TFDataTypeToNGraphElementType(dtype, &ng_et);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
-                CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
+                NNFUSION_CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["out_type"] = ng_et.c_type_string();
@@ -2682,13 +2685,13 @@ namespace nnfusion
                 // axis : Dimension along which to unpack.
                 int32 axis;
                 bool status = GetNodeAttr(node.attr(), "axis", axis);
-                CHECK(status);
+                NNFUSION_CHECK(status);
                 axis = axis + (axis < 0 ? rank : 0);
 
                 // num : value of input_shape[axis]
                 int32 num;
                 status = GetNodeAttr(node.attr(), "num", num);
-                CHECK(status);
+                NNFUSION_CHECK(status);
 
                 std::vector<size_t> lower;
                 std::vector<size_t> upper;
@@ -2821,8 +2824,9 @@ namespace nnfusion
 
             GraphConvert::GraphConvert(const tensorflow::GraphDef& proto)
                 : tf_graph_proto{&proto}
+                , m_graph(new nnfusion::graph::Graph())
             {
-                LOG(INFO) << "Converting Tensorflow Graph";
+                NNFUSION_LOG(INFO) << "Converting Tensorflow Graph";
 
                 m_graph = std::make_shared<nnfusion::graph::Graph>();
 
@@ -2844,7 +2848,7 @@ namespace nnfusion
                         std::shared_ptr<nnfusion::graph::GNode> src_node;
 
                         auto iter = m_node_map.find(input_tensor.first);
-                        CHECK(iter != m_node_map.end())
+                        NNFUSION_CHECK(iter != m_node_map.end())
                             << "Node " << node_proto.name()
                             << " has Un-Converted input node: " << input_tensor.first;
                         if (src_index == nnfusion::graph::Graph::kControlSlot)
@@ -2858,7 +2862,7 @@ namespace nnfusion
                         }
                         else
                         {
-                            CHECK(!in_control_dependence)
+                            NNFUSION_CHECK(!in_control_dependence)
                                 << "Control dependencies must come after regular "
                                    "dependencies.";
                             src_node = iter->second.at(src_index);
@@ -2876,7 +2880,7 @@ namespace nnfusion
                         // add control edge
                         for (size_t input_idx = 0; input_idx < inputs.size(); input_idx++)
                         {
-                            CHECK_NOT_NULLPTR(inputs[input_idx].node)
+                            NNFUSION_CHECK_NOT_NULLPTR(inputs[input_idx].node)
                                 << "Back edge is not supported now.";
 
                             if (inputs[input_idx].index == nnfusion::graph::Graph::kControlSlot)
@@ -2891,8 +2895,8 @@ namespace nnfusion
 
                         if (gnode->get_name() != name_gnode_pair.first)
                         {
-                            CHECK(!(*gnode)["Alias"].is_valid()) << "node " << gnode->get_name()
-                                                                 << " has more than one alias.";
+                            NNFUSION_CHECK(!(*gnode)["Alias"].is_valid())
+                                << "node " << gnode->get_name() << " has more than one alias.";
                             (*gnode)["Alias"] = name_gnode_pair.first;
                         }
 
@@ -2919,7 +2923,7 @@ namespace nnfusion
 
                 m_graph->set_outputs(m_graph_outputs);
                 m_graph->set_default_parameters();
-                LOG(INFO) << "convert graph done";
+                NNFUSION_LOG(INFO) << "convert graph done";
             }
 
             void GraphConvert::generate_topology()
@@ -2943,7 +2947,7 @@ namespace nnfusion
                         TensorId input_tensor(ParseTensorName(input_name));
 
                         auto iter = tensorflow_name2nodeIdx_map.find(input_tensor.first);
-                        CHECK(iter != tensorflow_name2nodeIdx_map.end())
+                        NNFUSION_CHECK(iter != tensorflow_name2nodeIdx_map.end())
                             << "Node " << node_proto.name()
                             << " has Unknown input node: " << input_name;
 

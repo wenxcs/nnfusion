@@ -14,11 +14,11 @@ namespace nnfusion
         std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(std::istream& sin)
         {
             tensorflow::GraphDef tensorflow_graph;
-            CHECK(tensorflow_graph.ParseFromIstream(&sin))
+            NNFUSION_CHECK(tensorflow_graph.ParseFromIstream(&sin))
                 << "failure parsing data from the stream";
 
-            LOG(INFO) << "Import Tensorflow Graph Size: [" << tensorflow_graph.ByteSizeLong()
-                      << "]";
+            NNFUSION_LOG(INFO) << "Import Tensorflow Graph Size: ["
+                               << tensorflow_graph.ByteSizeLong() << "]";
 
             auto graph_convert = tensorflow_import::GraphConvert{tensorflow_graph};
 
@@ -29,7 +29,7 @@ namespace nnfusion
         std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(const std::string& path)
         {
             std::ifstream ifs{path, std::ios::in | std::ios::binary};
-            CHECK(ifs.is_open()) << "failure opening file:" + path;
+            NNFUSION_CHECK(ifs.is_open()) << "failure opening file:" + path;
             return load_tensorflow_model(ifs);
         }
 

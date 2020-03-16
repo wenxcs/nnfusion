@@ -90,7 +90,7 @@ namespace nnfusion
         ///
         ///    class MyException : public CheckError;
         ///
-        ///    #define MY_CHECK(cond) NNFUSION_CHECK_STREAM(::nnfusion::errors::MyException, cond)
+        ///    #define MY_CHECK(cond) _CHECK_STREAM(::nnfusion::errors::MyException, cond)
         ///
         ///    ...
         ///
@@ -109,7 +109,7 @@ namespace nnfusion
         ///   class CompileError : public CheckError;
         ///
         ///   #define COMPILE_CHECK(node,cond)                                       <backslash>
-        ///      NNFUSION_CHECK_STREAM_WITH_LOC(::nnfusion::errors::CompileError, cond,          <backslash>
+        ///      _CHECK_STREAM_WITH_LOC(::nnfusion::errors::CompileError, cond,          <backslash>
         ///                                    "While compiling node " + node->name())
         ///
         ///   ...
@@ -165,7 +165,7 @@ namespace nnfusion
                         explanation = "(no explanation given)";
                     }
                     ss << explanation;
-                    LOG(ERROR) << ss.str();
+                    NNFUSION_LOG(ERROR) << ss.str();
 
                     throw T(ss.str());
                 }
@@ -200,43 +200,43 @@ namespace nnfusion
 }
 
 /// Check condition "cond" with an exception class of "T", at location "loc".
-#define NNFUSION_CHECK_STREAM_WITH_LOC(T, cond, loc)                                               \
+#define _CHECK_STREAM_WITH_LOC(T, cond, loc)                                                       \
     ((cond) ? ::nnfusion::errors::DummyCheckHelper().get_stream()                                  \
             : ::nnfusion::errors::CheckHelper<T>(__FILE__, __LINE__, #cond, loc).get_stream())
 /// Check condition "cond" with an exception class of "T", and no location specified.
-#define NNFUSION_CHECK_STREAM(T, cond)                                                             \
+#define _CHECK_STREAM(T, cond)                                                                     \
     ((cond) ? ::nnfusion::errors::DummyCheckHelper().get_stream()                                  \
             : ::nnfusion::errors::CheckHelper<T>(__FILE__, __LINE__, #cond).get_stream())
 
 /// Fails unconditionally with an exception class of "T", at location "loc".
-#define NNFUSION_FAIL_STREAM_WITH_LOC(T, loc)                                                      \
+#define _FAIL_STREAM_WITH_LOC(T, loc)                                                              \
     ::nnfusion::errors::CheckHelper<T>(__FILE__, __LINE__, "", loc).get_stream()
 /// Fails unconditionally with an exception class of "T", and no location specified.
-#define NNFUSION_FAIL_STREAM(T) ::nnfusion::errors::CheckHelper<T>(__FILE__, __LINE__).get_stream()
+#define _FAIL_STREAM(T) ::nnfusion::errors::CheckHelper<T>(__FILE__, __LINE__).get_stream()
 
-#define CHECK(cond) NNFUSION_CHECK_STREAM(::nnfusion::errors::CheckError, cond)
-#define CHECK_FAIL() NNFUSION_FAIL_STREAM(::nnfusion::errors::CheckError)
+#define NNFUSION_CHECK(cond) _CHECK_STREAM(::nnfusion::errors::CheckError, cond)
+#define NNFUSION_CHECK_FAIL() _FAIL_STREAM(::nnfusion::errors::CheckError)
 
-#define CHECK_WITH_EXCEPTION(cond, T) NNFUSION_CHECK_STREAM(T, cond)
-#define CHECK_FAIL_WITH_EXCEPTION(T) NNFUSION_FAIL_STREAM(T)
+#define NNFUSION_CHECK_WITH_EXCEPTION(cond, T) _CHECK_STREAM(T, cond)
+#define NNFUSION_CHECK_FAIL_WITH_EXCEPTION(T) _FAIL_STREAM(T)
 
-#define CHECK_NOT_NULLPTR(ptr_)                                                                    \
-    NNFUSION_CHECK_STREAM(nnfusion::errors::NullPointer, ((ptr_) != nullptr))
+#define NNFUSION_CHECK_NOT_NULLPTR(ptr_)                                                           \
+    _CHECK_STREAM(nnfusion::errors::NullPointer, ((ptr_) != nullptr))
 
 #ifdef NNFUSION_DEBUG
 
-#define DCHECK(cond) CHECK(cond)
-#define DCHECK_FAIL() CHECK_FAIL()
-#define DCHECK_WITH_EXCEPTION(cond, T) CHECK_WITH_EXCEPTION(cond, T)
-#define DCHECK_FAIL_WITH_EXCEPTION(T) CHECK_FAIL_WITH_EXCEPTION(T)
-#define DCHECK_NOT_NULLPTR(ptr_) CHECK_NOT_NULLPTR(ptr_)
+#define NNFUSION_DCHECK(cond) NNFUSION_CHECK(cond)
+#define NNFUSION_DCHECK_FAIL() NNFUSION_CHECK_FAIL()
+#define NNFUSION_DCHECK_WITH_EXCEPTION(cond, T) NNFUSION_CHECK_WITH_EXCEPTION(cond, T)
+#define NNFUSION_DCHECK_FAIL_WITH_EXCEPTION(T) NNFUSION_CHECK_FAIL_WITH_EXCEPTION(T)
+#define NNFUSION_DCHECK_NOT_NULLPTR(ptr_) NNFUSION_CHECK_NOT_NULLPTR(ptr_)
 
 #else
 
-#define DCHECK(cond)
-#define DCHECK_FAIL()
-#define DCHECK_WITH_EXCEPTION(cond, T)
-#define DCHECK_FAIL_WITH_EXCEPTION(T)
-#define DCHECK_NOT_NULLPTR(ptr_)
+#define NNFUSION_DCHECK(cond)
+#define NNFUSION_DCHECK_FAIL()
+#define NNFUSION_DCHECK_WITH_EXCEPTION(cond, T)
+#define NNFUSION_DCHECK_FAIL_WITH_EXCEPTION(T)
+#define NNFUSION_DCHECK_NOT_NULLPTR(ptr_)
 
 #endif

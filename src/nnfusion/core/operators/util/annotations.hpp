@@ -28,11 +28,11 @@ namespace nnfusion
                     if (e.destructive == oi.destructive)
                         return;
                     else
-                        CHECK_FAIL()
+                        NNFUSION_CHECK_FAIL()
                             << "In_place hint destructive state conflicts with an existing entry. ";
                 }
 
-                CHECK(e.input != oi.input && e.output != oi.output)
+                NNFUSION_CHECK(e.input != oi.input && e.output != oi.output)
                     << "In_place hint conflicts with an existing entry";
             }
             m_in_place_oi_pairs.emplace_back(oi);

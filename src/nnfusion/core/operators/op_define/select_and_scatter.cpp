@@ -35,32 +35,32 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
     //
     // Make sure the initial value is a scalar.
     //
-    CHECK(input_init_shape.size() == 0) << "Argument for initial value is not a scalar";
+    NNFUSION_CHECK(input_init_shape.size() == 0) << "Argument for initial value is not a scalar";
     //
     // Make sure input element types all match.
     //
-    CHECK(input_init_element_type == input_selectee_element_type)
+    NNFUSION_CHECK(input_init_element_type == input_selectee_element_type)
         << "Element types for selectee and initial values do not match";
-    CHECK(input_source_element_type == input_selectee_element_type)
+    NNFUSION_CHECK(input_source_element_type == input_selectee_element_type)
         << "Element types for selectee and source tensors do not match";
     //
     // Check that the window shape and strides have the right rank.
     //
-    CHECK(input_selectee_shape.size() == m_window_shape.size())
+    NNFUSION_CHECK(input_selectee_shape.size() == m_window_shape.size())
         << "Window shape has different rank from selectee tensor";
-    CHECK(input_selectee_shape.size() == m_window_movement_strides.size())
+    NNFUSION_CHECK(input_selectee_shape.size() == m_window_movement_strides.size())
         << "Window movement strides have different rank from selectee tensor";
     //
     // Check for zero-length window axes or strides.
     //
     for (size_t s : m_window_shape)
     {
-        CHECK(s != 0) << "Window shape has a zero-length axis";
+        NNFUSION_CHECK(s != 0) << "Window shape has a zero-length axis";
     }
 
     for (size_t s : m_window_movement_strides)
     {
-        CHECK(s != 0) << "Window movement stride for some axis is zero";
+        NNFUSION_CHECK(s != 0) << "Window movement stride for some axis is zero";
     }
 
     //
@@ -68,7 +68,7 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
     //
     for (size_t i = 0; i < input_selectee_shape.size(); i++)
     {
-        CHECK(m_window_shape[i] <= input_selectee_shape[i])
+        NNFUSION_CHECK(m_window_shape[i] <= input_selectee_shape[i])
             << "Reduction window is bigger than selectee tensor";
     }
 
@@ -84,7 +84,7 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
         expected_source_shape.push_back(ceil_div(input_selectee_shape[i] - m_window_shape[i] + 1,
                                                  m_window_movement_strides[i]));
     }
-    CHECK(input_source_shape == expected_source_shape)
+    NNFUSION_CHECK(input_source_shape == expected_source_shape)
         << "Source tensor does not have expected shape";
     //
     // Check the type signature of the selection graph. Should be T -> T -> Bool.
@@ -92,41 +92,44 @@ void SelectAndScatter::validate_and_infer_types(std::shared_ptr<graph::GNode> gn
     auto selection_graph_params = m_selection_graph->get_parameters();
     auto arg_reductee = gnode->get_in_edge(0)->get_src();
     auto arg_init = gnode->get_in_edge(1)->get_src();
-    CHECK(selection_graph_params.size() == 2)
+    NNFUSION_CHECK(selection_graph_params.size() == 2)
         << "Selection graph has wrong number of parameters (should be two)";
-    CHECK(selection_graph_params.at(0)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(selection_graph_params.at(0)->get_element_type() == arg_init->get_element_type())
         << "Parameter 0 of selection graph has wrong element type";
-    CHECK(selection_graph_params.at(1)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(selection_graph_params.at(1)->get_element_type() == arg_init->get_element_type())
         << "Parameter 1 of selection graph has wrong element type";
-    CHECK(selection_graph_params.at(0)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(selection_graph_params.at(0)->get_shape() == nnfusion::Shape{})
         << "Parameter 0 of selection graph is not a scalar";
-    CHECK(selection_graph_params.at(1)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(selection_graph_params.at(1)->get_shape() == nnfusion::Shape{})
         << "Parameter 1 of selection graph is not a scalar";
-    CHECK(m_selection_graph->get_output_size() <= 1)
+    NNFUSION_CHECK(m_selection_graph->get_output_size() <= 1)
         << "Single-output selection graph was expected";
-    CHECK(m_selection_graph->get_outputs().at(0)->get_element_type() == nnfusion::element::boolean)
+    NNFUSION_CHECK(m_selection_graph->get_outputs().at(0)->get_element_type() ==
+                   nnfusion::element::boolean)
         << "Return element type from selection graph is not boolean";
-    CHECK(m_selection_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(m_selection_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from selection graph is not a scalar";
     //
     // Check the type signature of the scatter graph. Should be T -> T -> T.
     //
     auto scatter_graph_params = m_scatter_graph->get_parameters();
 
-    CHECK(scatter_graph_params.size() == 2)
+    NNFUSION_CHECK(scatter_graph_params.size() == 2)
         << "Scatter graph has wrong number of parameters (should be two)";
-    CHECK(scatter_graph_params.at(0)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(scatter_graph_params.at(0)->get_element_type() == arg_init->get_element_type())
         << "Parameter 0 of scatter graph has wrong element type";
-    CHECK(scatter_graph_params.at(1)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(scatter_graph_params.at(1)->get_element_type() == arg_init->get_element_type())
         << "Parameter 1 of scatter graph has wrong element type";
-    CHECK(scatter_graph_params.at(0)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(scatter_graph_params.at(0)->get_shape() == nnfusion::Shape{})
         << "Parameter 0 of scatter graph is not a scalar";
-    CHECK(scatter_graph_params.at(1)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(scatter_graph_params.at(1)->get_shape() == nnfusion::Shape{})
         << "Parameter 1 of scatter graph is not a scalar";
-    CHECK(m_scatter_graph->get_output_size() <= 1) << "Single-output scatter graph was expected";
-    CHECK(m_scatter_graph->get_outputs().at(0)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(m_scatter_graph->get_output_size() <= 1)
+        << "Single-output scatter graph was expected";
+    NNFUSION_CHECK(m_scatter_graph->get_outputs().at(0)->get_element_type() ==
+                   arg_init->get_element_type())
         << "Return element type from scatter graph does not match the init value type";
-    CHECK(m_scatter_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(m_scatter_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from scatter graph is not a scalar";
     //
     // Result type is the same element type and shape as the selectee.

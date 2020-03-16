@@ -66,7 +66,7 @@ namespace nnfusion
 
                     int block_size = m_blockDim.x * m_blockDim.y * m_blockDim.z;
                     int block_num = m_gridDim.x * m_gridDim.y * m_gridDim.z;
-                    // CHECK(block_id < block_num);
+                    // NNFUSION_CHECKblock_id < block_num);
 
                     FunctionUnit_p fu = this->get_or_emit_source();
                     lu << fu->comment_unit->get_code();

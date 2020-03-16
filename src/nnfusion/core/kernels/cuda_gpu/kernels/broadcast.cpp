@@ -16,7 +16,7 @@ namespace nnfusion
                 {
                     auto _op =
                         static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
-                    CHECK_NOT_NULLPTR(_op) << "Node type is not Broadcast.";
+                    NNFUSION_CHECK_NOT_NULLPTR(_op) << "Node type is not Broadcast.";
                     auto& axes = _op->get_broadcast_axes();
                     if (!axes.empty())
                     {

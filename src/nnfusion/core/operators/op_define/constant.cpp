@@ -51,7 +51,8 @@ vector<string> Constant::get_value_strings() const
 {
     vector<string> rc;
 
-    if (m_element_type == nnfusion::element::boolean)
+    if (m_element_type == nnfusion::element::boolean ||
+        m_element_type == nnfusion::element::character)
     {
         for (int value : get_vector<char>())
         {
@@ -139,7 +140,7 @@ vector<string> Constant::get_value_strings() const
     }
     else
     {
-        CHECK_FAIL() << "unsupported type";
+        NNFUSION_CHECK_FAIL() << "unsupported type";
     }
 
     return rc;

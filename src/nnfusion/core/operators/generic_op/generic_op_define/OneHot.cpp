@@ -9,7 +9,7 @@ REGISTER_OP(OneHot)
     .attr<nnfusion::op::OpConfig::any>("off_value", 1.0f)
     .attr<nnfusion::op::OpConfig::any>("on_value", 0.0f)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(1 == gnode->get_input_size());
+        NNFUSION_CHECK(1 == gnode->get_input_size());
         auto& shape_0 = gnode->get_input_shape(0);
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         int depth = generic_op->localOpConfig.getRoot()["depth"];
@@ -56,7 +56,7 @@ REGISTER_OP(OneHot)
         std::string dtype;
         bool ret =
             element::Type::ngraph_element_type_to_dtype_string(gnode->get_element_type(), dtype);
-        CHECK(ret);
+        NNFUSION_CHECK(ret);
 
         return op::create_code_from_template(
             R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.one_hot(args("input0"), depth=@depth@, on_value=@on_value@, off_value=@off_value@, axis=@axis@, dtype="@dtype@")); )",

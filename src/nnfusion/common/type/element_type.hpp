@@ -36,6 +36,7 @@ namespace nnfusion
 
         extern const Type dynamic;
         extern const Type boolean;
+        extern const Type character;
         extern const Type bf16;
         extern const Type f32;
         extern const Type f64;
@@ -66,6 +67,7 @@ namespace nnfusion
             bool is_static() const { return (*this != dynamic); }
             bool is_dynamic() const { return !is_static(); }
             bool is_real() const { return m_is_real; }
+            bool is_integral() const { return !is_real(); }
             bool is_signed() const { return m_is_signed; }
             bool is_quantized() const { return m_is_quantized; }
             size_t bitwidth() const { return m_bitwidth; }

@@ -8,7 +8,15 @@ LanguageUnit_p cuda::get_math_kernel(const std::string& name,
                                      const std::string& math_kernel,
                                      const std::vector<std::string>& data_types)
 {
-    shared_ptr<LanguageUnit> cw(new LanguageUnit("declaration::function_def_inline_" + name));
+    NNFUSION_CHECK(std::count(name.begin(), name.end(), '-') == 0);
+    std::string mangled_name = "declaration::function_def_inline_" + name;
+    // TODO: handle data_types containing underline, like long_long
+    // Output type should be ignore
+    for (size_t i = 0; i < data_types.size() - 1; i++)
+    {
+        mangled_name += "-" + data_types[i];
+    }
+    shared_ptr<LanguageUnit> cw(new LanguageUnit(mangled_name));
     auto& writer = *cw;
     if (math_kernel.size())
     {
@@ -33,7 +41,7 @@ LanguageUnit_p cuda::get_math_kernel(const std::string& name,
 
 uint32_t cuda::align_to_block_size(uint32_t threads, uint32_t block_size)
 {
-    CHECK(threads <= (1u << 31) - 1) << "Cuda can't handle threads > 2^31 - 1.";
+    NNFUSION_CHECK(threads <= (1u << 31) - 1) << "Cuda can't handle threads > 2^31 - 1.";
     uint32_t r = (threads + block_size - 1) / block_size;
     return r;
 }

@@ -37,7 +37,7 @@ double Profiler::execute(void** input, void** output)
         duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
         if (device_time_span < 0)
         {
-            LOG(WARNING) << "Kernel launch failed.";
+            NNFUSION_LOG(NNFUSION_WARNING) << "Kernel launch failed.";
             continue;
         }
         pctx->result.record_host_duration(time_span.count());
@@ -88,11 +88,11 @@ void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
         }
     }
 
-    LOG(ERROR) << "Invalid reference kenel for " << gnode->get_name()
-               << " (op type : " << gnode->get_op_type() << ").";
+    NNFUSION_LOG(ERROR) << "Invalid reference kenel for " << gnode->get_name()
+                        << " (op type : " << gnode->get_op_type() << ").";
 }
 
-IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(DeviceType dev_t)
+IProfilingRuntime::Pointer nnfusion::profiler::get_default_runtime(NNFusion_DeiveType dev_t)
 {
     IProfilingRuntime::Pointer ip = nullptr;
     switch (dev_t)

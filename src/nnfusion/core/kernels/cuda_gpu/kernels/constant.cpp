@@ -20,7 +20,7 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cuda")
                 {
                     op = static_pointer_cast<nnfusion::op::Constant>(ctx->gnode->get_op_ptr());
-                    CHECK_NOT_NULLPTR(op) << "Node type is not Constant.";
+                    NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not Constant.";
 
                     folder = "./Constant/";
 

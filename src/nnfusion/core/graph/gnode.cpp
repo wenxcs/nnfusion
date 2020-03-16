@@ -55,9 +55,9 @@ void GNode::initialize(const std::shared_ptr<Op> op_ptr,
 
     for (size_t i = 0; i < input_gnodes.size(); ++i)
     {
-        CHECK(input_gnodes.at(i)->get_output_size() == 1) << "Argument " << i
-                                                          << input_gnodes.at(i)->get_op_type()
-                                                          << " must produce exactly one value.";
+        NNFUSION_CHECK(input_gnodes.at(i)->get_output_size() == 1)
+            << "Argument " << i << input_gnodes.at(i)->get_op_type()
+            << " must produce exactly one value.";
         m_inputs.emplace_back(
             std::make_shared<Input>(input_gnodes.at(i)->get_outputs().at(0)->get_element_type(),
                                     input_gnodes.at(i)->get_outputs().at(0)->get_partial_shape()));
@@ -94,7 +94,7 @@ void GNode::initialize(const std::shared_ptr<Op> op_ptr,
 
 void GNode::set_input_size(size_t n)
 {
-    CHECK(n >= m_inputs.size()) << "shrinking " << m_inputs.size() << " to " << n;
+    NNFUSION_CHECK(n >= m_inputs.size()) << "shrinking " << m_inputs.size() << " to " << n;
     for (size_t i = m_inputs.size(); i < n; ++i)
     {
         m_inputs.emplace_back(std::make_shared<Input>(element::dynamic, PartialShape::dynamic()));
@@ -103,7 +103,7 @@ void GNode::set_input_size(size_t n)
 
 void GNode::set_output_size(size_t n)
 {
-    CHECK(n >= m_outputs.size()) << "shrinking " << m_outputs.size() << " to " << n;
+    NNFUSION_CHECK(n >= m_outputs.size()) << "shrinking " << m_outputs.size() << " to " << n;
     for (size_t i = m_outputs.size(); i < n; ++i)
     {
         auto tensor =
@@ -167,14 +167,15 @@ const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_in_edges() co
 
 const std::shared_ptr<nnfusion::graph::Edge> GNode::get_in_edge(size_t i) const
 {
-    CHECK(i < m_inputs.size()) << "Input index " << i << " is out of range. GNode only has "
-                               << m_inputs.size() << " inputs.";
+    NNFUSION_CHECK(i < m_inputs.size()) << "Input index " << i
+                                        << " is out of range. GNode only has " << m_inputs.size()
+                                        << " inputs.";
     std::shared_ptr<nnfusion::graph::Edge> found_in_edge = nullptr;
     for (auto in_edge : m_in_edges)
     {
         if (in_edge->get_dst_input() == i)
         {
-            CHECK(found_in_edge == nullptr)
+            NNFUSION_CHECK(found_in_edge == nullptr)
                 << "There are more than one edges connect to Input index " << i;
             found_in_edge = in_edge;
         }
@@ -199,8 +200,9 @@ const std::set<std::shared_ptr<nnfusion::graph::Edge>>& GNode::get_out_edges() c
 
 std::vector<std::shared_ptr<nnfusion::graph::Edge>> GNode::get_output_users(size_t i)
 {
-    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
-                                << m_outputs.size() << " outputs.";
+    NNFUSION_CHECK(i < m_outputs.size()) << "Output index " << i
+                                         << " is out of range. GNode only has " << m_outputs.size()
+                                         << " outputs.";
     std::vector<std::shared_ptr<nnfusion::graph::Edge>> output_users;
 
     auto edges = this->get_out_edges();
@@ -247,16 +249,18 @@ void GNode::set_input(size_t i, std::shared_ptr<Input> input)
 
 nnfusion::descriptor::Tensor& GNode::get_output_tensor(size_t i) const
 {
-    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
-                                << m_outputs.size() << " outputs.";
+    NNFUSION_CHECK(i < m_outputs.size()) << "Output index " << i
+                                         << " is out of range. GNode only has " << m_outputs.size()
+                                         << " outputs.";
 
     return m_outputs.at(i)->get_tensor();
 }
 
 std::shared_ptr<nnfusion::descriptor::Tensor> GNode::get_output_tensor_ptr(size_t i) const
 {
-    CHECK(i < m_outputs.size()) << "Output index " << i << " is out of range. GNode only has "
-                                << m_outputs.size() << " outputs.";
+    NNFUSION_CHECK(i < m_outputs.size()) << "Output index " << i
+                                         << " is out of range. GNode only has " << m_outputs.size()
+                                         << " outputs.";
 
     return m_outputs.at(i)->get_tensor_ptr();
 }
@@ -283,14 +287,14 @@ void GNode::set_output_type_and_shape(size_t i,
 
 const nnfusion::Shape& GNode::get_shape() const
 {
-    CHECK(get_output_size() == 1)
+    NNFUSION_CHECK(get_output_size() == 1)
         << "get_shape() must be called on a node with exactly one output.";
     return m_outputs.at(0)->get_shape();
 }
 
 const nnfusion::element::Type& GNode::get_element_type() const
 {
-    CHECK(get_output_size() == 1)
+    NNFUSION_CHECK(get_output_size() == 1)
         << "get_element_type() must be called on a node with exactly one output.";
     return m_outputs.at(0)->get_element_type();
 }

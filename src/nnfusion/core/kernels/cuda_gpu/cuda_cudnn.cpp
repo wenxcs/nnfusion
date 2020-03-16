@@ -22,7 +22,7 @@ std::string cuda::get_cudnn_datatype(std::string dtype)
         {"int8_t", "CUDNN_DATA_INT8"},
         {"int32_t", "CUDNN_DATA_INT32"}};
     auto p = datatype_map.find(dtype);
-    CHECK(p != datatype_map.end()) << dtype << " is not supported by cuDNN";
+    NNFUSION_CHECK(p != datatype_map.end()) << dtype << " is not supported by cuDNN";
 
     return p->second;
 }
@@ -61,7 +61,7 @@ LanguageUnit_p cuda::cudnn_tensor_descriptor_from_shape(const nnfusion::Shape& s
     {
         auto expand_vector_int = [](string name, vector<int>& d) {
             stringstream ss;
-            CHECK(d.size() > 0);
+            NNFUSION_CHECK(d.size() > 0);
             ss << "int " << name << "[] = {";
             for (int i = 0; i + 1 < d.size(); i++)
                 ss << to_string(d[i]) << ", ";
@@ -171,7 +171,7 @@ LanguageUnit_p cuda::get_cudnn_convolution_descriptor(const Shape& padding,
     {
         auto expand_vector_int = [](string name, vector<int>& d) {
             stringstream ss;
-            CHECK(d.size() > 0);
+            NNFUSION_CHECK(d.size() > 0);
             ss << "int " << name << "[] = {";
             for (int i = 0; i + 1 < d.size(); i++)
                 ss << to_string(d[i]) << ", ";

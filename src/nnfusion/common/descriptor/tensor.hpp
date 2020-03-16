@@ -55,7 +55,7 @@ namespace nnfusion
             Tensor(const nnfusion::element::Type& element_type,
                    const nnfusion::PartialShape& pshape,
                    const std::string& name,
-                   DeviceType device_type,
+                   NNFusion_DeiveType device_type,
                    bool is_persistent = false,
                    bool is_constant = false,
                    bool is_parameter = false,
@@ -92,10 +92,10 @@ namespace nnfusion
             void set_parameter(bool value = true) { m_parameter = value; }
             void set_RDMA(bool value = true) { m_RDMA = value; }
             //The default group_id is -1, which means the tensor does not belong to any specific group.
-            void set_group_id(int group_id) { m_group_id = group_id; }
-            int get_group_id() const { return m_group_id; }
-            void set_device_type(DeviceType device_type) { m_device_type = device_type; }
-            DeviceType get_device_type() const { return m_device_type; }
+            void set_group_id(size_t group_id) { m_group_id = group_id; }
+            size_t get_group_id() const { return m_group_id; }
+            void set_device_type(NNFusion_DeiveType device_type) { m_device_type = device_type; }
+            NNFusion_DeiveType get_device_type() const { return m_device_type; }
             void set_device_id(size_t device_id) { m_device_id = device_id; }
             size_t get_device_id() const { return m_device_id; }
             std::string get_device_name() const;
@@ -117,8 +117,8 @@ namespace nnfusion
             bool m_constant;
             bool m_parameter;
             bool m_RDMA;
-            int m_group_id;
-            DeviceType m_device_type;
+            size_t m_group_id;
+            NNFusion_DeiveType m_device_type;
             size_t m_device_id;
         };
 

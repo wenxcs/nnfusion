@@ -14,7 +14,7 @@ KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
     for (size_t i = 0; i < gnode->get_input_size(); ++i)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
-        CHECK_NOT_NULLPTR(tv);
+        NNFUSION_CHECK_NOT_NULLPTR(tv);
         inputs.push_back(tv);
         input_names.push_back(tv->get_name());
     }
@@ -23,7 +23,7 @@ KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
     for (size_t i = 0; i < gnode->get_output_size(); ++i)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
-        CHECK_NOT_NULLPTR(tv);
+        NNFUSION_CHECK_NOT_NULLPTR(tv);
         outputs.push_back(tv);
         output_names.push_back(tv->get_name());
     }
@@ -171,21 +171,21 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
 
     if (kernel_definitions.find(this->m_kernel_name) != kernel_definitions.end())
     {
-        CHECK_NOT_NULLPTR(fu = kernel_definitions[this->m_kernel_name]);
+        NNFUSION_CHECK_NOT_NULLPTR(fu = kernel_definitions[this->m_kernel_name]);
         return fu;
     }
 
     // emit function units
-    CHECK_NOT_NULLPTR(fu->signature_unit = emit_function_signature());
+    NNFUSION_CHECK_NOT_NULLPTR(fu->signature_unit = emit_function_signature());
     fu->body_unit = emit_function_body();
     if (!fu->body_unit)
     {
         return nullptr;
     }
 
-    CHECK_NOT_NULLPTR(fu->call_unit = emit_function_call());
-    CHECK_NOT_NULLPTR(fu->dep_unit = emit_dependency());
-    CHECK_NOT_NULLPTR(fu->comment_unit = emit_comments());
+    NNFUSION_CHECK_NOT_NULLPTR(fu->call_unit = emit_function_call());
+    NNFUSION_CHECK_NOT_NULLPTR(fu->dep_unit = emit_dependency());
+    NNFUSION_CHECK_NOT_NULLPTR(fu->comment_unit = emit_comments());
 
     // Pass other to dep_unit
     for (auto& it : fu->call_unit->local_symbol)
@@ -196,8 +196,8 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     fu->body_unit->clean_require();
 
     // orgnize dep
-    CHECK(fu->body_unit->require(fu->dep_unit));
-    CHECK(fu->call_unit->require(fu->body_unit));
+    NNFUSION_CHECK(fu->body_unit->require(fu->dep_unit));
+    NNFUSION_CHECK(fu->call_unit->require(fu->body_unit));
     m_function_unit = fu;
     m_is_emitted = true;
     return fu;
@@ -235,13 +235,13 @@ const shared_ptr<nnfusion::descriptor::Tensor> KernelEmitter::allocate_tensor(Sh
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);
 
-    LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
+    NNFUSION_LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
     return m_context->tensors.back();
 }
 
 const shared_ptr<nnfusion::descriptor::Tensor>
     KernelEmitter::allocate_tensor(Shape shape,
-                                   DeviceType device_type,
+                                   NNFusion_DeiveType device_type,
                                    element::Type elt,
                                    string name,
                                    bool is_persistent,
@@ -274,6 +274,6 @@ const shared_ptr<nnfusion::descriptor::Tensor>
     m_context->tensors.push_back(move(temp_tensor));
     m_context->tensor_names.push_back(name);
 
-    LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
+    NNFUSION_LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
     return m_context->tensors.back();
 }

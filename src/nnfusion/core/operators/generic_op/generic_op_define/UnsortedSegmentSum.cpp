@@ -15,17 +15,18 @@ num_segments should equal the number of distinct segment IDs.
 */
 
 REGISTER_OP(UnsortedSegmentSum).infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-    CHECK(gnode->get_input_size() == 3) << "Inputs of UnsortedSegmentSum should be 3.";
+    NNFUSION_CHECK(gnode->get_input_size() == 3) << "Inputs of UnsortedSegmentSum should be 3.";
     // Outshape is as same as input data, (except the first one);
     auto ng_group = gnode->get_in_edge(1)->get_src();
     auto ng_seg = gnode->get_in_edge(2)->get_src();
-    CHECK(ng_seg->get_op_type() == "Constant") << "We only accept the sgements number as Constant.";
+    NNFUSION_CHECK(ng_seg->get_op_type() == "Constant")
+        << "We only accept the sgements number as Constant.";
     auto& shape_0 = gnode->get_input_shape(0);
     auto& shape_1 = gnode->get_input_shape(1);
     auto& shape_2 = gnode->get_input_shape(2);
     auto constop = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_seg->get_op_ptr());
     auto seg_num = constop->get_vector<int>();
-    CHECK(shape_0.size() > 0 && shape_1.size() == 1 && seg_num.size() == 1)
+    NNFUSION_CHECK(shape_0.size() > 0 && shape_1.size() == 1 && seg_num.size() == 1)
         << "Only support 1-D sgments." << shape_0 << shape_1 << shape_2;
     nnfusion::Shape output_shape(shape_0);
     // Output: Has same shape as data,

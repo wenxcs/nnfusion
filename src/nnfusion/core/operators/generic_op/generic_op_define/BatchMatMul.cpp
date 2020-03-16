@@ -13,18 +13,18 @@ REGISTER_OP(BatchMatMul)
         return true;
     })
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(gnode->get_input_size() == 2);
+        NNFUSION_CHECK(gnode->get_input_size() == 2);
 
         const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
         const nnfusion::Shape& input_shape_1 = gnode->get_input_shape(1);
         nnfusion::Shape output_shape_0;
 
-        CHECK(input_shape_0.size() == input_shape_1.size());
-        CHECK(gnode->get_input_element_type(0) == gnode->get_input_element_type(1));
+        NNFUSION_CHECK(input_shape_0.size() == input_shape_1.size());
+        NNFUSION_CHECK(gnode->get_input_element_type(0) == gnode->get_input_element_type(1));
 
         for (int i = 0; i < input_shape_0.size() - 2; i++)
         {
-            CHECK(input_shape_0[i] == input_shape_1[i]);
+            NNFUSION_CHECK(input_shape_0[i] == input_shape_1[i]);
             output_shape_0.push_back(input_shape_0[i]);
         }
 
@@ -38,26 +38,26 @@ REGISTER_OP(BatchMatMul)
         bool trans_B = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
 
         if (!trans_A && !trans_B)
-            CHECK(m1 == n0), output_shape_0.push_back(m0), output_shape_0.push_back(n1);
+            NNFUSION_CHECK(m1 == n0), output_shape_0.push_back(m0), output_shape_0.push_back(n1);
         else if (!trans_A && trans_B)
-            CHECK(n0 == n1), output_shape_0.push_back(m0), output_shape_0.push_back(m1);
+            NNFUSION_CHECK(n0 == n1), output_shape_0.push_back(m0), output_shape_0.push_back(m1);
         else if (trans_A && !trans_B)
-            CHECK(m0 == m1), output_shape_0.push_back(n0), output_shape_0.push_back(n1);
+            NNFUSION_CHECK(m0 == m1), output_shape_0.push_back(n0), output_shape_0.push_back(n1);
         else // trans_A && trans_B
-            CHECK(m0 == n1), output_shape_0.push_back(n0), output_shape_0.push_back(m1);
+            NNFUSION_CHECK(m0 == n1), output_shape_0.push_back(n0), output_shape_0.push_back(m1);
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape_0);
     })
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
-        CHECK(gnode->get_input_size() == 2);
+        NNFUSION_CHECK(gnode->get_input_size() == 2);
 
         const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
         const nnfusion::Shape& input_shape_1 = gnode->get_input_shape(1);
         nnfusion::Shape output_shape = gnode->get_output_shape(0);
 
-        CHECK(input_shape_0.size() == input_shape_1.size());
-        CHECK(gnode->get_input_element_type(0) == gnode->get_input_element_type(1));
-        CHECK(input_shape_0[0] == input_shape_1[0] || input_shape_0[0] == 1 ||
-              input_shape_1[0] == 1);
+        NNFUSION_CHECK(input_shape_0.size() == input_shape_1.size());
+        NNFUSION_CHECK(gnode->get_input_element_type(0) == gnode->get_input_element_type(1));
+        NNFUSION_CHECK(input_shape_0[0] == input_shape_1[0] || input_shape_0[0] == 1 ||
+                       input_shape_1[0] == 1);
 
         int m0 = input_shape_0[input_shape_0.size() - 2],
             n0 = input_shape_0[input_shape_0.size() - 1];

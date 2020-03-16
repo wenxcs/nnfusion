@@ -146,7 +146,7 @@ private:
         size_t num_nodes = 0;
         for (auto id : group->nodes)
         {
-            CHECK(id < m_nodes.size());
+            NNFUSION_CHECK(id < m_nodes.size());
             auto tn = m_nodes[id];
             if (id >= ELEM_GROUP_NODEID && tn->elem_group)
             {
@@ -327,16 +327,16 @@ private:
         {
             for (auto id : group->nodes)
             {
-                CHECK(id < m_nodes.size());
+                NNFUSION_CHECK(id < m_nodes.size());
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
                     std::vector<size_t> fusable_input_nodes;
                     for (auto elem_id : tn->elem_group->nodes)
                     {
-                        CHECK(elem_id < m_nodes.size());
+                        NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto elem_tn = m_nodes[elem_id];
-                        CHECK_NOT_NULLPTR(elem_tn->node);
+                        NNFUSION_CHECK_NOT_NULLPTR(elem_tn->node);
                         for (auto in_edge : elem_tn->node->get_in_edges())
                         {
                             if (in_edge->is_control_edge())
@@ -379,7 +379,7 @@ private:
                                 {
                                     if (!edge->is_control_edge())
                                     {
-                                        CHECK(input_set == false)
+                                        NNFUSION_CHECK(input_set == false)
                                             << "Reshape and Broadcast can only have 1 input!";
                                         input_node = edge->get_src();
                                         input_set = true;
@@ -404,18 +404,18 @@ private:
 
         for (auto group : *groups)
         {
-            // LOG(INFO) << DebugStringFuseGroup(group);
+            // NNFUSION_LOG(INFO) << DebugStringFuseGroup(group);
             for (auto id : group->nodes)
             {
-                CHECK(id < m_nodes.size());
+                NNFUSION_CHECK(id < m_nodes.size());
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
                     for (auto elem_id : tn->elem_group->nodes)
                     {
-                        CHECK(elem_id < m_nodes.size());
+                        NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto elem_tn = m_nodes[elem_id];
-                        CHECK_NOT_NULLPTR(elem_tn->node);
+                        NNFUSION_CHECK_NOT_NULLPTR(elem_tn->node);
 
                         (*(elem_tn->node))["elem_group_id"] = next_elem_group_id;
                         (*(elem_tn->node))["fusion_group_id"] = next_fusion_group_id;
@@ -437,29 +437,30 @@ private:
         {
             for (auto id : group->nodes)
             {
-                CHECK(id < m_nodes.size());
+                NNFUSION_CHECK(id < m_nodes.size());
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
                     std::vector<std::shared_ptr<KernelEmitter>> block_kernels;
                     bool all_kernel_emitted = true;
-                    DeviceType dev_type;
+                    NNFusion_DeiveType dev_type;
 
                     // find and check whether all kernels are emitted
                     for (auto elem_id : tn->elem_group->nodes)
                     {
-                        CHECK(elem_id < m_nodes.size());
+                        NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto node = m_nodes[elem_id]->node;
-                        CHECK_NOT_NULLPTR(node);
+                        NNFUSION_CHECK_NOT_NULLPTR(node);
 
-                        auto emitted_kernel = (*node)["Kernel_Selection_Result"]
-                                                  .as<pair<DeviceType, KernelEmitter::Pointer>>();
+                        auto emitted_kernel =
+                            (*node)["Kernel_Selection_Result"]
+                                .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
                         KernelEmitter::Pointer kernel = nullptr;
 
                         if (emitted_kernel.second->get_or_emit_source() == nullptr)
                         {
-                            LOG(WARNING) << "Kernel should be emitted before this pass:"
-                                         << node->get_name();
+                            NNFUSION_LOG(NNFUSION_WARNING)
+                                << "Kernel should be emitted before this pass:" << node->get_name();
                             all_kernel_emitted = false;
                             break;
                         }
@@ -475,7 +476,7 @@ private:
                     {
                         auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                             "ElementWiseFused", CUDA_GPU, DT_FLOAT);
-                        CHECK_NOT_NULLPTR(kernel_reg);
+                        NNFUSION_CHECK_NOT_NULLPTR(kernel_reg);
                         auto ctx = std::make_shared<KernelContext>();
                         ctx->kernels = block_kernels;
                         auto kernel = kernel_reg->m_factory(ctx);
@@ -488,9 +489,9 @@ private:
                         ctx->gnode = fused_node;
 
                         // (*fused_node)["Kernel_Selection_Result"] =
-                        //     vector<pair<DeviceType, KernelEmitter::Pointer>>();
+                        //     vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
                         // auto& res = (*fused_node)["Kernel_Selection_Result"]
-                        //                 .as<vector<pair<DeviceType, KernelEmitter::Pointer>>>();
+                        //                 .as<vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>>();
                         // res.push_back(std::make_pair(dev_type, kernel));
 
                         (*fused_node)["Kernel_Selection_Result"] = std::make_pair(dev_type, kernel);
@@ -619,7 +620,7 @@ bool KernelFusionPass::run_on_graph(std::shared_ptr<Graph>& graph)
     auto dev_name = FLAGS_fdefault_device;
     if (dev_name == "ROCm" || dev_name == "CUDA")
     {
-        LOG(INFO) << "device: " << dev_name;
+        NNFUSION_LOG(INFO) << "device: " << dev_name;
         KernelFuseOptimizer optimizer(graph);
         return optimizer.Optimize();
     }

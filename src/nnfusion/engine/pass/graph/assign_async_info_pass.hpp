@@ -24,7 +24,7 @@ namespace nnfusion
                                               std::shared_ptr<Graph>& graph);
                 void assign_event_info(nnfusion::async::AsyncManager* async_manager,
                                        std::shared_ptr<Graph>& graph);
-                DeviceType m_device;
+                NNFusion_DeiveType m_device;
             };
         }
     }

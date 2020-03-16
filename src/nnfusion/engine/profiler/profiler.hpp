@@ -31,7 +31,7 @@ namespace nnfusion
 {
     namespace profiler
     {
-        IProfilingRuntime::Pointer get_default_runtime(DeviceType dev_t);
+        IProfilingRuntime::Pointer get_default_runtime(NNFusion_DeiveType dev_t);
         IProfilingRuntime::Pointer get_default_runtime(string dev_str);
 
         ///\brief Profiler will profile a operator or a subgraph. This Profiler class should be treated as interface for Host.
@@ -56,7 +56,7 @@ namespace nnfusion
                 if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
                     0)
                 {
-                    LOG(ERROR) << "Failed execute the kernel.";
+                    NNFUSION_LOG(ERROR) << "Failed execute the kernel.";
                     return vector<vector<T>>();
                 }
 
@@ -69,13 +69,13 @@ namespace nnfusion
             {
                 auto& kernel_mem = pctx->kernel_memory;
                 auto kctx = pctx->kernel->m_context;
-                CHECK(inputs.size() == kctx->inputs.size());
+                NNFUSION_CHECK(inputs.size() == kctx->inputs.size());
 
                 for (size_t i = 0; i < kctx->inputs.size(); i++)
                 {
                     auto& t = kctx->inputs[i];
                     size_t _size = t->size();
-                    CHECK(inputs[i].size() == _size);
+                    NNFUSION_CHECK(inputs[i].size() == _size);
 
                     kernel_mem->load_input_from(i, inputs[i].data(), _size);
                 }
@@ -83,7 +83,7 @@ namespace nnfusion
                 if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
                     0)
                 {
-                    LOG(ERROR) << "Failed execute the kernel.";
+                    NNFUSION_LOG(ERROR) << "Failed execute the kernel.";
                     return false;
                 }
 
@@ -94,7 +94,7 @@ namespace nnfusion
                     auto& t = kctx->outputs[i];
                     size_t _size = t->size();
 
-                    CHECK(ptrs[i] != nullptr);
+                    NNFUSION_CHECK(ptrs[i] != nullptr);
                     vector<char> output(_size);
                     memcpy(output.data(), ptrs[i], _size);
 
@@ -123,7 +123,7 @@ namespace nnfusion
                 if (rt->execute(pctx, kernel_mem->unsafe_inputs(), kernel_mem->unsafe_outputs()) <
                     0)
                 {
-                    LOG(ERROR) << "Failed execute the kernel.";
+                    NNFUSION_LOG(ERROR) << "Failed execute the kernel.";
                     return vector<vector<T>>();
                 }
 
@@ -197,7 +197,7 @@ namespace nnfusion
         class GraphEvaluate
         {
         public:
-            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph, DeviceType dev_t)
+            GraphEvaluate(shared_ptr<nnfusion::graph::Graph> graph, NNFusion_DeiveType dev_t)
                 : gctx(GraphEvaluationContext(graph))
                 , dev_type(dev_t)
             {
@@ -208,7 +208,7 @@ namespace nnfusion
             {
                 auto parameters = gctx.graph->get_parameters();
 
-                CHECK(inputs.size() == parameters.size())
+                NNFUSION_CHECK(inputs.size() == parameters.size())
                     << "The input size does not match graph's Parameter count";
                 for (size_t i = 0; i < parameters.size(); i++)
                 {
@@ -253,7 +253,7 @@ namespace nnfusion
         private:
             GraphEvaluationContext gctx;
             IProfilingRuntime::Pointer rt;
-            DeviceType dev_type;
+            NNFusion_DeiveType dev_type;
             std::unordered_map<std::shared_ptr<GNode>, int> parameter_map;
 
             void create_profiling_contexts(shared_ptr<GNode> node);

@@ -43,13 +43,13 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_body()
     }
     if (is_deconvolution)
     {
-        LOG(WARNING) << "Deconvolution is not supported by now.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Deconvolution is not supported by now.";
         return nullptr;
     }
 
     if (padding_below_diff != padding_above_diff)
     {
-        LOG(WARNING) << "Asymetric padding is not supported by now.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Asymetric padding is not supported by now.";
         return nullptr;
     }
 

@@ -8,7 +8,7 @@ REGISTER_OP(Transpose)
         auto& shape_0 = gnode->get_input_shape(0);
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         auto& axes_order = generic_op->localOpConfig.getRoot()["axes_order"];
-        CHECK(axes_order.size() == shape_0.size());
+        NNFUSION_CHECK(axes_order.size() == shape_0.size());
         nnfusion::Shape output_shape_0;
         for (int i = 0; i < axes_order.size(); ++i)
             output_shape_0.push_back(shape_0[axes_order[i]]);

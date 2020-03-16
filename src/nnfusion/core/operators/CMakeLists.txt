@@ -33,6 +33,7 @@ set(SRC
     op_define/divide.cpp
     op_define/dot.cpp
     op_define/equal.cpp
+    op_define/erf.cpp
     op_define/exp.cpp
     op_define/floor.cpp
     op_define/greater_eq.cpp

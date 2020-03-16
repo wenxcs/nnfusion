@@ -18,7 +18,7 @@ Interpreter::Interpreter()
 {
     // Todo: find another way
     auto dev_name = FLAGS_fdefault_device.c_str();
-    DeviceType default_device = nnfusion::get_device_type(dev_name);
+    NNFusion_DeiveType default_device = nnfusion::get_device_type(dev_name);
 
     // kernel selection
     // m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
@@ -49,7 +49,7 @@ Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes
 
 bool Interpreter::translate(TranslationUnit::Pointer tu)
 {
-    CHECK_NOT_NULLPTR(m_passes);
+    NNFUSION_CHECK_NOT_NULLPTR(m_passes);
     return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
 }
 
@@ -57,7 +57,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
 {
     // run graph passes
     nnfusion::pass::graph::GraphPass graph_passes;
-    CHECK(graph_passes.run(graph));
+    NNFUSION_CHECK(graph_passes.run(graph));
 
     // TODO : multi graph ?
     m_trans_ctx->m_graphs.insert(graph);
@@ -71,14 +71,15 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
     {
         shared_ptr<TranslationUnit> _tu(new TranslationUnit());
         _tus->emplace(current_graph, _tu);
-        LOG(INFO) << "Translating graph:\t" << current_graph->get_name();
+        NNFUSION_LOG(INFO) << "Translating graph:\t" << current_graph->get_name();
 
         _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
         _tu->m_graph = current_graph;
         auto bb_main = _tu->program.get_entry();
 
         // extract output_names/constants/arg/out for _tu, m_variable_name_map for m_trans_ctx
-        CHECK(extract_global.run(m_trans_ctx, _tu)) << "Error when extract global graph info.";
+        NNFUSION_CHECK(extract_global.run(m_trans_ctx, _tu))
+            << "Error when extract global graph info.";
 
         // Translate the Node
         for (auto gnode : graph->get_ordered_ops())
@@ -97,14 +98,15 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
                     for (int i = 0; i < gnode->get_input_size(); i++)
                     {
                         shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
-                        CHECK_NOT_NULLPTR(tv);
+                        NNFUSION_CHECK_NOT_NULLPTR(tv);
                         in.push_back(tv);
                     }
                     vector<shared_ptr<descriptor::Tensor>> out;
                     for (int i = 0; i < gnode->get_output_size(); i++)
                     {
                         shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
-                        CHECK_NOT_NULLPTR(tv);
+
+                        NNFUSION_CHECK_NOT_NULLPTR(tv);
                         out.push_back(tv);
                     }
 
@@ -147,7 +149,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
             }
             ss << "}, (tag:)";
             ss << " DEBUG : " << ins->Tag().Get<int>("DEBUG") << " }";
-            LOG(INFO) << ss.str();
+            NNFUSION_LOG(INFO) << ss.str();
         }
          */
         translate(_tu);

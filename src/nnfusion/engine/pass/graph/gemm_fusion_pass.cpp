@@ -186,8 +186,8 @@ public:
 
         if (changed)
         {
-            LOG(INFO) << "[NNFusion] GEMM Fusion: round " << m_rounds << ", merged " << merge_before
-                      << " Dot ops into " << merge_after;
+            NNFUSION_LOG(INFO) << "[NNFusion] GEMM Fusion: round " << m_rounds << ", merged "
+                               << merge_before << " Dot ops into " << merge_after;
         }
 
         return changed;
@@ -386,7 +386,7 @@ private:
 
         size_t concat_axis;
 
-        LOG(INFO) << "Num nodes before merge: " << m_graph->get_node_size();
+        NNFUSION_LOG(INFO) << "Num nodes before merge: " << m_graph->get_node_size();
 
         // Step 1: describe the concat_dim.
         if (in_idx == 1)
@@ -483,7 +483,7 @@ private:
             m_graph->remove_node(node);
         }
 
-        LOG(INFO) << "Num nodes after merge: " << m_graph->get_node_size();
+        NNFUSION_LOG(INFO) << "Num nodes after merge: " << m_graph->get_node_size();
         return true;
     }
 

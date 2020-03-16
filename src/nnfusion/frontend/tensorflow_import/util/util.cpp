@@ -27,6 +27,7 @@ namespace nnfusion
                 case tensorflow::DataType::DT_UINT32: *ng_et = nnfusion::element::u32; break;
                 case tensorflow::DataType::DT_UINT64: *ng_et = nnfusion::element::u64; break;
                 case tensorflow::DataType::DT_BOOL: *ng_et = nnfusion::element::boolean; break;
+                case tensorflow::DataType::DT_STRING: *ng_et = nnfusion::element::character; break;
                 case tensorflow::DataType::DT_QINT8: *ng_et = nnfusion::element::i8; break;
                 case tensorflow::DataType::DT_QUINT8: *ng_et = nnfusion::element::u8; break;
                 default: return false;
@@ -66,7 +67,8 @@ namespace nnfusion
                 }
                 catch (const std::out_of_range&)
                 {
-                    CHECK_FAIL() << "Input Ngraph op not found for " << node.input(input_idx);
+                    NNFUSION_CHECK_FAIL() << "Input Ngraph op not found for "
+                                          << node.input(input_idx);
                 }
                 return result;
             }

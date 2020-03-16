@@ -8,7 +8,7 @@ using namespace nnfusion::kernels;
 cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     : CudaEmitter(ctx)
 {
-    CHECK(ctx->outputs[0]->size(false) > 0) << "Invalid output shape for Reshape.";
+    NNFUSION_CHECK(ctx->outputs[0]->size(false) > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<nnfusion::op::Reshape>(ctx->gnode->get_op_ptr());
     is_memcpy = false;
     is_noop = false;
@@ -16,7 +16,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     if (ctx->outputs[0]->get_name() == ctx->inputs[0]->get_name())
     {
         is_noop = true;
-        // LOG(INFO) << "Same input and output tensor.";
+        // NNFUSION_LOG(INFO) << "Same input and output tensor.";
         return;
     }
 
@@ -31,7 +31,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
     if (!reshape->get_is_transpose() || result_shape_product < 2)
     {
         is_memcpy = true;
-        // LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
+        // NNFUSION_LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
         // add inplace tag
         if (!ctx->annotations)
             ctx->annotations = std::make_shared<Annotations>();
@@ -442,7 +442,7 @@ void cuda::ReshapehD::set_launch_config()
 cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    CHECK(ctx->outputs[0]->size(false) > 0) << "Invalid output shape for Reshape.";
+    NNFUSION_CHECK(ctx->outputs[0]->size(false) > 0) << "Invalid output shape for Reshape.";
     reshape = static_pointer_cast<nnfusion::op::Reshape>(ctx->gnode->get_op_ptr());
     is_memcpy = false;
     is_noop = false;
@@ -462,7 +462,7 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     if (!reshape->get_is_transpose() || result_shape_product < 2)
     {
         is_memcpy = true;
-        // LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
+        // NNFUSION_LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
 
         // add inplace tag
         if (!ctx->annotations)

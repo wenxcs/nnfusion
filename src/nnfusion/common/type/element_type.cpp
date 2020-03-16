@@ -22,7 +22,8 @@
 using namespace nnfusion;
 
 const element::Type element::dynamic(0, false, false, false, "dynamic");
-const element::Type element::boolean(8, false, true, false, "char");
+const element::Type element::boolean(8, false, true, false, "bool");
+const element::Type element::character(8, false, false, false, "char");
 const element::Type element::bf16(16, true, true, false, "bfloat16");
 const element::Type element::f32(32, true, true, false, "float");
 const element::Type element::f64(64, true, true, false, "double");
@@ -38,6 +39,7 @@ const element::Type element::u64(64, false, false, false, "uint64_t");
 std::vector<const element::Type*> element::Type::get_known_types()
 {
     std::vector<const element::Type*> rc = {&element::boolean,
+                                            &element::character,
                                             &element::bf16,
                                             &element::f32,
                                             &element::f64,
@@ -151,7 +153,7 @@ namespace nnfusion
         template <>
         const Type& from<char>()
         {
-            return boolean;
+            return character;
         }
         template <>
         const Type& from<bool>()

@@ -5,7 +5,7 @@
 REGISTER_OP(GatherV2)
     .attr<int>("axis", 0)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(gnode->get_input_size() == 2);
+        NNFUSION_CHECK(gnode->get_input_size() == 2);
         const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
         const nnfusion::Shape& input_shape_1 = gnode->get_input_shape(1);
 

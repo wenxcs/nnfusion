@@ -8,7 +8,7 @@
 #define REGISTER_OP(op_x)                                                                          \
     static nnfusion::op::OpConfig __register_op_##op_x = nnfusion::op::build_op_config(#op_x)
 #define GENERIC_OP_LOGGING()                                                                       \
-    LOG(DEBUG) << "[GENERIC_OP_LOGGING] " << __FILE__ << ": " << __PRETTY_FUNCTION__;
+    NNFUSION_LOG(DEBUG) << "[GENERIC_OP_LOGGING] " << __FILE__ << ": " << __PRETTY_FUNCTION__;
 
 namespace nnfusion
 {
@@ -36,7 +36,7 @@ namespace nnfusion
 
             OpConfig& check_constrait()
             {
-                CHECK(is_legal()) << "OpConfig::check_constrait() not passed!";
+                NNFUSION_CHECK(is_legal()) << "OpConfig::check_constrait() not passed!";
                 return *this;
             }
 
@@ -60,7 +60,7 @@ namespace nnfusion
 
             OpConfig& show()
             {
-                LOG(INFO) << getRoot();
+                NNFUSION_LOG(INFO) << getRoot();
                 return *this;
             }
 
@@ -88,16 +88,16 @@ namespace nnfusion
         inline const OpConfig& lookup_op_config(const std::string& opname)
         {
             auto it = get_op_configs().find(opname);
-            CHECK(it != get_op_configs().end())
+            NNFUSION_CHECK(it != get_op_configs().end())
                 << "No config-definition found for op type `" + opname + "`";
             return it->second;
         }
 
         inline OpConfig& build_op_config(const std::string& opname)
         {
-            CHECK(get_op_configs().find(opname) == get_op_configs().end())
+            NNFUSION_CHECK(get_op_configs().find(opname) == get_op_configs().end())
                 << "OpConfig for opname `" + opname + "` is registered more than once.";
-            LOG(INFO) << "Registering opname `" << opname << "`";
+            NNFUSION_LOG(INFO) << "Registering opname `" << opname << "`";
             return get_op_configs()[opname];
         }
 
@@ -164,15 +164,15 @@ namespace nnfusion
 
                 for (auto& item : customOpConfig.items())
                 {
-                    CHECK(keyset.find(item.key()) != keyset.end())
+                    NNFUSION_CHECK(keyset.find(item.key()) != keyset.end())
                         << "Invalid attribution `" + item.key() + "` not recognized by op type `" +
                                opname + "`";
                     localOpConfig.getRoot()[item.key()] = item.value();
                 }
 
                 set_name(name);
-                LOG(INFO) << "Managing GenericOp for Opeartor: type = " << opname
-                          << ", name = " << name;
+                NNFUSION_LOG(INFO) << "Managing GenericOp for Opeartor: type = " << opname
+                                   << ", name = " << name;
 
                 localOpConfig.check_constrait();
             }

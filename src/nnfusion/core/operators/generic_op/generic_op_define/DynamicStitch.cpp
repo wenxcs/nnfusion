@@ -10,7 +10,7 @@ REGISTER_OP(DynamicStitch)
         size_t input_size = gnode->get_input_size();
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         int num_partitions = generic_op->localOpConfig.getRoot()["N"];
-        CHECK(num_partitions * 2 == input_size);
+        NNFUSION_CHECK(num_partitions * 2 == input_size);
 
         bool all_indices_constant = true;
         int32_t max_index = 0;
@@ -25,7 +25,7 @@ REGISTER_OP(DynamicStitch)
                 auto ng_constant_op =
                     std::dynamic_pointer_cast<nnfusion::op::Constant>(indices_node->get_op_ptr());
                 auto ng_element_type = indices_node->get_element_type();
-                CHECK(ng_element_type == nnfusion::element::i32);
+                NNFUSION_CHECK(ng_element_type == nnfusion::element::i32);
                 std::vector<int32_t> values;
                 values = ng_constant_op->get_vector<int32_t>();
 
@@ -39,8 +39,9 @@ REGISTER_OP(DynamicStitch)
             else
             {
                 all_indices_constant = false;
-                CHECK_FAIL() << "currently we do not support dynamic tensor shape, input_node="
-                             << indices_node->get_op_type();
+                NNFUSION_CHECK_FAIL()
+                    << "currently we do not support dynamic tensor shape, input_node="
+                    << indices_node->get_op_type();
             }
             auto& indices_shape = gnode->get_input_shape(i);
             auto& data_shape = gnode->get_input_shape(i + num_partitions);

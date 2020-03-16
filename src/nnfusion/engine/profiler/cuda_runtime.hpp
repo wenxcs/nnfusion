@@ -25,7 +25,7 @@ namespace nnfusion
             double
                 invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
 
-            void set_dt(DeviceType dt) { _dt = dt; }
+            void set_dt(NNFusion_DeiveType dt) { _dt = dt; }
         };
     }
 }

@@ -5,7 +5,7 @@
 
 namespace nnfusion
 {
-    enum DeviceType
+    enum NNFusion_DeiveType
     {
         CUDA_GPU,
         ROCM_GPU,
@@ -13,6 +13,6 @@ namespace nnfusion
         UNKNOWN
     };
 
-    std::string get_device_str(DeviceType dt);
-    DeviceType get_device_type(std::string dt);
+    std::string get_device_str(NNFusion_DeiveType dt);
+    NNFusion_DeiveType get_device_type(std::string dt);
 }

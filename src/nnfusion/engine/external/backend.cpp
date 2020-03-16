@@ -70,7 +70,7 @@ bool cuda_codegen::codegen(shared_ptr<graph::Graph> graph)
     if (graph_unit.m_is_translated == false)
     {
         auto tus = m_functrans->translate(graph);
-        CHECK_NOT_NULLPTR(tus);
+        NNFUSION_CHECK_NOT_NULLPTR(tus);
     }
     return true;
 }

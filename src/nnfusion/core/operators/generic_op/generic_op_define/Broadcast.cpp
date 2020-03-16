@@ -6,7 +6,7 @@ REGISTER_OP(Broadcast)
     .infershape(nnfusion::op::infershape::unimplemented_and_not_used)
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
         auto op = static_pointer_cast<nnfusion::op::Broadcast>(gnode->get_op_ptr());
-        CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
+        NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
 
         // Input shape should have the same rank with output shape.
         // For each dimension,

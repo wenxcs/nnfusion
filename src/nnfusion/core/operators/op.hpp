@@ -109,5 +109,5 @@ namespace nnfusion
 }
 
 #define OP_VALIDATION(op, cond)                                                                    \
-    NNFUSION_CHECK_STREAM_WITH_LOC(                                                                \
+    _CHECK_STREAM_WITH_LOC(                                                                        \
         ::nnfusion::errors::CheckError, cond, ::nnfusion::op_validation_string(op))

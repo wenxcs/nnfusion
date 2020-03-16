@@ -38,7 +38,7 @@ namespace
             mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
             if (-1 == mkdir_status)
             {
-                LOG(INFO) << "Error creating directory: " + tar_path;
+                NNFUSION_LOG(INFO) << "Error creating directory: " + tar_path;
                 flag = false;
             }
             else
@@ -113,8 +113,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             string op_name = ins->getGNode()->get_op_type();
             if (!(*ins)["Async_info"].is_valid())
             {
-                CHECK_FAIL() << "Async info should be be assigned before this pass:"
-                             << ins->getGNode()->get_name();
+                NNFUSION_CHECK_FAIL() << "Async info should be be assigned before this pass:"
+                                      << ins->getGNode()->get_name();
             }
             shared_ptr<const KernelRegistration> kernel_reg = nullptr;
 
@@ -142,7 +142,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                     "AnyOP", GENERIC_CPU, DT_FLOAT);
-                CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
                 auto kernel = kernel_reg->m_factory(ctx);
                 kernel->get_or_emit_source();
                 kernels.push_back(kernel);
@@ -150,7 +150,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
     }
 
-    LOG(INFO) << "Start dump whole source file...\n";
+    NNFUSION_LOG(INFO) << "Start dump whole source file...\n";
     // Code Gen
     LanguageUnit& lu = *this->lu_nnfusion_rt;
     lu << "// Microsoft (c) 2019, MSRA/NNFUSION Team\n";
@@ -393,8 +393,9 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 //if (read_const.compare(0, 10, "read_const") == 0)
                 if (func_name.compare(0, 9, "Constant_") == 0)
                 {
-                    CHECK(stream->is_default_stream()) << "Kernel function calls in cpu_init() "
-                                                          "should use default/main stream/thread.";
+                    NNFUSION_CHECK(stream->is_default_stream())
+                        << "Kernel function calls in cpu_init() "
+                           "should use default/main stream/thread.";
 
                     // if (!async_info.wait_events.empty())
                     // {

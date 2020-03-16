@@ -9,9 +9,10 @@ bool ExtractGraphSignature::extract_result(std::shared_ptr<TranslationUnit> tu,
     for (auto gnode : graph->get_outputs())
     {
         std::shared_ptr<nnfusion::descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
-        CHECK_NOT_NULLPTR(tv);
+        NNFUSION_CHECK_NOT_NULLPTR(tv);
+
         tu->output_names->insert(tv->get_name());
-        LOG(INFO) << "Result Tensor: " << tv->get_name();
+        NNFUSION_LOG(INFO) << "Result Tensor: " << tv->get_name();
     }
     return true;
 }
@@ -25,10 +26,10 @@ bool ExtractGraphSignature::extract_constants(std::shared_ptr<InterpreterContext
         if (dynamic_cast<nnfusion::op::Constant*>(gnode->get_op_ptr().get()))
         {
             shared_ptr<nnfusion::descriptor::Tensor> tv = gnode->get_output_tensor_ptr(0);
-            CHECK_NOT_NULLPTR(tv);
+            NNFUSION_CHECK_NOT_NULLPTR(tv);
             tu->constants->insert(tv);
 
-            LOG(INFO) << "Constant Tensor: " << tv->get_name();
+            NNFUSION_LOG(INFO) << "Constant Tensor: " << tv->get_name();
         }
     }
     return true;
@@ -65,8 +66,8 @@ void ExtractGraphSignature::propagate_in_place_input(std::shared_ptr<Interpreter
 
                         ctx->m_variable_name_map[output_tensor.get_name()] = input_name;
 
-                        LOG(INFO) << "GPU codegen: Forwarding " << input_name << " through "
-                                  << output_tensor.get_name();
+                        NNFUSION_LOG(INFO) << "GPU codegen: Forwarding " << input_name
+                                           << " through " << output_tensor.get_name();
                         stack.push_back(NodeOut(out_node, output_index));
                     }
                 }
@@ -101,15 +102,15 @@ void ExtractGraphSignature::propagate_in_place_output(std::shared_ptr<Interprete
                 {
                     size_t input_index = oi_pair.input;
                     auto in_edge = it.node->get_in_edge(input_index);
-                    CHECK_NOT_NULLPTR(in_edge);
+                    NNFUSION_CHECK_NOT_NULLPTR(in_edge);
                     auto tmp_node = in_edge->get_src();
                     auto& input_tensor = tmp_node->get_output_tensor(in_edge->get_src_output());
                     if (input_tensor.get_pool_offset() == offset &&
                         !tmp_node->get_op_ptr()->is_parameter() &&
                         !tmp_node->get_op_ptr()->is_constant())
                     {
-                        LOG(INFO) << "Reusing " << output_name << " for "
-                                  << input_tensor.get_name();
+                        NNFUSION_LOG(INFO) << "Reusing " << output_name << " for "
+                                           << input_tensor.get_name();
 
                         ctx->m_variable_name_map[input_tensor.get_name()] = output_name;
 
@@ -132,7 +133,7 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
         for (size_t i = 0; i < gnode->get_output_size(); ++i)
         {
             auto tv = gnode->get_output_tensor_ptr(i);
-            CHECK_NOT_NULLPTR(tv);
+            NNFUSION_CHECK_NOT_NULLPTR(tv);
             tu->arg.push_back(tv);
             const element::Type& et = tv->get_element_type();
 
@@ -144,7 +145,7 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
 
             arg_index++;
 
-            LOG(INFO) << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str();
+            NNFUSION_LOG(INFO) << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str();
         }
     }
     return true;
@@ -165,7 +166,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         }
 
         shared_ptr<nnfusion::descriptor::Tensor> tv = node->get_output_tensor_ptr(0);
-        CHECK_NOT_NULLPTR(tv);
+        NNFUSION_CHECK_NOT_NULLPTR(tv);
 
         tu->out.push_back(tv);
 
@@ -177,7 +178,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         //op::Result emitter will check if in and out descriptors are the same
         //and skip a copy
         auto in_edge = node->get_in_edge(0);
-        CHECK_NOT_NULLPTR(in_edge);
+        NNFUSION_CHECK_NOT_NULLPTR(in_edge);
         auto input_node = in_edge->get_src();
         if (!input_node->get_op_ptr()->is_constant() && !input_node->get_op_ptr()->is_parameter())
         {
@@ -187,7 +188,8 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
             ctx->m_variable_name_map[itv->get_name()] = output_name;
             propagate_in_place_output(
                 ctx, NodeOut(input_node, in_edge->get_src_output()), output_name);
-            LOG(INFO) << "Output Tensor:\t" << itv->get_name() << "\t with id:" << output_name;
+            NNFUSION_LOG(INFO) << "Output Tensor:\t" << itv->get_name()
+                               << "\t with id:" << output_name;
         }
     }
     return true;
@@ -198,9 +200,9 @@ bool ExtractGraphSignature::run(std::shared_ptr<InterpreterContext> ctx,
 {
     auto graph = tu->m_graph;
     tu->memory_pool_size = graph->get_temporary_pool_size();
-    CHECK(extract_result(tu, graph));
-    CHECK(extract_constants(ctx, tu, graph));
-    CHECK(extract_args(ctx, tu, graph));
-    CHECK(extract_output(ctx, tu, graph));
+    NNFUSION_CHECK(extract_result(tu, graph));
+    NNFUSION_CHECK(extract_constants(ctx, tu, graph));
+    NNFUSION_CHECK(extract_args(ctx, tu, graph));
+    NNFUSION_CHECK(extract_output(ctx, tu, graph));
     return true;
 }

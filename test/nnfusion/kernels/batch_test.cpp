@@ -62,21 +62,21 @@ namespace nnfusion
         ///\todo Maybe a better/general way
 
         template <typename T, typename val_t = float>
-        bool check_kernels(DeviceType dev_t, DataType data_t)
+        bool check_kernels(NNFusion_DeiveType dev_t, DataType data_t)
         {
             for (int case_id = 0;; case_id++)
             {
                 auto gnode = create_object<T, val_t>(case_id);
                 if (gnode == nullptr)
                     break;
-                LOG(INFO) << "TestOp: " << gnode->get_op_type() << ", CaseId: " << case_id;
+                NNFUSION_LOG(INFO) << "TestOp: " << gnode->get_op_type() << ", CaseId: " << case_id;
                 auto input = generate_input<T, val_t>(case_id);
                 auto output = generate_output<T, val_t>(case_id);
 
                 bool result = nnfusion::test::check_kernel<val_t>(gnode, dev_t, input, output);
                 if (!result)
                 {
-                    LOG(ERROR) << "Kernel test failed for test case: " << case_id;
+                    NNFUSION_LOG(ERROR) << "Kernel test failed for test case: " << case_id;
                     return false;
                 }
             }

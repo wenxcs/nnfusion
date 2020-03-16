@@ -17,7 +17,7 @@ cuda::pooling_op_shape cuda::AvgPool1D::avgpool_shape(nnfusion::Shape in,
     shape.C = in[1];
     shape.K = shape.C; // pooling feature maps is
     shape.J = shape.C; // not currently supported
-    CHECK(in.size() == 3) << "AvgPool1D require 1 spatial dimension.";
+    NNFUSION_CHECK(in.size() == 3) << "AvgPool1D require 1 spatial dimension.";
 
     shape.D = 1;
     shape.H = 1;
@@ -52,7 +52,7 @@ cuda::AvgPool1D::AvgPool1D(shared_ptr<KernelContext> ctx)
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();
 
-    // CHECK(input_shape.size() == 3)
+    // NNFUSION_CHECK(input_shape.size() == 3)
     //     << "Input shape size of AvgPool1D is invalid, shape size: " << input_shape.size()
     //     << "expected 3";
 
@@ -267,7 +267,7 @@ cuda::AvgPoolmD::AvgPoolmD(shared_ptr<KernelContext> ctx)
     input_type = ctx->inputs[0]->get_element_type().c_type_string();
     output_type = ctx->outputs[0]->get_element_type().c_type_string();
 
-    CHECK(input_shape.size() == 4 || input_shape.size() == 5)
+    NNFUSION_CHECK(input_shape.size() == 4 || input_shape.size() == 5)
         << "Input shape size of AvgPoolmD is invalid, shape size: " << input_shape.size()
         << "expected 4 or 5";
 
@@ -318,7 +318,7 @@ LanguageUnit_p cuda::AvgPoolmD::emit_function_body()
 
         auto expand_vector_int = [](string name, vector<int>& d) {
             stringstream ss;
-            CHECK(d.size() > 0);
+            NNFUSION_CHECK(d.size() > 0);
             ss << "int " << name << "[] = {";
             for (int i = 0; i + 1 < d.size(); i++)
                 ss << to_string(d[i]) << ", ";

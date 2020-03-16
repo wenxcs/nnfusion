@@ -47,7 +47,7 @@ bool run(std::shared_ptr<nnfusion::graph::Graph> graph)
 bool check_inplace_oi_pair(std::shared_ptr<nnfusion::graph::GNode>& node)
 {
     auto emitted_kernel =
-        (*node)["Kernel_Selection_Result"].as<pair<DeviceType, KernelEmitter::Pointer>>();
+        (*node)["Kernel_Selection_Result"].as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
     if (emitted_kernel.second->get_or_emit_source() != nullptr)
     {
         KernelEmitter::Pointer kernel = emitted_kernel.second;

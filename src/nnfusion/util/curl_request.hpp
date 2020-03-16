@@ -27,7 +27,8 @@ namespace nnfusion
                 }
                 else
                 {
-                    CHECK(false) << "Invalid address format: " << address << "expect: <ip>:<port>";
+                    NNFUSION_CHECK(false) << "Invalid address format: " << address
+                                          << "expect: <ip>:<port>";
                 }
             }
         }

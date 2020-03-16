@@ -28,6 +28,7 @@ namespace nnfusion
         class Ceiling;
         class Cos;
         class Cosh;
+        class Erf;
         class Exp;
         class Floor;
         class Log;
@@ -129,6 +130,13 @@ namespace nnfusion
             struct CudaOpMap<nnfusion::op::Cosh>
             {
                 static constexpr const char* op = "coshf";
+                static constexpr const char* math_kernel = nullptr;
+            };
+
+            template <>
+            struct CudaOpMap<nnfusion::op::Erf>
+            {
+                static constexpr const char* op = "erff";
                 static constexpr const char* math_kernel = nullptr;
             };
 

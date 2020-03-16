@@ -6,7 +6,7 @@ REGISTER_OP(Reverse)
     .infershape(nnfusion::op::infershape::unimplemented_and_not_used)
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
         auto op = static_pointer_cast<nnfusion::op::Reverse>(gnode->get_op_ptr());
-        CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
+        NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
 
         nnfusion::Shape input_shape = gnode->get_input_shape(0);
         nnfusion::AxisSet reverse_axes = op->get_reversed_axes();

@@ -55,8 +55,8 @@ namespace nnfusion
                     {
                         std::vector<std::shared_ptr<GNode>> chain;
                         auto node = tail_node;
-                        CHECK_NOT_NULLPTR(node);
-                        CHECK(node->get_op_type() == "Reshape");
+                        NNFUSION_CHECK_NOT_NULLPTR(node);
+                        NNFUSION_CHECK(node->get_op_type() == "Reshape");
                         chain.push_back(node);
                         while (true)
                         {
@@ -92,7 +92,7 @@ namespace nnfusion
                             auto chord =
                                 std::dynamic_pointer_cast<op::Reshape>(chain[i]->get_op_ptr())
                                     ->get_input_order();
-                            CHECK(order.size() == chord.size());
+                            NNFUSION_CHECK(order.size() == chord.size());
                             mirror.resize(order.size());
                             for (int i = 0; i < chord.size(); ++i)
                                 mirror[i] = order[chord[i]];
@@ -100,7 +100,7 @@ namespace nnfusion
                         }
                         auto top_shape = rs_input->get_output_shape(rs_inedge->get_src_output());
                         auto out_shape = top_shape;
-                        CHECK(top_shape.size() == order.size());
+                        NNFUSION_CHECK(top_shape.size() == order.size());
                         for (int i = 0; i < top_shape.size(); ++i)
                         {
                             out_shape[i] = top_shape[order[i]];

@@ -6,7 +6,7 @@ REGISTER_OP(Concat)
     .infershape(nnfusion::op::infershape::unimplemented_and_not_used)
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
         auto op = static_pointer_cast<nnfusion::op::Concat>(gnode->get_op_ptr());
-        CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
+        NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
 
         size_t axis = op->get_concatenation_axis();
 

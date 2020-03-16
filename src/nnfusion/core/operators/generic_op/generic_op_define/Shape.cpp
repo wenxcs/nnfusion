@@ -5,7 +5,7 @@
 REGISTER_OP(Shape)
     .attr<nnfusion::op::OpConfig::any>("out_type")
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(gnode->get_input_size() == 1);
+        NNFUSION_CHECK(gnode->get_input_size() == 1);
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         std::string t_str = generic_op->localOpConfig.getRoot()["out_type"];
 
@@ -29,7 +29,7 @@ REGISTER_OP(Shape)
         std::string dtype;
         bool ret =
             element::Type::ngraph_element_type_to_dtype_string(gnode->get_element_type(), dtype);
-        CHECK(ret);
+        NNFUSION_CHECK(ret);
 
         return op::create_code_from_template(
             R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.shape(args("input0"), dtype='@dtype@')); )",

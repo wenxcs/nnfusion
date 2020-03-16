@@ -51,13 +51,13 @@ namespace nnfusion
                     }
                     else
                     {
-                        CHECK_FAIL() << numpy_transpose_error_str(order, in_shape);
+                        NNFUSION_CHECK_FAIL() << numpy_transpose_error_str(order, in_shape);
                     }
                 }
             }
             else
             {
-                CHECK_FAIL() << numpy_transpose_error_str(order, in_shape);
+                NNFUSION_CHECK_FAIL() << numpy_transpose_error_str(order, in_shape);
             }
 
             // create output shape

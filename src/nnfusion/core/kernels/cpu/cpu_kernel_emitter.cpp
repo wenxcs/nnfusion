@@ -212,14 +212,16 @@ thread_pool->ParallelFor(rank, func);
         }
         else
         {
-            LOG(WARNING) << "Extract kernel function from Antares response failed.";
-            LOG(WARNING) << "Function: " << get_function_name() << ". Expression: " << m_expression;
-            LOG(WARNING) << "Response: " << response;
+            NNFUSION_LOG(NNFUSION_WARNING)
+                << "Extract kernel function from Antares response failed.";
+            NNFUSION_LOG(NNFUSION_WARNING) << "Function: " << get_function_name()
+                                           << ". Expression: " << m_expression;
+            NNFUSION_LOG(NNFUSION_WARNING) << "Response: " << response;
         }
     }
     else
     {
-        LOG(WARNING) << "Curl request Antares kernel failed.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Curl request Antares kernel failed.";
     }
 
     return nullptr;

@@ -76,7 +76,7 @@ const std::string& Op::get_unique_name() const
 
 void Op::set_name(const string& name)
 {
-    CHECK(m_name.empty()) << "Op name may be set exactly once";
+    NNFUSION_CHECK(m_name.empty()) << "Op name may be set exactly once";
     m_name = name;
 }
 
@@ -94,7 +94,8 @@ std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
             OP_VALIDATION(this,
                           nnfusion::element::Type::merge(
                               element_type, element_type, gnode->get_input_element_type(i)))
-                << "Argument element types are inconsistent.";
+                << "Argument element types are inconsistent: " << element_type << ", "
+                << gnode->get_input_element_type(i);
 
             OP_VALIDATION(
                 this, nnfusion::PartialShape::merge_into(pshape, gnode->get_input_partial_shape(i)))

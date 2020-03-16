@@ -9,10 +9,18 @@
 #include "gflags/gflags.h"
 #include "nnfusion/engine/external/backend.hpp"
 #include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
+#include "nnfusion/frontend/torchscript_import/torchscript.hpp"
+#include "nnfusion/frontend/util/parameter.hpp"
 
 using namespace std;
 
-DEFINE_string(format, "tensorflow", "-f, Model file format (tensorflow(default) or onnx)");
+DEFINE_string(format,
+              "tensorflow",
+              "-f, Model file format (tensorflow(default) or torchscript, onnx)");
+
+DEFINE_string(params,
+              "##UNSET##",
+              "-p, Model input shape and type, format like \"1,1:float;2,3,4,5:double\"");
 
 void display_help()
 {
@@ -36,9 +44,9 @@ bool file_exists(const string& filename)
 int main(int argc, char** argv)
 {
     bool failed = false;
-    string model, format, backend = "NNFusion";
+    string model, format, params, backend = "NNFusion";
 
-    model = format = "##UNSET##";
+    model = format = params = "##UNSET##";
 
     if (argc > 1)
     {
@@ -59,6 +67,10 @@ int main(int argc, char** argv)
         {
             format = argv[++i];
         }
+        else if (arg == "-p")
+        {
+            params = argv[++i];
+        }
     }
 
     google::SetUsageMessage(argv[0]);
@@ -67,6 +79,9 @@ int main(int argc, char** argv)
 
     if (format == "##UNSET##")
         format = FLAGS_format;
+
+    if (params == "##UNSET##")
+        params = FLAGS_params;
 
     if (!model.empty() && !file_exists(model))
     {
@@ -92,6 +107,17 @@ int main(int argc, char** argv)
             // load tensorlfow model as graph
             graph = nnfusion::frontend::load_tensorflow_model(model);
         }
+#if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
+        else if (format == "torchscript")
+        {
+            std::vector<nnfusion::frontend::ParamInfo> params_vec;
+            if (params != "##UNSET##")
+            {
+                params_vec = nnfusion::frontend::build_params_from_string(params);
+            }
+            graph = nnfusion::frontend::load_torchscript_model(model, params_vec);
+        }
+#endif
         else if (format == "onnx")
         {
             //graph = ngraph::onnx_import::import_onnx_function(model);

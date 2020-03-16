@@ -75,8 +75,9 @@ namespace nnfusion
         {
             for (size_t const& size : vec)
             {
-                CHECK(size >> 32 == 0) << "Request for std::vector<size_t> which exceeds the "
-                                          "bitwidth available for NVShapes (32)";
+                NNFUSION_CHECK(size >> 32 == 0)
+                    << "Request for std::vector<size_t> which exceeds the "
+                       "bitwidth available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }
@@ -85,7 +86,7 @@ namespace nnfusion
         {
             for (size_t const& size : shape)
             {
-                CHECK(size >> 32 == 0)
+                NNFUSION_CHECK(size >> 32 == 0)
                     << "Request for Shape which exceeds the bitwidth available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
@@ -95,7 +96,7 @@ namespace nnfusion
         {
             for (size_t const& size : strides)
             {
-                CHECK(size >> 32 == 0)
+                NNFUSION_CHECK(size >> 32 == 0)
                     << "Request for Strides which exceed the bitwidth available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
@@ -105,8 +106,9 @@ namespace nnfusion
         {
             for (size_t const& size : coord)
             {
-                CHECK(size >> 32 == 0) << "Request for Coordinate which exceed the bitwidth "
-                                          "available for NVShapes (32)";
+                NNFUSION_CHECK(size >> 32 == 0)
+                    << "Request for Coordinate which exceed the bitwidth "
+                       "available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }
@@ -115,8 +117,9 @@ namespace nnfusion
         {
             for (auto const& size : vec)
             {
-                CHECK(size >> 32 == 0) << "Request for axis vector which exceed the bitwidth "
-                                          "available for NVShapes (32)";
+                NNFUSION_CHECK(size >> 32 == 0)
+                    << "Request for axis vector which exceed the bitwidth "
+                       "available for NVShapes (32)";
                 this->push_back(static_cast<uint32_t>(size));
             }
         }

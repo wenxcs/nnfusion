@@ -19,7 +19,7 @@ namespace nnfusion
     class RocmCodeGenerator : public CudaCodeGenerator
     {
     public:
-        DeviceType device_type() override { return DeviceType::ROCM_GPU; }
+        NNFusion_DeiveType device_type() override { return NNFusion_DeiveType::ROCM_GPU; }
         virtual std::string get_generate_cmakelists(void) override
         {
             LanguageUnit lu;
@@ -71,19 +71,21 @@ endif()
             auto hipify_exec =
                 nnfusion::codegen::get_file_from_templates("rocm_adapter/hipify-nnfusion");
             // update for nnfusion_rt.cu
-            CHECK(0 ==
-                  system((hipify_exec +
-                          " nnfusion_rt.cu | grep -v 'include.*cublas_v2' | grep -v "
-                          "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
-                          "nnfusion_rt.cu")
-                             .c_str()));
+            NNFUSION_CHECK(
+                0 == system((hipify_exec +
+                             " nnfusion_rt.cu | grep -v 'include.*cublas_v2' | grep -v "
+                             "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
+                             "nnfusion_rt.cu")
+                                .c_str()));
             // update for main_test.cpp
-            CHECK(0 ==
-                  system("sed -i 's/^.*include.*cuda_profiler_api.*$//g' main_test.cpp && sed -i "
-                         "'s/cudaProfiler.*\\(.*\\)//g' main_test.cpp"));
+            NNFUSION_CHECK(
+                0 ==
+                system("sed -i 's/^.*include.*cuda_profiler_api.*$//g' main_test.cpp && sed -i "
+                       "'s/cudaProfiler.*\\(.*\\)//g' main_test.cpp"));
             // update for nnfusion_rt.h
-            CHECK(0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
-                              "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
+            NNFUSION_CHECK(
+                0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
+                            "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
             // update for rocm_adapter.h
             nnfusion::codegen::copy_file_from_templates("rocm_adapter/rocm_adapter.h",
                                                         "./rocm_adapter.h");
@@ -102,15 +104,16 @@ endif()
             {
                 nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.h",
                                                             "./super_scaler.h");
-                LOG(WARNING) << "libsuper_scaler_rocm.so should be copied from "
-                                "(build)/src/tools/nnfusion/templates/super_scaler/";
+                NNFUSION_LOG(NNFUSION_WARNING)
+                    << "libsuper_scaler_rocm.so should be copied from "
+                       "(build)/src/tools/nnfusion/templates/super_scaler/";
                 nnfusion::codegen::copy_file_from_templates("super_scaler/libsuper_scaler_rocm.so",
                                                             "./libsuper_scaler_rocm.so");
             }
         }
 
         virtual KernelEmitter::Pointer
-            match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res)
+            match_kernel(std::vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>& res)
         {
             for (auto& k : res)
             {
@@ -123,7 +126,7 @@ endif()
             // if there is no valid ROCm kernel, use the CUDA kernel
             for (auto& k : res)
             {
-                if (k.second != nullptr && k.first == DeviceType::CUDA_GPU &&
+                if (k.second != nullptr && k.first == NNFusion_DeiveType::CUDA_GPU &&
                     k.second->get_or_emit_source() != nullptr)
                 {
                     return k.second;

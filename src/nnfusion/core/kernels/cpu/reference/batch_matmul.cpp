@@ -65,8 +65,8 @@ namespace nnfusion
                     }
 
                     std::string dtype = m_context->dtypes[0];
-                    CHECK(dtype == m_context->dtypes[1]);
-                    CHECK(dtype == m_context->dtypes[2]);
+                    NNFUSION_CHECK(dtype == m_context->dtypes[1]);
+                    NNFUSION_CHECK(dtype == m_context->dtypes[2]);
                     LanguageUnit lu(get_function_name());
                     auto code = nnfusion::op::create_code_from_template(
                         R"(

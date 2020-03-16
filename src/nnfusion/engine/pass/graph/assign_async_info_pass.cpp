@@ -23,7 +23,7 @@ bool AssignAsyncInfoPass::run_on_graph(std::shared_ptr<Graph>& graph)
     auto async_manager = AsyncManagerFactory::get_async_manager(m_device);
     naive_assign_stream_info(async_manager, graph);
     assign_event_info(async_manager, graph);
-    LOG(INFO) << "run async-------------------------------";
+    NNFUSION_LOG(INFO) << "run async-------------------------------";
     return true;
 }
 
@@ -129,13 +129,14 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
                     !gnode->is_constant())
                 {
-                    auto emitted_kernel = (*gnode)["Kernel_Selection_Result"]
-                                              .as<pair<DeviceType, KernelEmitter::Pointer>>();
+                    auto emitted_kernel =
+                        (*gnode)["Kernel_Selection_Result"]
+                            .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
 
                     if (emitted_kernel.second->get_or_emit_source() == nullptr)
                     {
-                        LOG(WARNING) << "Kernel should be emitted before this pass:"
-                                     << gnode->get_name();
+                        NNFUSION_LOG(NNFUSION_WARNING)
+                            << "Kernel should be emitted before this pass:" << gnode->get_name();
                     }
                     auto kernel = emitted_kernel.second;
                     for (auto& in : kernel->m_context->input_names)
@@ -179,7 +180,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
             }
         }
     }
-    LOG(INFO) << "assign stream info-------------------------------";
+    NNFUSION_LOG(INFO) << "assign stream info-------------------------------";
 }
 
 void AssignAsyncInfoPass::assign_event_info(AsyncManager* async_manager,
@@ -187,10 +188,10 @@ void AssignAsyncInfoPass::assign_event_info(AsyncManager* async_manager,
 {
     for (auto gnode : graph->get_ordered_ops())
     {
-        CHECK((*gnode)["Async_info"].is_valid());
+        NNFUSION_CHECK((*gnode)["Async_info"].is_valid());
         auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
         auto stream = async_info.execution_stream;
-        CHECK_NOT_NULLPTR(stream);
+        NNFUSION_CHECK_NOT_NULLPTR(stream);
         for (auto& edge : gnode->get_in_edges())
         {
             auto input_gnode = edge->get_src();
@@ -230,5 +231,5 @@ void AssignAsyncInfoPass::assign_event_info(AsyncManager* async_manager,
             }
         }
     }
-    LOG(INFO) << "assign event info-------------------------------";
+    NNFUSION_LOG(INFO) << "assign event info-------------------------------";
 }

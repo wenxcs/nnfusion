@@ -119,7 +119,7 @@ namespace nnfusion
 
             virtual const shared_ptr<nnfusion::descriptor::Tensor>
                 allocate_tensor(Shape shape,
-                                DeviceType device_type,
+                                NNFusion_DeiveType device_type,
                                 element::Type elt = element::f32,
                                 string name = "",
                                 bool is_persistent = false,

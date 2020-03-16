@@ -77,8 +77,8 @@ bool RocmDefaultRuntime::hipfy(const ProfilingContext::Pointer& ke)
 
     if (ret != 0)
         return false;
-    LOG(INFO) << "Cuda file is:" << cu_srcname;
-    LOG(INFO) << "ROCM file is:" << rocm_srcname;
+    NNFUSION_LOG(INFO) << "Cuda file is:" << cu_srcname;
+    NNFUSION_LOG(INFO) << "ROCM file is:" << rocm_srcname;
     // Save rocm_adapter.h for the file.
     auto rocmadapter = rocm_srcname.substr(0, rocm_srcname.find_last_of("/\\")) + "/rocm_adapter.h";
     nnfusion::codegen::copy_file_from_templates("rocm_adapter/rocm_adapter.h", rocmadapter);

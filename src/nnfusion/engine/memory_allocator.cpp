@@ -9,7 +9,7 @@ nnfusion::MemoryAllocator::node::node(size_t size, block_state state)
 
 nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
                                            bool disable_memory_reuse,
-                                           DeviceType device_type,
+                                           NNFusion_DeiveType device_type,
                                            size_t device_id,
                                            const std::string& symbol)
     : m_alignment{alignment}
@@ -21,7 +21,7 @@ nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
     , m_name(symbol + "_" + (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type] +
              "_" + std::to_string(device_id) + "_allocator")
 {
-    CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
+    NNFUSION_CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
     m_node_list.emplace_back(numeric_limits<size_t>::max(), block_state::FREE);
     if (record_trace)
@@ -215,7 +215,7 @@ void nnfusion::MemoryAllocator::free(shared_ptr<descriptor::Tensor> tensor)
     {
         this->record("[free]", tensor);
     }
-    CHECK(found) << "bad free";
+    NNFUSION_CHECK(found) << "bad free";
 }
 
 void nnfusion::MemoryAllocator::dump(ofstream& out)
@@ -348,7 +348,7 @@ nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory(size_t alignment, bool 
     , m_disable_reuse(disable_reuse)
 
 {
-    CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
+    NNFUSION_CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
 }
 std::unordered_map<std::string, MemoryAllocator*>
@@ -358,7 +358,7 @@ MemoryAllocator*
     nnfusion::MemoryAllocatorFactory::get_allocator(shared_ptr<descriptor::Tensor> tensor)
 {
     int group_id = tensor->get_group_id();
-    CHECK(group_id != -1);
+    NNFUSION_CHECK(group_id != -1);
     std::string search_name = tensor->get_device_name() + "_" + to_string(group_id);
     if (m_allocator_list.find(search_name) != m_allocator_list.end())
     {
@@ -410,7 +410,7 @@ MemoryAllocator*
                                                     "group" + to_string(group_id));
                 break;
             }
-            default: LOG(ERROR) << "No valid allocator found: " << search_name; break;
+            default: NNFUSION_LOG(ERROR) << "No valid allocator found: " << search_name; break;
             }
             if (allocator != nullptr)
                 m_allocator_list[search_name] = allocator;

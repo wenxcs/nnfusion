@@ -22,7 +22,7 @@
 
 #include "../test_util/common.hpp"
 #include "gtest/gtest.h"
-#include "nnfusion/engine/external/backend_manager.cpp"
+#include "nnfusion/engine/external/backend_manager.hpp"
 #include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 
 using namespace nnfusion;
@@ -36,19 +36,21 @@ std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Grap
 {
     auto parms_gnodes = graph->get_parameters();
 
-    CHECK(parms_gnodes.size() == args.size()) << "number of parameters and arguments don't match";
+    NNFUSION_CHECK(parms_gnodes.size() == args.size())
+        << "number of parameters and arguments don't match";
 
     auto graph_evaluate = make_shared<nnfusion::profiler::GraphEvaluate>(graph, CUDA_GPU);
     auto res = graph_evaluate->eval<T, T1>(args);
 
     auto output_gnodes = graph->get_outputs();
-    CHECK(output_gnodes.size() == res.size()) << "number of outputs and results don't match";
+    NNFUSION_CHECK(output_gnodes.size() == res.size())
+        << "number of outputs and results don't match";
 
     std::vector<std::vector<T1>> result_vectors;
     for (auto output_gnode : output_gnodes)
     {
         auto gonde_res = res[output_gnode->get_unique_name()];
-        CHECK(gonde_res.size() == 1);
+        NNFUSION_CHECK(gonde_res.size() == 1);
         result_vectors.push_back((gonde_res[0]));
     }
 

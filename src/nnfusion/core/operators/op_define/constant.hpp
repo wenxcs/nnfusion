@@ -72,8 +72,46 @@ namespace nnfusion
                     << m_shape << " (got " << values.size() << ", expected "
                     << nnfusion::shape_size(m_shape) << ".";
 
-                std::vector<double> dvalues = nnfusion::parse_string<double>(values);
-                write_values(dvalues);
+                // use double as intermedia type might produce unexpected overflow
+                if (type == element::character)
+                {
+                    std::vector<char> dvalues = nnfusion::parse_string<char>(values);
+                    if (values.size() == 1 && shape_size(m_shape) != 1)
+                    {
+                        dvalues = std::vector<char>(shape_size(m_shape), dvalues[0]);
+                    }
+                    write_values(dvalues);
+                }
+                else if (type.is_integral())
+                {
+                    if (type.is_signed())
+                    {
+                        std::vector<int64_t> dvalues = nnfusion::parse_string<int64_t>(values);
+                        if (values.size() == 1 && shape_size(m_shape) != 1)
+                        {
+                            dvalues = std::vector<int64_t>(shape_size(m_shape), dvalues[0]);
+                        }
+                        write_values(dvalues);
+                    }
+                    else
+                    {
+                        std::vector<uint64_t> dvalues = nnfusion::parse_string<uint64_t>(values);
+                        if (values.size() == 1 && shape_size(m_shape) != 1)
+                        {
+                            dvalues = std::vector<uint64_t>(shape_size(m_shape), dvalues[0]);
+                        }
+                        write_values(dvalues);
+                    }
+                }
+                else
+                {
+                    std::vector<double> dvalues = nnfusion::parse_string<double>(values);
+                    if (values.size() == 1 && shape_size(m_shape) != 1)
+                    {
+                        dvalues = std::vector<double>(shape_size(m_shape), dvalues[0]);
+                    }
+                    write_values(dvalues);
+                }
             }
 
             /// \brief Constructs a tensor constant with the same initialization value copied across
@@ -139,7 +177,8 @@ namespace nnfusion
             template <typename T>
             std::vector<T> get_vector() const
             {
-                CHECK(sizeof(T) <= m_element_type.size() || nnfusion::shape_size(m_shape) << 0)
+                NNFUSION_CHECK(sizeof(T) <= m_element_type.size() ||
+                               nnfusion::shape_size(m_shape) << 0)
                     << "Buffer over-read";
 
                 std::vector<T> rc;
@@ -196,10 +235,11 @@ namespace nnfusion
                                  void* target,
                                  size_t target_element_count)
             {
-                CHECK(source.size() == target_element_count)
+                NNFUSION_CHECK(source.size() == target_element_count)
                     << "Constant initializer does not match shape";
 
-                if (target_type == nnfusion::element::boolean)
+                if (target_type == nnfusion::element::boolean ||
+                    target_type == nnfusion::element::character)
                 {
                     write_buffer<char, T>(target, source, target_element_count);
                 }
@@ -249,7 +289,7 @@ namespace nnfusion
                 }
                 else
                 {
-                    CHECK_FAIL() << "unsupported type";
+                    NNFUSION_CHECK_FAIL() << "unsupported type";
                 }
             }
 

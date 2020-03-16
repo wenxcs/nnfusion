@@ -51,7 +51,7 @@ namespace
     inline std::shared_ptr<T> get_op_object(std::shared_ptr<GNode>& curr)
     {
         auto _op = static_pointer_cast<T>(curr->get_op_ptr());
-        CHECK_NOT_NULLPTR(_op) << "Node type is not " << curr->get_op_ptr()->get_op_type();
+        NNFUSION_CHECK_NOT_NULLPTR(_op) << "Node type is not " << curr->get_op_ptr()->get_op_type();
         return _op;
     }
 
@@ -82,16 +82,17 @@ namespace nnfusion
                         {
                             auto _op = get_op_object<nnfusion::op::Dot>(curr);
 
-                            CHECK(_op->get_transpose_A() == false);
+                            NNFUSION_CHECK(_op->get_transpose_A() == false);
                             if (_op->get_transpose_B() == false)
                             {
                                 auto weight = curr->get_in_edge(1)->get_src();
                                 auto weight_shape = weight->get_output_shape(0);
-                                CHECK(weight->get_op_ptr()->get_op_type() == "Constant")
+                                NNFUSION_CHECK(weight->get_op_ptr()->get_op_type() == "Constant")
                                     << "Only for constant-weight Dot optimization.";
-                                CHECK(weight_shape.size() == 2)
+                                NNFUSION_CHECK(weight_shape.size() == 2)
                                     << "Only for 2D weight optimization.";
-                                CHECK(weight->get_output_element_type(0) == nnfusion::element::f32);
+                                NNFUSION_CHECK(weight->get_output_element_type(0) ==
+                                               nnfusion::element::f32);
 
                                 auto p_const = get_op_object<op::Constant>(weight);
 
@@ -151,7 +152,7 @@ namespace nnfusion
                     if (FLAGS_fdefault_device != "GraphCore")
                         return true;
 
-                    LOG(INFO) << "GraphCore codegen starts up.";
+                    NNFUSION_LOG(INFO) << "GraphCore codegen starts up.";
                     // private_transpose_weight_pass(graph);
 
                     auto nodes = graph->get_nodes();
@@ -164,7 +165,7 @@ namespace nnfusion
                         {
                             if (in_edge->is_control_edge())
                                 continue;
-                            CHECK(in_edge->get_dst() == it);
+                            NNFUSION_CHECK(in_edge->get_dst() == it);
                             din[it]++;
                             dout[in_edge->get_src()]++;
                         }
@@ -176,7 +177,7 @@ namespace nnfusion
                     std::unordered_map<std::shared_ptr<GNode>, std::string> arg_names;
                     for (auto& it : nodes)
                     {
-                        CHECK(it.get() != nullptr);
+                        NNFUSION_CHECK(it.get() != nullptr);
 
                         auto arg_name = "Z0_" + it->get_op_ptr()->get_op_type() + "_" +
                                         it->get_op_ptr()->get_name();
@@ -200,7 +201,7 @@ namespace nnfusion
 
                         if (din[it] == 0 && dout[it] == 0)
                             visited.insert(it), blacklist.insert(it);
-                        CHECK(it->get_output_size() == 1);
+                        NNFUSION_CHECK(it->get_output_size() == 1);
                     }
                     name_used.clear();
 
@@ -216,7 +217,7 @@ namespace nnfusion
                         }
                     }
 
-                    CHECK(0 == system("mkdir -p nnfusion_rt/graphcore_codegen"));
+                    NNFUSION_CHECK(0 == system("mkdir -p nnfusion_rt/graphcore_codegen"));
 
                     std::ofstream fout("nnfusion_rt/graphcore_codegen/nnfusion_rt.h");
                     // Perform blockfusion
@@ -254,22 +255,24 @@ namespace nnfusion
                         {
                             // TODO:
                             // 1) handle more types than float only;
-                            CHECK(curr->get_output_element_type(0) == nnfusion::element::f32);
+                            NNFUSION_CHECK(curr->get_output_element_type(0) ==
+                                           nnfusion::element::f32);
                             auto p_const =
                                 std::dynamic_pointer_cast<op::Constant>(curr->get_op_ptr());
-                            CHECK(p_const != nullptr);
+                            NNFUSION_CHECK(p_const != nullptr);
                             auto dptr = (float*)p_const->get_data_ptr();
                             auto size = p_const->get_data_size();
-                            CHECK(size % sizeof(float) == 0);
+                            NNFUSION_CHECK(size % sizeof(float) == 0);
                             size /= sizeof(float);
 
-                            CHECK(0 == system("mkdir -p nnfusion_rt/graphcore_codegen/Constant"));
+                            NNFUSION_CHECK(
+                                0 == system("mkdir -p nnfusion_rt/graphcore_codegen/Constant"));
                             FILE* fp =
                                 fopen(("nnfusion_rt/graphcore_codegen/Constant/" + arg_names[curr])
                                           .c_str(),
                                       "wb");
-                            CHECK(fp != nullptr);
-                            CHECK(size == fwrite(dptr, sizeof(float), size, fp));
+                            NNFUSION_CHECK(fp != nullptr);
+                            NNFUSION_CHECK(size == fwrite(dptr, sizeof(float), size, fp));
                             fclose(fp);
 
                             fout << "Tensor " << arg_names[curr]
@@ -312,8 +315,9 @@ namespace nnfusion
                                     req.add_custom_header("ARGS: ");
 
                                     printf("[GraphCore] %s\n", expr.c_str());
-                                    CHECK(true == req.send_request(response));
-                                    CHECK(strncmp(response.c_str(), "[ERROR]", 7) != 0) << expr;
+                                    NNFUSION_CHECK(true == req.send_request(response));
+                                    NNFUSION_CHECK(strncmp(response.c_str(), "[ERROR]", 7) != 0)
+                                        << expr;
                                     code_cache[expr] = response;
                                     return std::move(response);
                                 }
@@ -469,8 +473,8 @@ namespace nnfusion
                             {
                                 auto _op = get_op_object<nnfusion::op::Dot>(curr);
 
-                                CHECK(_op->get_transpose_A() == false);
-                                CHECK(_op->get_transpose_B() == false);
+                                NNFUSION_CHECK(_op->get_transpose_A() == false);
+                                NNFUSION_CHECK(_op->get_transpose_B() == false);
 
                                 auto shape_0 = curr->get_input_shape(0);
                                 auto shape_1 = curr->get_in_edge(1)->get_src()->get_output_shape(0);
@@ -514,7 +518,7 @@ namespace nnfusion
 
                                 auto _op = get_op_object<nnfusion::op::Convolution>(curr);
                                 for (auto& it : _op->get_data_dilation_strides())
-                                    CHECK(it == 1);
+                                    NNFUSION_CHECK(it == 1);
 
                                 auto data_shape = curr->get_input_shape(0);
                                 auto weight_shape = curr->get_input_shape(1);
@@ -573,7 +577,8 @@ namespace nnfusion
 
                                 if (use_padding)
                                 {
-                                    CHECK(_op->get_include_padding_in_avg_computation() == true);
+                                    NNFUSION_CHECK(_op->get_include_padding_in_avg_computation() ==
+                                                   true);
 
                                     auto pad_lower = _op->get_padding_below();
                                     auto pad_upper = _op->get_padding_above();
@@ -602,10 +607,10 @@ namespace nnfusion
                                 auto mov_stride = _op->get_window_movement_strides();
                                 auto out_shape = curr->get_output_shape(0);
 
-                                CHECK(data_shape.size() == 4);
-                                CHECK(win_shape.size() == 2);
-                                CHECK(mov_stride.size() == 2);
-                                CHECK(out_shape.size() == 4);
+                                NNFUSION_CHECK(data_shape.size() == 4);
+                                NNFUSION_CHECK(win_shape.size() == 2);
+                                NNFUSION_CHECK(mov_stride.size() == 2);
+                                NNFUSION_CHECK(out_shape.size() == 4);
 
                                 fout << "Tensor " << arg_names[curr]
                                      << " = popnn::pooling::pool(g, "
@@ -653,7 +658,7 @@ namespace nnfusion
 
                                 auto _op = get_op_object<nnfusion::op::Pad>(curr);
                                 for (auto& it : _op->get_padding_interior())
-                                    CHECK(it == 0);
+                                    NNFUSION_CHECK(it == 0);
 
                                 float pad_value;
                                 auto fill_const = curr->get_in_edge(1)->get_src();
@@ -756,10 +761,10 @@ namespace nnfusion
                                 auto mov_stride = _op->get_window_movement_strides();
                                 auto out_shape = curr->get_output_shape(0);
 
-                                CHECK(data_shape.size() == 4);
-                                CHECK(win_shape.size() == 2);
-                                CHECK(mov_stride.size() == 2);
-                                CHECK(out_shape.size() == 4);
+                                NNFUSION_CHECK(data_shape.size() == 4);
+                                NNFUSION_CHECK(win_shape.size() == 2);
+                                NNFUSION_CHECK(mov_stride.size() == 2);
+                                NNFUSION_CHECK(out_shape.size() == 4);
 
                                 fout << "Tensor " << arg_names[curr]
                                      << " = popnn::pooling::pool(g, "
@@ -788,7 +793,7 @@ namespace nnfusion
                                 int groups = 1, sample_size = 1;
                                 for (int i = 0; i < axes.size(); ++i)
                                 {
-                                    CHECK(axes.count(data_shape.size() - 1 - i));
+                                    NNFUSION_CHECK(axes.count(data_shape.size() - 1 - i));
                                     sample_size *= data_shape[data_shape.size() - 1 - i];
                                 }
                                 for (int i = 0; i < data_shape.size() - axes.size(); ++i)
@@ -838,11 +843,11 @@ namespace nnfusion
                                 auto _op = get_op_object<nnfusion::op::GenericOp>(curr);
                                 auto& cfg = _op->localOpConfig.getRoot();
 
-                                CHECK(cfg["padding_type"] == "SAME");
-                                CHECK(cfg["data_format"] == "NHWC");
+                                NNFUSION_CHECK(cfg["padding_type"] == "SAME");
+                                NNFUSION_CHECK(cfg["data_format"] == "NHWC");
 
                                 for (auto& it : cfg["dilations"])
-                                    CHECK(it == 1);
+                                    NNFUSION_CHECK(it == 1);
 
                                 auto data_shape = curr->get_input_shape(0);   // NHWC -> NCHW
                                 auto weight_shape = curr->get_input_shape(1); // KKCF -> CF1KK
@@ -897,11 +902,11 @@ namespace nnfusion
                                        next >= 0)
                                 {
                                     int eq = code.find(" = ", next);
-                                    CHECK(eq >= 0);
+                                    NNFUSION_CHECK(eq >= 0);
                                     tiles *= atoi(code.c_str() + eq + 3);
                                     pos = eq;
                                 }
-                                CHECK(tiles == 1);
+                                NNFUSION_CHECK(tiles == 1);
                                 tiles *= shards.back();
 
                                 // if no enough tiles, then new_super_step()
@@ -909,7 +914,7 @@ namespace nnfusion
                                     offset + tiles > max_tiles)
                                 {
                                     new_super_step();
-                                    CHECK(offset + tiles <= max_tiles);
+                                    NNFUSION_CHECK(offset + tiles <= max_tiles);
                                 }
 
                                 fout << "Tensor " << arg_names[curr] << " = compute_task(g, {";
@@ -943,8 +948,8 @@ namespace nnfusion
                         {
                             if (edge->is_control_edge())
                                 continue;
-                            CHECK(edge->get_src() == curr);
-                            CHECK(visited.count(edge->get_dst()) == 0);
+                            NNFUSION_CHECK(edge->get_src() == curr);
+                            NNFUSION_CHECK(visited.count(edge->get_dst()) == 0);
 
                             bool ready = true;
                             for (auto& from : edge->get_dst()->get_in_edges())
@@ -983,7 +988,7 @@ namespace nnfusion
                         "graphcore/Makefile", "nnfusion_rt/graphcore_codegen/Makefile");
                     nnfusion::codegen::copy_file_from_templates(
                         "graphcore/run_graph.cpp", "nnfusion_rt/graphcore_codegen/run_graph.cpp");
-                    LOG(INFO) << "GraphCore codegen finished.";
+                    NNFUSION_LOG(INFO) << "GraphCore codegen finished.";
                     exit(0);
                     return true;
                 }

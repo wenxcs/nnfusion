@@ -24,7 +24,7 @@ cuda::DepthwiseConv2dNative::DepthwiseConv2dNative(shared_ptr<KernelContext> ctx
     bool is_nhwc = (data_format == "NHWC");
 
     const int64_t in_depth = is_nhwc ? input_shape[3] : input_shape[1];
-    CHECK(in_depth == filter_shape[2]);
+    NNFUSION_CHECK(in_depth == filter_shape[2]);
     const int64_t depth_multiplier = filter_shape[3];
     const int64_t out_depth = in_depth * depth_multiplier;
     const int64_t input_rows = is_nhwc ? input_shape[1] : input_shape[2];

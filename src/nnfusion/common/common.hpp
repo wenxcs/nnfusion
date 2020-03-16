@@ -49,6 +49,7 @@
 #include "nnfusion/core/operators/op_define/divide.hpp"
 #include "nnfusion/core/operators/op_define/dot.hpp"
 #include "nnfusion/core/operators/op_define/equal.hpp"
+#include "nnfusion/core/operators/op_define/erf.hpp"
 #include "nnfusion/core/operators/op_define/exp.hpp"
 #include "nnfusion/core/operators/op_define/floor.hpp"
 #include "nnfusion/core/operators/op_define/greater.hpp"
@@ -105,9 +106,9 @@
             perror("backtrace_symbols");                                                           \
             exit(EXIT_FAILURE);                                                                    \
         }                                                                                          \
-        LOG(INFO) << " - Obtained " + size + " stack frames.";                                     \
+        NNFUSION_LOG(INFO) << " - Obtained " + size + " stack frames.";                            \
         for (int i = 0; i < size; i++)                                                             \
-            LOG(INFO) << "    # " + strings[i];                                                    \
+            NNFUSION_LOG(INFO) << "    # " + strings[i];                                           \
         free(strings);                                                                             \
     }
 
@@ -126,7 +127,7 @@ namespace nnfusion
                 mkdir_status = mkdir((tar_path).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
                 if (-1 == mkdir_status)
                 {
-                    LOG(INFO) << "Error creating directory: " + tar_path;
+                    NNFUSION_LOG(INFO) << "Error creating directory: " + tar_path;
                     flag = false;
                 }
                 else
@@ -134,7 +135,7 @@ namespace nnfusion
             }
             else
             {
-                //LOG(INFO) << "Directory " << tar_path.c_str() << " already exists";
+                //NNFUSION_LOG(INFO) << "Directory " << tar_path.c_str() << " already exists";
                 flag = true;
             }
             return flag;
@@ -147,7 +148,7 @@ namespace nnfusion
             {
                 char exepath[1024];
                 auto ret = readlink("/proc/self/exe", exepath, sizeof(exepath));
-                CHECK(ret > 0);
+                NNFUSION_CHECK(ret > 0);
                 for (int i = strlen(exepath) - 1; i >= 0; --i)
                     if (exepath[i] == '/')
                     {
@@ -196,12 +197,12 @@ using namespace nnfusion;
 #define create_ptr(type, name, arg) shared_ptr<type> name(new type(arg))
 
 // Uncomment this for quick debug
-// #undef LOG(INFO)INFO
-// #define LOG(INFO)INFO std::cout
+// #undef NNFUSION_LOG(INFO)INFO
+// #define NNFUSION_LOG(INFO)INFO std::cout
 
 // namespace nnfusion
 // {
-//     enum DeviceType
+//     enum NNFusion_DeiveType
 //     {
 //         CUDA_GPU,
 //         ROCM_GPU,

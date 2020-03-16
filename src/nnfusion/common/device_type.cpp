@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNfusion Team
 #include "device_type.hpp"
 
-std::string nnfusion::get_device_str(DeviceType dt)
+std::string nnfusion::get_device_str(NNFusion_DeiveType dt)
 {
     switch (dt)
     {
@@ -12,7 +12,7 @@ std::string nnfusion::get_device_str(DeviceType dt)
     }
 }
 
-nnfusion::DeviceType nnfusion::get_device_type(std::string dt)
+nnfusion::NNFusion_DeiveType nnfusion::get_device_type(std::string dt)
 {
     if (dt == "ROCM_GPU" || dt == "ROCm")
         return ROCM_GPU;

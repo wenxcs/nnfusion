@@ -16,7 +16,7 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cuda_sp")
                 {
                     op = static_pointer_cast<nnfusion::op::Concat>(ctx->gnode->get_op_ptr());
-                    CHECK_NOT_NULLPTR(op) << "Node type is not Concat.";
+                    NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not Concat.";
 
                     this->axis = op->get_concatenation_axis();
 

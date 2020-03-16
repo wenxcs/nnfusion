@@ -157,10 +157,11 @@ namespace nnfusion
                 static sqlite3* sqldb = NULL;
                 if (!sqldb)
                 {
-                    CHECK(SQLITE_OK == sqlite3_open((getpwuid(getuid())->pw_dir +
-                                                     std::string("/.cache/nnfusion_cache.db"))
-                                                        .c_str(),
-                                                    &sqldb));
+                    NNFUSION_CHECK(SQLITE_OK ==
+                                   sqlite3_open((getpwuid(getuid())->pw_dir +
+                                                 std::string("/.cache/nnfusion_cache.db"))
+                                                    .c_str(),
+                                                &sqldb));
                     const char* table_create = R"(
 CREATE TABLE IF NOT EXISTS KernelCache(
   key_code TEXT PRIMARY KEY NOT NULL,
@@ -168,16 +169,17 @@ CREATE TABLE IF NOT EXISTS KernelCache(
   device_type TEXT NOT NULL,
   cost REAL );
 )";
-                    CHECK(SQLITE_OK == sqlite3_exec(sqldb, table_create, NULL, 0, NULL));
+                    NNFUSION_CHECK(SQLITE_OK == sqlite3_exec(sqldb, table_create, NULL, 0, NULL));
                 }
 
                 auto key_code = get_key_code(emitter);
                 if (key_code.size() == 0)
                 {
-                    LOG(WARNING) << "Kernel `" << emitter->m_context->gnode->get_unique_name()
-                                 << ":" << emitter->m_context->gnode->get_name()
-                                 << "` is based on V1 kernel implementation, not supporting "
-                                    "caching for function_body!";
+                    NNFUSION_LOG(NNFUSION_WARNING)
+                        << "Kernel `" << emitter->m_context->gnode->get_unique_name() << ":"
+                        << emitter->m_context->gnode->get_name()
+                        << "` is based on V1 kernel implementation, not supporting "
+                           "caching for function_body!";
                     return func();
                 }
 
@@ -186,33 +188,34 @@ CREATE TABLE IF NOT EXISTS KernelCache(
                 const char* table_query_body = R"(
 SELECT cost FROM KernelCache WHERE key_code = ?;
 )";
-                CHECK(SQLITE_OK == sqlite3_prepare(sqldb, table_query_body, -1, &pStmt, 0));
+                NNFUSION_CHECK(SQLITE_OK ==
+                               sqlite3_prepare(sqldb, table_query_body, -1, &pStmt, 0));
                 sqlite3_bind_text(pStmt, 1, key_code.data(), key_code.size(), SQLITE_STATIC);
                 if (SQLITE_DONE != sqlite3_step(pStmt))
                 {
                     double cost = sqlite3_column_double(pStmt, 0);
-                    CHECK(SQLITE_DONE == sqlite3_step(pStmt));
-                    CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
-                    LOG(INFO) << device_type << "/" << emitter->get_function_name()
-                              << ": Using cached kernel time cost = " << cost;
+                    NNFUSION_CHECK(SQLITE_DONE == sqlite3_step(pStmt));
+                    NNFUSION_CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
+                    NNFUSION_LOG(INFO) << device_type << "/" << emitter->get_function_name()
+                                       << ": Using cached kernel time cost = " << cost;
                     return cost;
                 }
                 double result = func();
                 auto key_op = get_key_op(emitter);
-                LOG(INFO) << device_type << "/" << emitter->get_function_name()
-                          << ": Updated cached kernel time cost = " << result;
-                // LOG(INFO) << get_key_op(emitter) << "\n" << key_code;
+                NNFUSION_LOG(INFO) << device_type << "/" << emitter->get_function_name()
+                                   << ": Updated cached kernel time cost = " << result;
+                // NNFUSION_LOG(INFO) << get_key_op(emitter) << "\n" << key_code;
 
                 const char* table_insert = R"(
 INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
 )";
-                CHECK(SQLITE_OK == sqlite3_prepare(sqldb, table_insert, -1, &pStmt, 0));
+                NNFUSION_CHECK(SQLITE_OK == sqlite3_prepare(sqldb, table_insert, -1, &pStmt, 0));
                 sqlite3_bind_text(pStmt, 1, key_code.data(), key_code.size(), SQLITE_STATIC);
                 sqlite3_bind_text(pStmt, 2, key_op.data(), key_op.size(), SQLITE_STATIC);
                 sqlite3_bind_text(pStmt, 3, device_type.data(), device_type.size(), SQLITE_STATIC);
                 sqlite3_bind_double(pStmt, 4, result);
-                CHECK(SQLITE_DONE == sqlite3_step(pStmt));
-                CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
+                NNFUSION_CHECK(SQLITE_DONE == sqlite3_step(pStmt));
+                NNFUSION_CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
                 return result;
             }
         };
@@ -244,7 +247,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             {
                 if (output_id >= raw_output.size() || input_id >= km->raw_input.size())
                 {
-                    LOG(WARNING) << "Invalid forward function.";
+                    NNFUSION_LOG(NNFUSION_WARNING) << "Invalid forward function.";
                     return *this;
                 }
                 km->raw_input[input_id] = raw_output[output_id];
@@ -257,14 +260,14 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
                 // Check if the buffer is same size;
                 if (input_id >= kctx->inputs.size() || size != buffsize)
                 {
-                    LOG(ERROR) << "Input data size and memory buffer size don't match:";
+                    NNFUSION_LOG(ERROR) << "Input data size and memory buffer size don't match:";
                     return false;
                 }
                 auto status = memcpy(unsafe_input(input_id), data, buffsize);
 
                 if (status == nullptr)
                 {
-                    LOG(ERROR) << "Memcpy failed.";
+                    NNFUSION_LOG(ERROR) << "Memcpy failed.";
                     return false;
                 }
                 return true;
@@ -276,14 +279,14 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
                 // Check if the buffer is same size;
                 if (output_id >= kctx->outputs.size() || size != buffsize)
                 {
-                    LOG(ERROR) << "Input data size and memory buffer size don't match:";
+                    NNFUSION_LOG(ERROR) << "Input data size and memory buffer size don't match:";
                     return false;
                 }
                 auto status = memcpy(unsafe_output(output_id), data, buffsize);
 
                 if (status == nullptr)
                 {
-                    LOG(ERROR) << "Memcpy failed.";
+                    NNFUSION_LOG(ERROR) << "Memcpy failed.";
                     return false;
                 }
                 return true;
@@ -296,14 +299,14 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
                 // Check if the buffer is same size;
                 if (input_id >= kctx->inputs.size() || sizeof(T) * data.size() != buffsize)
                 {
-                    LOG(ERROR) << "Input data size and memory buffer size don't match:";
+                    NNFUSION_LOG(ERROR) << "Input data size and memory buffer size don't match:";
                     return false;
                 }
                 auto status = memcpy(unsafe_input(input_id), (void*)data.data(), buffsize);
 
                 if (status == nullptr)
                 {
-                    LOG(ERROR) << "Memcpy failed.";
+                    NNFUSION_LOG(ERROR) << "Memcpy failed.";
                     return false;
                 }
 
@@ -315,7 +318,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             {
                 if (data.size() != kctx->inputs.size())
                 {
-                    LOG(ERROR) << "Data items missmatch.";
+                    NNFUSION_LOG(ERROR) << "Data items missmatch.";
                     return false;
                 }
                 for (int i = 0; i < data.size(); i++)
@@ -331,7 +334,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             {
                 if (output_id > raw_output.size())
                 {
-                    LOG(ERROR) << "Index exceeded the limit of vector.";
+                    NNFUSION_LOG(ERROR) << "Index exceeded the limit of vector.";
                     return vector<T>();
                 }
                 auto base = (T*)unsafe_output(output_id);
@@ -353,7 +356,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             {
                 if (n > raw_input.size())
                 {
-                    LOG(ERROR) << "Index exceeded the limit of vector.";
+                    NNFUSION_LOG(ERROR) << "Index exceeded the limit of vector.";
                     return nullptr;
                 }
                 return raw_input[n].get();
@@ -363,7 +366,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             {
                 if (n > raw_output.size())
                 {
-                    LOG(ERROR) << "Index exceeded the limit of vector.";
+                    NNFUSION_LOG(ERROR) << "Index exceeded the limit of vector.";
                     return nullptr;
                 }
                 return raw_output[n].get();
@@ -458,8 +461,9 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
                 }
                 else
                 {
-                    LOG(ERROR) << "No valid Profiling Context for this node : " << gnode->get_name()
-                               << " (op type : " << gnode->get_op_type() << ").";
+                    NNFUSION_LOG(ERROR)
+                        << "No valid Profiling Context for this node : " << gnode->get_name()
+                        << " (op type : " << gnode->get_op_type() << ").";
                     return nullptr;
                 }
             }
@@ -481,13 +485,13 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             // Get the result of last run;
             using Pointer = shared_ptr<IProfilingRuntime>;
             string get_device_name() { return nnfusion::get_device_str(_dt); };
-            DeviceType get_device_type() { return _dt; };
+            NNFusion_DeiveType get_device_type() { return _dt; };
             virtual string get_name() { return get_device_name(); };
         private:
             virtual double invoke(const ProfilingContext::Pointer& ke, void** input, void** output);
 
         protected:
-            DeviceType _dt;
+            NNFusion_DeiveType _dt;
             /*
             ///\todo To be provided in future, since we cannot use runtime api here.
             // We use Profiler class as Host here.

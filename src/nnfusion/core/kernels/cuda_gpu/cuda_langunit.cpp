@@ -187,7 +187,16 @@ LU_DEFINE(declaration::mad16,
 
 LU_DEFINE(
     declaration::load,
-    R"(__device__ __forceinline__ float  load(const float*  __restrict__ in, int i=0, bool b=true)
+    R"(__device__ __forceinline__ char  load(const char*  __restrict__ in, int i=0, bool b=true)
+{
+    char v = 0;
+    if (b)
+    {
+        v = __ldg(in + i);
+    }
+    return v;
+} 
+__device__ __forceinline__ float  load(const float*  __restrict__ in, int i=0, bool b=true)
 {
     float v = 0.0f;
     if (b)

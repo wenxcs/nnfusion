@@ -26,13 +26,13 @@ namespace nnfusion
                     const nnfusion::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
 
                     int axis = generic_op->localOpConfig.getRoot()["axis"];
-                    CHECK(axis == -1);
+                    NNFUSION_CHECK(axis == -1);
                     size_t groups = 1LU;
                     for (auto& it : input_shape_0)
                         groups *= it;
 
                     // TF reduce_all only support bool type
-                    CHECK(m_context->dtypes[0] == "bool");
+                    NNFUSION_CHECK(m_context->dtypes[0] == "bool");
                     LanguageUnit lu(get_function_name());
 
                     auto code = nnfusion::op::create_code_from_template(

@@ -50,13 +50,14 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             // do not allocate parameter tensors.
             if (gnode->get_op_ptr()->is_parameter())
                 continue;
-            auto emitted_kernel =
-                (*ins)["Kernel_Selection_Result"].as<pair<DeviceType, KernelEmitter::Pointer>>();
+            auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
+                                      .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
             KernelEmitter::Pointer kernel = nullptr;
 
             if (emitted_kernel.second->get_or_emit_source() == nullptr)
                 // Can assign tensor layout even kernel is not emitted.
-                LOG(WARNING) << "Kernel should be emitted before this pass:" << gnode->get_name();
+                NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
+                                               << gnode->get_name();
             kernel = emitted_kernel.second;
             // Tensors should be considered
             // Node: inputs outputs
@@ -69,7 +70,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
             if (kernel != nullptr)
             {
-                CHECK_NOT_NULLPTR(kernel->m_context);
+                NNFUSION_CHECK_NOT_NULLPTR(kernel->m_context);
                 // Allocate temp tensors
                 for (size_t i = 0; i < kernel->m_context->tensors.size(); i++)
                 {
@@ -95,7 +96,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
                             if (!is_same_dev(input, output))
                             {
-                                LOG(WARNING)
+                                NNFUSION_LOG(NNFUSION_WARNING)
                                     << "Tensor inplace oi pairs are not in same device, ignored.";
                                 continue;
                             }

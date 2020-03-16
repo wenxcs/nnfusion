@@ -29,7 +29,7 @@ bool LanguageUnit::require(const string required)
     //Todo(wenxh): check if the required string meets the grammar
     if (required.size() == 0)
     {
-        LOG(WARNING) << "Empty required string.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Empty required string.";
     }
     this->required.insert(required);
     return true;
@@ -37,7 +37,7 @@ bool LanguageUnit::require(const string required)
 
 bool LanguageUnit::require(shared_ptr<LanguageUnit> lu)
 {
-    CHECK_NOT_NULLPTR(lu);
+    NNFUSION_CHECK_NOT_NULLPTR(lu);
     if (!require(lu->get_symbol()))
         return false;
     this->local_symbol.emplace(lu->get_symbol(), lu);
@@ -46,7 +46,7 @@ bool LanguageUnit::require(shared_ptr<LanguageUnit> lu)
 
 bool LanguageUnit::remove(shared_ptr<LanguageUnit> lu)
 {
-    CHECK_NOT_NULLPTR(lu);
+    NNFUSION_CHECK_NOT_NULLPTR(lu);
     auto sym = lu->get_symbol();
     this->required.erase(sym);
     this->local_symbol.erase(sym);
@@ -74,9 +74,9 @@ string LanguageUnit::collect_code()
     LanguageUnit lu;
     for (auto& it : this->required)
     {
-        CHECK(this->local_symbol.find(it) != this->local_symbol.end())
+        NNFUSION_CHECK(this->local_symbol.find(it) != this->local_symbol.end())
             << "Cannot collect code from non-existed Language Unint.";
-        CHECK_NOT_NULLPTR(this->local_symbol[it])
+        NNFUSION_CHECK_NOT_NULLPTR(this->local_symbol[it])
             << "Cannot collect code from non-existed null pointer.";
         lu << this->local_symbol[it]->collect_code() << "\n";
     }
@@ -94,9 +94,9 @@ string LanguageUnit::collect_required_code()
     LanguageUnit lu;
     for (auto& it : this->required)
     {
-        CHECK(this->local_symbol.find(it) != this->local_symbol.end())
+        NNFUSION_CHECK(this->local_symbol.find(it) != this->local_symbol.end())
             << "Cannot collect code from non-existed Language Unint.";
-        CHECK_NOT_NULLPTR(this->local_symbol[it])
+        NNFUSION_CHECK_NOT_NULLPTR(this->local_symbol[it])
             << "Cannot collect code from non-existed null pointer.";
         lu << this->local_symbol[it]->collect_code() << "\n";
     }

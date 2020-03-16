@@ -96,6 +96,7 @@ option(NGRAPH_DEBUG_ENABLE "Enable output for NGRAPH_DEBUG statements" FALSE)
 option(NGRAPH_ONNX_IMPORT_ENABLE "Enable ONNX importer" FALSE)
 option(NGRAPH_CODE_COVERAGE_ENABLE "Enable code coverage data collection" FALSE)
 option(NNFUSION_TENSORFLOW_IMPORT_ENABLE "Enable Tensorflow importer for NNFusion" TRUE)
+option(NNFUSION_TORCHSCRIPT_IMPORT_ENABLE "Enable TorchScript importer for NNFusion" FALSE)
 option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object(Onnx support required Protobuf-3.5.1 from our thirdparty repo)" FALSE)
 option(NGRAPH_USE_PREBUILT_LLVM "Using Prebuilt LLVM" TRUE)
 

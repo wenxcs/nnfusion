@@ -15,9 +15,9 @@ namespace nnfusion
 {
     const int DEBUG = 0;
     const int INFO = 1;
-    const int WARNING = 2;
+    const int NNFUSION_WARNING = 2;
     const int ERROR = 3;
-    const int FATAL = 4;
+    const int NNFUSION_FATAL = 4;
 
     class ConstString
     {
@@ -87,8 +87,8 @@ namespace nnfusion
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
 
-#define _LOG_WARNING                                                                               \
-    nnfusion::LogHelper(nnfusion::WARNING,                                                         \
+#define _LOG_NNFUSION_WARNING                                                                      \
+    nnfusion::LogHelper(nnfusion::NNFUSION_WARNING,                                                \
                         nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
                         __LINE__,                                                                  \
                         nnfusion::default_logger_handler_func)                                     \
@@ -101,12 +101,12 @@ namespace nnfusion
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
 
-#define _LOG_FATAL                                                                                 \
-    nnfusion::LogHelper(nnfusion::FATAL,                                                           \
+#define _LOG_NNFUSION_FATAL                                                                        \
+    nnfusion::LogHelper(nnfusion::NNFUSION_FATAL,                                                  \
                         nnfusion::trim_file_name(PROJECT_ROOT_DIR, __FILE__),                      \
                         __LINE__,                                                                  \
                         nnfusion::default_logger_handler_func)                                     \
         .stream()
 
-#define LOG(level) _LOG_##level
+#define NNFUSION_LOG(level) _LOG_##level
 }

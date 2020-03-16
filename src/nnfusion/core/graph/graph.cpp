@@ -40,7 +40,7 @@ const std::string& Graph::get_name() const
 
 void Graph::set_name(const std::string& name)
 {
-    CHECK(m_name.empty()) << "Graph name may be set exactly once.";
+    NNFUSION_CHECK(m_name.empty()) << "Graph name may be set exactly once.";
 
     m_name = name;
 }
@@ -86,7 +86,7 @@ std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::
 void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
                                const GNodeIndexVector& input_gnodes)
 {
-    CHECK(gnode == nullptr) << "GNode can't be nullptr.";
+    NNFUSION_CHECK(gnode == nullptr) << "GNode can't be nullptr.";
 
     add_node(gnode);
 
@@ -100,8 +100,8 @@ void Graph::add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
 void Graph::remove_node(std::shared_ptr<GNode> node)
 {
     //TF_DCHECK_OK(IsValidNode(node)) << node->DebugString();
-    //DCHECK(!node->IsSource());
-    //DCHECK(!node->IsSink());
+    //NNFUSION_DCHECK(!node->IsSource());
+    //NNFUSION_DCHECK(!node->IsSink());
 
     // Remove any edges involving this node.
     while (!node->get_in_edges().empty())
@@ -225,8 +225,8 @@ const std::shared_ptr<nnfusion::graph::Edge>
     // control slots must only be linked to control slots
     if (x == kControlSlot || y == kControlSlot)
     {
-        CHECK(x == kControlSlot);
-        CHECK(y == kControlSlot);
+        NNFUSION_CHECK(x == kControlSlot);
+        NNFUSION_CHECK(y == kControlSlot);
     }
 
     std::shared_ptr<Edge> edge = nullptr;
@@ -295,7 +295,7 @@ void Graph::remove_edge(std::shared_ptr<Edge> edge)
     }
     edge->get_src()->remove_out_edge(edge);
     edge->get_dst()->remove_in_edge(edge);
-    CHECK(edge == m_edges[edge->m_id]);
+    NNFUSION_CHECK(edge == m_edges[edge->m_id]);
     //CHECK_GT(m_num_edges, 0);
 
     m_edges[edge->m_id] = nullptr;

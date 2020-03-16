@@ -47,15 +47,16 @@ TEST(nnfusion_engine_profiler, basic_utils)
             Profiler ref_prof(ReferenceRuntime::Runtime(), pctx);
             auto res = ref_prof.execute();
             EXPECT_TRUE(res);
-            LOG(INFO) << "Profiling of Pad operator using Reference: Avg Host duration(ms) "
-                      << pctx->result.get_host_avg();
+            NNFUSION_LOG(INFO)
+                << "Profiling of Pad operator using Reference: Avg Host duration(ms) "
+                << pctx->result.get_host_avg();
             pctx->reset();
 
             auto res_val = ref_prof.execute(inputs);
             EXPECT_EQ(res_val.size(), outputs.size());
             for (int i = 0; i < res_val.size(); i++)
                 EXPECT_TRUE(test::all_close_f(res_val[i], outputs[i]));
-            LOG(INFO) << "Profiling of Pad operator has correct result.";
+            NNFUSION_LOG(INFO) << "Profiling of Pad operator has correct result.";
         }
     }
     EXPECT_TRUE(has_valid_kernel);

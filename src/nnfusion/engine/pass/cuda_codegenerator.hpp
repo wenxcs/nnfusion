@@ -25,8 +25,8 @@ namespace nnfusion
         virtual std::vector<shared_ptr<const kernels::KernelRegistration>>
             find_backend_kernels(const std::string& op_name, const shared_ptr<KernelContext>& ctx);
         // virtual KernelEmitter::Pointer
-        //     match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res);
-        virtual DeviceType device_type() { return DeviceType::CUDA_GPU; }
+        //     match_kernel(std::vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>& res);
+        virtual NNFusion_DeiveType device_type() { return NNFusion_DeiveType::CUDA_GPU; }
     private:
         virtual bool projgen();
         virtual bool setpwd();

@@ -23,8 +23,8 @@ namespace nnfusion
                     if (!using_pass)
                         return true;
 
-                    LOG(INFO) << "Vector Dot Transpose Pass starts up for Graph: "
-                              << graph->get_name();
+                    NNFUSION_LOG(INFO) << "Vector Dot Transpose Pass starts up for Graph: "
+                                       << graph->get_name();
 
                     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
                     std::set<std::shared_ptr<GNode>> const_nodes = {};
@@ -37,7 +37,7 @@ namespace nnfusion
                         {
                             auto dot =
                                 std::dynamic_pointer_cast<nnfusion::op::Dot>(it->get_op_ptr());
-                            CHECK_NOT_NULLPTR(dot);
+                            NNFUSION_CHECK_NOT_NULLPTR(dot);
                             if (dot->get_transpose_B())
                                 continue;
                             std::vector<std::shared_ptr<nnfusion::graph::Edge>> in_edges;
@@ -49,7 +49,7 @@ namespace nnfusion
                                 }
                             }
 
-                            CHECK(in_edges.size() == 2);
+                            NNFUSION_CHECK(in_edges.size() == 2);
                             auto input_0_gnode = it->get_in_edge(0)->get_src();
                             auto input_1_gnode = it->get_in_edge(1)->get_src();
 
@@ -57,7 +57,7 @@ namespace nnfusion
                                 input_1_gnode->get_op_ptr());
                             if (!input_1_gnode->is_constant() || p_const->is_parameter())
                                 continue;
-                            CHECK(input_0_gnode->get_output_size() == 1)
+                            NNFUSION_CHECK(input_0_gnode->get_output_size() == 1)
                                 << input_0_gnode->get_op_type() << "must has exactly one output.";
                             auto input0_shape = input_0_gnode->get_output_shape(0);
                             if (input0_shape.size() != 2 || input0_shape[0] != 1)
@@ -75,7 +75,7 @@ namespace nnfusion
                                         ((int*)p_const->get_data_ptr())[i + j * new_shape[0]];
 
                             dot->get_transpose_B() = true;
-                            CHECK(output->get_shape().size() == 2);
+                            NNFUSION_CHECK(output->get_shape().size() == 2);
                             auto new_constant_op = std::make_shared<nnfusion::op::Constant>(
                                 output->get_element_type(), new_shape, values.data());
                             auto new_constant_gnode =
@@ -87,10 +87,10 @@ namespace nnfusion
                         }
                     }
 
-                    LOG(INFO) << "";
-                    LOG(INFO) << "Vector Dot Transpose Pass ends up for Graph: "
-                              << graph->get_name();
-                    LOG(INFO) << "";
+                    NNFUSION_LOG(INFO) << "";
+                    NNFUSION_LOG(INFO) << "Vector Dot Transpose Pass ends up for Graph: "
+                                       << graph->get_name();
+                    NNFUSION_LOG(INFO) << "";
                     return true;
                 }
             };

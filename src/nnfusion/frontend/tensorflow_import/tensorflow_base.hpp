@@ -9,6 +9,7 @@
 
 #include "nnfusion/core/graph/gnode.hpp"
 #include "nnfusion/core/graph/graph.hpp"
+#include "nnfusion/frontend/frontend_base.hpp"
 
 namespace nnfusion
 {
@@ -24,16 +25,6 @@ namespace nnfusion
                 std::function<NamedNodeVector(const tensorflow::NodeDef&,
                                               const NodeMap&,
                                               std::shared_ptr<nnfusion::graph::Graph> graph)>;
-
-            typedef signed char int8;
-            typedef short int16;
-            typedef int int32;
-            typedef long long int64;
-
-            typedef unsigned char uint8;
-            typedef unsigned short uint16;
-            typedef unsigned int uint32;
-            typedef unsigned long long uint64;
 
             inline void CopyToArray(const std::string& src, char* dst)
             {

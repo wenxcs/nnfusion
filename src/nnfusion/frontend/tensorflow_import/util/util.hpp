@@ -19,101 +19,13 @@
 
 #include "nnfusion/core/operators/op_define/constant.hpp"
 #include "nnfusion/core/operators/op_define/reshape.hpp"
+#include "nnfusion/frontend/util/evaluator.hpp"
 #include "nnfusion/util/util.hpp"
 
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 namespace nnfusion
 {
-    namespace
-    {
-        std::vector<std::vector<char>>
-            get_node_outputs(std::shared_ptr<GNode> gnode, int depth = 0, int arg_idx = 0)
-        {
-            LOG(INFO) << "[" << depth << ":" << arg_idx
-                      << "] Working for node: " << gnode->get_name();
-            static std::map<std::shared_ptr<GNode>, std::vector<std::vector<char>>> dict;
-            auto it = dict.find(gnode);
-            if (it != dict.end())
-                return it->second;
-            if (gnode->get_op_type() == "Constant")
-            {
-                auto const_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
-                std::vector<char> one(const_op->get_data_size());
-                memcpy(one.data(), const_op->get_data_ptr(), one.size());
-                for (int i = 0; i < std::min(10LU, one.size()); ++i)
-                    LOG(INFO) << one[i];
-                puts("...");
-                auto& it = dict[gnode];
-                it.push_back(std::move(one));
-                CHECK(one.size() == 0);
-                return it;
-            }
-            std::vector<std::vector<char>> _inputs, _outputs;
-            int arg_cnt = 0;
-            for (auto in_edge : gnode->get_in_edges())
-            {
-                auto input_node = in_edge->get_src();
-                auto outs = get_node_outputs(input_node, depth + 1, arg_cnt++);
-                for (auto& out : outs)
-                {
-                    _inputs.emplace_back(std::move(out));
-                    CHECK(out.size() == 0);
-                }
-            }
-
-            // Prepare runtime backend
-            nnfusion::profiler::IProfilingRuntime::Pointer runtime = nullptr;
-            std::vector<shared_ptr<const KernelRegistration>> kernel_regs;
-
-            runtime = nnfusion::profiler::RocmDefaultRuntime::Runtime();
-            if (runtime->check_env())
-            {
-                kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                    gnode->get_op_type(), ROCM_GPU, DT_FLOAT);
-                if (kernel_regs.size() == 0)
-                    kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                        gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
-            }
-            else
-            {
-                runtime = nnfusion::profiler::CudaDefaultRuntime::Runtime();
-                CHECK(runtime->check_env());
-                kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-                    gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
-            }
-
-            bool const_infer_success = false;
-            shared_ptr<KernelContext> ctx(new KernelContext(gnode));
-            for (auto& kernel_reg : kernel_regs)
-            {
-                auto kernel = kernel_reg->m_factory(ctx);
-                if (!kernel->get_or_emit_source())
-                    continue;
-
-                nnfusion::profiler::ProfilingContext::Pointer pctx =
-                    make_shared<nnfusion::profiler::ProfilingContext>(kernel);
-                pctx->warmup_times = 0;
-                pctx->host_times = 1;
-                pctx->runtime_times = 1;
-
-                nnfusion::profiler::Profiler prof(runtime, pctx);
-                if (!prof.mixed_type_execute(_inputs, _outputs))
-                    continue;
-                for (int j = 0; j < _outputs.size(); ++j)
-                    for (int i = 0; i < std::min(10LU, _outputs[j].size()); ++i)
-                        LOG(INFO) << _outputs[j][i];
-                puts("...");
-
-                LOG(INFO) << "  For node `" << gnode->get_name()
-                          << "`: get runtime output results of size " << _outputs.size();
-                const_infer_success = true;
-                break;
-            }
-            return dict[gnode] = _outputs;
-        }
-    } // namespace
-
     namespace frontend
     {
         namespace tensorflow_import
@@ -230,109 +142,6 @@ namespace nnfusion
             size_t GetNumElements(const nnfusion::Shape& shape,
                                   const nnfusion::AxisSet& reduction_axes);
 
-            template <typename T, typename VecT = T>
-            std::vector<VecT> GetValueFromConstOp(std::shared_ptr<op::Constant> ng_constant_op)
-            {
-                // the data type of nnfusion::Shape is size_t
-                std::vector<VecT> dst_values;
-                std::vector<T> values = ng_constant_op->get_vector<T>();
-                dst_values.resize(values.size());
-
-                for (size_t i = 0; i < values.size(); i++)
-                {
-                    dst_values[i] = static_cast<VecT>(values[i]);
-                }
-                return dst_values;
-            }
-
-            template <typename T, typename S>
-            void fill_values(std::vector<T>& dst, std::vector<char> src)
-            {
-                CHECK(src.size() % sizeof(S) == 0);
-                dst.resize(src.size() / sizeof(S));
-                S* raw_data = (S*)src.data();
-                for (int i = 0; i < dst.size(); ++i)
-                    dst[i] = raw_data[i];
-            }
-
-            template <typename T>
-            bool GetValueFromNGraphOp(std::shared_ptr<GNode> gnode, std::vector<T>* values)
-            {
-                if (gnode->get_op_type() != "Constant")
-                {
-                    auto outs = get_node_outputs(gnode);
-                    CHECK(outs.size() == 1);
-                    auto out_type = gnode->get_output_element_type(0);
-                    LOG(INFO) << "Asking for Constant value from op-type: " << gnode->get_op_type();
-                    LOG(INFO) << "Type of Output Value is " << out_type.c_type_string();
-
-                    if (out_type == nnfusion::element::f32)
-                        fill_values<T, float>(*values, outs[0]);
-                    else if (out_type == nnfusion::element::f64)
-                        fill_values<T, double>(*values, outs[0]);
-                    else if (out_type == nnfusion::element::i32)
-                        fill_values<T, int>(*values, outs[0]);
-                    else if (out_type == nnfusion::element::u32)
-                        fill_values<T, unsigned>(*values, outs[0]);
-                    else
-                    {
-                        CHECK_FAIL() << "Unsupport op-type conversion, op-type = " << out_type;
-                    }
-                    return true;
-                }
-                auto ng_constant_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
-                auto ng_element_type = gnode->get_output_element_type(0);
-                if (ng_element_type == nnfusion::element::f32)
-                {
-                    *values = GetValueFromConstOp<float, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::f64)
-                {
-                    *values = GetValueFromConstOp<double, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::i8)
-                {
-                    *values = GetValueFromConstOp<int8, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::i16)
-                {
-                    *values = GetValueFromConstOp<int16, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::i32)
-                {
-                    *values = GetValueFromConstOp<int32, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::i64)
-                {
-                    *values = GetValueFromConstOp<int64, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::u8)
-                {
-                    *values = GetValueFromConstOp<uint8, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::u16)
-                {
-                    *values = GetValueFromConstOp<uint16, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::u32)
-                {
-                    *values = GetValueFromConstOp<uint32, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::u64)
-                {
-                    *values = GetValueFromConstOp<uint64, T>(ng_constant_op);
-                }
-                else if (ng_element_type == nnfusion::element::boolean)
-                {
-                    *values = GetValueFromConstOp<bool, T>(ng_constant_op);
-                }
-                else
-                {
-                    return false;
-                }
-                return true;
-            }
-
 // The ... is to allow the caller to inject some value validation code.  Use
 // just ; if no additional validation code is needed.
 #define DEFINE_GET_ATTR(TYPE, FIELD, ATTR_TYPE, APPEND_OP, CAST, ...)                              \
@@ -387,7 +196,7 @@ namespace nnfusion
                               "Number of dimensions cannot exceed 4");
                 static_assert(a != b && a != c && a != d && b != c && b != d && c != d,
                               "Dimensions indices cannot be equal");
-                CHECK(old_gnode->get_output_size() == 1);
+                NNFUSION_CHECK(old_gnode->get_output_size() == 1);
                 auto& s = old_gnode->get_output_shape(0);
                 nnfusion::Shape reshaped_shape{s[a], s[b], s[c], s[d]};
 
@@ -549,8 +358,9 @@ namespace nnfusion
                 {
                     if (i < (int)-rank || i >= (int)rank)
                     {
-                        LOG(ERROR) << "Axis Dimension is out of range. Got " << i
-                                   << ", should be in range [-" << rank << ", " << rank << ")";
+                        NNFUSION_LOG(ERROR) << "Axis Dimension is out of range. Got " << i
+                                            << ", should be in range [-" << rank << ", " << rank
+                                            << ")";
                         return false;
                     }
                 }

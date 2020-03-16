@@ -26,17 +26,17 @@ namespace nnfusion
                     const nnfusion::Shape& input_shape_0 = m_context->inputs[0]->get_shape();
 
                     std::vector<int> axes_order = generic_op->localOpConfig.getRoot()["axes_order"];
-                    CHECK(axes_order.size() == input_shape_0.size());
+                    NNFUSION_CHECK(axes_order.size() == input_shape_0.size());
                     size_t mul_val = 0, mul_inp = 0;
                     for (int i = 0; i < axes_order.size(); ++i)
                     {
-                        CHECK(axes_order[i] >= 0 && axes_order[i] < axes_order.size());
+                        NNFUSION_CHECK(axes_order[i] >= 0 && axes_order[i] < axes_order.size());
                         mul_val *= input_shape_0[axes_order[i]];
                         mul_inp *= input_shape_0[i];
                     }
-                    CHECK(mul_val == mul_inp);
+                    NNFUSION_CHECK(mul_val == mul_inp);
 
-                    CHECK(axes_order.size() <= 4);
+                    NNFUSION_CHECK(axes_order.size() <= 4);
                     std::vector<int> st_in(1, 1), st_out(4, -1), reorder(axes_order.size());
                     for (int i = 0; i < axes_order.size(); ++i)
                         reorder[axes_order[i]] = i;

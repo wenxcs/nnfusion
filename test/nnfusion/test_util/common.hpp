@@ -55,13 +55,13 @@ namespace nnfusion
     namespace test
     {
         bool check_kernel(shared_ptr<GNode> gnode,
-                          DeviceType dev_t,
+                          NNFusion_DeiveType dev_t,
                           const vector<float>& IN,
                           const vector<float>& OUT);
 
         template <typename T = float>
         bool check_kernel(shared_ptr<GNode> gnode,
-                          DeviceType dev_t,
+                          NNFusion_DeiveType dev_t,
                           const vector<T>& IN,
                           const vector<T>& OUT)
         {
@@ -93,32 +93,33 @@ namespace nnfusion
                     auto res = prof.unsafe_execute<T>((void*)IN.data());
                     if (res.empty())
                     {
-                        LOG(INFO) << "Kernel empty result.";
+                        NNFUSION_LOG(INFO) << "Kernel empty result.";
                         return false;
                     }
                     auto& res_first = res[0];
 
                     if (res_first.size() != OUT.size())
                     {
-                        LOG(INFO) << "Kernel result size error:" << res_first.size() << " vs. "
-                                  << OUT.size();
+                        NNFUSION_LOG(INFO) << "Kernel result size error:" << res_first.size()
+                                           << " vs. " << OUT.size();
                         return false;
                     }
 
                     if (!all_close<T>(res_first, OUT))
                         return false;
 
-                    LOG(INFO) << "Kernel with tag '" << kernel_reg->m_tag << "' pass unit-test.";
+                    NNFUSION_LOG(INFO) << "Kernel with tag '" << kernel_reg->m_tag
+                                       << "' pass unit-test.";
                 }
                 else
                 {
-                    LOG(WARNING) << "Kernel with tag '" << kernel_reg->m_tag
-                                 << "' is not available.";
+                    NNFUSION_LOG(NNFUSION_WARNING) << "Kernel with tag '" << kernel_reg->m_tag
+                                                   << "' is not available.";
                 }
             }
             if (!kernel_found)
             {
-                LOG(ERROR) << "There is no available kernel found!";
+                NNFUSION_LOG(ERROR) << "There is no available kernel found!";
             }
             return kernel_found;
         }

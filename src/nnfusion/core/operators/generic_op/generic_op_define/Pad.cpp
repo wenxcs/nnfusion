@@ -5,9 +5,9 @@
 REGISTER_OP(Pad)
     .infershape(nnfusion::op::infershape::unimplemented_and_not_used)
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
-        CHECK(2 == gnode->get_input_size());
+        NNFUSION_CHECK(2 == gnode->get_input_size());
         auto op = static_pointer_cast<nnfusion::op::Pad>(gnode->get_op_ptr());
-        CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
+        NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
 
         std::shared_ptr<nnfusion::graph::GNode> pad_value_node = nullptr;
         for (const auto& in_edge : gnode->get_in_edges())
@@ -24,7 +24,7 @@ REGISTER_OP(Pad)
                 std::dynamic_pointer_cast<nnfusion::op::Constant>(pad_value_node->get_op_ptr()))
         {
             auto constant_values = constant_op->get_value_strings();
-            CHECK(1 == constant_values.size());
+            NNFUSION_CHECK(1 == constant_values.size());
 
             expression = op::create_code_from_template(
                 R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.nn.pad(args("input0"), pad_before=@pad_below@, pad_after=@pad_above@, pad_value=@pad_value@)); )",

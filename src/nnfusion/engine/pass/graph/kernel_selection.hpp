@@ -17,9 +17,9 @@ namespace nnfusion
             public:
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
 
-                pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+                pair<NNFusion_DeiveType, nnfusion::kernels::KernelEmitter::Pointer>
                     profiling_best(shared_ptr<GNode> gnode,
-                                   DeviceType devtype,
+                                   NNFusion_DeiveType devtype,
                                    nnfusion::profiler::IProfilingRuntime::Pointer runtime);
             };
 
@@ -27,9 +27,9 @@ namespace nnfusion
             {
             public:
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
-                pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
-                    pick_first(shared_ptr<GNode> gnode, DeviceType devtype);
-                pair<DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+                pair<NNFusion_DeiveType, nnfusion::kernels::KernelEmitter::Pointer>
+                    pick_first(shared_ptr<GNode> gnode, NNFusion_DeiveType devtype);
+                pair<NNFusion_DeiveType, nnfusion::kernels::KernelEmitter::Pointer>
                     pick_first_rocm(shared_ptr<GNode> gnode);
             };
         }

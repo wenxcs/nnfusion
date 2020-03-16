@@ -221,7 +221,7 @@ double ReferenceRuntime::invoke(const ProfilingContext::Pointer& ke, void** inpu
         if (kernel->get_or_emit_source())
         {
             has_valid_kernel = true;
-            LOG(INFO) << "Replacing with reference kenel.";
+            NNFUSION_LOG(INFO) << "Replacing with reference kenel.";
             // Replacing the kernel;
             ke->kernel = kernel;
         }

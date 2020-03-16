@@ -23,7 +23,7 @@ namespace nnfusion
             const nnfusion::element::Type& get_element_type() const { return m_element_type; }
             const nnfusion::Shape& get_shape() const
             {
-                CHECK(m_partial_shape.is_static())
+                NNFUSION_CHECK(m_partial_shape.is_static())
                     << "get_shape was called on a descriptor::Tensor with dynamic shape";
                 return m_shape;
             };

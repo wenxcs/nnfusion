@@ -24,58 +24,60 @@ void ReduceWindow::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     auto input_reductee_shape = input_reductee->get_shape();
     auto input_init_shape = input_init->get_shape();
 
-    CHECK(input_init->get_shape().size() == 0) << "Argument for initial value is not a scalar";
+    NNFUSION_CHECK(input_init->get_shape().size() == 0)
+        << "Argument for initial value is not a scalar";
 
-    CHECK(input_init->get_element_type() == input_reductee->get_element_type())
+    NNFUSION_CHECK(input_init->get_element_type() == input_reductee->get_element_type())
         << "Element types for reductee and initial values do not match";
 
-    CHECK(input_reductee_shape.size() == m_window_shape.size())
+    NNFUSION_CHECK(input_reductee_shape.size() == m_window_shape.size())
         << "Window shape has different rank from input tensor";
 
-    CHECK(input_reductee_shape.size() == m_window_movement_strides.size())
+    NNFUSION_CHECK(input_reductee_shape.size() == m_window_movement_strides.size())
         << "Window movement strides have different rank from input tensor";
 
     for (size_t s : m_window_shape)
     {
-        CHECK(s != 0) << "Window shape has a zero-length axis";
+        NNFUSION_CHECK(s != 0) << "Window shape has a zero-length axis";
     }
 
     for (size_t s : m_window_movement_strides)
     {
-        CHECK(s != 0) << "Window movement stride for some axis is zero";
+        NNFUSION_CHECK(s != 0) << "Window movement stride for some axis is zero";
     }
 
     for (size_t i = 0; i < input_reductee_shape.size(); i++)
     {
-        CHECK(m_window_shape[i] <= input_reductee_shape[i])
+        NNFUSION_CHECK(m_window_shape[i] <= input_reductee_shape[i])
             << "Reduction window is bigger than input";
     }
 
     auto g_params = m_reduction_graph->get_parameters();
     auto arg_reductee = gnode->get_in_edge(0)->get_src();
     auto arg_init = gnode->get_in_edge(1)->get_src();
-    CHECK(g_params.size() == 2) << "Reduction graph has wrong number of parameters (should be two)";
+    NNFUSION_CHECK(g_params.size() == 2)
+        << "Reduction graph has wrong number of parameters (should be two)";
 
-    CHECK(g_params.at(0)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(g_params.at(0)->get_element_type() == arg_init->get_element_type())
         << "Parameter 0 of reduction graph has wrong element type";
 
-    CHECK(g_params.at(1)->get_element_type() == arg_init->get_element_type())
+    NNFUSION_CHECK(g_params.at(1)->get_element_type() == arg_init->get_element_type())
         << "Parameter 1 of reduction graph has wrong element type";
 
-    CHECK(g_params.at(0)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(g_params.at(0)->get_shape() == nnfusion::Shape{})
         << "Parameter 0 of reduction graph is not a scalar";
 
-    CHECK(g_params.at(1)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(g_params.at(1)->get_shape() == nnfusion::Shape{})
         << "Parameter 1 of reduction graph is not a scalar";
 
-    CHECK(m_reduction_graph->get_output_size() <= 1)
+    NNFUSION_CHECK(m_reduction_graph->get_output_size() <= 1)
         << "Single-output reduction graph was expected";
 
-    CHECK(m_reduction_graph->get_outputs().at(0)->get_element_type() ==
-          arg_init->get_element_type())
+    NNFUSION_CHECK(m_reduction_graph->get_outputs().at(0)->get_element_type() ==
+                   arg_init->get_element_type())
         << "Return element type from reduction graph does not match expected";
 
-    CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
+    NNFUSION_CHECK(m_reduction_graph->get_outputs().at(0)->get_shape() == nnfusion::Shape{})
         << "Return shape from reduction graph is not a scalar";
 
     nnfusion::Shape result_shape;

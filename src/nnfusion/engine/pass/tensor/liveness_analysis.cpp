@@ -34,8 +34,8 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             auto gnode = ins->getGNode();
             if (!(*gnode)["Async_info"].is_valid())
             {
-                CHECK_FAIL() << "Async info should be assigned before this pass："
-                             << gnode->get_name();
+                NNFUSION_CHECK_FAIL() << "Async info should be assigned before this pass："
+                                      << gnode->get_name();
             }
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             auto stream = async_info.execution_stream;
@@ -45,11 +45,11 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 !gnode->get_op_ptr()->is_constant())
             {
                 auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
-                                          .as<pair<DeviceType, KernelEmitter::Pointer>>();
+                                          .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
                 if (emitted_kernel.second->get_or_emit_source() == nullptr)
                 {
-                    CHECK_FAIL() << "Kernel should be emitted before this pass:"
-                                 << gnode->get_name();
+                    NNFUSION_CHECK_FAIL() << "Kernel should be emitted before this pass:"
+                                          << gnode->get_name();
                 }
                 op_kernels[gnode] = emitted_kernel.second;
                 // add cross_stream tensor

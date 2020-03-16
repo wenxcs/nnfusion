@@ -21,7 +21,7 @@ namespace nnfusion
                     : AntaresCpuKernelEmitter(ctx)
                 {
                     auto op = static_pointer_cast<T>(ctx->gnode->get_op_ptr());
-                    CHECK_NOT_NULLPTR(op) << "Node type is not expected.";
+                    NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not expected.";
                     nnfusion::AxisSet reduce_axis = op->get_reduction_axes();
 
                     nnfusion::Shape input_shape = ctx->inputs[0]->get_shape();

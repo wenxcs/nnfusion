@@ -4,15 +4,15 @@
 
 REGISTER_OP(Tile)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(gnode->get_input_size() == 2);
+        NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto& input_shape_0 = gnode->get_input_shape(0);
         auto ng_op = gnode->get_in_edge(1)->get_src();
-        CHECK(ng_op->get_op_type() == "Constant")
+        NNFUSION_CHECK(ng_op->get_op_type() == "Constant")
             << "We only accept the Tile input \"multiples\" as Constant.";
         ///\todo multiples must be int32 or int64, we use int32 in this case, currently we ignore int64
         auto multiples = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())
                              ->get_vector<int64_t>();
-        CHECK(input_shape_0.size() == multiples.size());
+        NNFUSION_CHECK(input_shape_0.size() == multiples.size());
         nnfusion::Shape output_shape_0(multiples.size());
         for (int i = 0; i < multiples.size(); i++)
             output_shape_0[i] = multiples[i] * input_shape_0[i];
@@ -23,7 +23,7 @@ REGISTER_OP(Tile)
         nnfusion::Shape output_shape = gnode->get_output_shape(0);
 
         auto ng_op = gnode->get_in_edge(1)->get_src();
-        CHECK(ng_op->get_op_type() == "Constant")
+        NNFUSION_CHECK(ng_op->get_op_type() == "Constant")
             << "We only accept the Tile input \"multiples\" as Constant.";
         ///\todo multiples must be int32 or int64, we use int32 in this case, currently we ignore int64
         auto multiples = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())

@@ -44,9 +44,9 @@ LogHelper::LogHelper(int level,
     {
     case DEBUG: m_stream << "[DEBUG] "; break;
     case INFO: m_stream << "[INFO] "; break;
-    case WARNING: m_stream << "[WARNING] "; break;
+    case NNFUSION_WARNING: m_stream << "[WARNING] "; break;
     case ERROR: m_stream << "[ERROR] "; break;
-    case FATAL: m_stream << "[FATAL] "; break;
+    case NNFUSION_FATAL: m_stream << "[FATAL] "; break;
     }
 
     time_t tt = chrono::system_clock::to_time_t(chrono::system_clock::now());

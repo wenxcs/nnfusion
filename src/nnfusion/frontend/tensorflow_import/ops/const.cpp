@@ -15,13 +15,12 @@ namespace nnfusion
                                      tensorflow::TensorShapeProto* const_tensor_shape,
                                      std::vector<VecT>* values)
             {
-                CHECK(node.op() == "Const");
-
-                if (node.attr().at("dtype").type() != DataTypeToEnum<T>::value)
+                NNFUSION_CHECK(node.op() == "Const");
+                auto dt = node.attr().at("dtype").type();
+                if (dt != DataTypeToEnum<T>::value)
                 {
                     std::stringstream ss;
-                    ss << "Invalid data type defined for Const. Defined: "
-                       << node.attr().at("dtype").type();
+                    ss << "Invalid data type defined for Const. Defined: " << dt;
                     return false;
                 }
 
@@ -46,7 +45,7 @@ namespace nnfusion
                 // }
 
                 const auto tensor_content_size = tensor.tensor_content().size();
-                CHECK(0 == tensor_content_size % sizeof(VecT));
+                NNFUSION_CHECK(0 == tensor_content_size % sizeof(VecT));
 
                 // If tensor_content_size is zero, we'll have to take the values from
                 // int_val, float_val, etc.
@@ -68,7 +67,6 @@ namespace nnfusion
                     for (size_t i = 0; i < n_elements; i++)
                     {
                         auto& tensor = node.attr().at("value").tensor();
-                        auto dt = node.attr().at("dtype").type();
                         switch (dt)
                         {
                         // TODO(amprocte/NGRAPH-2502): there are more element types to support
@@ -93,11 +91,16 @@ namespace nnfusion
                             (*values)[i] = (tensor.double_val_size() == 1 ? tensor.double_val()[0]
                                                                           : tensor.double_val()[i]);
                             break;
-                        // TODO: data type string unsupport now, bert model has string type const op used for assert
                         case tensorflow::DT_STRING:
-                            (*values)[i] =
-                                0; //(tensor.string_val_size() == 1 ? tensor.string_val()[0]
-                                   //   : tensor.string_val()[i]);
+                            if (i > 0)
+                            {
+                                // TODO: only support one dimension for string type now
+                                return false;
+                            }
+                            values->resize(tensor.string_val()[0].length());
+                            std::copy(tensor.string_val()[0].begin(),
+                                      tensor.string_val()[0].end(),
+                                      values->begin());
                             break;
                         default:
                             return false;
@@ -129,13 +132,22 @@ namespace nnfusion
                 tensorflow::TensorShapeProto shape_proto;
 
                 auto ret = ValuesFromConstNode<T, VecT>(op, &shape_proto, &const_values);
-                CHECK(ret);
+                NNFUSION_CHECK(ret);
 
                 nnfusion::Shape ng_shape;
                 ret = TFTensorShapeToNGraphShape(shape_proto, &ng_shape);
-                CHECK(ret);
-
-                *ng_node = std::make_shared<nnfusion::op::Constant>(et, ng_shape, const_values);
+                NNFUSION_CHECK(ret);
+                if (et == nnfusion::element::character)
+                {
+                    NNFUSION_CHECK(ng_shape.size() == 1)
+                        << "For string type constant op, only one dimension support!";
+                    *ng_node = std::make_shared<nnfusion::op::Constant>(
+                        et, nnfusion::Shape{const_values.size()}, const_values);
+                }
+                else
+                {
+                    *ng_node = std::make_shared<nnfusion::op::Constant>(et, ng_shape, const_values);
+                }
 
                 return true;
             }
@@ -181,7 +193,8 @@ namespace nnfusion
                         {tensorflow::DataType::DT_BOOL,
                          std::make_pair(MakeConstOp<bool, char>, nnfusion::element::boolean)},
                         {tensorflow::DataType::DT_STRING,
-                         std::make_pair(MakeConstOp<std::string, char>, nnfusion::element::i32)}};
+                         std::make_pair(MakeConstOp<std::string, char>,
+                                        nnfusion::element::character)}};
                 // TODO: data type string unsupport now, bert model has string type const op used for assert
 
                 return the_map;
@@ -193,7 +206,7 @@ namespace nnfusion
             {
                 tensorflow::DataType dtype;
                 auto result = GetNodeAttr(node.attr(), "dtype", dtype);
-                CHECK(result == true);
+                NNFUSION_CHECK(result == true);
 
                 std::shared_ptr<nnfusion::op::Op> ng_node;
 
@@ -201,11 +214,11 @@ namespace nnfusion
                 {
                     const auto& func_param = TF_NGRAPH_CONST_MAP().at(dtype);
                     result = func_param.first(node, func_param.second, &ng_node);
-                    CHECK(result);
+                    NNFUSION_CHECK(result);
                 }
                 catch (const std::out_of_range&)
                 {
-                    CHECK_FAIL_WITH_EXCEPTION(errors::NotSupported)
+                    NNFUSION_CHECK_FAIL_WITH_EXCEPTION(errors::NotSupported)
                         << "Unsupported TensorFlow data type: " << tensorflow::DataType_Name(dtype);
                 }
                 ng_node->set_name(node.name());

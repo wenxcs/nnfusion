@@ -44,12 +44,13 @@ BasicBlock::Pointer Program::get_entry()
         if (i->get_prior() == nullptr)
         {
             if (entry != nullptr)
-                LOG(WARNING) << "Several entry basic blocks in Program: We only support fist one.";
+                NNFUSION_LOG(NNFUSION_WARNING)
+                    << "Several entry basic blocks in Program: We only support fist one.";
             entry = i;
         }
     }
     if (entry == nullptr)
-        LOG(WARNING) << "Program has no entry basic block.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Program has no entry basic block.";
     return entry;
 }
 
@@ -62,11 +63,12 @@ BasicBlock::Pointer Program::get_exit()
         if (i->get_next() == nullptr)
         {
             if (exit != nullptr)
-                LOG(WARNING) << "Several exit basic blocks in Program: We only support fist one.";
+                NNFUSION_LOG(NNFUSION_WARNING)
+                    << "Several exit basic blocks in Program: We only support fist one.";
             exit = i;
         }
     }
     if (exit == nullptr)
-        LOG(WARNING) << "Program has no exit basic block.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Program has no exit basic block.";
     return exit;
 }

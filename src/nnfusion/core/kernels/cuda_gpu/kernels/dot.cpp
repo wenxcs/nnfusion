@@ -66,9 +66,10 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg0", "arg1"};
                     std::vector<nnfusion::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
-                                 << " respectively, at Node " << m_context->gnode->get_name()
-                                 << ", do not match for dot op";
+                    NNFUSION_CHECK_FAIL() << nnfusion::join(arg_vec) << " with "
+                                          << nnfusion::join(shape_vec) << " respectively, at Node "
+                                          << m_context->gnode->get_name()
+                                          << ", do not match for dot op";
                 }
             }
 
@@ -141,9 +142,10 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg0", "arg1"};
                     std::vector<nnfusion::Shape> shape_vec{arg0_shape, arg1_shape};
 
-                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
-                                 << " respectively, at Node " << m_context->gnode->get_name()
-                                 << ", do not match for dot op";
+                    NNFUSION_CHECK_FAIL() << nnfusion::join(arg_vec) << " with "
+                                          << nnfusion::join(shape_vec) << " respectively, at Node "
+                                          << m_context->gnode->get_name()
+                                          << ", do not match for dot op";
                 }
             }
             // check and calculate m for arg0 and out
@@ -157,9 +159,10 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg0", "output"};
                     std::vector<nnfusion::Shape> shape_vec{arg0_shape, out_shape};
 
-                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
-                                 << " respectively, at Node " << m_context->gnode->get_name()
-                                 << ", do not match for dot op";
+                    NNFUSION_CHECK_FAIL() << nnfusion::join(arg_vec) << " with "
+                                          << nnfusion::join(shape_vec) << " respectively, at Node "
+                                          << m_context->gnode->get_name()
+                                          << ", do not match for dot op";
                 }
             }
             // check and calculate n for arg1 and out
@@ -173,9 +176,10 @@ LanguageUnit_p cuda::Dot::emit_function_body()
                     std::vector<std::string> arg_vec{"arg1", "output"};
                     std::vector<nnfusion::Shape> shape_vec{arg1_shape, out_shape};
 
-                    CHECK_FAIL() << nnfusion::join(arg_vec) << " with " << nnfusion::join(shape_vec)
-                                 << " respectively, at Node " << m_context->gnode->get_name()
-                                 << ", do not match for dot op";
+                    NNFUSION_CHECK_FAIL() << nnfusion::join(arg_vec) << " with "
+                                          << nnfusion::join(shape_vec) << " respectively, at Node "
+                                          << m_context->gnode->get_name()
+                                          << ", do not match for dot op";
                 }
             }
 

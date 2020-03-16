@@ -8,7 +8,12 @@ if (NNFUSION_ENABLE)
     file(GLOB nnfusion_inventory_files nnfusion/inventory/*.cpp)
     file(GLOB nnfusion_kernels_files nnfusion/kernels/*.cpp)
     file(GLOB nnfusion_testutil_files nnfusion/test_util/*.cpp)
-    file(GLOB nnfusion_frontend_files nnfusion/frontend/*.cpp)
+    if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
+        list(APPEND nnfusion_frontend_files nnfusion/frontend/tensorflow_import.cpp)
+    endif()
+    if (NNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+        list(APPEND nnfusion_frontend_files nnfusion/frontend/torchscript_import.cpp)
+    endif()
     list(APPEND SRC ${nnfusion_core_files}
         ${nnfusion_engine_files}
         ${nnfusion_inventory_files}
@@ -46,6 +51,11 @@ target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     target_include_directories(unit-test PRIVATE ${TFPROTO_INCLUDE})
     target_link_libraries(unit-test PRIVATE tensorflow_import_interface tensorflow_import tensorflow_proto)
+endif()
+
+if (NNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+    target_include_directories(unit-test PRIVATE ${TORCH_INCLUDE_DIRS})
+    target_link_libraries(unit-test PRIVATE torchscript_import_interface torchscript_import frontend_util)
 endif()
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)

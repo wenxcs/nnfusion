@@ -4,7 +4,10 @@ DECLARE_string(fdefault_device);
 
 using namespace nnfusion::async;
 
-Stream::Stream(size_t stream_id, DeviceType device_type, size_t device_id, const string& symbol)
+Stream::Stream(size_t stream_id,
+               NNFusion_DeiveType device_type,
+               size_t device_id,
+               const string& symbol)
     : m_stream_id(stream_id)
     , m_device_type(device_type)
     , m_device_id(device_id)
@@ -28,7 +31,7 @@ Event::Event(size_t event_id,
 {
 }
 
-AsyncManager::AsyncManager(DeviceType device_type)
+AsyncManager::AsyncManager(NNFusion_DeiveType device_type)
     : m_device_type(device_type)
     , m_num_non_default_stream{0}
 {
@@ -175,13 +178,13 @@ LanguageUnit_p CUDAAsyncManager::emit_event_init()
 LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
 {
     // \todo: we only support stream synchronization on the same device.
-    CHECK(stream->get_device_name() == event->get_device_name())
+    NNFUSION_CHECK(stream->get_device_name() == event->get_device_name())
         << "Unsupported event wait operation: synchronize streams on two different devices";
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
     if (!event->is_recorded())
         throw nnfusion::errors::RuntimeError("CUDA event error.");
-    //LOG(WARNING) << "CUDA event error.";
+    //NNFUSION_CHECK(NNFUSION_WARNING) << "CUDA event error.";
     if (stream->is_default_stream())
         lu << "cudaStreamWaitEvent(0, " << event->get_name() << ", 0 );\n";
     else
@@ -206,7 +209,7 @@ LanguageUnit_p CPUAsyncManager::emit_event_decl()
 LanguageUnit_p CPUAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
 {
     // \todo: we only support stream synchronization on the same device.
-    CHECK(stream->get_device_name() == event->get_device_name())
+    NNFUSION_CHECK(stream->get_device_name() == event->get_device_name())
         << "Unsupported event wait operation: synchronize streams on two different devices";
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
@@ -283,7 +286,7 @@ LanguageUnit_p CPUAsyncManager::emit_event_reset()
 
 std::unordered_map<std::string, AsyncManager*> AsyncManagerFactory::m_async_manager;
 
-AsyncManager* AsyncManagerFactory::get_async_manager(DeviceType device_type)
+AsyncManager* AsyncManagerFactory::get_async_manager(NNFusion_DeiveType device_type)
 {
     std::string dt_name = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type];
     if (m_async_manager.find(dt_name) != m_async_manager.end())

@@ -92,7 +92,7 @@ namespace
                 return std::pair<uint64_t, uint64_t>{m, p};
             }
         }
-        CHECK_FAIL() << "Magic for unsigned integer division could not be found.";
+        NNFUSION_CHECK_FAIL() << "Magic for unsigned integer division could not be found.";
     }
 
     // Magic numbers and shift amounts for integer division

@@ -49,7 +49,7 @@ namespace nnfusion
             {
                 if (std::abs(a[i] - b[i]) > atol + rtol * std::abs(b[i]))
                 {
-                    LOG(INFO) << a[i] << " is not close to " << b[i] << " at index " << i;
+                    NNFUSION_LOG(INFO) << a[i] << " is not close to " << b[i] << " at index " << i;
                     rc = false;
                 }
             }

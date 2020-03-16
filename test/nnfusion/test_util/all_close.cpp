@@ -52,7 +52,7 @@ namespace nnfusion
                 bool is_close_f = close_f(a[i], b[i], mantissa_bits, tolerance_bits);
                 if (!is_close_f)
                 {
-                    LOG(INFO) << a[i] << " is not close to " << b[i];
+                    NNFUSION_LOG(INFO) << a[i] << " is not close to " << b[i];
                     rc = false;
                 }
             }

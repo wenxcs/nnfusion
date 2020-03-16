@@ -51,7 +51,7 @@ namespace nnfusion
                     }
                     else
                     {
-                        CHECK_FAIL() << "incorrect kernel for reduce";
+                        NNFUSION_CHECK_FAIL() << "incorrect kernel for reduce";
                     }
 
                     reduce_rank = reduce_axis.size();
@@ -433,7 +433,7 @@ if (thread_idx == 0) output0[block_idx] = val;
                             get_math_kernel(reduce_op,
                                             CudaOpMap<T>::math_kernel,
                                             vector<string>{input_type, input_type, output_type});
-                        CHECK_NOT_NULLPTR(math_kernel);
+                        NNFUSION_CHECK_NOT_NULLPTR(math_kernel);
                         _lu->require(math_kernel);
                     }
 
@@ -465,7 +465,7 @@ if (thread_idx == 0) output0[block_idx] = val;
                         const uint32_t unroll_size = 8;
                         if (nthreads > nthreads_acc * (unroll_size + 1))
                         {
-                            CHECK_FAIL() << "No support for GPU memory allocation.";
+                            NNFUSION_CHECK_FAIL() << "No support for GPU memory allocation.";
                         }
                         else
                         {
@@ -531,7 +531,7 @@ if (thread_idx == 0) output0[block_idx] = val;
                     }
                     else
                     {
-                        CHECK_FAIL() << "incorrect kernel for reduce";
+                        NNFUSION_CHECK_FAIL() << "incorrect kernel for reduce";
                     }
 
                     reduce_rank = reduce_axis.size();

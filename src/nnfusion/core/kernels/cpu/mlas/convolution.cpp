@@ -43,7 +43,7 @@ LanguageUnit_p cpu::ConvolutionMlas::emit_function_body()
     }
     if (is_deconvolution)
     {
-        LOG(WARNING) << "Deconvolution is not supported by now.";
+        NNFUSION_LOG(NNFUSION_WARNING) << "Deconvolution is not supported by now.";
         return nullptr;
     }
 

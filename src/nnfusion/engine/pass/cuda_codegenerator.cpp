@@ -164,8 +164,8 @@ void CudaCodeGenerator::after_projgen()
     {
         nnfusion::codegen::copy_file_from_templates("super_scaler/super_scaler.h",
                                                     "./super_scaler.h");
-        LOG(WARNING) << "libsuper_scaler.so should be copied from "
-                        "(build)/src/tools/nnfusion/templates/super_scaler/";
+        NNFUSION_LOG(NNFUSION_WARNING) << "libsuper_scaler.so should be copied from "
+                                          "(build)/src/tools/nnfusion/templates/super_scaler/";
         nnfusion::codegen::copy_file_from_templates("super_scaler/libsuper_scaler.so",
                                                     "./libsuper_scaler.so");
     }
@@ -179,8 +179,8 @@ void CudaCodeGenerator::after_projgen()
 //     {
 //         for (auto ins : *iterator)
 //         {
-//             LOG(INFO) << "instruction name: " << ins->name() << ", device: " << ins->Tag().Get<DeviceType>("Device");
-//             //ins->Tag().Set<DeviceType>("Device", CUDA_GPU);
+//             NNFUSION_LOG(INFO) << "instruction name: " << ins->name() << ", device: " << ins->Tag().Get<NNFusion_DeiveType>("Device");
+//             //ins->Tag().Set<NNFusion_DeiveType>("Device", CUDA_GPU);
 //         }
 //     }
 //     return true;
@@ -194,7 +194,7 @@ std::vector<shared_ptr<const KernelRegistration>>
 }
 
 // KernelEmitter::Pointer
-//     CudaCodeGenerator::match_kernel(std::vector<pair<DeviceType, KernelEmitter::Pointer>>& res)
+//     CudaCodeGenerator::match_kernel(std::vector<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>& res)
 // {
 //     for (auto& k : res)
 //     {
@@ -240,8 +240,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             if (!(*ins)["Async_info"].is_valid())
             {
-                CHECK_FAIL() << "Async info should be be assigned before this pass:"
-                             << ins->getGNode()->get_name();
+                NNFUSION_CHECK_FAIL() << "Async info should be be assigned before this pass:"
+                                      << ins->getGNode()->get_name();
             }
             string op_name = ins->getGNode()->get_op_type();
             if (op_name == "Parameter")
@@ -262,7 +262,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if ((*ins)["Kernel_Selection_Result"].is_valid())
             {
                 auto res = (*ins)["Kernel_Selection_Result"]
-                               .as<pair<DeviceType, KernelEmitter::Pointer>>();
+                               .as<pair<NNFusion_DeiveType, KernelEmitter::Pointer>>();
                 if (res.second->get_or_emit_source() != nullptr)
                 {
                     block_kernels.push_back(res.second);
@@ -289,7 +289,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                         "AnyOP", CUDA_GPU, DT_FLOAT);
-                    CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                    NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op="
+                                                          << op_name;
                     shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                     auto kernel = kernel_reg->m_factory(ctx);
                     kernel->get_or_emit_source();
@@ -300,7 +301,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
     }
 
-    LOG(INFO) << "Start dump whole source file...\n";
+    NNFUSION_LOG(INFO) << "Start dump whole source file...\n";
     // Code Gen
     LanguageUnit& lu = *this->lu_nnfusion_rt;
     lu << "// Microsoft (c) 2019, MSRA/NNFUSION Team\n";
@@ -663,13 +664,14 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         }
                     }
                     string func_key = fu->signature_unit->get_code() + body_unit;
-                    CHECK(decleard_function_LU.find(func_key) != decleard_function_LU.end());
+                    NNFUSION_CHECK(decleard_function_LU.find(func_key) !=
+                                   decleard_function_LU.end());
                     func_name = decleard_function_LU[func_key]->get_code();
                 }
 
                 if (func_name.compare(0, 9, "Constant_") == 0)
                 {
-                    CHECK(async_info.execution_stream->is_default_stream())
+                    NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
                         << "Kernel function calls in cuda_init() should use default stream.";
                     std::string function_call = fu->call_unit->get_code();
                     // add stream info
@@ -723,7 +725,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
                     auto& call_place = const_inputs ? lu_main_init : lu_kernel_entry;
                     if (const_inputs)
-                        CHECK(async_info.execution_stream->is_default_stream())
+                        NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
                             << "Kernel function calls in cuda_init() should use default stream.";
 
                     const string node_name = (kernel->m_context->gnode)

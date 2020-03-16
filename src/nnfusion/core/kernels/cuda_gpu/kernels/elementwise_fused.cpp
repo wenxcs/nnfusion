@@ -10,7 +10,7 @@ int ElementWiseFused::unique_func_id = 0;
 ElementWiseFused::ElementWiseFused(shared_ptr<KernelContext> ctx)
     : BlockCudaEmitter(ctx)
 {
-    CHECK_NOT_NULLPTR(FuseContext());
+    NNFUSION_CHECK_NOT_NULLPTR(FuseContext());
 }
 
 std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
@@ -26,7 +26,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
         for (size_t i = 0; i < gnode->get_input_size(); i++)
         {
             auto tv = gnode->get_input_tensor_ptr(i);
-            CHECK_NOT_NULLPTR(tv);
+            NNFUSION_CHECK_NOT_NULLPTR(tv);
             auto iter = node_outputs.find(tv->get_name());
             if (iter == node_outputs.end())
             {
@@ -35,7 +35,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
             }
             else
             {
-                CHECK(iter->second > 0);
+                NNFUSION_CHECK(iter->second > 0);
                 node_outputs[tv->get_name()] = node_outputs[tv->get_name()] - 1;
             }
         }
@@ -43,8 +43,8 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
         for (size_t i = 0; i < gnode->get_output_size(); i++)
         {
             shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
-            CHECK_NOT_NULLPTR(tv);
-            CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
+            NNFUSION_CHECK_NOT_NULLPTR(tv);
+            NNFUSION_CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
             node_outputs[tv->get_name()] = gnode->get_output_users(0).size();
             tensors.insert(std::make_pair(tv->get_name(), tv));
         }
@@ -56,7 +56,7 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
         {
             ctx->output_names.push_back(iter.first);
             auto tw = tensors.find(iter.first);
-            CHECK(tw != tensors.end());
+            NNFUSION_CHECK(tw != tensors.end());
             ctx->outputs.push_back(tw->second);
         }
     }
@@ -130,12 +130,12 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
             }
             else
             {
-                CHECK(bc->is_outer_broadcast());
+                NNFUSION_CHECK(bc->is_outer_broadcast());
                 index += "[tid % " + std::to_string(bc->get_outer_broadcast_size()) + "]";
             }
             local_tensors[out_tw->get_name()] = "temp" + std::to_string(temp_tensor_id++);
             auto& in_tw = kernel_emitter->m_context->inputs[0];
-            CHECK(in_args.count(in_tw->get_name()) > 0);
+            NNFUSION_CHECK(in_args.count(in_tw->get_name()) > 0);
 
             lu << out_tw->get_element_type().c_type_string() << " "
                << local_tensors[out_tw->get_name()] << " = " << in_args[in_tw->get_name()] << index
@@ -143,7 +143,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
         }
         else if (auto rs = std::dynamic_pointer_cast<nnfusion::op::Reshape>(gnode->get_op_ptr()))
         {
-            CHECK(rs->get_is_transpose() == false);
+            NNFUSION_CHECK(rs->get_is_transpose() == false);
             auto& in_tw = kernel_emitter->m_context->inputs[0];
             if (in_args.count(in_tw->get_name()) > 0)
             {
@@ -151,15 +151,15 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
             }
             else
             {
-                CHECK(local_tensors.count(in_tw->get_name()) > 0);
+                NNFUSION_CHECK(local_tensors.count(in_tw->get_name()) > 0);
                 local_tensors[out_tw->get_name()] = local_tensors[in_tw->get_name()];
             }
         }
         else
         {
             auto cuda_kernel = std::dynamic_pointer_cast<CudaElementwiseEmitter>(kernel_emitter);
-            CHECK_NOT_NULLPTR(cuda_kernel) << "kernel type:"
-                                           << kernel_emitter->m_context->gnode->get_op_type();
+            NNFUSION_CHECK_NOT_NULLPTR(cuda_kernel)
+                << "kernel type:" << kernel_emitter->m_context->gnode->get_op_type();
             auto op_kernel = cuda_kernel->get_op_kernel();
             if (op_kernel.second != nullptr)
             {
@@ -176,7 +176,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
                 }
                 else
                 {
-                    CHECK(local_tensors.count(in_tw->get_name()) > 0);
+                    NNFUSION_CHECK(local_tensors.count(in_tw->get_name()) > 0);
                     input_args.push_back(local_tensors[in_tw->get_name()]);
                 }
             }
@@ -195,7 +195,7 @@ LanguageUnit_p ElementWiseFused::emit_function_body()
         }
         else
         {
-            CHECK(in_args.count(pair.first) > 0);
+            NNFUSION_CHECK(in_args.count(pair.first) > 0);
             lu << in_args[pair.first] << "[tid];\n";
         }
     }

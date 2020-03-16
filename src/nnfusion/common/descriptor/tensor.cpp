@@ -51,7 +51,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
 nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,
                                      const nnfusion::PartialShape& pshape,
                                      const std::string& name,
-                                     DeviceType device_type,
+                                     NNFusion_DeiveType device_type,
                                      bool is_persistent,
                                      bool is_constant,
                                      bool is_parameter,

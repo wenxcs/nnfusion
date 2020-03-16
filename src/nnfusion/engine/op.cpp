@@ -21,7 +21,7 @@ Operator::Operator(shared_ptr<graph::GNode> gnode)
     for (size_t i = 0; i < gnode->get_input_size(); i++)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_input_tensor_ptr(i);
-        CHECK_NOT_NULLPTR(tv);
+        NNFUSION_CHECK_NOT_NULLPTR(tv);
         in.push_back(tv);
         node_input_names.emplace_back(tv->get_name());
     }
@@ -29,7 +29,7 @@ Operator::Operator(shared_ptr<graph::GNode> gnode)
     for (size_t i = 0; i < gnode->get_output_size(); i++)
     {
         shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
-        CHECK_NOT_NULLPTR(tv);
+        NNFUSION_CHECK_NOT_NULLPTR(tv);
         out.push_back(tv);
         node_output_names.emplace_back(tv->get_name());
     }
@@ -37,12 +37,12 @@ Operator::Operator(shared_ptr<graph::GNode> gnode)
     // Output debug info of node
     if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_constant())
     {
-        LOG(INFO) << "Node:\t" << gnode->get_name() << "\t(";
+        NNFUSION_LOG(INFO) << "Node:\t" << gnode->get_name() << "\t(";
         vector<string> parameter_nodes = node_input_names;
         parameter_nodes.insert(
             parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
-        LOG(INFO) << join(parameter_nodes);
-        LOG(INFO) << ")\n";
+        NNFUSION_LOG(INFO) << join(parameter_nodes);
+        NNFUSION_LOG(INFO) << ")\n";
     }
 
     for (auto arg : in)
@@ -76,23 +76,24 @@ ir::Function::Function()
 ir::Function::Function(shared_ptr<Operator> op)
     : Function()
 {
-    CHECK_NOT_NULLPTR(this->op = op);
+    NNFUSION_CHECK_NOT_NULLPTR(this->op = op);
 }
 
 LanguageUnit_p ir::Function::codegen_source()
 {
-    CHECK(isCodeGened == false) << "Code only generated once.";
-    CHECK_NOT_NULLPTR(this->dep_unit = codegen_dependency());
+    NNFUSION_CHECK(isCodeGened == false) << "Code only generated once.";
+    NNFUSION_CHECK_NOT_NULLPTR(this->dep_unit = codegen_dependency());
     if (definition_pool.find(codegen_function_name()) != definition_pool.end())
     {
-        CHECK_NOT_NULLPTR(this->definition_unit = definition_pool[codegen_function_name()]);
+        NNFUSION_CHECK_NOT_NULLPTR(this->definition_unit =
+                                       definition_pool[codegen_function_name()]);
     }
     else
     {
-        CHECK_NOT_NULLPTR(this->definition_unit = codegen_function_definition());
+        NNFUSION_CHECK_NOT_NULLPTR(this->definition_unit = codegen_function_definition());
     }
-    CHECK_NOT_NULLPTR(this->call_unit = codegen_function_call());
-    CHECK_NOT_NULLPTR(this->test_unit = codegen_test());
+    NNFUSION_CHECK_NOT_NULLPTR(this->call_unit = codegen_function_call());
+    NNFUSION_CHECK_NOT_NULLPTR(this->test_unit = codegen_test());
     // Pass other to dep_unit
     for (auto& it : call_unit->local_symbol)
         dep_unit->require(it.second);
@@ -106,8 +107,8 @@ LanguageUnit_p ir::Function::codegen_source()
 
     // orgaize dep
     this->definition_unit->require(this->dep_unit);
-    CHECK(this->call_unit->require(this->definition_unit));
-    CHECK(this->test_unit->require(this->definition_unit));
+    NNFUSION_CHECK(this->call_unit->require(this->definition_unit));
+    NNFUSION_CHECK(this->test_unit->require(this->definition_unit));
 
     isCodeGened = true;
     return this->call_unit;

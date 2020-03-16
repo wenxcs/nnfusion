@@ -26,7 +26,7 @@ bool AssignLayoutPass::run_on_graph(std::shared_ptr<Graph>& graph)
         }
         catch (const std::exception& e)
         {
-            CHECK_FAIL_WITH_EXCEPTION(errors::InvalidArgument)
+            NNFUSION_CHECK_FAIL_WITH_EXCEPTION(errors::InvalidArgument)
                 << "Error with node " << gnode->get_unique_name() << ": " << e.what();
         }
     }

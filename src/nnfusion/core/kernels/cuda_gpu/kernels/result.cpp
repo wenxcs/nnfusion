@@ -9,8 +9,8 @@ using namespace nnfusion::kernels;
 cuda::Result::Result(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
-    CHECK(ctx->inputs.size() == 1) << "Input size mismatches.";
-    CHECK(ctx->outputs.size() == 1) << "Output size mismatches.";
+    NNFUSION_CHECK(ctx->inputs.size() == 1) << "Input size mismatches.";
+    NNFUSION_CHECK(ctx->outputs.size() == 1) << "Output size mismatches.";
 
     auto result_op = static_pointer_cast<nnfusion::op::Result>(ctx->gnode->get_op_ptr());
     need_copy_to_host = result_op->needs_copy_to_host();

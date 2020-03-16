@@ -13,7 +13,7 @@ REGISTER_OP(StridedSliceGrad)
     .attr<int>("new_axis_mask", 0)
     .attr<int>("shrink_axis_mask", 0)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(gnode->get_input_size() == 5);
+        NNFUSION_CHECK(gnode->get_input_size() == 5);
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         int begin_mask = generic_op->localOpConfig.getRoot()["begin_mask"];
         int end_mask = generic_op->localOpConfig.getRoot()["end_mask"];
@@ -21,8 +21,8 @@ REGISTER_OP(StridedSliceGrad)
         int new_axis_mask = generic_op->localOpConfig.getRoot()["new_axis_mask"];
         int shrink_axis_mask = generic_op->localOpConfig.getRoot()["shrink_axis_mask"];
         // TODO: handle the cases that these attrs are not zeros
-        CHECK(begin_mask == 0 && end_mask == 0 && ellipsis_mask == 0 && new_axis_mask == 0 &&
-              shrink_axis_mask == 0)
+        NNFUSION_CHECK(begin_mask == 0 && end_mask == 0 && ellipsis_mask == 0 &&
+                       new_axis_mask == 0 && shrink_axis_mask == 0)
             << "do not support mast attributes yet!";
 
         // Set output size
@@ -32,7 +32,7 @@ REGISTER_OP(StridedSliceGrad)
                            ->get_vector<int32_t>();
         const nnfusion::Shape& input_shape_0 = gnode->get_input_shape(0);
         int x_size = input_shape_0[0];
-        CHECK(x_size == x_value.size());
+        NNFUSION_CHECK(x_size == x_value.size());
 
         //Bert Defaut: nnfusion::Shape output_shape_0 = {1, 256, 1024};
         nnfusion::Shape output_shape_0;

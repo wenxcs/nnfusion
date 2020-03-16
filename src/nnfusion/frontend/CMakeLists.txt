@@ -6,3 +6,9 @@ if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
         add_subdirectory(onnx_import)
     endif()
 endif()
+
+if (NNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+    add_subdirectory(torchscript_import)
+endif()
+
+add_subdirectory(util)

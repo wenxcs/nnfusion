@@ -17,7 +17,7 @@ REGISTER_OP(DepthwiseConv2dNative)
         return true;
     })
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
-        CHECK(gnode->get_input_size() == 2);
+        NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
 
         // [ batch, in_rows, in_cols, in_depth ]
@@ -30,7 +30,7 @@ REGISTER_OP(DepthwiseConv2dNative)
         bool is_nhwc = (data_format == "NHWC");
 
         const int64_t in_depth = is_nhwc ? input_shape[3] : input_shape[1];
-        CHECK(in_depth == filter_shape[2]);
+        NNFUSION_CHECK(in_depth == filter_shape[2]);
         const int64_t depth_multiplier = filter_shape[3];
         const int64_t out_depth = in_depth * depth_multiplier;
         const int64_t input_rows = is_nhwc ? input_shape[1] : input_shape[2];
@@ -40,7 +40,7 @@ REGISTER_OP(DepthwiseConv2dNative)
         const int64_t batch = input_shape[0];
 
         std::vector<int64_t> strides = op->localOpConfig.getRoot()["strides"];
-        CHECK(strides.size() == 2);
+        NNFUSION_CHECK(strides.size() == 2);
         const int64_t out_rows = (input_rows + strides[0] - 1) / strides[0];
         const int64_t out_cols = (input_cols + strides[1] - 1) / strides[1];
 

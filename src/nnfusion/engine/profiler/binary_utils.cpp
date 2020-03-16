@@ -15,7 +15,7 @@ namespace nnfusion
         {
             if (!file_exsits(object_name))
             {
-                LOG(ERROR) << "Failed compiling the target source file.";
+                NNFUSION_LOG(ERROR) << "Failed compiling the target source file.";
                 return nullptr;
             }
 
@@ -26,7 +26,8 @@ namespace nnfusion
             handle = dlopen(object_name.c_str(), RTLD_NOW);
             if (!handle)
             {
-                LOG(ERROR) << " could not open file [" << object_name << "]: " << dlerror();
+                NNFUSION_LOG(ERROR) << " could not open file [" << object_name
+                                    << "]: " << dlerror();
                 return nullptr;
             }
 #endif

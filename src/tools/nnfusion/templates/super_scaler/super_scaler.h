@@ -1,7 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
 /*
-enum NNSCALER_DeviceType
+enum NNSCALER_NNFusion_DeiveType
 {
     UNKNOWN,
     CPU,
@@ -11,7 +11,7 @@ enum NNSCALER_DeviceType
 
 struct NNSCALER_MemoryType
 {
-    DeviceType device_type, bool rdma,
+    NNFusion_DeiveType device_type, bool rdma,
 };
 
 struct NNSCALER_CommContext

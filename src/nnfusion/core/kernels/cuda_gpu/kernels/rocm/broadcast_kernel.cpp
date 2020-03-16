@@ -78,8 +78,10 @@ namespace nnfusion
                         }
                     }
 
-                    CHECK(m_context->dtypes[0] == "float");
-                    CHECK(m_context->dtypes[1] == "float");
+                    if (m_context->dtypes[0] != "float" || m_context->dtypes[1] != "float")
+                    {
+                        return nullptr;
+                    }
 
                     size_t in_size = 1, out_size = 1;
                     for (auto& it : input_shape)
@@ -151,7 +153,7 @@ namespace nnfusion
                               axes.count(0) > 0 && axes.size() == 1))
                     {
                         // (1, B) to (A, B)
-                        CHECK(input_shape[0] == output_shape[1]);
+                        NNFUSION_CHECK(input_shape[0] == output_shape[1]);
                         int blocks, blocks2 = 1, threads;
                         std::string vec_type = "float4";
 
@@ -195,7 +197,7 @@ namespace nnfusion
                               axes.count(1) > 0 && axes.size() == 1))
                     {
                         // (A, 1) to (A, B)
-                        CHECK(input_shape[0] == output_shape[0]);
+                        NNFUSION_CHECK(input_shape[0] == output_shape[0]);
 
                         int blocks, threads;
                         if (output_shape[1] == 4096)

@@ -32,26 +32,6 @@ namespace nnfusion
             //   output[2]: shall have rank 1, with the same span as input's channel axis.
             BatchNormTraining(double eps);
 
-            // In this version of BatchNorm:
-            //
-            // MEAN AND VARIANCE: provided by the 'mean' and 'variance' parameters.
-            //
-            // OUTPUT VALUE: a single tensor with the normalized value of 'input'.
-            // mean and variance will also be updated inplace
-            //
-            // AUTODIFF SUPPORT:
-            //   'generate_adjoints(...)' works as expected.
-            //
-            // SHAPE DETAILS:
-            //   gamma:    must have rank 1, with the same span as input's channel axis.
-            //   beta:     must have rank 1, with the same span as input's channel axis.
-            //   input:    must have rank >= 2. The second dimension represents the channel axis and
-            //             must have a span of at least 1.
-            //   mean:     must have rank 1, with the same span as input's channel axis.
-            //   variance: must have rank 1, with the same span as input's channel axis.
-            //   output:   shall have the same shape as 'input'.
-            //BatchNormTraining(double eps);
-
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             double get_eps_value() const { return m_epsilon; }
