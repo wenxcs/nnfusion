@@ -228,6 +228,20 @@ const std::shared_ptr<nnfusion::graph::Edge>
         NNFUSION_CHECK(x == kControlSlot);
         NNFUSION_CHECK(y == kControlSlot);
     }
+    else
+    {
+        auto source_type = source->get_output_element_type(x);
+        auto dest_type = dest->get_input_element_type(y);
+        NNFUSION_CHECK(source_type == dest_type)
+            << "Fail to add edge, the soutce element type (" << source_type
+            << " ) does not match the dest element type (" << dest_type << ").";
+
+        auto source_shape = source->get_output_partial_shape(x);
+        auto dest_shape = dest->get_input_partial_shape(y);
+        NNFUSION_CHECK(source_shape.compatible(dest_shape))
+            << "Fail to add edge, the source shape (" << source_shape
+            << ") does not match the dest shape (" << dest_shape << ").";
+    }
 
     std::shared_ptr<Edge> edge = nullptr;
 
