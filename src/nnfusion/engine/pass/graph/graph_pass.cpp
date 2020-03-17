@@ -29,7 +29,11 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
-    // pass_manager.register_pass<GemmFusionPass>();
+#if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
+// pass_manager.register_pass<GemmFusionPass>();
+#else
+    pass_manager.register_pass<GemmFusionPass>();
+#endif
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<OpInplacePass>();
 
@@ -38,8 +42,12 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();
 
-    // GPU specific graph passes
-    // pass_manager.register_pass<KernelFusionPass>();
+// GPU specific graph passes
+#if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
+// pass_manager.register_pass<KernelFusionPass>();
+#else
+    pass_manager.register_pass<KernelFusionPass>();
+#endif
 
     // assign stream
     pass_manager.register_pass<AssignAsyncInfoPass>();

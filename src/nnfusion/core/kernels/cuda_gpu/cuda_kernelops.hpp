@@ -284,7 +284,8 @@ namespace nnfusion
             template <>
             struct CudaOpMap<nnfusion::op::Less>
             {
-                static constexpr const char* op = "less";
+                static constexpr const char* op =
+                    "nnfusion_less"; // workaround, to avoid ambiguous with std::less
                 static constexpr const char* math_kernel = "x0 < x1";
             };
 
