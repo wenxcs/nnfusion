@@ -444,12 +444,17 @@ private:
         std::vector<size_t> lower(rank, 0);
         std::vector<size_t> upper(shape);
         int cursor = 0;
+        int slice_axis = 0;
+        if (in_idx == 1)
+        {
+            slice_axis = rank - 1;
+        }
 
         for (int i = 0; i < lengths.size(); ++i)
         {
-            lower[concat_axis] = cursor;
+            lower[slice_axis] = cursor;
             cursor += lengths[i];
-            upper[concat_axis] = cursor;
+            upper[slice_axis] = cursor;
 
             auto slice_op = std::make_shared<nnfusion::op::Slice>(lower, upper);
             slice_op->set_name(GetNewNodeName(std::string("gemm_fusion_slice_node_")));

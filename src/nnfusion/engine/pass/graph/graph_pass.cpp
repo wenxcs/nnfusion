@@ -29,11 +29,7 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
-#if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
-// pass_manager.register_pass<GemmFusionPass>();
-#else
     pass_manager.register_pass<GemmFusionPass>();
-#endif
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<OpInplacePass>();
 
