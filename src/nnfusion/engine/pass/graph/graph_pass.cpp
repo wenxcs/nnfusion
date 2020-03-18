@@ -38,12 +38,8 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();
 
-// GPU specific graph passes
-#if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
-// pass_manager.register_pass<KernelFusionPass>();
-#else
+    // GPU specific graph passes
     pass_manager.register_pass<KernelFusionPass>();
-#endif
 
     // assign stream
     pass_manager.register_pass<AssignAsyncInfoPass>();

@@ -45,7 +45,10 @@ std::shared_ptr<KernelContext> ElementWiseFused::FuseContext()
             shared_ptr<descriptor::Tensor> tv = gnode->get_output_tensor_ptr(i);
             NNFUSION_CHECK_NOT_NULLPTR(tv);
             NNFUSION_CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
-            node_outputs[tv->get_name()] = gnode->get_output_users(0).size();
+            NNFUSION_CHECK(gnode->get_output_users(i).size() > 0)
+                << gnode->get_name() << " " << i << "th output has "
+                << gnode->get_output_users(i).size() << " users.";
+            node_outputs[tv->get_name()] = gnode->get_output_users(i).size();
             tensors.insert(std::make_pair(tv->get_name(), tv));
         }
     }

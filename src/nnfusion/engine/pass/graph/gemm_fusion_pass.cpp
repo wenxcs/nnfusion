@@ -18,18 +18,10 @@ using namespace nnfusion::pass::graph;
 
 struct TaggedNode
 {
-    TaggedNode()
-        : node(nullptr)
-        , depth(INT_MAX)
-        , groupid(-1)
-    {
-        depends.clear();
-    }
-
-    int depth;
-    int groupid;
+    int depth = INT_MAX;
+    int groupid = -1;
     std::unordered_set<int> depends;
-    std::shared_ptr<GNode> node;
+    std::shared_ptr<GNode> node = nullptr;
 };
 
 // A MatGroup is a group of "MatMul" nodes that may be merged.
@@ -105,6 +97,10 @@ public:
         {
             for (std::shared_ptr<GNode> node : group->nodes)
             {
+                if (tagged_nodes.find(node->get_id()) == tagged_nodes.end())
+                {
+                    tagged_nodes.insert(std::make_pair(node->get_id(), TaggedNode()));
+                }
                 tagged_nodes[node->get_id()].node = node;
                 tagged_nodes[node->get_id()].groupid = group->groupid;
             }

@@ -179,7 +179,7 @@ private:
         std::shared_ptr<FuseGroup> cur_group = nullptr;
         std::shared_ptr<FuseGroup> cur_elemgroup = nullptr;
 
-        for (auto node : m_graph->get_nodes())
+        for (auto node : m_graph->get_ordered_ops())
         {
             size_t id = node->get_id();
             m_nodes[id] = std::make_shared<TaggedNode>();
@@ -305,6 +305,8 @@ private:
                 for (auto edge : tn->node->get_out_edges())
                 {
                     auto dst = m_nodes[edge->get_dst()->get_id()];
+                    if (!dst)
+                        continue;
                     dst->ready_inputs++;
 
                     if (!(dst->visited) && (dst->ready_inputs >= dst->node->get_in_edges().size()))
