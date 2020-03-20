@@ -16,35 +16,46 @@ DEFINE_bool(fgemm_fusion, true, "GEMM fusion.");
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 
-struct TaggedNode
+namespace
 {
-    int depth = INT_MAX;
-    int groupid = -1;
-    std::unordered_set<int> depends;
-    std::shared_ptr<GNode> node = nullptr;
-};
-
-// A MatGroup is a group of "MatMul" nodes that may be merged.
-// By defalut, can_merge is true.
-struct MatGroup
-{
-    MatGroup()
-        : groupid(-1)
-        , can_merge(true)
+    struct TaggedNode
     {
-        nodes.clear();
-        sub_groups.clear();
+        TaggedNode()
+            : node(nullptr)
+            , depth(INT_MAX)
+            , groupid(-1)
+        {
+            depends.clear();
+        }
+
+        int depth;
+        int groupid;
+        std::unordered_set<int> depends;
+        std::shared_ptr<GNode> node;
+    };
+
+    // A MatGroup is a group of "MatMul" nodes that may be merged.
+    // By defalut, can_merge is true.
+    struct MatGroup
+    {
+        MatGroup()
+            : groupid(-1)
+            , can_merge(true)
+        {
+            nodes.clear();
+            sub_groups.clear();
+        }
+
+        int groupid;
+        bool can_merge;
+        std::vector<std::shared_ptr<GNode>> nodes;
+        std::vector<std::vector<std::shared_ptr<GNode>>> sub_groups;
+    };
+
+    bool SortByName(std::shared_ptr<GNode> lhs, std::shared_ptr<GNode> rhs)
+    {
+        return lhs->get_name() < rhs->get_name();
     }
-
-    int groupid;
-    bool can_merge;
-    std::vector<std::shared_ptr<GNode>> nodes;
-    std::vector<std::vector<std::shared_ptr<GNode>>> sub_groups;
-};
-
-bool SortByName(std::shared_ptr<GNode> lhs, std::shared_ptr<GNode> rhs)
-{
-    return lhs->get_name() < rhs->get_name();
 }
 
 class GEMMFuseOptimizer
@@ -97,10 +108,6 @@ public:
         {
             for (std::shared_ptr<GNode> node : group->nodes)
             {
-                if (tagged_nodes.find(node->get_id()) == tagged_nodes.end())
-                {
-                    tagged_nodes.insert(std::make_pair(node->get_id(), TaggedNode()));
-                }
                 tagged_nodes[node->get_id()].node = node;
                 tagged_nodes[node->get_id()].groupid = group->groupid;
             }

@@ -21,47 +21,50 @@ DECLARE_string(fdefault_device);
 
 const static int DEFAULT_GROUP_ID = -1;
 
-struct FuseGroup;
-struct TaggedNode
+namespace
 {
-    TaggedNode()
-        : node(nullptr)
-        , group_id(DEFAULT_GROUP_ID)
-        , elem_group(nullptr)
-        , ready_inputs(0)
-        , visited(false)
+    struct FuseGroup;
+    struct TaggedNode
     {
-    }
+        TaggedNode()
+            : node(nullptr)
+            , group_id(DEFAULT_GROUP_ID)
+            , elem_group(nullptr)
+            , ready_inputs(0)
+            , visited(false)
+        {
+        }
 
-    std::shared_ptr<GNode> node;
-    int group_id;
-    std::shared_ptr<FuseGroup> elem_group;
-    size_t ready_inputs;
-    bool visited;
-};
+        std::shared_ptr<GNode> node;
+        int group_id;
+        std::shared_ptr<FuseGroup> elem_group;
+        size_t ready_inputs;
+        bool visited;
+    };
 
-struct FuseGroup
-{
-    FuseGroup(int g_id = DEFAULT_GROUP_ID)
-        : id(g_id)
+    struct FuseGroup
     {
-    }
-    int id;
+        FuseGroup(int g_id = DEFAULT_GROUP_ID)
+            : id(g_id)
+        {
+        }
+        int id;
 
-    // <nodeid, <src_output_idx, in_slot_id>>
-    std::unordered_map<std::shared_ptr<GNode>, std::unordered_map<int, int>> inputs;
-    std::unordered_map<std::shared_ptr<GNode>, std::unordered_map<int, int>> consts;
-    // <nodeid, <dst_input_idx, out_slot_id>>
-    std::unordered_map<std::shared_ptr<GNode>, std::unordered_map<int, int>> outputs;
+        // <nodeid, <src_output_idx, in_slot_id>>
+        std::unordered_map<std::shared_ptr<GNode>, std::unordered_map<int, int>> inputs;
+        std::unordered_map<std::shared_ptr<GNode>, std::unordered_map<int, int>> consts;
+        // <nodeid, <dst_input_idx, out_slot_id>>
+        std::unordered_map<std::shared_ptr<GNode>, std::unordered_map<int, int>> outputs;
 
-    size_t num_inputs;
-    size_t num_consts;
-    size_t num_outputs;
+        size_t num_inputs;
+        size_t num_consts;
+        size_t num_outputs;
 
-    size_t output_size = 0; // used in element_group
+        size_t output_size = 0; // used in element_group
 
-    std::vector<size_t> nodes;
-};
+        std::vector<size_t> nodes;
+    };
+}
 
 class KernelFuseOptimizer
 {
