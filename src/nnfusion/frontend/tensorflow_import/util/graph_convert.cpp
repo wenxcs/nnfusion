@@ -1684,6 +1684,46 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector
+                TranslateApplyMomentumOp(const tensorflow::NodeDef& node,
+                                         const NodeMap& all_ng_nodes,
+                                         std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto var_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto accum_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto lr_gnode = GetInputNode(all_ng_nodes, node, 2);
+                auto grad_gnode = GetInputNode(all_ng_nodes, node, 3);
+                auto momentum_gnode = GetInputNode(all_ng_nodes, node, 4);
+
+                std::vector<float> lr_value;
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(lr_gnode, &lr_value))
+                    << "We only accept the lr as Constant.";
+                NNFUSION_CHECK(lr_value.size() == 1);
+
+                std::vector<float> momentum_value;
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(momentum_gnode, &momentum_value))
+                    << "We only accept the momentum as Constant.";
+                NNFUSION_CHECK(momentum_value.size() == 1);
+
+                bool use_nesterov = false;
+                bool status = GetNodeAttr(node.attr(), "use_nesterov", use_nesterov);
+                NNFUSION_CHECK(status);
+
+                nnfusion::op::OpConfig::any myConfig;
+                myConfig["use_nesterov"] = use_nesterov;
+                myConfig["lr"] = lr_value[0];
+                myConfig["momentum"] = momentum_value[0];
+
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {var_gnode, accum_gnode, grad_gnode});
+
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateSqueezeOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2733,6 +2773,7 @@ namespace nnfusion
                 {"Add", TranslateBinaryOp<op::Add>},
                 {"AddN", TranslateAddNOp},
                 {"All", TranslateAllOp},
+                {"ApplyMomentum", TranslateApplyMomentumOp},
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
                 {"BatchMatMul", TranslateBatchMatMulOp},
