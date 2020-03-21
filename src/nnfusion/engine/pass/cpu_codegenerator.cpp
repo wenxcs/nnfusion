@@ -700,7 +700,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     //generate include header file
     lu_include << "// Microsoft (c) 2019\n";
     lu_include << "#pragma once\n";
-    lu_include << declaration::typedef_int->get_code() << "\n";
+    //lu_include << declaration::typedef_int->get_code() << "\n";
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cpu_init();\n";
     lu_include << "extern \"C\" void cpu_free();\n";
@@ -742,10 +742,6 @@ endforeach()
     if (global_required.count("header::cblas") > 0)
     {
         lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n\n";
-    }
-    else
-    {
-        lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread)\n\n";
     }
 
     char exe_path[PATH_MAX];

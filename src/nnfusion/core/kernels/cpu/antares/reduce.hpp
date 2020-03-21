@@ -30,7 +30,7 @@ namespace nnfusion
                     std::string tvm_op = TvmOpMap<T>::op;
 
                     auto expression = op::create_code_from_template(
-                        R"( - input("input0", @input_shape@); output(@output_shape@, topi=@tvm_op@(args("input0"), axis=@axis@)); )",
+                        R"( - input("input0", @input_shape@); output(@output_shape@, topi=@tvm_op@(args("input0"), axis=@axis@, keepdims=True)); )",
                         {{"input_shape", vector_to_string(input_shape)},
                          {"output_shape", vector_to_string(output_shape)},
                          {"tvm_op", tvm_op},

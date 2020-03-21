@@ -194,7 +194,7 @@ LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
             int rank = atoi(rank_str.c_str());
             auto code = op::create_code_from_template(
                 R"(
-int64_t rank = @rank@;
+int32_t rank = @rank@;
 
 auto func = [&](int __rank__)
     {

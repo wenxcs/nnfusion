@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "util.h"
 #include "hwloc.h"
 #include <algorithm>
