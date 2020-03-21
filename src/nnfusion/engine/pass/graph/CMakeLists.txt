@@ -1,5 +1,7 @@
 # Microsoft (c) 2019, NNFusion Team
 
+add_subdirectory(blockfusion)
+
 set(SRC
     assign_layout_pass.cpp
     kernel_fusion_pass.cpp
@@ -10,6 +12,7 @@ set(SRC
     gradient_weight_mapping_pass.cpp
     device_dispatcher.cpp
     kernel_selection.cpp
+    blockfusion_pass.cpp
     assign_async_info_pass.cpp
 )
 
@@ -19,6 +22,6 @@ target_include_directories(nnfusion_engine_pass_graph SYSTEM PUBLIC
 )
 target_compile_options(nnfusion_engine_pass_graph PRIVATE "-fPIC")
 
-target_link_libraries(nnfusion_engine_pass_graph PRIVATE nnfusion_common
+target_link_libraries(nnfusion_engine_pass_graph PRIVATE nnfusion_common nnfusion_engine_pass_graph_blockfusion
 gflags ${CURL_LIBRARIES}
 )

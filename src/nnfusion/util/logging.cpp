@@ -67,40 +67,9 @@ LogHelper::LogHelper(int level,
     }
 }
 
-// Parse log level (int64) from environment variable (char*)
-int LogLevelStrToInt(const char* env_var_val)
-{
-    if (env_var_val == nullptr)
-    {
-        return 0;
-    }
-
-    // Ideally we would use env_var / safe_strto64, but it is
-    // hard to use here without pulling in a lot of dependencies,
-    // so we use std:istringstream instead
-    string min_log_level(env_var_val);
-    std::istringstream ss(min_log_level);
-    int level;
-    if (!(ss >> level))
-    {
-        // Invalid vlog level setting, set level to default (0)
-        level = 0;
-    }
-
-    return level;
-}
-
-int MinLogLevelFromEnv()
-{
-    const char* tf_env_var_val = (const char*)&FLAGS_min_log_level;
-    return LogLevelStrToInt(tf_env_var_val);
-}
-
 LogHelper::~LogHelper()
 {
-    // Read the min log level once during the first call to logging.
-    static int min_log_level = MinLogLevelFromEnv();
-    if (m_level >= min_log_level && m_handler_func)
+    if (m_level >= FLAGS_min_log_level && m_handler_func)
     {
         m_handler_func(m_stream.str());
     }

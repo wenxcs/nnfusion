@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "codegenerator_helper.hpp"
 #include "cuda_codegenerator.hpp"
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
@@ -22,6 +23,10 @@ using namespace nnfusion::async;
 
 DEFINE_bool(fcodegen_debug, false, "Add debug functions in Codegen-ed project.");
 DEFINE_bool(fcodegen_timing, false, "Add timing functions in Codegen-ed project.");
+DEFINE_bool(fcuda_kernels_as_files, false, "Saving cuda kernels as standalone source code files.");
+DEFINE_int64(fcuda_kernels_files_number,
+             -1,
+             "Saving cuda kernels into how many source code files.");
 DECLARE_bool(frt_const_folding);
 //DECLARE_int32(fnuma_node_num);
 //DECLARE_int32(fthread_num_per_node);
@@ -78,7 +83,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 find_package(CUDA)
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_75,code=sm_75")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O2")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -cudart shared")
 
@@ -98,11 +103,14 @@ find_library(CUDNN_LIBRARY cudnn
 
 find_library(CUDA_cuda_LIBRARY cuda /usr/local/cuda/lib64/stubs)
 find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
-)" << (super_scaler_enable
-           ? "find_library(SUPER_SCALER_LIBRARIES libsuper_scaler.so ${CMAKE_CURRENT_SOURCE_DIR})"
-           : "")
+)" << (super_scaler_enable ? "find_library(SUPER_SCALER_LIBRARIES libsuper_scaler.so "
+                             "${CMAKE_CURRENT_SOURCE_DIR})"
+                           : "")
+       << (FLAGS_fcuda_kernels_as_files
+               ? "file(GLOB kernels kernels/*.cu)\ncuda_add_library(nnfusion_naive_rt "
+                 "nnfusion_rt.cu ${kernels})\n"
+               : "cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)\n")
        << R"(
-cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)
 
 target_link_libraries(nnfusion_naive_rt
     ${CUDA_cuda_LIBRARY}
@@ -149,8 +157,11 @@ bool CudaCodeGenerator::setpwd()
 {
     std::string working_dir = "./nnfusion_rt";
     std::string tar_path = working_dir + "/" + get_target_name() + "/";
+    std::string kernels_path = working_dir + "/" + get_target_name() + "/kernels/";
     create_dir(working_dir);
     create_dir(tar_path);
+    if (FLAGS_fcuda_kernels_as_files)
+        create_dir(kernels_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
 }
@@ -359,6 +370,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     // Collect Function Definition
     {
+        vector<codegenerator::FunctionFile> cuda_kernel_files;
+        if (FLAGS_fcuda_kernels_as_files && FLAGS_fcuda_kernels_files_number > 0)
+            cuda_kernel_files.resize(FLAGS_fcuda_kernels_files_number);
+        int cuda_kernel_n = 0;
         LanguageUnit def("FUNCTIONS");
         int count_k = 0;
         for (auto kernel : kernels)
@@ -416,46 +431,23 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 int pos = sig.find(" __global__ "), next;
                 if (pos >= 0)
                 {
-                    def << "\n";
-                    def << fu->comment_unit->get_code();
-                    def << sig << "\n";
+                    auto functionfile = codegenerator::FunctionFile::convert_from(fu);
+                    if (FLAGS_fcuda_kernels_as_files)
+                    {
+                        def << functionfile->get_extern_declare();
+                        if (FLAGS_fcuda_kernels_files_number > 0)
+                            cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
+                        else
+                            functionfile->save_file();
+                    }
+                    else
+                    {
+                        def << functionfile->get_code();
+                    }
 
-                    def.block_begin();
-                    def << fu->body_unit->get_code() << "\n";
-                    def.block_end();
                     if (!kernel->is_static_function())
                     {
                         decleard_function_LU[func_key] = fu->name_unit;
-                    }
-                    while (pos < sig.size() && sig[pos] == ' ')
-                        ++pos;
-                    sig = sig.substr(pos + 12);
-                    pos = sig.find("(");
-                    if (pos >= 0)
-                    {
-                        std::string args = sig.substr(pos);
-                        assert(args.size() > 0 && args[args.size() - 1] == ')');
-                        args[args.size() - 1] = ',';
-
-                        sig.insert(pos, "_Call");
-                        sig.insert(pos + 6,
-                                   "const dim3 &grids, const dim3 &blocks, unsigned mem, "
-                                   "cudaStream_t stream, ");
-                        def << "\n" << sig << "\n{\n";
-                        def << "    return " << fu->name_unit->get_code()
-                            << "<<<grids, blocks, mem, stream>>>(";
-
-                        std::vector<std::string> params;
-                        for (pos = 0; next = args.find(',', pos), next >= 0; pos = next + 1)
-                        {
-                            int start = next - 1;
-                            while (start >= 0 && (isalpha(args[start]) || isdigit(args[start]) ||
-                                                  args[start] == '_'))
-                                --start;
-                            params.push_back(args.substr(start + 1, next - start - 1));
-                        }
-                        def << join(params, ", ") << ");\n";
-                        def << "}\n";
                     }
                 }
                 // cuda lib kernel
@@ -489,14 +481,24 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 //def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
             }
+            if (FLAGS_fcuda_kernels_files_number > 0)
+            {
+                cuda_kernel_n++;
+                cuda_kernel_n %= FLAGS_fcuda_kernels_files_number;
+            }
+        }
+        if (FLAGS_fcuda_kernels_as_files && FLAGS_fcuda_kernels_files_number > 0)
+        {
+            for (int i = 0; i < FLAGS_fcuda_kernels_files_number; i++)
+                cuda_kernel_files[i].save_file();
         }
 
         //Write Dependency
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("header::") != string::npos)
                 lu << it.second->get_code();
-        lu << "#include<cstring>\n";
-        lu << "using namespace std;\n";
+        lu << "#include <cstring>\n";
+        // lu << "using namespace std;\n";
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("macro::") != string::npos)
@@ -504,7 +506,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("declaration::") != string::npos)
+            {
+                // This for dealing with Concat Op's special cases;
+                if (FLAGS_fcuda_kernels_as_files &&
+                    it.second->symbol.find("_private_kernels") != string::npos)
+                    continue;
                 lu << it.second->get_code();
+            }
         lu << "\n";
         // cublas and cudnn handle decl
         for (auto cudnn_handle : cudnn_handle_stream)

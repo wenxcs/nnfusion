@@ -37,7 +37,7 @@ vector<string> runtime::Backend::get_registered_devices()
 }
 
 DEFINE_int32(min_log_level,
-             0,
+             1,
              "Minimum logging level: 0 - debug; 1 - info; 2 - warning; 3 - error; 4 - fatal;");
 
 extern "C" const char* get_ngraph_version_string()

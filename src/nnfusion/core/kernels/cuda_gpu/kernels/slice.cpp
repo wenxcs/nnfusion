@@ -22,6 +22,26 @@ cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
     output_strides = row_major_strides(output_shape);
     slice_strides = slice_op->get_strides();
 
+    // determine if this slice can condunt in inplace
+    NNFUSION_CHECK(input_shape.size() == output_shape.size());
+    size_t outer_size = 1;
+    int i = input_shape.size() - 1;
+    for (; i >= 0; i--)
+    {
+        if (input_shape[i] != output_shape[i])
+            break;
+    }
+
+    for (i = i - 1; i >= 0; i--)
+    {
+        outer_size *= output_shape[i];
+    }
+
+    if (outer_size == 1)
+    {
+        is_memcpy = true;
+    }
+
     std::stringstream tag;
     tag << "cuda_slice_" << input_type << "_" << output_type << "_r_" << output_shape.size()
         << "_i_" << join(input_shape, "_") << "_o_" << join(output_shape, "_") << "_lb_"
@@ -31,6 +51,11 @@ cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cuda::Slice::emit_function_body()
 {
+    if (is_memcpy)
+    {
+        return nullptr;
+    }
+
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
@@ -97,6 +122,83 @@ REGISTER_KERNEL_EMITTER("Slice",                                                
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
                         cuda::Slice)                                                  // constructor
 
-REGISTER_KERNEL_EMITTER("Slice",                                                      // op_name
-                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Slice)                                                  // constructor
+cuda::SliceMemCpy::SliceMemCpy(shared_ptr<KernelContext> ctx)
+    : CudaLibEmitter(ctx)
+{
+    auto slice_op = static_pointer_cast<nnfusion::op::Slice>(ctx->gnode->get_op_ptr());
+
+    input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    lower_bounds = slice_op->get_lower_bounds();
+    data_type_size = ctx->outputs[0]->get_element_type().size();
+
+    // determine if this slice can condunt in inplace
+    NNFUSION_CHECK(input_shape.size() == output_shape.size());
+    size_t outer_size = 1;
+    int i = input_shape.size() - 1;
+    for (; i >= 0; i--)
+    {
+        if (input_shape[i] != output_shape[i])
+            break;
+    }
+
+    for (i = i - 1; i >= 0; i--)
+    {
+        outer_size *= output_shape[i];
+    }
+
+    if (outer_size == 1)
+    {
+        is_memcpy = true;
+        input_offset = 0;
+        size_t inner_size = 1;
+        for (int i = input_shape.size() - 1; i >= 0; i--)
+        {
+            input_offset += lower_bounds[i] * inner_size;
+            inner_size *= input_shape[i];
+        }
+
+        if (!ctx->annotations)
+            ctx->annotations = std::make_shared<Annotations>();
+        ctx->annotations->add_in_place_oi_pair(oi_pair(0, 0, false, input_offset * data_type_size));
+    }
+    else
+    {
+        is_memcpy = false;
+    }
+
+    std::stringstream tag;
+    tag << "cuda_slice_Memcpy"
+        << "_i_" << join(input_shape, "_") << "_o_" << join(output_shape, "_");
+    custom_tag = tag.str();
+}
+
+LanguageUnit_p cuda::SliceMemCpy::emit_function_body()
+{
+    if (!is_memcpy)
+    {
+        return nullptr;
+    }
+
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+    auto& lu = *_lu;
+
+    lu << "if (input0 + " << input_offset << " != output0) {\n"
+       << "   cudaMemcpy(output0, input0 + " << input_offset << ", "
+       << static_cast<uint32_t>(shape_size(output_shape)) * data_type_size
+       << ", cudaMemcpyDeviceToDevice);\n"
+       << "}\n";
+
+    return _lu;
+}
+
+LanguageUnit_p cuda::SliceMemCpy::emit_dependency()
+{
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+    _lu->require(header::cuda);
+    return _lu;
+}
+
+REGISTER_KERNEL_EMITTER("Slice",                                                   // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::SliceMemCpy)                                         // constructor

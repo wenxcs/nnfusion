@@ -132,7 +132,7 @@ LU_DEFINE(
 
 // Declaration
 //<TODO>Need special code for this global_cublas_handle
-LU_DEFINE(declaration::num_SMs, "int num_SMs = 0;\n");
+LU_DEFINE(declaration::num_SMs, "int num_SMs;\n");
 LU_DEFINE(declaration::global_cublas_handle, "cublasHandle_t global_cublas_handle;\n");
 LU_DEFINE(declaration::global_cudnn_handle, "cudnnHandle_t global_cudnn_handle;\n");
 LU_DEFINE(
@@ -245,7 +245,7 @@ __forceinline__ __device__ float CudaShuffleDownSync(unsigned mask, float val,
 #endif
 }
 
-__device__ float reduceMax(float val, int tid, int blockSize, float* shm) {
+__device__ static float reduceMax(float val, int tid, int blockSize, float* shm) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, tid < blockSize);
 
@@ -276,7 +276,7 @@ __device__ float reduceMax(float val, int tid, int blockSize, float* shm) {
   return val;
 }
 
-__device__ float reduceSum(float val, int tid, int blockSize, float* shm) {
+__device__ static float reduceSum(float val, int tid, int blockSize, float* shm) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, tid < blockSize);
 

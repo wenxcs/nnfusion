@@ -8,9 +8,24 @@ namespace nnfusion
 {
     struct oi_pair
     {
+        oi_pair(size_t out, size_t in, bool destruct)
+            : output(out)
+            , input(in)
+            , destructive(destruct)
+            , input_offset(0)
+        {
+        }
+        oi_pair(size_t out, size_t in, bool destruct, size_t offset)
+            : output(out)
+            , input(in)
+            , destructive(destruct)
+            , input_offset(offset)
+        {
+        }
         size_t output;
         size_t input;
         bool destructive;
+        size_t input_offset = 0;
     };
 
     /// \brief Base class for annotations added to graph ops or kernels.
@@ -32,8 +47,8 @@ namespace nnfusion
                             << "In_place hint destructive state conflicts with an existing entry. ";
                 }
 
-                NNFUSION_CHECK(e.input != oi.input && e.output != oi.output)
-                    << "In_place hint conflicts with an existing entry";
+                // NNFUSION_CHECK(e.input != oi.input && e.output != oi.output)
+                //     << "In_place hint conflicts with an existing entry";
             }
             m_in_place_oi_pairs.emplace_back(oi);
         }

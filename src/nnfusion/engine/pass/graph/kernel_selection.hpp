@@ -3,6 +3,8 @@
 
 #include "graph_pass_base.hpp"
 #include "nnfusion/common/common.hpp"
+#include "nnfusion/core/kernels/cache/cache_emitter.hpp"
+#include "nnfusion/engine/cache/manager.hpp"
 #include "nnfusion/engine/op.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
@@ -31,6 +33,16 @@ namespace nnfusion
                     pick_first(shared_ptr<GNode> gnode, NNFusion_DeviceType devtype);
                 pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
                     pick_first_rocm(shared_ptr<GNode> gnode);
+            };
+
+            class FetchBasedSelector : public GraphPassBase
+            {
+            public:
+                bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
+                pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+                    fetch_inventory(shared_ptr<cache::KernelCacheManager> cache_manager,
+                                    shared_ptr<GNode> gnode,
+                                    NNFusion_DeviceType devtype);
             };
         }
     }

@@ -29,5 +29,27 @@ namespace nnfusion
             /// \param arg Node that produces the relu forward input tensor.
             ReluBackprop();
         };
+
+        /// \brief Elementwise Relu operation.
+        ///
+        class Relu6 : public ElementwiseArithmetic
+        {
+        public:
+            /// \brief Constructs a Relu operation.
+            ///
+            /// \param arg Node that produces the input tensor.
+            Relu6();
+        };
+
+        /// \brief Elementwise ReluBackprop operation.
+        ///
+        class Relu6Backprop : public ElementwiseArithmetic
+        {
+        public:
+            /// \brief Constructs a ReluBackprop operation.
+            ///
+            /// \param arg Node that produces the relu forward input tensor.
+            Relu6Backprop();
+        };
     }
 }

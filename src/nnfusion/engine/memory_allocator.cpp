@@ -81,10 +81,21 @@ void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor)
     }
 }
 
-void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor, size_t offset)
+void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor,
+                                         shared_ptr<descriptor::Tensor> root_tensor,
+                                         size_t offset)
 {
-    tensor->set_pool_offset(offset);
+    tensor->set_pool_offset(root_tensor->get_pool_offset() + offset);
+    auto root = root_tensor;
+    if (root->get_root_tensor())
+    {
+        root = root->get_root_tensor();
+    }
+    tensor->set_root_tensor(root);
+    size_t ref_count = root->ref();
+    NNFUSION_CHECK(ref_count > 1);
     m_allocated_tensors.push_back(tensor);
+
     if (record_trace)
     {
         this->record("[allocate]", tensor);
@@ -176,6 +187,20 @@ size_t nnfusion::MemoryAllocator::first_fit(size_t size)
 
 void nnfusion::MemoryAllocator::free(shared_ptr<descriptor::Tensor> tensor)
 {
+    // for ref_tensor, just free its root tensor
+    if (tensor->get_root_tensor())
+    {
+        free(tensor->get_root_tensor());
+        if (record_trace)
+        {
+            this->record("[free]", tensor);
+        }
+        return;
+    }
+
+    if (tensor->deref() > 0)
+        return;
+
     size_t offset = tensor->get_pool_offset();
     size_t search_offset = 0;
     bool found = false;

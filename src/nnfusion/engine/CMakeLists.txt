@@ -5,6 +5,7 @@ if (NNFUSION_ENABLE)
     # Make pass and op object
     add_subdirectory(pass)
     add_subdirectory(profiler)
+    add_subdirectory(cache)
 
     # This is the source file shared by devices
     set(ENGINE
@@ -32,6 +33,8 @@ if (NNFUSION_ENABLE)
         ${WholeArchiveFlag}
         kernels_cuda 
         kernels_cpu
+        nnfusion_cache_manager
+        kernels_cache
         nnfusion_engine_profiler
         ${NoWholeArchiveFlag} 
     )

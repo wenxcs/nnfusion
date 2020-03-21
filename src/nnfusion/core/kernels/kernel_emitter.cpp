@@ -160,7 +160,13 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
         m_function_unit->call_unit = emit_function_call();
         return m_function_unit;
     }
+    m_function_unit = emit_source();
+    m_is_emitted = true;
+    return m_function_unit;
+}
 
+FunctionUnit_p KernelEmitter::emit_source()
+{
     FunctionUnit_p fu(new FunctionUnit());
 
     if (this->m_kernel_name.empty())
@@ -198,8 +204,7 @@ FunctionUnit_p KernelEmitter::get_or_emit_source()
     // orgnize dep
     NNFUSION_CHECK(fu->body_unit->require(fu->dep_unit));
     NNFUSION_CHECK(fu->call_unit->require(fu->body_unit));
-    m_function_unit = fu;
-    m_is_emitted = true;
+
     return fu;
 }
 

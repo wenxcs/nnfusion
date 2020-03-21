@@ -69,6 +69,7 @@ namespace nnfusion
 
             // Emit entire source code
             virtual FunctionUnit_p get_or_emit_source();
+            virtual FunctionUnit_p emit_source();
 
             string get_kernel_type() { return m_kernel_type; }
             string get_function_name() { return this->m_kernel_name; }

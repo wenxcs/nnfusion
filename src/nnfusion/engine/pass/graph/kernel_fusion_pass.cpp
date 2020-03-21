@@ -16,7 +16,7 @@ using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 using namespace nnfusion::kernels;
 
-DEFINE_int32(fkernel_fusion_level, 2, "");
+DEFINE_int32(fkernel_fusion_level, 3, "");
 DECLARE_string(fdefault_device);
 
 const static int DEFAULT_GROUP_ID = -1;
@@ -90,7 +90,11 @@ public:
                 {
                     FuseReshapeAndBroadcast(fuse_groups);
                 }
-                // TagFusionGroupsOnGraph(fuse_groups);
+                if (fusion_level > 2)
+                {
+                    SplitIndependentGroups(fuse_groups);
+                }
+
                 FuseElementGroupOnGraph(fuse_groups);
                 return true;
             }
@@ -436,6 +440,77 @@ private:
         }
     }
 
+    void SplitIndependentGroups(std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups)
+    {
+        for (auto group : *groups)
+        {
+            std::vector<size_t> new_nodes;
+            for (auto id : group->nodes)
+            {
+                NNFUSION_CHECK(id < m_nodes.size());
+                auto tn = m_nodes[id];
+                if (id >= ELEM_GROUP_NODEID && tn->elem_group)
+                {
+                    std::unordered_map<size_t, std::shared_ptr<FuseGroup>> cur_groups;
+                    for (auto elem_id : tn->elem_group->nodes)
+                    {
+                        NNFUSION_CHECK(elem_id < m_nodes.size());
+                        auto tn = m_nodes[elem_id];
+                        NNFUSION_CHECK_NOT_NULLPTR(tn->node);
+
+                        std::shared_ptr<FuseGroup> joined_group = nullptr;
+                        for (auto in_edge : tn->node->get_in_edges())
+                        {
+                            auto src_id = in_edge->get_src()->get_id();
+                            if (cur_groups.count(src_id) > 0)
+                            {
+                                if (!joined_group)
+                                {
+                                    joined_group = cur_groups[src_id];
+                                }
+                                else if (joined_group != cur_groups[src_id])
+                                {
+                                    // already joined a group, merge them
+                                    joined_group->nodes.insert(joined_group->nodes.end(),
+                                                               cur_groups[src_id]->nodes.begin(),
+                                                               cur_groups[src_id]->nodes.end());
+                                    for (auto id : cur_groups[src_id]->nodes)
+                                    {
+                                        cur_groups[id] = joined_group;
+                                    }
+                                }
+                            }
+                        }
+                        if (!joined_group)
+                        {
+                            joined_group = std::make_shared<FuseGroup>();
+                        }
+                        joined_group->nodes.push_back(elem_id);
+                        cur_groups[elem_id] = joined_group;
+                    }
+
+                    for (auto iter : cur_groups)
+                    {
+                        if (iter.second->id == DEFAULT_GROUP_ID && iter.second->nodes.size() > 1)
+                        {
+                            auto new_tn = std::make_shared<TaggedNode>();
+                            new_tn->elem_group = iter.second;
+                            int new_id = m_nodes.size();
+                            m_nodes.push_back(new_tn);
+                            new_nodes.push_back(new_id);
+                            iter.second->id = 1;
+                        }
+                    }
+                }
+                else
+                {
+                    new_nodes.push_back(id);
+                }
+            }
+            group->nodes.assign(new_nodes.begin(), new_nodes.end());
+        }
+    }
+
     void FuseElementGroupOnGraph(std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups)
     {
         for (auto group : *groups)
@@ -444,8 +519,9 @@ private:
             {
                 NNFUSION_CHECK(id < m_nodes.size());
                 auto tn = m_nodes[id];
-                if (id >= ELEM_GROUP_NODEID && tn->elem_group)
+                if (id >= ELEM_GROUP_NODEID && tn->elem_group && tn->elem_group->nodes.size() > 1)
                 {
+                    //LOG(INFO) << DebugStringFuseGroup(tn->elem_group);
                     std::vector<std::shared_ptr<KernelEmitter>> block_kernels;
                     bool all_kernel_emitted = true;
                     NNFusion_DeviceType dev_type;
@@ -492,12 +568,6 @@ private:
                         GNodeVector empty_inputs;
                         auto fused_node = std::make_shared<GNode>(fused_op, empty_inputs);
                         ctx->gnode = fused_node;
-
-                        // (*fused_node)["Kernel_Selection_Result"] =
-                        //     vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-                        // auto& res = (*fused_node)["Kernel_Selection_Result"]
-                        //                 .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
-                        // res.push_back(std::make_pair(dev_type, kernel));
 
                         (*fused_node)["Kernel_Selection_Result"] = std::make_pair(dev_type, kernel);
 

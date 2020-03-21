@@ -67,27 +67,77 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     auto& out = ke->kernel->m_context->outputs;
     auto& temp = ke->kernel->m_context->tensors;
 
+    // Dedupe Tensors
+    std::map<std::string, size_t> arg_cnt;
+    std::map<std::string, size_t> out_cnt;
+    std::map<std::string, size_t> temp_cnt;
+    std::vector<std::string> arg_name_dedupe;
+    std::vector<std::string> out_name_dedupe;
+    std::vector<std::string> temp_name_dedupe;
+    for (size_t i = 0; i < arg.size(); i++)
+    {
+        auto name = arg[i]->get_name();
+        if (arg_cnt.find(name) == arg_cnt.end())
+        {
+            arg_cnt[name] = 1;
+            arg_name_dedupe.push_back(name);
+        }
+        else
+        {
+            arg_name_dedupe.push_back(name + std::to_string(arg_cnt[name]));
+            arg_cnt[name] += 1;
+        }
+    }
+    for (size_t i = 0; i < out.size(); i++)
+    {
+        auto name = out[i]->get_name();
+        if (out_cnt.find(name) == out_cnt.end())
+        {
+            out_cnt[name] = 1;
+            out_name_dedupe.push_back(name);
+        }
+        else
+        {
+            out_name_dedupe.push_back(name + std::to_string(out_cnt[name]));
+            out_cnt[name] += 1;
+        }
+    }
+    for (size_t i = 0; i < temp.size(); i++)
+    {
+        auto name = temp[i]->get_name();
+        if (temp_cnt.find(name) == temp_cnt.end())
+        {
+            temp_cnt[name] = 1;
+            temp_name_dedupe.push_back(name);
+        }
+        else
+        {
+            temp_name_dedupe.push_back(name + std::to_string(temp_cnt[name]));
+            temp_cnt[name] += 1;
+        }
+    }
+
     writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
     for (size_t i = 0; i + 1 < arg.size(); i++)
     {
-        writer << arg[i]->get_element_type().c_type_string() << "* " << arg[i]->get_name()
+        writer << arg[i]->get_element_type().c_type_string() << "* " << arg_name_dedupe[i]
                << "_host, ";
     }
     if (!arg.empty())
     {
-        writer << arg.back()->get_element_type().c_type_string() << "* " << arg.back()->get_name();
+        writer << arg.back()->get_element_type().c_type_string() << "* " << arg_name_dedupe.back();
         if (!out.empty())
             writer << "_host, ";
     }
 
     for (size_t i = 0; i + 1 < out.size(); i++)
     {
-        writer << out[i]->get_element_type().c_type_string() << "* " << out[i]->get_name()
+        writer << out[i]->get_element_type().c_type_string() << "* " << out_name_dedupe[i]
                << "_host, ";
     }
     if (!out.empty())
     {
-        writer << out.back()->get_element_type().c_type_string() << "* " << out.back()->get_name()
+        writer << out.back()->get_element_type().c_type_string() << "* " << out_name_dedupe.back()
                << "_host";
     }
     writer << ")\n";
@@ -160,35 +210,47 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
         for (size_t i = 0; i < arg.size(); i++)
         {
+            auto deduped_name = arg_name_dedupe[i];
             auto& tensor = arg[i];
-            writer << tensor_declare(tensor);
-            if (tensor->get_device_type() == GENERIC_CPU)
-                writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
-            else
+            if (deduped_name == tensor->get_name())
             {
-                writer << tensor_alloc_cuda(tensor);
-                writer << tensor_cpy_h2d(tensor, tensor->get_name() + "_host");
+                writer << tensor_declare(tensor);
+                if (tensor->get_device_type() == GENERIC_CPU)
+                    writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
+                else
+                {
+                    writer << tensor_alloc_cuda(tensor);
+                    writer << tensor_cpy_h2d(tensor, tensor->get_name() + "_host");
+                }
             }
         }
 
         for (size_t i = 0; i < out.size(); i++)
         {
+            auto deduped_name = out_name_dedupe[i];
             auto& tensor = out[i];
-            writer << tensor_declare(tensor);
-            if (tensor->get_device_type() == GENERIC_CPU)
-                writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
-            else
-                writer << tensor_alloc_cuda(tensor);
+            if (deduped_name == tensor->get_name())
+            {
+                writer << tensor_declare(tensor);
+                if (tensor->get_device_type() == GENERIC_CPU)
+                    writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
+                else
+                    writer << tensor_alloc_cuda(tensor);
+            }
         }
 
         for (size_t i = 0; i < temp.size(); i++)
         {
-            auto& tensor = out[i];
-            writer << tensor_declare(tensor);
-            if (tensor->get_device_type() == GENERIC_CPU)
-                writer << tensor_alloc_host(tensor);
-            else
-                writer << tensor_alloc_cuda(tensor);
+            auto deduped_name = temp_name_dedupe[i];
+            auto& tensor = temp[i];
+            if (deduped_name == tensor->get_name())
+            {
+                writer << tensor_declare(tensor);
+                if (tensor->get_device_type() == GENERIC_CPU)
+                    writer << tensor_alloc_host(tensor);
+                else
+                    writer << tensor_alloc_cuda(tensor);
+            }
         }
 
         writer << "cudaEvent_t start, stop;\n";
@@ -210,32 +272,48 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
         for (size_t i = 0; i < out.size(); i++)
         {
+            auto deduped_name = out_name_dedupe[i];
             auto& tensor = out[i];
-            if (tensor->get_device_type() != GENERIC_CPU)
-                writer << tensor_cpy_d2h(tensor->get_name() + "_host", tensor);
+            if (deduped_name == tensor->get_name())
+            {
+                if (tensor->get_device_type() != GENERIC_CPU)
+                    writer << tensor_cpy_d2h(tensor->get_name() + "_host", tensor);
+            }
         }
 
         for (size_t i = 0; i < arg.size(); i++)
         {
+            auto deduped_name = arg_name_dedupe[i];
             auto& tensor = arg[i];
-            if (tensor->get_device_type() != GENERIC_CPU)
-                writer << tensor_free_cuda(tensor);
+            if (deduped_name == tensor->get_name())
+            {
+                if (tensor->get_device_type() != GENERIC_CPU)
+                    writer << tensor_free_cuda(tensor);
+            }
         }
 
         for (size_t i = 0; i < out.size(); i++)
         {
+            auto deduped_name = out_name_dedupe[i];
             auto& tensor = out[i];
-            if (tensor->get_device_type() != GENERIC_CPU)
-                writer << tensor_free_cuda(tensor);
+            if (deduped_name == tensor->get_name())
+            {
+                if (tensor->get_device_type() != GENERIC_CPU)
+                    writer << tensor_free_cuda(tensor);
+            }
         }
 
         for (size_t i = 0; i < temp.size(); i++)
         {
+            auto deduped_name = temp_name_dedupe[i];
             auto& tensor = temp[i];
-            if (tensor->get_device_type() != GENERIC_CPU)
-                writer << tensor_free_cuda(tensor);
-            else
-                writer << tensor_free_host(tensor);
+            if (deduped_name == tensor->get_name())
+            {
+                if (tensor->get_device_type() != GENERIC_CPU)
+                    writer << tensor_free_cuda(tensor);
+                else
+                    writer << tensor_free_host(tensor);
+            }
         }
 
         if (pos_cublas_handle >= 0)

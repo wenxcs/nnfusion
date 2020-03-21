@@ -40,11 +40,22 @@ namespace nnfusion
                 // Need to regenerate function call with new assigned launch config(stream).
                 LanguageUnit_p emit_function_call() override;
 
+                dim3 get_grid_dim() { return m_gridDim; }
+                dim3 get_block_dim() { return m_blockDim; }
             protected:
                 // config the blockDim and gridDim
                 virtual void set_launch_config() = 0;
 
                 LanguageUnit_p emit_function_signature() override;
+
+                virtual void emit_thread_sync(LanguageUnit& lu) { lu << "__syncthreads();\n"; }
+                virtual void emit_alloc_shared(LanguageUnit& lu,
+                                               std::string symbol,
+                                               std::string type,
+                                               size_t size)
+                {
+                    lu << "__shared__ " << type << " " << symbol << "[" << size << "];\n";
+                }
 
                 dim3 m_blockDim;
                 dim3 m_gridDim;
@@ -56,82 +67,80 @@ namespace nnfusion
                 BlockCudaEmitter(shared_ptr<KernelContext> ctx)
                     : CudaEmitter(ctx)
                     , num_local_thread_sync(0)
+                    , shared_memory_size(0)
+                    , is_emitting_block_kernel(false)
                 {
                 }
 
-                LanguageUnit_p emit_block_kernel(int block_id)
+                static const std::unordered_map<std::string, size_t> size_of_str_type;
+
+                size_t get_shared_memory_size() { return shared_memory_size; }
+                FunctionUnit_p get_or_emit_source() override
+                {
+                    if (!m_is_emitted)
+                    {
+                        KernelEmitter::get_or_emit_source();
+                        bool temp = is_emitting_block_kernel;
+                        is_emitting_block_kernel = true;
+                        m_block_function_unit = this->emit_source();
+                        is_emitting_block_kernel = temp;
+                    }
+
+                    return is_emitting_block_kernel ? m_block_function_unit : m_function_unit;
+                }
+
+                LanguageUnit_p emit_block_kernel()
                 {
                     LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_device_kernel"));
                     auto& lu = *_lu;
 
-                    int block_size = m_blockDim.x * m_blockDim.y * m_blockDim.z;
-                    int block_num = m_gridDim.x * m_gridDim.y * m_gridDim.z;
-                    // NNFUSION_CHECKblock_id < block_num);
-
+                    is_emitting_block_kernel = true;
                     FunctionUnit_p fu = this->get_or_emit_source();
+                    is_emitting_block_kernel = false;
                     lu << fu->comment_unit->get_code();
                     lu << this->emit_device_function_signature()->get_code() << "\n";
                     lu.block_begin();
-                    lu << "if (threadIdx.x >= " << block_size << ")";
-                    lu.block_begin();
-                    if (num_local_thread_sync > 0)
-                    {
-                        lu << "for (int i = 0; i < " << num_local_thread_sync
-                           << "; i++) __syncthreads();\n";
-                    }
-                    lu << "return;\n";
-                    lu.block_end();
-
-                    lu << "const dim3 blockDim(" << m_blockDim.x << ", " << m_blockDim.y << ", "
-                       << m_blockDim.z << ");\n";
-                    lu << "const dim3 gridDim(" << m_gridDim.x << ", " << m_gridDim.y << ", "
-                       << m_gridDim.z << ");\n";
-
-                    if (m_blockDim.y != 1 && m_blockDim.z == 1)
-                    {
-                        lu << "const dim3 threadIdx(threadIdx.x % " << m_blockDim.x
-                           << ", threadIdx.x / " << m_blockDim.x << ", 0);\n";
-                    }
-                    else if (m_blockDim.y != 1 && m_blockDim.z != 1)
-                    {
-                        lu << "const dim3 threadIdx(threadIdx.x % " << m_blockDim.x
-                           << ", threadIdx.x / " << m_blockDim.x << " % " << m_blockDim.y
-                           << ", threadIdx.x / " << m_blockDim.x * m_blockDim.y << ");\n";
-                    }
-
-                    if (m_gridDim.y == 1 && m_gridDim.z == 1)
-                    {
-                        lu << "const dim3 blockIdx(block_id, 0, 0);\n";
-                    }
-                    else if (m_gridDim.z == 1)
-                    {
-                        lu << "const dim3 blockIdx(block_id % " << m_gridDim.x << ", block_id / "
-                           << m_gridDim.x << ", 0);\n";
-                    }
-                    else
-                    {
-                        lu << "const dim3 blockIdx(block_id % " << m_gridDim.x << ", block_id / "
-                           << m_gridDim.x << " % " << m_gridDim.y << ", block_id / "
-                           << m_gridDim.x * m_gridDim.y << ");\n";
-                    }
-
-                    lu << fu->body_unit->get_code() << "\n";
+                    lu << this->emit_device_function_body()->get_code();
                     lu.block_end();
 
                     return _lu;
                 }
 
                 LanguageUnit_p emit_device_function_signature();
+                LanguageUnit_p emit_device_function_body();
 
                 // this API can only be used inner the function body
-                void emit_thread_sync(LanguageUnit_p lu)
+                void emit_thread_sync(LanguageUnit& lu) override
                 {
-                    *lu << "__syncthreads();\n";
+                    CudaEmitter::emit_thread_sync(lu);
                     num_local_thread_sync++;
+                }
+
+                void emit_alloc_shared(LanguageUnit& lu,
+                                       std::string symbol,
+                                       std::string type,
+                                       size_t size) override
+                {
+                    if (is_emitting_block_kernel)
+                    {
+                        lu << type << "* " << symbol << " = (" << type << "*)(shared_buffer + "
+                           << shared_memory_size << ");\n";
+                        auto iter = size_of_str_type.find(type);
+                        NNFUSION_CHECK(iter != size_of_str_type.end()) << "Uknow data type: "
+                                                                       << type;
+                        shared_memory_size += size * iter->second;
+                    }
+                    else
+                    {
+                        CudaEmitter::emit_alloc_shared(lu, symbol, type, size);
+                    }
                 }
 
             private:
                 size_t num_local_thread_sync;
+                size_t shared_memory_size;
+                bool is_emitting_block_kernel;
+                FunctionUnit_p m_block_function_unit;
             };
 
             class CudaElementwiseEmitter : public BlockCudaEmitter

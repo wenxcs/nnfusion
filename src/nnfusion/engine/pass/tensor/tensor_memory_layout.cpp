@@ -34,12 +34,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
 
     MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
 
-    auto is_same_dev = [](shared_ptr<const descriptor::Tensor> a,
-                          shared_ptr<const descriptor::Tensor> b) {
-        return (a->get_device_type() == b->get_device_type()) &&
-               (a->get_device_id() == b->get_device_id());
-    };
-
+    // std::unordered_set<shared_ptr<descriptor::Tensor>> persistent_tensors;
     auto& p = tu->program;
 
     for (auto iterator : p)
@@ -63,9 +58,10 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             // Node: inputs outputs
             // Kernel Context: +tensors
 
-            std::map<std::shared_ptr<descriptor::Tensor>, std::shared_ptr<descriptor::Tensor>>
+            // <output, <input, offset>>
+            std::map<std::shared_ptr<descriptor::Tensor>,
+                     std::pair<std::shared_ptr<descriptor::Tensor>, size_t>>
                 in_place_outputs;
-            std::set<std::shared_ptr<descriptor::Tensor>> reused_inputs;
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> alloc_temp;
 
             if (kernel != nullptr)
@@ -75,42 +71,16 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 for (size_t i = 0; i < kernel->m_context->tensors.size(); i++)
                 {
                     auto tensor = kernel->m_context->tensors[i];
+                    NNFUSION_CHECK(!tensor->is_persistent());
                     alloc_temp.insert(tensor);
                 }
 
-                // concat in_place_oi should be treated differently
-                if (!std::dynamic_pointer_cast<nnfusion::op::Concat>(gnode->get_op_ptr()))
+                if ((*ins)["InplaceTensorMapping"].is_valid())
                 {
-                    if (auto annotations = kernel->m_context->annotations)
-                    {
-                        for (auto oi_pair : annotations->get_in_place_oi_pairs())
-                        {
-                            auto output = kernel->m_context->outputs[oi_pair.output];
-                            auto input = kernel->m_context->inputs[oi_pair.input];
-                            auto input_gnode = gnode->get_in_edge(oi_pair.input)->get_src();
-
-                            //should not overwrite constant tensor and parameter tensor
-                            if (input_gnode->get_op_ptr()->is_parameter() ||
-                                input_gnode->get_op_ptr()->is_constant())
-                                continue;
-
-                            if (!is_same_dev(input, output))
-                            {
-                                NNFUSION_LOG(NNFUSION_WARNING)
-                                    << "Tensor inplace oi pairs are not in same device, ignored.";
-                                continue;
-                            }
-
-                            // memory of persistent tensors should not be reused.
-                            if (gnode->liveness_free_list.count(input) != 0 &&
-                                gnode->liveness_new_list.count(output) != 0 &&
-                                !input->is_persistent())
-                            {
-                                in_place_outputs.insert({output, input});
-                                reused_inputs.insert(input);
-                            }
-                        }
-                    }
+                    in_place_outputs =
+                        (*ins)["InplaceTensorMapping"]
+                            .as<std::map<std::shared_ptr<descriptor::Tensor>,
+                                         std::pair<std::shared_ptr<descriptor::Tensor>, size_t>>>();
                 }
             }
 
@@ -119,18 +89,29 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             // to allocate memory space for output of output nodes.
             if (!gnode->get_op_ptr()->is_output())
                 newlist.insert(gnode->liveness_new_list.begin(), gnode->liveness_new_list.end());
+
+            // Allocate in two passes to make sure ref-tensors is after non-ref-tensors
+            std::vector<std::shared_ptr<descriptor::Tensor>> ref_tensors;
             for (std::shared_ptr<descriptor::Tensor> tensor : newlist)
             {
-                auto allocator = maf.get_allocator(tensor);
                 if (in_place_outputs.count(tensor))
                 {
-                    size_t offset = in_place_outputs.at(tensor)->get_pool_offset();
-                    allocator->allocate(tensor, offset);
+                    ref_tensors.push_back(tensor);
                 }
                 else
                 {
+                    auto allocator = maf.get_allocator(tensor);
                     allocator->allocate(tensor);
                 }
+            }
+
+            for (std::shared_ptr<descriptor::Tensor> tensor : ref_tensors)
+            {
+                NNFUSION_CHECK(in_place_outputs.count(tensor) > 0);
+                auto root_tensor = in_place_outputs.at(tensor).first;
+                size_t tensor_offset = in_place_outputs.at(tensor).second;
+                auto allocator = maf.get_allocator(root_tensor);
+                allocator->allocate(tensor, root_tensor, tensor_offset);
             }
 
             if (!m_disable_memory_sharing)
@@ -139,10 +120,11 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 freelist.insert(gnode->liveness_free_list.begin(), gnode->liveness_free_list.end());
                 for (std::shared_ptr<descriptor::Tensor> tensor : freelist)
                 {
-                    if (reused_inputs.count(tensor) == 0 && !tensor->is_persistent() &&
-                        !tensor->is_parameter())
+                    // persistent tensor will not be reused
+                    if (!tensor->is_persistent() && !tensor->is_parameter())
                     {
-                        auto allocator = maf.get_allocator(tensor);
+                        auto root_tensor = tensor->get_root_tensor();
+                        auto allocator = maf.get_allocator(root_tensor ? root_tensor : tensor);
                         allocator->free(tensor);
                     }
                 }

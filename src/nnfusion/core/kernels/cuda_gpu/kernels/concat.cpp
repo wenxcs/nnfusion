@@ -20,6 +20,22 @@ namespace nnfusion
 
                     this->axis = op->get_concatenation_axis();
 
+                    is_memcpy = true;
+                    for (size_t idx = 0; idx < ctx->inputs.size(); idx++)
+                    {
+                        auto& input_shape = ctx->inputs[idx]->get_shape();
+                        for (size_t i = 0; i < axis; i++)
+                        {
+                            if (input_shape[i] != 1)
+                            {
+                                is_memcpy = false;
+                                break;
+                            }
+                        }
+                        if (!is_memcpy)
+                            break;
+                    }
+
                     input_num = ctx->inputs.size();
                     split_input_size =
                         256; //max num of inputs fit 4KB parameter space: 256 * 8 + 7 * ?
@@ -73,6 +89,11 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    if (is_memcpy)
+                    {
+                        return nullptr;
+                    }
+
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& writer = *_lu;
 
@@ -108,8 +129,8 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::cuda);
 
-                    LanguageUnit_p concat_kernels(
-                        new LanguageUnit("declaration::" + get_function_name() + "_kernels"));
+                    LanguageUnit_p concat_kernels(new LanguageUnit(
+                        "declaration::" + get_function_name() + "_concat_private_kernels"));
 
                     auto& writer = *concat_kernels;
 
@@ -211,6 +232,7 @@ namespace nnfusion
                         writer.block_end();
                     }
                     _lu->require(concat_kernels);
+
                     return _lu;
                 }
 
@@ -225,15 +247,104 @@ namespace nnfusion
                 uint32_t block_size_x;
                 string dtype;
                 size_t axis;
+                bool is_memcpy;
             };
+
+            class ConcatMemCpy : public CudaLibEmitter
+            {
+            public:
+                ConcatMemCpy(shared_ptr<KernelContext> ctx)
+                    : CudaLibEmitter(ctx)
+                {
+                    auto op = static_pointer_cast<nnfusion::op::Concat>(ctx->gnode->get_op_ptr());
+
+                    size_t axis = op->get_concatenation_axis();
+                    data_type_size = ctx->outputs[0]->get_element_type().size();
+
+                    is_memcpy = true;
+                    for (size_t idx = 0; idx < ctx->inputs.size(); idx++)
+                    {
+                        auto& input_shape = ctx->inputs[idx]->get_shape();
+                        for (size_t i = 0; i < axis; i++)
+                        {
+                            if (input_shape[i] != 1)
+                            {
+                                is_memcpy = false;
+                                break;
+                            }
+                        }
+                        if (!is_memcpy)
+                            break;
+                    }
+
+                    if (is_memcpy)
+                    {
+                        input_sizes.resize(ctx->inputs.size());
+                        size_t offset = 0;
+                        for (size_t idx = 0; idx < ctx->inputs.size(); idx++)
+                        {
+                            auto& input_shape = ctx->inputs[idx]->get_shape();
+                            input_sizes[idx] = shape_size(input_shape);
+                            if (!ctx->annotations)
+                                ctx->annotations = std::make_shared<Annotations>();
+                            ctx->annotations->add_in_place_oi_pair(oi_pair(0, idx, false, offset));
+                            offset += input_sizes[idx] * data_type_size;
+                        }
+                    }
+
+                    std::stringstream tag;
+                    tag << "_s" << join(ctx->outputs[0]->get_shape(), "_") << "_a_" << axis;
+                    for (size_t i = 0; i < ctx->inputs.size(); i++)
+                    {
+                        tag << "_i_" << join(ctx->inputs[i]->get_shape(), "_");
+                    }
+                    custom_tag = tag.str();
+                }
+
+                LanguageUnit_p emit_function_body() override
+                {
+                    if (!is_memcpy)
+                    {
+                        return nullptr;
+                    }
+
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+                    auto& lu = *_lu;
+                    size_t output_offset = 0;
+                    lu << "if (input0 != output0) {\n";
+                    for (size_t i = 0; i < input_sizes.size(); i++)
+                    {
+                        lu << "   cudaMemcpy(output0 + " << output_offset << ", input" << i << ", "
+                           << input_sizes[i] * data_type_size << ", cudaMemcpyDeviceToDevice);\n";
+                        output_offset += input_sizes[i];
+                    }
+                    lu << "}\n";
+
+                    return _lu;
+                }
+                LanguageUnit_p emit_dependency() override
+                {
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+                    _lu->require(header::cuda);
+                    return _lu;
+                }
+
+            private:
+                bool is_memcpy;
+                size_t data_type_size;
+                std::vector<size_t> input_sizes;
+            };
+
         } // namespace cuda
     }     // namespace kernels
 } // namespace nnfusion
-
-// Register Pad kernel emitter
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 REGISTER_KERNEL_EMITTER("Concat",                                  //op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT), //attrs
                         cuda::Concat)                              // constructor
+
+REGISTER_KERNEL_EMITTER("Concat",                                                  // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::ConcatMemCpy)                                        // constructor

@@ -14,3 +14,13 @@ ReluBackprop::ReluBackprop()
     : ElementwiseArithmetic("ReluBackprop")
 {
 }
+
+Relu6::Relu6()
+    : ElementwiseArithmetic("Relu6")
+{
+}
+
+Relu6Backprop::Relu6Backprop()
+    : ElementwiseArithmetic("Relu6Backprop")
+{
+}

@@ -53,6 +53,8 @@ namespace nnfusion
         class Not;
         class Relu;
         class ReluBackprop;
+        class Relu6;
+        class Relu6Backprop;
         class Max;
         class Min;
         class Negative;
@@ -304,6 +306,13 @@ namespace nnfusion
             };
 
             template <>
+            struct CudaOpMap<nnfusion::op::Relu6>
+            {
+                static constexpr const char* op = "relu6";
+                static constexpr const char* math_kernel = "fminf(6,fmaxf(0,x0))";
+            };
+
+            template <>
             struct CudaOpMap<nnfusion::op::Not>
             {
                 static constexpr const char* op = "logical_not";
@@ -329,6 +338,13 @@ namespace nnfusion
             {
                 static constexpr const char* op = "relu_backprop";
                 static constexpr const char* math_kernel = "x1 * int(x0 > 0)";
+            };
+
+            template <>
+            struct CudaOpMap<nnfusion::op::Relu6Backprop>
+            {
+                static constexpr const char* op = "relu6_backprop";
+                static constexpr const char* math_kernel = "x1 * int(x0 > 0) * int(x0 < 6)";
             };
 
             template <>

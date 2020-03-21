@@ -43,8 +43,8 @@ cuda::DepthwiseConv2dNative::DepthwiseConv2dNative(shared_ptr<KernelContext> ctx
     args.stride = strides[0];
     args.pad_rows = padding_before[0];
     args.pad_cols = padding_before[1];
-    args.out_rows = output_shape[1];
-    args.out_cols = output_shape[2];
+    args.out_rows = is_nhwc ? output_shape[1] : output_shape[2];
+    args.out_cols = is_nhwc ? output_shape[2] : output_shape[3];
     args.out_depth = out_depth;
     args.num_outputs = shape_size(output_shape);
 }
@@ -55,7 +55,7 @@ LanguageUnit_p cuda::DepthwiseConv2dNative::emit_function_body()
     {
         return emit_DepthwiseConv2dGPUKernelNHWC();
     }
-    else if (data_format == "NHWC")
+    else if (data_format == "NCHW")
     {
         return emit_DepthwiseConv2dGPUKernelNCHW();
     }
@@ -330,7 +330,7 @@ LanguageUnit_p cuda::DepthwiseConv2dNative::emit_DepthwiseConv2dGPUKernelNCHW()
             }
         }
 
-        output[thread_id] = static_cast<T>(sum);
+        output[thread_id] = static_cast<S>(sum);
     }
     )",
                                                 {

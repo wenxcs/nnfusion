@@ -53,7 +53,8 @@ namespace nnfusion
                 void define_kernels()
                 {
                     // Define the kernel for memory reset.
-                    reset_memory_kernel.reset(new LanguageUnit("declaration::reset_memory"));
+                    reset_memory_kernel.reset(
+                        new LanguageUnit("declaration::reset_memory_private_kernels"));
                     auto& lu_reset_memory_kernel = *reset_memory_kernel;
 
                     auto code = nnfusion::op::create_code_from_template(
@@ -73,7 +74,7 @@ input0[tid] = 0;
 
                     // Define the kernel for unsorted_segment_sum.
                     unsorted_segment_sum_kernel.reset(
-                        new LanguageUnit("declaration::unsorted_segment_sum"));
+                        new LanguageUnit("declaration::unsorted_segment_sum_private_kernels"));
                     auto& lu_unsorted_seg_sum_kernel = *unsorted_segment_sum_kernel;
 
                     code = nnfusion::op::create_code_from_template(

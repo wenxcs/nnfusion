@@ -6,11 +6,13 @@
 #include "nnfusion/engine/pass/rocm_codegenerator.hpp"
 
 #include <strings.h>
+#include "pass/tensor/inplace_tensor_analysis.hpp"
 #include "pass/tensor/liveness_analysis.hpp"
 #include "pass/tensor/tensor_memory_layout.hpp"
 using namespace nnfusion::pass;
 
 DECLARE_string(fdefault_device);
+DECLARE_bool(fcuda_kernels_as_files);
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
@@ -26,6 +28,7 @@ Interpreter::Interpreter()
     // m_passes->push_back(make_shared<DefaultKernelSelector>());
 
     m_passes->push_back(make_shared<TensorLivenessAnalysis>());
+    m_passes->push_back(make_shared<InplaceTensorAnalysis>());
     m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
 
     switch (default_device)
@@ -34,7 +37,10 @@ Interpreter::Interpreter()
 
     case GENERIC_CPU: m_passes->push_back(make_shared<CpuCodeGenerator>()); break;
 
-    case ROCM_GPU: m_passes->push_back(nnfusion::make_rocm_codegenerator()); break;
+    case ROCM_GPU:
+        FLAGS_fcuda_kernels_as_files = false;
+        m_passes->push_back(nnfusion::make_rocm_codegenerator());
+        break;
 
     default: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
     }

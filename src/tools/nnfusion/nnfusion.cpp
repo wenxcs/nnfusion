@@ -99,45 +99,45 @@ int main(int argc, char** argv)
     cout << "============================================================================\n";
     cout << "---- Processing '" << model << "'\n";
     cout << "============================================================================\n";
-    try
+    // try
+    // {
+    shared_ptr<nnfusion::graph::Graph> graph = nullptr;
+    if (format == "tensorflow")
     {
-        shared_ptr<nnfusion::graph::Graph> graph = nullptr;
-        if (format == "tensorflow")
-        {
-            // load tensorlfow model as graph
-            graph = nnfusion::frontend::load_tensorflow_model(model);
-        }
+        // load tensorlfow model as graph
+        graph = nnfusion::frontend::load_tensorflow_model(model);
+    }
 #if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
-        else if (format == "torchscript")
-        {
-            std::vector<nnfusion::frontend::ParamInfo> params_vec;
-            if (params != "##UNSET##")
-            {
-                params_vec = nnfusion::frontend::build_params_from_string(params);
-            }
-            graph = nnfusion::frontend::load_torchscript_model(model, params_vec);
-        }
-#endif
-        else if (format == "onnx")
-        {
-            //graph = ngraph::onnx_import::import_onnx_function(model);
-        }
-        else
-        {
-            throw nnfusion::errors::NotSupported("Unsupported model format '" + format +
-                                                 "' in NNFusion");
-        }
-
-        if (!backend.empty())
-        {
-            auto runtime = ngraph::runtime::Backend::create(backend);
-            runtime->codegen(graph);
-        }
-    }
-    catch (exception& e)
+    else if (format == "torchscript")
     {
-        cout << "Exception caught on '" << model << "'\n" << e.what() << endl;
+        std::vector<nnfusion::frontend::ParamInfo> params_vec;
+        if (params != "##UNSET##")
+        {
+            params_vec = nnfusion::frontend::build_params_from_string(params);
+        }
+        graph = nnfusion::frontend::load_torchscript_model(model, params_vec);
     }
+#endif
+    else if (format == "onnx")
+    {
+        //graph = ngraph::onnx_import::import_onnx_function(model);
+    }
+    else
+    {
+        throw nnfusion::errors::NotSupported("Unsupported model format '" + format +
+                                             "' in NNFusion");
+    }
+
+    if (!backend.empty())
+    {
+        auto runtime = ngraph::runtime::Backend::create(backend);
+        runtime->codegen(graph);
+    }
+    // }
+    // catch (exception& e)
+    // {
+    //     cout << "Exception caught on '" << model << "'\n" << e.what() << endl;
+    // }
 
     return 0;
 }

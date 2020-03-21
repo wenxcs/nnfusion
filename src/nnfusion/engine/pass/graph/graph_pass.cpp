@@ -5,6 +5,7 @@
 
 #include "assign_async_info_pass.hpp"
 #include "assign_layout_pass.hpp"
+#include "blockfusion_pass.hpp"
 #include "device_dispatcher.hpp"
 #include "gemm_fusion_pass.hpp"
 #include "gradient_weight_mapping_pass.hpp"
@@ -36,10 +37,12 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     // The graph after this pass will have selected kernels
     pass_manager.register_pass<DefaultDeviceDispatcher>();
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
+    pass_manager.register_pass<FetchBasedSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();
 
     // GPU specific graph passes
     pass_manager.register_pass<KernelFusionPass>();
+    pass_manager.register_pass<BlockFusionPass>();
 
     // assign stream
     pass_manager.register_pass<AssignAsyncInfoPass>();

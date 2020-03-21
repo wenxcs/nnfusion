@@ -44,7 +44,9 @@ namespace nnfusion
         // allocate one tensor.
         virtual void allocate(shared_ptr<descriptor::Tensor> tensor);
         // allocate tensor with specified offset.
-        virtual void allocate(shared_ptr<descriptor::Tensor> tensor, size_t offset);
+        virtual void allocate(shared_ptr<descriptor::Tensor> tensor,
+                              shared_ptr<descriptor::Tensor> root_tensor,
+                              size_t offset = 0);
         virtual void free(shared_ptr<descriptor::Tensor> tensor);
 
         void dump(std::ofstream&);

@@ -19,11 +19,25 @@ namespace nnfusion
                 void set_launch_config() override;
 
             private:
-                shared_ptr<KernelContext> kernel_ctx;
-
                 nnfusion::Shape input_shape, output_shape, lower_bounds;
                 nnfusion::Shape input_strides, output_strides, slice_strides;
                 string input_type, output_type;
+                bool is_memcpy = false;
+            };
+
+            class SliceMemCpy : public CudaLibEmitter
+            {
+            public:
+                SliceMemCpy(shared_ptr<KernelContext> ctx);
+
+                LanguageUnit_p emit_function_body() override;
+                LanguageUnit_p emit_dependency() override;
+
+            private:
+                nnfusion::Shape input_shape, output_shape, lower_bounds;
+                bool is_memcpy;
+                size_t input_offset;
+                size_t data_type_size;
             };
         } // namespace cuda
     }     // namespace kernels

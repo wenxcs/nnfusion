@@ -80,6 +80,19 @@ namespace nnfusion
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
             size_t size(bool in_byte = true) const;
+
+            void set_root_tensor(std::shared_ptr<Tensor> root_tensor)
+            {
+                m_root_tensor = root_tensor;
+            }
+            std::shared_ptr<Tensor> get_root_tensor() const { return m_root_tensor; }
+            size_t ref() { return ++m_ref_count; }
+            size_t deref()
+            {
+                NNFUSION_CHECK(m_ref_count > 0);
+                return --m_ref_count;
+            }
+
             // persistent tensors exist in all iterations, and do not reuse any memory space.
             // Data in persistent tensors can be immutable or mutable.
             bool is_persistent() const { return m_persistent; }
@@ -116,6 +129,8 @@ namespace nnfusion
             bool m_constant;
             bool m_parameter;
             bool m_RDMA;
+            std::shared_ptr<Tensor> m_root_tensor;
+            size_t m_ref_count;
             int m_group;
             NNFusion_DeviceType m_device_type;
             size_t m_device_id;

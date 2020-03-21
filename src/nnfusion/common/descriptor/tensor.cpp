@@ -41,6 +41,8 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
     , m_constant(is_constant)
     , m_parameter(is_parameter)
     , m_RDMA(is_RDMA_tensor)
+    , m_root_tensor(nullptr)
+    , m_ref_count(1)
     , m_group(group)
     , m_device_id(device_id)
 {
@@ -67,6 +69,8 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
     , m_constant(is_constant)
     , m_parameter(is_parameter)
     , m_RDMA(is_RDMA_tensor)
+    , m_root_tensor(nullptr)
+    , m_ref_count(1)
     , m_group(group)
     , m_device_id(device_id)
 {

@@ -1,0 +1,18 @@
+# Microsoft (c) 2019, NNFusion Team
+
+set(SRC
+    block_kernel_schedule.cpp
+    block_parallel_device.cpp
+    blockfusion_codegen.cpp
+    blockfusion_profiler.cpp
+)
+
+add_library(nnfusion_engine_pass_graph_blockfusion STATIC ${SRC})
+target_include_directories(nnfusion_engine_pass_graph_blockfusion SYSTEM PUBLIC
+    ${NGRAPH_INCLUDE_PATH}
+)
+target_compile_options(nnfusion_engine_pass_graph_blockfusion PRIVATE "-fPIC")
+
+target_link_libraries(nnfusion_engine_pass_graph_blockfusion PRIVATE nnfusion_common
+gflags
+)

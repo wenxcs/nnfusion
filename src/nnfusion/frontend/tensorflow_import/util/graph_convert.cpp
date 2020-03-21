@@ -322,6 +322,21 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateRelu6GradOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto delta_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto arg_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto relu_grad_op = std::make_shared<op::Relu6Backprop>();
+                relu_grad_op->set_name(node.name());
+
+                auto relu_grad_gnode =
+                    m_graph->add_node_and_edge(relu_grad_op, {arg_gnode, delta_gnode});
+                NamedNodeVector ret{{node.name(), relu_grad_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateBiasAddGradOp(const tensorflow::NodeDef& node,
                                                    const NodeMap& all_ng_nodes,
                                                    std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -973,6 +988,7 @@ namespace nnfusion
                 std::vector<int> tf_concat_axis_vec;
                 bool status = GetValueFromNGraphOp<int>(concat_axis_gnode, &tf_concat_axis_vec);
                 NNFUSION_CHECK(status);
+                NNFUSION_CHECK(tf_concat_axis_vec.size() == 1);
 
                 int64 concat_axis = tf_concat_axis_vec[0];
 
@@ -985,35 +1001,6 @@ namespace nnfusion
                 auto concat_gnode = m_graph->add_node_and_edge(concat_op, arg_gnodes);
 
                 NamedNodeVector ret{{node.name(), concat_gnode}};
-                return ret;
-            }
-
-            NamedNodeVector TranslateSigmoidOp(const tensorflow::NodeDef& node,
-                                               const NodeMap& all_ng_nodes,
-                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
-            {
-                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
-
-                auto negative_op = std::make_shared<op::Negative>();
-                auto negative_gnode = m_graph->add_node_and_edge(negative_op, {input_gnode});
-                auto exp_op = std::make_shared<op::Exp>();
-                auto exp_gnode = m_graph->add_node_and_edge(exp_op, {negative_gnode});
-                auto constant_op = std::make_shared<op::Constant>(
-                    input_gnode->get_element_type(),
-                    input_gnode->get_shape(),
-                    std::vector<std::string>(nnfusion::shape_size(input_gnode->get_shape()), "1"));
-                auto constant_gnode = m_graph->add_node_and_edge(constant_op, GNodeVector{});
-                auto denominator_op = std::make_shared<op::Add>();
-                auto denominator_gnode =
-                    m_graph->add_node_and_edge(denominator_op, {constant_gnode, exp_gnode});
-
-                auto sigmoid_op = std::make_shared<op::Divide>();
-                sigmoid_op->set_name(node.name());
-
-                auto sigmoid_gnode =
-                    m_graph->add_node_and_edge(sigmoid_op, {constant_gnode, denominator_gnode});
-
-                NamedNodeVector ret{{node.name(), sigmoid_gnode}};
                 return ret;
             }
 
@@ -2818,13 +2805,15 @@ namespace nnfusion
                 {"Pow", TranslateBinaryOp<op::Power>},
                 {"Range", TranslateRangeOp},
                 {"Relu", TranslateUnaryOp<op::Relu>},
+                {"Relu6", TranslateUnaryOp<op::Relu6>},
                 {"ReluGrad", TranslateReluGradOp},
+                {"Relu6Grad", TranslateRelu6GradOp},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateRsqrtOp},
                 {"RsqrtGrad", TranslateRsqrtGradOp},
                 {"RealDiv", TranslateBinaryOp<op::Divide>},
                 {"Select", TranslateSelectOp},
-                {"Sigmoid", TranslateSigmoidOp},
+                {"Sigmoid", TranslateUnaryOp<op::Sigmoid>},
                 {"Slice", TranslateSliceOp},
                 {"Softmax", TranslateSoftmaxOp},
                 {"Split", TranslateSplitOp},
