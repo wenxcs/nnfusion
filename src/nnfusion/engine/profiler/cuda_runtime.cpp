@@ -66,6 +66,24 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     auto& arg = ke->kernel->m_context->inputs;
     auto& out = ke->kernel->m_context->outputs;
     auto& temp = ke->kernel->m_context->tensors;
+    std::unordered_map<size_t, size_t> inplace_map;
+
+    // Support inplace annoation
+    if (ke->kernel->m_context->annotations != nullptr)
+    {
+        auto anno = ke->kernel->m_context->annotations;
+        for (auto& pair : anno->get_in_place_oi_pairs())
+            if (!pair.destructive)
+            {
+                inplace_map[pair.output] = pair.input;
+                //\todo(wenxh): Support Concat operator's tensor layout;
+                if (pair.input_offset != 0)
+                {
+                    inplace_map.clear();
+                    break;
+                }
+            }
+    }
 
     // Dedupe Tensors
     std::map<std::string, size_t> arg_cnt;
@@ -232,10 +250,18 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             if (deduped_name == tensor->get_name())
             {
                 writer << tensor_declare(tensor);
-                if (tensor->get_device_type() == GENERIC_CPU)
-                    writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
+                if (inplace_map.find(i) == inplace_map.end())
+                {
+                    if (tensor->get_device_type() == GENERIC_CPU)
+                        writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
+                    else
+                        writer << tensor_alloc_cuda(tensor);
+                }
                 else
-                    writer << tensor_alloc_cuda(tensor);
+                {
+                    writer << tensor->get_name() << " = "
+                           << arg[inplace_map[i]]->get_name() + ";\n";
+                }
             }
         }
 
@@ -298,8 +324,11 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             auto& tensor = out[i];
             if (deduped_name == tensor->get_name())
             {
-                if (tensor->get_device_type() != GENERIC_CPU)
-                    writer << tensor_free_cuda(tensor);
+                if (inplace_map.find(i) == inplace_map.end())
+                {
+                    if (tensor->get_device_type() != GENERIC_CPU)
+                        writer << tensor_free_cuda(tensor);
+                }
             }
         }
 

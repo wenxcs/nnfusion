@@ -85,6 +85,8 @@ namespace nnfusion
                 {
                     kernel_found = true;
                     auto pctx = make_shared<ProfilingContext>(kernel);
+                    pctx->runtime_times = 1;
+                    pctx->warmup_times = 0;
                     Profiler prof(rt, pctx);
 
                     // The execute() will return a vector of vector,

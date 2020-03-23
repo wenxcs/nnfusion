@@ -112,6 +112,8 @@ namespace nnfusion
             size_t get_device_id() const { return m_device_id; }
             std::string get_device_name() const;
 
+            using Pointer = std::shared_ptr<Tensor>;
+
         protected:
             nnfusion::element::Type m_element_type;
 

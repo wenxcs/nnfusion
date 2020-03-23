@@ -1,5 +1,6 @@
 // Microsoft (c) 2019, Wenxiang
 #include "cuda_helper.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion::kernels;
 using CodeWriter = nnfusion::codegen::CodeWriter;
@@ -36,6 +37,37 @@ LanguageUnit_p cuda::get_math_kernel(const std::string& name,
         writer.indent--;
         writer << "}\n";
     }
+    return cw;
+}
+
+LanguageUnit_p cuda::get_atomic_math_kernel(const std::string& name,
+                                            const std::string& math_kernel,
+                                            const std::string data_type)
+{
+    NNFUSION_CHECK(std::count(name.begin(), name.end(), '-') == 0);
+    std::string mangled_name = "declaration::function_def_atomic" + name;
+    std::string code = "/*Empty Not Supposed*/\n";
+    if (math_kernel.size())
+    {
+        code = nnfusion::op::create_code_from_template(
+            R"(
+__device__ void atomic_@name@(@T@* ptr, @T@ x1) {
+  int* i_ptr = (int*) ptr;
+  int i_x0 = *i_ptr;
+  int assumed;
+  do {
+    assumed = i_x0;
+    @T@ x0 = __int_as_float(i_x0);
+    i_x0 = atomicCAS(i_ptr, assumed, __float_as_int(@math_kernel@));
+  } while (assumed != i_x0);
+}
+
+)",
+            {
+                {"name", name}, {"T", data_type}, {"math_kernel", math_kernel},
+            });
+    }
+    LanguageUnit_p cw(new LanguageUnit(mangled_name, code));
     return cw;
 }
 

@@ -50,7 +50,6 @@ namespace nnfusion
                                << momentum << " * " << lr << ";\n";
                         else
                             lu << "input0[tid] -= input1[tid] * " << lr << ";\n";
-                        lu << "output0[tid] = input0[tid];\n";
                     }
                     lu.block_end();
                     return _lu;

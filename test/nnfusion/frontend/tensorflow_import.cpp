@@ -526,6 +526,22 @@ TEST(nnfusion_tensorflow_import, sigmoid_op)
     }
 }
 
+TEST(nnfusion_tensorflow_import, scattersub_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_scattersub_graph.pb"));
+
+    Inputs inputs{};
+    Outputs expected_outputs{{1, 1, 1, 1, -3, -9, -1, 1}};
+
+    Outputs outputs{execute(model, inputs, "NNFusion")};
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_EQ(expected_outputs[i], outputs[i]);
+    }
+}
+
 TEST(nnfusion_tensorflow_import, reduce_sum_op)
 {
     auto model = frontend::load_tensorflow_model(file_util::path_join(

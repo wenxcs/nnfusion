@@ -233,6 +233,9 @@ namespace nnfusion
                         continue;
                     }
                     auto pctx = gctx.get_profiling_context(node);
+                    // Ensure only run once
+                    pctx->warmup_times = 0;
+                    pctx->runtime_times = 1;
 
                     rt->execute(pctx,
                                 pctx->kernel_memory->unsafe_inputs(),

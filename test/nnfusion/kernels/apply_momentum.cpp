@@ -52,7 +52,7 @@ TEST(nnfusion_core_kernels, apply_momentum)
         0.2,
         0.2,
     };
-    auto OUT = vector<float>{/*var_gnode*/ -19.2106, -19.2106, -19.2106, -19.2106};
+    auto OUT = vector<float>{/*var_gnode*/ 0.998, 0.998, 0.998, 0.998};
 
     EXPECT_TRUE(nnfusion::test::check_kernel<float>(gnode, CUDA_GPU, IN, OUT));
 }

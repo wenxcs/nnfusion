@@ -22,6 +22,10 @@ namespace nnfusion
                                                      const std::string& math_kernel,
                                                      const std::vector<std::string>& data_types);
 
+            shared_ptr<LanguageUnit> get_atomic_math_kernel(const std::string& name,
+                                                            const std::string& math_kernel,
+                                                            const std::string data_type);
+
             uint32_t align_to_block_size(uint32_t threads, uint32_t block_size);
 
             void emit_memcpyDtD(CodeWriter& writer,

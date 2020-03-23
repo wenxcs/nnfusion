@@ -2410,6 +2410,26 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateScatterOp(const tensorflow::NodeDef& node,
+                                               const NodeMap& all_ng_nodes,
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto ref = GetInputNode(all_ng_nodes, node, 0);
+                auto indices = GetInputNode(all_ng_nodes, node, 1);
+                auto updates = GetInputNode(all_ng_nodes, node, 2);
+
+                //1. Check whether ref is variable
+                // NNFUSION_CHECK(!ref->is_constant()) << "ScatterSub will only write back to variable.";
+
+                nnfusion::op::OpConfig::any myConfig;
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {ref, indices, updates});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateSelectOp(const tensorflow::NodeDef& node,
                                               const NodeMap& all_ng_nodes,
                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2812,6 +2832,10 @@ namespace nnfusion
                 {"Rsqrt", TranslateRsqrtOp},
                 {"RsqrtGrad", TranslateRsqrtGradOp},
                 {"RealDiv", TranslateBinaryOp<op::Divide>},
+                {"ScatterSub", TranslateScatterOp},
+                {"ScatterAdd", TranslateScatterOp},
+                {"ScatterMin", TranslateScatterOp},
+                {"ScatterMax", TranslateScatterOp},
                 {"Select", TranslateSelectOp},
                 {"Sigmoid", TranslateUnaryOp<op::Sigmoid>},
                 {"Slice", TranslateSliceOp},
