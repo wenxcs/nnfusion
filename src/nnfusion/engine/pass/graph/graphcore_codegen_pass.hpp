@@ -203,6 +203,8 @@ namespace nnfusion
                             visited.insert(it), blacklist.insert(it);
                         NNFUSION_CHECK(it->get_output_size() == 1);
                     }
+                    NNFUSION_LOG(INFO) << "There are " << blacklist.size()
+                                       << " standalone GNode(s) found.";
                     name_used.clear();
 
                     // Fill offsetup nodes
@@ -347,6 +349,8 @@ namespace nnfusion
                                     {"Tanh", []() { return "topi=topi.tanh(args(\"input0\"))"; }},
                                     {"Relu",
                                      []() { return "topi=topi.nn.relu(args(\"input0\"))"; }},
+                                    {"Sigmoid",
+                                     []() { return "topi=topi.sigmoid(args(\"input0\"))"; }},
                                     {"Relu6",
                                      []() { return "topi=topi.clip(args(\"input0\"), 0, 6)"; }},
                                 };
@@ -474,15 +478,15 @@ namespace nnfusion
                                 auto _op = get_op_object<nnfusion::op::Dot>(curr);
 
                                 NNFUSION_CHECK(_op->get_transpose_A() == false);
-                                NNFUSION_CHECK(_op->get_transpose_B() == false);
 
                                 auto shape_0 = curr->get_input_shape(0);
                                 auto shape_1 = curr->get_in_edge(1)->get_src()->get_output_shape(0);
                                 int N = shape_0[0], K = shape_0[1], M = shape_1[1];
 
-                                if (N == 1 && M <= max_tiles)
+                                if (getenv("GC_POPDOT") == nullptr && N == 1 && M <= max_tiles)
                                 {
-                                    convert_input[1] = ".transpose()";
+                                    if (_op->get_transpose_B() == false)
+                                        convert_input[1] = ".transpose()";
                                     shards = {1, M, M};
                                     code = autogen(op::create_code_from_template(
                                         R"( - input("input0", @input_shape_0@); input("input1", @input_shape_1@); k = loop(@K@); output(@output_shape@, lambda i: tvm.sum(args("input0")[k] * args("input1")[k], axis=k)); )",
@@ -505,7 +509,9 @@ namespace nnfusion
                                         {
                                             {"out_name", arg_names[curr]},
                                             {"A", arg_names[curr->get_in_edge(0)->get_src()]},
-                                            {"B", arg_names[curr->get_in_edge(1)->get_src()]},
+                                            {"B",
+                                             arg_names[curr->get_in_edge(1)->get_src()] +
+                                                 (_op->get_transpose_B() ? ".transpose()" : "")},
                                         });
                                 }
                             }
@@ -577,8 +583,7 @@ namespace nnfusion
 
                                 if (use_padding)
                                 {
-                                    NNFUSION_CHECK(_op->get_include_padding_in_avg_computation() ==
-                                                   true);
+                                    // TODO: NNFUSION_CHECK(_op->get_include_padding_in_avg_computation() == true);
 
                                     auto pad_lower = _op->get_padding_below();
                                     auto pad_upper = _op->get_padding_above();
@@ -844,7 +849,7 @@ namespace nnfusion
                                 auto& cfg = _op->localOpConfig.getRoot();
 
                                 NNFUSION_CHECK(cfg["padding_type"] == "SAME");
-                                NNFUSION_CHECK(cfg["data_format"] == "NHWC");
+                                bool channel_last = (cfg["data_format"] == "NHWC");
 
                                 for (auto& it : cfg["dilations"])
                                     NNFUSION_CHECK(it == 1);
@@ -876,11 +881,11 @@ namespace nnfusion
                                         {"data", arg_names[curr->get_in_edge(0)->get_src()]},
                                         {"weight", arg_names[curr->get_in_edge(1)->get_src()]},
                                         {"N", data_shape[0]},
-                                        {"HI", data_shape[1]},
-                                        {"WI", data_shape[2]},
+                                        {"HI", channel_last ? data_shape[1] : data_shape[2]},
+                                        {"WI", channel_last ? data_shape[2] : data_shape[3]},
                                         {"HK", weight_shape[0]},
                                         {"WK", weight_shape[1]},
-                                        {"CI", data_shape[3]},
+                                        {"CI", channel_last ? data_shape[3] : data_shape[1]},
                                         {"CO", weight_shape[3]},
                                         {"pad_lower_h", cfg["padding_before"][0]},
                                         {"pad_lower_w", cfg["padding_before"][1]},

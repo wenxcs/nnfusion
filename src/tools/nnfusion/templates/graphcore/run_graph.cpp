@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <poplar/DeviceManager.hpp>
@@ -25,6 +26,8 @@
 #include <popops/Pad.hpp>
 #include <popops/Reduce.hpp>
 #include <popops/codelets.hpp>
+
+#include <poputil/TileMapping.hpp>
 
 poplar::Device device;
 std::vector<poplar::ComputeSet> compsets;
@@ -86,6 +89,8 @@ std::vector<T> load_const(const std::string& name)
 
 void place_tensor(poplar::Graph& g, poplar::Tensor& tensor)
 {
+    return poputil::mapTensorLinearly(g, tensor);
+
     int num_cells = tensor.numElements(), per_tile, y;
     for (int i = NUM_TILES; i >= 1; --i)
         if (num_cells % i == 0)
@@ -147,14 +152,27 @@ poplar::Tensor compute_task(poplar::Graph& g,
     assert(offset + tot_threads_per_shard * shards.back() <= NUM_TILES);
 
     std::string cs_name = "compset-" + std::to_string(step);
-    std::string kernel_name =
-        "AntaresVertexCodeletsImpl_S" + std::to_string(step) + "_F" + std::to_string(offset);
 
-    printf("Loading 1 kernel with name: %s (tiles = %dx%d from %s)\n",
+    uint64_t hash_key = 0, i;
+    for (i = 0; i + 8 <= autogen.size(); i += 8)
+    {
+        hash_key = (hash_key * 3 + *(uint64_t*)(autogen.data() + i) * 7) + 11;
+    }
+    for (; i < autogen.size(); i += 1)
+    {
+        hash_key = (hash_key * 3 + *(uint8_t*)(autogen.data() + i) * 7) + 11;
+    }
+    std::string kernel_name = "AntaresVertexCodeletsImpl_" + std::to_string(hash_key);
+
+    static std::unordered_set<std::string> added_kernel_names;
+
+    printf("Loading 1 kernel with name: %s (tiles = %dx%d from compset %s, super-step = %d:%d)\n",
            kernel_name.c_str(),
            tot_threads_per_shard,
            shards.back(),
-           cs_name.c_str());
+           cs_name.c_str(),
+           step,
+           offset);
 
     // No super-step decrease
     static int prev_step = -1;
@@ -234,7 +252,11 @@ public:)";
         s_src << "\n  " << it.first << ";";
     s_src << "\n}; // class Vertex";
 
-    g.addCodelets(s_src);
+    if (added_kernel_names.count(kernel_name) == 0)
+    {
+        g.addCodelets(s_src);
+        added_kernel_names.insert(kernel_name);
+    }
 
     std::sort(func_args.begin(),
               func_args.end(),
