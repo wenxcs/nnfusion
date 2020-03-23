@@ -26,9 +26,20 @@ namespace concurrency {
 
 struct NumaEnvironment {
   int numa_node_;
+  bool use_numa_;
 
   NumaEnvironment(int numa_node = kNUMANoAffinity)
-      : numa_node_(numa_node) {}
+      : numa_node_(numa_node),
+        use_numa_(false)
+  {
+    if (numa_node_ != kNUMANoAffinity)
+    {
+      if (HaveHWLocTopology())
+      {
+        use_numa_ = true;
+      }
+    }
+  }
 
   struct Task
   {
@@ -58,7 +69,7 @@ struct NumaEnvironment {
 
     return StartThread([=]()
     {
-      if (numa_node_ != kNUMANoAffinity)
+      if (use_numa_)
       {
         NUMASetThreadNodeAffinity(numa_node_);
       }

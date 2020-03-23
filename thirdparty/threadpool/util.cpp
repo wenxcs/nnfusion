@@ -48,15 +48,13 @@ int NUMANumNodes() {
 }
 
 void NUMASetThreadNodeAffinity(int node) {
-  if (HaveHWLocTopology()) {
-    // Find the corresponding NUMA node topology object.
-    hwloc_obj_t obj = GetHWLocTypeIndex(HWLOC_OBJ_NUMANODE, node);
-    if (obj) {
-      hwloc_set_cpubind(hwloc_topology_handle, obj->cpuset,
-                        HWLOC_CPUBIND_THREAD | HWLOC_CPUBIND_STRICT);
-    } else {
-      //LOG(ERROR) << "Could not find hwloc NUMA node " << node;
-    }
+  // Find the corresponding NUMA node topology object.
+  hwloc_obj_t obj = GetHWLocTypeIndex(HWLOC_OBJ_NUMANODE, node);
+  if (obj) {
+    hwloc_set_cpubind(hwloc_topology_handle, obj->cpuset,
+                      HWLOC_CPUBIND_THREAD | HWLOC_CPUBIND_STRICT);
+  } else {
+    //LOG(ERROR) << "Could not find hwloc NUMA node " << node;
   }
 }
 

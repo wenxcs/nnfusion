@@ -27,11 +27,11 @@ namespace nnfusion
                     size_t num_inputs = ctx->inputs.size();
                     for (size_t i = 0; i < num_inputs; ++i)
                     {
-                        expression << "input(\"input" << i << "\", " << vector_to_string(shape)
-                                   << "); ";
+                        expression << "input(\"input" << i << "\", "
+                                   << vector_to_string(shape, " * ") << "); ";
                     }
                     std::string tvm_op = TvmOpMap<T>::op;
-                    expression << "output(" << vector_to_string(shape) << ", topi=" << tvm_op
+                    expression << "output(" << vector_to_string(shape, " * ") << ", topi=" << tvm_op
                                << "(";
                     for (size_t i = 0; i < num_inputs - 1; ++i)
                     {

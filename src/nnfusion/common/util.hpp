@@ -62,10 +62,10 @@ namespace nnfusion
     }
 
     template <typename T>
-    std::string vector_to_string(const T& v)
+    std::string vector_to_string(const T& v, const std::string& sep = ", ")
     {
         std::ostringstream os;
-        os << "[ " << nnfusion::join(v) << " ]";
+        os << "[ " << nnfusion::join(v, sep) << " ]";
         return os.str();
     }
 
