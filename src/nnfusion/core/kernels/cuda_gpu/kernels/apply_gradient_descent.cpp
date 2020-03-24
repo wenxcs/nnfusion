@@ -14,18 +14,24 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class ApplyGradient : public BlockCudaEmitter
+            class ApplyGradientDescent : public BlockCudaEmitter
             {
                 shared_ptr<nnfusion::op::GenericOp> generic_op;
                 size_t threads;
 
             public:
-                ApplyGradient(shared_ptr<KernelContext> ctx)
+                ApplyGradientDescent(shared_ptr<KernelContext> ctx)
                     : BlockCudaEmitter(ctx)
                     , generic_op(
                           static_pointer_cast<nnfusion::op::GenericOp>(ctx->gnode->get_op_ptr()))
                 {
                     threads = ctx->inputs[0]->size(false);
+                    if (!ctx->annotations)
+                        ctx->annotations = std::make_shared<Annotations>();
+                    // TODO: we use inplace_annotation to implement the reference_tensor, i.e., the
+                    // output 0 shares the same address with input 0
+                    // need to add a new annotation type or ref_tensor mechanism in the future
+                    ctx->annotations->add_in_place_oi_pair({0, 0, false});
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -35,14 +41,11 @@ namespace nnfusion
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
-                    lu << "// float lr = " << lr << ";\n";
-                    lu << "// uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
-                    lu << "// if(tid < " << threads << ")\n";
+                    lu << "const uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
+                    lu << "if (tid < " << threads << ")\n";
                     lu.block_begin();
                     {
-                        // output the gradient for debugging
-                        lu << "// output0[tid] = input1[tid];\n";
-                        lu << "// input0[tid] = input0[tid] - lr * input1[tid];\n";
+                        lu << "input0[tid] -= " << lr << " * input1[tid];\n";
                     }
                     lu.block_end();
                     return _lu;
@@ -73,4 +76,7 @@ using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("ApplyGradient",
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
-                        cuda::ApplyGradient)
+                        cuda::ApplyGradientDescent)
+REGISTER_KERNEL_EMITTER("ApplyGradientDescent",
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        cuda::ApplyGradientDescent)

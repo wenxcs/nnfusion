@@ -2775,11 +2775,36 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector ApplyGradientDescentOp(const tensorflow::NodeDef& node,
+                                                   const NodeMap& all_ng_nodes,
+                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto alpha_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto delta_gnode = GetInputNode(all_ng_nodes, node, 2);
+
+                std::vector<float> alpha_value;
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(alpha_gnode, &alpha_value))
+                    << "We only accept the alpha as Constant.";
+                NNFUSION_CHECK(alpha_value.size() == 1);
+
+                nnfusion::op::OpConfig::any config;
+                config["learning_rate"] = alpha_value[0];
+
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), config);
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {input_gnode, delta_gnode});
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<op::Abs>},
                 {"Add", TranslateBinaryOp<op::Add>},
                 {"AddN", TranslateAddNOp},
                 {"All", TranslateAllOp},
+                {"ApplyGradientDescent", ApplyGradientDescentOp},
                 {"ApplyMomentum", TranslateApplyMomentumOp},
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
