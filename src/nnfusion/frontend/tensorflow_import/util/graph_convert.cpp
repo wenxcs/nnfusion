@@ -1712,6 +1712,59 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector
+                TranslateSparseApplyMomentumOp(const tensorflow::NodeDef& node,
+                                               const NodeMap& all_ng_nodes,
+                                               std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto var_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto accum_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto lr_gnode = GetInputNode(all_ng_nodes, node, 2);
+                auto grad_gnode = GetInputNode(all_ng_nodes, node, 3);
+                auto indices_gnode = GetInputNode(all_ng_nodes, node, 4);
+                auto momentum_gnode = GetInputNode(all_ng_nodes, node, 5);
+
+                auto& indices_shape = indices_gnode->get_shape();
+                NNFUSION_CHECK(nnfusion::is_vector(indices_shape))
+                    << "indices must be one-dimensional";
+                auto& var_shape = var_gnode->get_shape();
+                NNFUSION_CHECK(nnfusion::is_vector_or_higher(var_shape))
+                    << "var must be at least 1 dimensional";
+
+                std::vector<int32_t> indices;
+                bool status = GetValueFromNGraphOp<int32_t>(indices_gnode, &indices);
+                NNFUSION_CHECK(status);
+
+                std::vector<float> lr_value;
+                status = GetValueFromNGraphOp<float>(lr_gnode, &lr_value);
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(lr_value.size() == 1);
+
+                std::vector<float> momentum_value;
+                status = GetValueFromNGraphOp<float>(momentum_gnode, &momentum_value);
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(momentum_value.size() == 1);
+
+                bool use_nesterov = false;
+                status = GetNodeAttr(node.attr(), "use_nesterov", use_nesterov);
+                NNFUSION_CHECK(status);
+
+                nnfusion::op::OpConfig::any myConfig;
+                myConfig["use_nesterov"] = use_nesterov;
+                myConfig["lr"] = lr_value[0];
+                myConfig["momentum"] = momentum_value[0];
+                myConfig["indices"] = indices;
+
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {var_gnode, accum_gnode, grad_gnode});
+
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateSqueezeOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2808,6 +2861,7 @@ namespace nnfusion
                 {"All", TranslateAllOp},
                 {"ApplyGradientDescent", TranslateApplyGradientDescentOp},
                 {"ApplyMomentum", TranslateApplyMomentumOp},
+                {"SparseApplyMomentum", TranslateSparseApplyMomentumOp},
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
                 {"BatchMatMul", TranslateBatchMatMulOp},

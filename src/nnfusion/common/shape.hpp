@@ -106,5 +106,11 @@ namespace nnfusion
         return 1 == shape.size();
     }
 
+    template <typename SHAPE_TYPE>
+    inline bool is_vector_or_higher(const SHAPE_TYPE& shape)
+    {
+        return 1 <= shape.size();
+    }
+
     std::ostream& operator<<(std::ostream& s, const Shape& shape);
 }

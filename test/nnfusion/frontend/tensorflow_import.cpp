@@ -542,6 +542,22 @@ TEST(nnfusion_tensorflow_import, scattersub_op)
     }
 }
 
+TEST(nnfusion_tensorflow_import, apply_momentum_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_apply_momentum_graph.pb"));
+
+    Inputs inputs{};
+    Outputs expected_outputs{{0.99596, 0.99798, 0.99798, 0.9899, 0.99394, 0.99596}};
+
+    Outputs outputs{execute(model, inputs, "NNFusion")};
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs[i]));
+    }
+}
+
 TEST(nnfusion_tensorflow_import, reduce_sum_op)
 {
     auto model = frontend::load_tensorflow_model(file_util::path_join(
