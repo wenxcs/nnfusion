@@ -51,10 +51,10 @@ namespace nnfusion
                                 for (auto& in_edge : dst->get_in_edges())
                                 {
                                     NNFUSION_CHECK(in_edge->get_dst() == dst);
-                                    auto p_const = std::dynamic_pointer_cast<op::Constant>(
-                                        in_edge->get_src()->get_op_ptr());
-                                    if (!in_edge->get_src()->is_constant() ||
-                                        p_const->is_parameter())
+                                    auto p_const =
+                                        std::dynamic_pointer_cast<nnfusion::op::Constant>(
+                                            in_edge->get_src()->get_op_ptr());
+                                    if (!in_edge->get_src()->is_constant())
                                     {
                                         inferable = false;
                                         break;

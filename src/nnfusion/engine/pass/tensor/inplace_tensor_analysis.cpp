@@ -62,7 +62,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             node_to_ins[gnode] = ins;
 
             // skip parameter tensors.
-            if (gnode->get_op_ptr()->is_parameter())
+            if (gnode->is_parameter())
                 continue;
 
             if (auto kernel = get_kernel(ins))
@@ -181,7 +181,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 continue;
                             }
 
-                            if (input_gnode->get_op_ptr()->is_parameter())
+                            if (input_gnode->is_parameter())
                             {
                                 continue;
                             }
@@ -192,8 +192,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             if (gnode->liveness_new_list.count(output) != 0)
                             {
                                 if (!oi_pair.destructive ||
-                                    (!input_gnode->get_op_ptr()->is_constant() &&
-                                     !input->is_persistent() &&
+                                    (!input_gnode->is_constant() && !input->is_persistent() &&
                                      (!input->get_root_tensor() ||
                                       !input->get_root_tensor()->is_persistent()) &&
                                      gnode->liveness_free_list.count(input) != 0))

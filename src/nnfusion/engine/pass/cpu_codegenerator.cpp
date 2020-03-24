@@ -391,7 +391,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 std::string func_name = fu->name_unit->get_code();
                 // emit function calls in cpu_init()
                 //if (read_const.compare(0, 10, "read_const") == 0)
-                if (func_name.compare(0, 9, "Constant_") == 0)
+                if (func_name.compare(0, 9, "Constant_") == 0 ||
+                    func_name.compare(0, 9, "Variable_") == 0)
                 {
                     NNFUSION_CHECK(stream->is_default_stream())
                         << "Kernel function calls in cpu_init() "

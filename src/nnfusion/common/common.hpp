@@ -95,6 +95,7 @@
 #include "nnfusion/core/operators/op_define/tan.hpp"
 #include "nnfusion/core/operators/op_define/tanh.hpp"
 #include "nnfusion/core/operators/op_define/topk.hpp"
+#include "nnfusion/core/operators/op_define/variable.hpp"
 
 #define ktrace()                                                                                   \
     {                                                                                              \

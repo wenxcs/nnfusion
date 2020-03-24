@@ -20,7 +20,7 @@ REGISTER_OP(DynamicStitch)
         for (int i = 0; i < num_partitions; ++i)
         {
             auto indices_node = gnode->get_in_edge(i)->get_src();
-            if (indices_node->get_op_type() == "Constant")
+            if (indices_node->is_constant())
             {
                 auto ng_constant_op =
                     std::dynamic_pointer_cast<nnfusion::op::Constant>(indices_node->get_op_ptr());

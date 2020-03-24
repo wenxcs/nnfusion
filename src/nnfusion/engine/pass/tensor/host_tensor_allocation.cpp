@@ -1,5 +1,4 @@
 // Microsoft (c) 2019, NNFUSION TEAM
-#include "host_tensor_allocation.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 using namespace nnfusion;

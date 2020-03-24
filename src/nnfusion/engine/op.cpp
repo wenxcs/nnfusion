@@ -35,7 +35,7 @@ Operator::Operator(shared_ptr<graph::GNode> gnode)
     }
 
     // Output debug info of node
-    if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_constant())
+    if (!gnode->get_op_ptr()->is_tensor_op())
     {
         NNFUSION_LOG(INFO) << "Node:\t" << gnode->get_name() << "\t(";
         vector<string> parameter_nodes = node_input_names;

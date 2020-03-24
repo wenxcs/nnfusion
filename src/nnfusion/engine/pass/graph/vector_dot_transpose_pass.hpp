@@ -55,7 +55,7 @@ namespace nnfusion
 
                             auto p_const = std::dynamic_pointer_cast<nnfusion::op::Constant>(
                                 input_1_gnode->get_op_ptr());
-                            if (!input_1_gnode->is_constant() || p_const->is_parameter())
+                            if (!input_1_gnode->is_constant() || p_const->is_weight())
                                 continue;
                             NNFUSION_CHECK(input_0_gnode->get_output_size() == 1)
                                 << input_0_gnode->get_op_type() << "must has exactly one output.";

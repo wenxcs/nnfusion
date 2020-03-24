@@ -11,7 +11,6 @@
 #include "nnfusion/engine/profiler/profiler.hpp"
 
 #include "nnfusion/core/operators/op_define/concat.hpp"
-#include "nnfusion/core/operators/op_define/constant.hpp"
 
 using namespace std;
 using namespace nnfusion;
@@ -43,7 +42,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         {
             auto gnode = ins->getGNode();
             // do not allocate parameter tensors.
-            if (gnode->get_op_ptr()->is_parameter())
+            if (gnode->is_parameter())
                 continue;
             auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
                                       .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();

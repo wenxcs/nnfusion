@@ -85,8 +85,8 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             if (async_info.execution_thread == nullptr)
             {
-                // constant and parameter ops are in cuda_init(), and use default/main thread
-                if (gnode->get_op_type() == "Constant" || gnode->get_op_ptr()->is_parameter())
+                // constant, parameter and variable ops are in cuda_init(), and use default/main thread
+                if (gnode->get_op_ptr()->is_tensor_op())
                 {
                     async_info.execution_thread = CPU_async_manager->set_stream(0, "default");
 
@@ -153,8 +153,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                     for (auto& in_edge : gnode->get_in_edges())
                     {
                         auto in_gnode = in_edge->get_src();
-                        if (in_gnode->get_op_type() != "Constant" &&
-                            !in_gnode->get_op_ptr()->is_parameter())
+                        if (!in_gnode->get_op_ptr()->is_tensor_op())
                         {
                             auto& in_async_info =
                                 (*in_gnode)["Async_info"].as<AsyncExecutionInfo>();
@@ -184,8 +183,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
             {
                 auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
                 bool const_inputs = true;
-                if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
-                    !gnode->is_constant())
+                if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
                 {
                     auto emitted_kernel =
                         (*gnode)["Kernel_Selection_Result"]
@@ -290,7 +288,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             // all constant ops use default stream
-            if (gnode->get_op_type() == "Constant" || gnode->get_op_ptr()->is_parameter())
+            if (gnode->get_op_ptr()->is_tensor_op())
             {
                 if (m_device == GENERIC_CPU)
                     async_info.execution_thread = async_manager->set_stream(0, "default");
@@ -363,8 +361,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
             {
                 auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
                 bool const_inputs = true;
-                if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
-                    !gnode->is_constant())
+                if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
                 {
                     auto emitted_kernel =
                         (*gnode)["Kernel_Selection_Result"]
@@ -443,8 +440,7 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
             auto input_gnode = edge->get_src();
             // constant ops are in xxx_init() of generated code,
             // so there is no need to add event.
-            if (input_gnode->get_op_ptr()->is_constant() ||
-                input_gnode->get_op_ptr()->is_parameter())
+            if (input_gnode->get_op_ptr()->is_tensor_op())
             {
                 continue;
             }

@@ -145,6 +145,8 @@ namespace nnfusion
             void Clear();
 
             bool is_constant() const { return m_op_ptr->is_constant(); }
+            bool is_variable() const { return m_op_ptr->is_variable(); }
+            bool is_parameter() const { return m_op_ptr->is_parameter(); }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
             // \todo make the hash code of different shared_ptr that point to the same address the same

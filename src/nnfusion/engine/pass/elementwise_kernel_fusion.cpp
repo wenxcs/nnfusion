@@ -29,8 +29,7 @@ bool ElementwiseKernelFusion::run(std::shared_ptr<InterpreterContext> ctx,
             for (auto ins : *block_iter)
             {
                 auto gnode = ins->getGNode();
-                NNFUSION_CHECK(!(gnode->get_op_ptr()->is_parameter()) &&
-                               !(gnode->get_op_ptr()->is_constant()));
+                NNFUSION_CHECK(!gnode->get_op_ptr()->is_tensor_op());
 
                 auto emitted_kernels =
                     (*ins)["Kernel_Selection_Result"]

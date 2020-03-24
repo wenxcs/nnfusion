@@ -87,7 +87,7 @@ namespace nnfusion
                             {
                                 auto weight = curr->get_in_edge(1)->get_src();
                                 auto weight_shape = weight->get_output_shape(0);
-                                NNFUSION_CHECK(weight->get_op_ptr()->get_op_type() == "Constant")
+                                NNFUSION_CHECK(weight->is_constant())
                                     << "Only for constant-weight Dot optimization.";
                                 NNFUSION_CHECK(weight_shape.size() == 2)
                                     << "Only for 2D weight optimization.";
@@ -253,7 +253,7 @@ namespace nnfusion
                         // fout << "DEBUG(\"" << arg_names[curr] << "\");\n";
 
                         // Print codes for each Op
-                        if (curr->get_op_ptr()->get_op_type() == "Constant")
+                        if (curr->is_constant())
                         {
                             // TODO:
                             // 1) handle more types than float only;
@@ -285,7 +285,7 @@ namespace nnfusion
                             fout << "}, load_const<float>(\"" << arg_names[curr]
                                  << "\")); place_tensor(g, " << arg_names[curr] << ");\n";
                         }
-                        else if (curr->get_op_ptr()->get_op_type() == "Parameter")
+                        else if (curr->is_parameter())
                         {
                             // TODO:
                             // 1) using g.addVariable + stream_HtoD instead of addConstant;
@@ -667,7 +667,7 @@ namespace nnfusion
 
                                 float pad_value;
                                 auto fill_const = curr->get_in_edge(1)->get_src();
-                                if (fill_const->get_op_ptr()->get_op_type() == "Constant")
+                                if (fill_const->is_constant())
                                 {
                                     pad_value = *(float*)get_op_object<op::Constant>(fill_const)
                                                      ->get_data_ptr();

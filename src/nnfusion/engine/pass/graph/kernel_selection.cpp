@@ -25,7 +25,7 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
         KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
 
     // Skip since only one candidate or constant
-    if (kernel_regs.size() == 1 || gnode->is_constant())
+    if (kernel_regs.size() == 1 || gnode->get_op_ptr()->is_tensor_op())
         return std::make_pair(devtype, nullptr);
 
     shared_ptr<KernelContext> ctx(new KernelContext(gnode));

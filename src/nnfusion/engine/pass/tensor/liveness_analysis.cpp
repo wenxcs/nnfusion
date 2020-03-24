@@ -6,7 +6,6 @@
 #include <sstream>
 #include <utility>
 
-//#include "nnfusion/core/operators/constant.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/engine/async_manager.hpp"
 
@@ -51,8 +50,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
             auto stream_id = stream->get_stream_id();
 
-            if (!gnode->get_op_ptr()->is_parameter() && !gnode->get_op_ptr()->is_output() &&
-                !gnode->get_op_ptr()->is_constant())
+            if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
             {
                 auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
                                           .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
@@ -85,12 +83,22 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
 
-            if (gnode->get_op_ptr()->is_parameter())
+            if (gnode->is_parameter())
             {
                 for (size_t i = 0; i < gnode->get_output_size(); ++i)
                 {
                     shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
                     tensor->set_parameter();
+                    // set tensor's group id
+                    tensor->set_group(stream_id);
+                }
+            }
+            if (gnode->is_variable())
+            {
+                for (size_t i = 0; i < gnode->get_output_size(); ++i)
+                {
+                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    tensor->set_persistent();
                     // set tensor's group id
                     tensor->set_group(stream_id);
                 }
@@ -142,15 +150,13 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             for (auto ins : *block_iter)
             {
                 auto gnode = ins->getGNode();
-                if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_output() ||
-                    gnode->is_constant())
+                if (gnode->get_op_ptr()->is_tensor_op() || gnode->get_op_ptr()->is_output())
                 {
                     continue;
                 }
                 else
                 {
-                    bool is_const = false;
-                    bool is_param = false;
+                    bool is_all_const = true;
                     std::unordered_set<shared_ptr<descriptor::Tensor>> tmp;
                     auto kernel = op_kernels[gnode];
                     auto kernel_context = kernel->m_context;
@@ -160,31 +166,26 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                         if (persist_candidate.find(tensor) != persist_candidate.end())
                         {
                             tmp.insert(tensor);
-                            is_const = true;
                         }
                         else
                         {
-                            is_param = true;
+                            is_all_const = false;
                         }
                     }
 
-                    if (is_const)
+                    if (is_all_const)
                     {
-                        if (!is_param)
+                        for (size_t i = 0; i < kernel_context->outputs.size(); i++)
                         {
-                            for (size_t i = 0; i < kernel_context->outputs.size(); i++)
-                            {
-                                auto tensor = kernel_context->outputs[i];
-                                persist_candidate.insert(tensor);
-                            }
+                            auto tensor = kernel_context->outputs[i];
+                            persist_candidate.insert(tensor);
                         }
-
-                        else
+                    }
+                    else
+                    {
+                        for (auto tensor : tmp)
                         {
-                            for (auto tensor : tmp)
-                            {
-                                tensor->set_persistent();
-                            }
+                            tensor->set_persistent();
                         }
                     }
                 }
@@ -209,8 +210,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> input_tensor_decls;
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> output_tensor_decls;
 
-            if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_output() ||
-                gnode->is_constant())
+            if (gnode->get_op_ptr()->is_tensor_op() || gnode->get_op_ptr()->is_output())
             {
                 for (size_t i = 0; i < gnode->get_input_size(); ++i)
                 {

@@ -14,7 +14,7 @@ REGISTER_OP(InvertPermutation)
         NNFUSION_CHECK(shape_0.size() == 1) << "The input only can take a 1-D integer tensor";
 
         auto ng_op = gnode->get_in_edge(0)->get_src();
-        if (ng_op->get_op_type() == "Constant")
+        if (ng_op->is_constant())
         {
             NNFUSION_CHECK(gnode->get_input_element_type(0) == nnfusion::element::i32 ||
                            gnode->get_input_element_type(0) == nnfusion::element::i64);

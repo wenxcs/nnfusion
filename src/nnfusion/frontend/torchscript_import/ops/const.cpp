@@ -152,7 +152,7 @@ namespace nnfusion
 
             bool constEqual(const GNodePtr lhs, const GNodePtr rhs)
             {
-                if (lhs->get_op_type() != "Constant" || rhs->get_op_type() != "Constant" ||
+                if (!lhs->is_constant() || !rhs->is_constant() ||
                     lhs->get_element_type() != rhs->get_element_type() ||
                     lhs->get_shape() != rhs->get_shape())
                 {

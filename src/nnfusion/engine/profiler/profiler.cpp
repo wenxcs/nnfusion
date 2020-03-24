@@ -66,7 +66,7 @@ bool Profiler::execute_all()
 
 void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
 {
-    if (gnode->get_op_ptr()->is_parameter() || gnode->get_op_ptr()->is_constant())
+    if (gnode->get_op_ptr()->is_tensor_op())
     {
         return;
     }

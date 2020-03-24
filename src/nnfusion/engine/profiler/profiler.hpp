@@ -228,7 +228,7 @@ namespace nnfusion
                 int i = 0;
                 for (auto& node : ordered_ops)
                 {
-                    if (node->get_op_ptr()->is_parameter() || node->get_op_ptr()->is_constant())
+                    if (node->get_op_ptr()->is_tensor_op())
                     {
                         continue;
                     }
@@ -264,7 +264,7 @@ namespace nnfusion
             template <typename T>
             void connect_nodes(shared_ptr<GNode> gnode, const vector<vector<T>>& inputs)
             {
-                if (gnode->get_op_ptr()->is_parameter())
+                if (gnode->is_parameter())
                 {
                     for (auto& edge : gnode->get_out_edges())
                     {
@@ -282,7 +282,7 @@ namespace nnfusion
                             _size);
                     }
                 }
-                else if (gnode->get_op_ptr()->is_constant())
+                else if (gnode->is_constant())
                 {
                     auto const_node = static_pointer_cast<op::Constant>(gnode->get_op_ptr());
 

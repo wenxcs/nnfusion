@@ -106,8 +106,7 @@ void ExtractGraphSignature::propagate_in_place_output(std::shared_ptr<Interprete
                     auto tmp_node = in_edge->get_src();
                     auto& input_tensor = tmp_node->get_output_tensor(in_edge->get_src_output());
                     if (input_tensor.get_pool_offset() == offset &&
-                        !tmp_node->get_op_ptr()->is_parameter() &&
-                        !tmp_node->get_op_ptr()->is_constant())
+                        !tmp_node->get_op_ptr()->is_tensor_op())
                     {
                         NNFUSION_LOG(INFO) << "Reusing " << output_name << " for "
                                            << input_tensor.get_name();
@@ -180,7 +179,7 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         auto in_edge = node->get_in_edge(0);
         NNFUSION_CHECK_NOT_NULLPTR(in_edge);
         auto input_node = in_edge->get_src();
-        if (!input_node->get_op_ptr()->is_constant() && !input_node->get_op_ptr()->is_parameter())
+        if (!input_node->is_constant() && !input_node->is_parameter())
         {
             shared_ptr<nnfusion::descriptor::Tensor> itv =
                 input_node->get_output_tensor_ptr(in_edge->get_src_output());

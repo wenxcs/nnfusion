@@ -262,12 +262,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 NNFUSION_CHECK_FAIL() << "Async info should be be assigned before this pass:"
                                       << ins->getGNode()->get_name();
             }
-            string op_name = ins->getGNode()->get_op_type();
-            if (op_name == "Parameter")
+            if (ins->getGNode()->is_parameter())
             {
                 continue;
             }
-            if (ins->getGNode()->is_constant())
+            if (ins->getGNode()->is_constant() || ins->getGNode()->is_variable())
             {
                 auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                     ins->getGNode()->get_op_type(), CUDA_GPU, DT_FLOAT);
@@ -309,7 +308,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                         "AnyOP", CUDA_GPU, DT_FLOAT);
                     NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op="
-                                                          << op_name;
+                                                          << ins->getGNode()->get_op_type();
                     shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                     auto kernel = kernel_reg->m_factory(ctx);
                     kernel->get_or_emit_source();
@@ -729,14 +728,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     func_name = decleard_function_LU[func_key]->get_code();
                 }
 
-                if (func_name.compare(0, 9, "Constant_") == 0)
+                if (func_name.compare(0, 9, "Constant_") == 0 ||
+                    func_name.compare(0, 9, "Variable_") == 0)
                 {
                     NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
                         << "Kernel function calls in cuda_init() should use default stream.";
                     std::string function_call = fu->call_unit->get_code();
                     // add stream info
                     int pos = function_call.find("(");
-                    if (pos >= 0)
+                    if (fu->body_unit->get_code().find("stream") != string::npos)
                     {
                         std::string stream_name = kernel_stream[kernel] + ", ";
                         function_call.insert(pos + 1, stream_name);

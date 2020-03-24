@@ -118,9 +118,9 @@ namespace nnfusion
             }
 
             template <typename T>
-            NamedNodeVector TranslateInputOp(const tensorflow::NodeDef& node,
-                                             const NodeMap& all_ng_nodes,
-                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            NamedNodeVector TranslateTensorOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 tensorflow::DataType dtype;
                 auto status = GetNodeAttr(node.attr(), "dtype", dtype);
@@ -868,7 +868,7 @@ namespace nnfusion
                 bool status = GetValueFromNGraphOp<int64>(padding_gnode, &paddings);
                 NNFUSION_CHECK(status);
 
-                NNFUSION_CHECK(constant_value_gnode->get_op_type() == "Constant");
+                NNFUSION_CHECK(constant_value_gnode->is_constant());
                 auto constant_value_op =
                     std::dynamic_pointer_cast<op::Constant>(constant_value_gnode->get_op_ptr());
                 auto constant_values = constant_value_op->get_value_strings();
@@ -1243,7 +1243,8 @@ namespace nnfusion
                 auto N = GetNumElements(input_gnode->get_shape(), ng_reduction_axes);
                 const auto& et = xsum_gnode->get_element_type();
 
-                auto divisor_op = op::Constant::create(et, xsum_gnode->get_shape(), {N});
+                auto divisor_op = std::make_shared<op::Constant>(
+                    et, xsum_gnode->get_shape(), std::vector<size_t>{N});
                 auto divisor_gnode = m_graph->add_node_and_edge(divisor_op, GNodeVector({}));
 
                 auto mean_op = std::make_shared<op::Divide>();
@@ -2775,9 +2776,10 @@ namespace nnfusion
                 return ret;
             }
 
-            NamedNodeVector ApplyGradientDescentOp(const tensorflow::NodeDef& node,
-                                                   const NodeMap& all_ng_nodes,
-                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            NamedNodeVector
+                TranslateApplyGradientDescentOp(const tensorflow::NodeDef& node,
+                                                const NodeMap& all_ng_nodes,
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 auto alpha_gnode = GetInputNode(all_ng_nodes, node, 1);
@@ -2804,7 +2806,7 @@ namespace nnfusion
                 {"Add", TranslateBinaryOp<op::Add>},
                 {"AddN", TranslateAddNOp},
                 {"All", TranslateAllOp},
-                {"ApplyGradientDescent", ApplyGradientDescentOp},
+                {"ApplyGradientDescent", TranslateApplyGradientDescentOp},
                 {"ApplyMomentum", TranslateApplyMomentumOp},
                 {"Assert", TranslateAssertOp},
                 {"AvgPool", TranslateAvgPoolOp},
@@ -2829,24 +2831,25 @@ namespace nnfusion
                 {"FusedBatchNorm", TranslateFusedBatchNormOp},
                 {"FusedBatchNormV2", TranslateFusedBatchNormOp},
                 {"GatherV2", TranslateGatherV2Op},
-                {"PreventGradient", TranslateIdentityOp},
-                {"StopGradient", TranslateIdentityOp},
-                {"NoOp", TranslateNoOp},
+                {"Greater", TranslateBinaryOp<op::Greater>},
                 {"Identity", TranslateIdentityOp},
                 {"InvertPermutation", TranslateInvertPermutationOp},
-                {"MatMul", TranslateMatMulOp},
                 {"LessEqual", TranslateBinaryOp<op::LessEq>},
+                {"Log", TranslateUnaryOp<op::Log>},
+                {"MatMul", TranslateMatMulOp},
                 {"Maximum", TranslateBinaryOp<op::Maximum>},
                 {"MaxPool", TranslateMaxPoolOp},
                 {"Mean", TranslateMeanOp},
                 {"Mul", TranslateBinaryOp<op::Multiply>},
                 {"Multiply", TranslateBinaryOp<op::Multiply>},
                 {"Neg", TranslateUnaryOp<op::Negative>},
+                {"NoOp", TranslateNoOp},
                 {"OneHot", TranslateOneHotOp},
                 {"Pack", TranslatePackOp},
                 {"Pad", TranslatePadOp},
                 {"PadV2", TranslatePadV2Op},
-                {"Placeholder", TranslateInputOp<op::Parameter>},
+                {"Placeholder", TranslateTensorOp<op::Parameter>},
+                {"PreventGradient", TranslateIdentityOp},
                 {"Pow", TranslateBinaryOp<op::Power>},
                 {"Range", TranslateRangeOp},
                 {"Relu", TranslateUnaryOp<op::Relu>},
@@ -2869,6 +2872,7 @@ namespace nnfusion
                 {"SplitV", TranslateSplitVOp},
                 {"SquaredDifference", TranslateSquaredDifferenceOp},
                 {"Squeeze", TranslateSqueezeOp},
+                {"StopGradient", TranslateIdentityOp},
                 {"StridedSlice", TranslateStridedSliceOp},
                 {"SparseSoftmaxCrossEntropyWithLogits",
                  TranslateSparseSoftmaxCrossEntropyWithLogitsOp},
@@ -2881,6 +2885,7 @@ namespace nnfusion
                 {"Tile", TranslateTileOp},
                 //{"", TranslateTransposeOp},
                 {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
+                {"VariableV2", TranslateTensorOp<op::Variable>},
                 {"Transpose", TranslateTransposeToReshapeOp},
                 {"Square", TranslateSquareOp},
                 {"Shape", TranslateShapeOp},
@@ -2971,11 +2976,10 @@ namespace nnfusion
                                 // normal edge, do nothing
                             }
                         }
-
                         if (gnode->get_name() != name_gnode_pair.first)
                         {
-                            NNFUSION_CHECK(!(*gnode)["Alias"].is_valid())
-                                << "node " << gnode->get_name() << " has more than one alias.";
+                            //NNFUSION_CHECK(!(*gnode)["Alias"].is_valid())
+                            //    << "node " << gnode->get_name() << " has more than one alias.\nThe tensorflow node is : \n" << node_proto.DebugString();
                             (*gnode)["Alias"] = name_gnode_pair.first;
                         }
 
@@ -2983,7 +2987,7 @@ namespace nnfusion
                         {
                             m_graph_outputs.emplace_back(gnode);
                         }
-                        if (gnode->get_op_ptr()->is_parameter())
+                        if (gnode->is_parameter())
                         {
                             m_graph_parameters.emplace_back(gnode);
                         }

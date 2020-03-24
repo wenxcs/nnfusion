@@ -19,8 +19,7 @@ REGISTER_OP(UnsortedSegmentSum).infershape([](std::shared_ptr<graph::GNode> gnod
     // Outshape is as same as input data, (except the first one);
     auto ng_group = gnode->get_in_edge(1)->get_src();
     auto ng_seg = gnode->get_in_edge(2)->get_src();
-    NNFUSION_CHECK(ng_seg->get_op_type() == "Constant")
-        << "We only accept the sgements number as Constant.";
+    NNFUSION_CHECK(ng_seg->is_constant()) << "We only accept the sgements number as Constant.";
     auto& shape_0 = gnode->get_input_shape(0);
     auto& shape_1 = gnode->get_input_shape(1);
     auto& shape_2 = gnode->get_input_shape(2);

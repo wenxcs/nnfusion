@@ -60,6 +60,21 @@ bool Op::is_constant() const
     return false;
 }
 
+bool Op::is_variable() const
+{
+    return false;
+}
+
+bool Op::is_tensor_op() const
+{
+    return false;
+}
+
+bool Op::is_commutative()
+{
+    return false;
+}
+
 const std::string& Op::get_name() const
 {
     if (m_name.empty())

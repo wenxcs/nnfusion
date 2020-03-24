@@ -7,7 +7,7 @@ REGISTER_OP(Tile)
         NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto& input_shape_0 = gnode->get_input_shape(0);
         auto ng_op = gnode->get_in_edge(1)->get_src();
-        NNFUSION_CHECK(ng_op->get_op_type() == "Constant")
+        NNFUSION_CHECK(ng_op->is_constant())
             << "We only accept the Tile input \"multiples\" as Constant.";
         ///\todo multiples must be int32 or int64, we use int32 in this case, currently we ignore int64
         auto multiples = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())
@@ -23,7 +23,7 @@ REGISTER_OP(Tile)
         nnfusion::Shape output_shape = gnode->get_output_shape(0);
 
         auto ng_op = gnode->get_in_edge(1)->get_src();
-        NNFUSION_CHECK(ng_op->get_op_type() == "Constant")
+        NNFUSION_CHECK(ng_op->is_constant())
             << "We only accept the Tile input \"multiples\" as Constant.";
         ///\todo multiples must be int32 or int64, we use int32 in this case, currently we ignore int64
         auto multiples = std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())

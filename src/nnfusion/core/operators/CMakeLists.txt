@@ -9,6 +9,7 @@ set(SRC
     util/binary_elementwise_comparison.cpp
     util/binary_elementwise_logical.cpp
     util/index_reduction.cpp
+    util/tensor_op.cpp
     util/validation_util.cpp
     generic_op/op_registration.cpp
     op_define/abs.cpp
@@ -79,6 +80,7 @@ set(SRC
     op_define/tan.cpp
     op_define/tanh.cpp
     op_define/topk.cpp
+    op_define/variable.cpp
     ${generic_op_define}
 )
 

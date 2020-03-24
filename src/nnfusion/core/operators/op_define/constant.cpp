@@ -145,36 +145,3 @@ vector<string> Constant::get_value_strings() const
 
     return rc;
 }
-
-shared_ptr<Constant> ScalarConstantLikeBase::as_constant() const
-{
-    return std::make_shared<op::Constant>(m_element_type, m_shape, m_data);
-}
-
-template <typename T>
-ScalarConstantLike<T>::ScalarConstantLike(const std::shared_ptr<graph::GNode>& like, T value)
-    : ScalarConstantLikeBase("ScalarConstantLike")
-    , m_value(value)
-{
-    m_element_type = like->get_input_element_type(0);
-}
-
-//
-// We have to open up namespace blocks here to work around a problem with gcc:
-//
-// https://stackoverflow.com/questions/25594644/warning-specialization-of-template-in-different-namespace
-//
-namespace nnfusion
-{
-    namespace op
-    {
-        template <>
-        void Constant::write_to_buffer<string>(const nnfusion::element::Type& target_type,
-                                               const nnfusion::Shape& target_shape,
-                                               const vector<string>& source,
-                                               void* target,
-                                               size_t target_element_count)
-        {
-        }
-    }
-}

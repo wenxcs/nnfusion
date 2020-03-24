@@ -65,7 +65,9 @@ namespace nnfusion
             virtual bool is_parameter() const;
             virtual bool is_output() const;
             virtual bool is_constant() const;
-            virtual bool is_commutative() { return false; }
+            virtual bool is_variable() const;
+            virtual bool is_tensor_op() const;
+            virtual bool is_commutative();
             size_t get_instance_id() const { return m_instance_id; }
             size_t get_id() const { return m_id; }
             size_t set_id(size_t id)

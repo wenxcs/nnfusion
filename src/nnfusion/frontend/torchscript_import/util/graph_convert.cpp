@@ -626,10 +626,10 @@ namespace nnfusion
                 auto weight_t = input_gnodes[2];
                 auto beta = input_gnodes[3];
                 auto alpha = input_gnodes[4];
-                NNFUSION_CHECK(beta->get_op_ptr()->is_constant() &&
+                NNFUSION_CHECK(beta->is_constant() &&
                                input_gnodes[3]->get_element_type() == element::i64)
                     << "Addmm beta must be int";
-                NNFUSION_CHECK(alpha->get_op_ptr()->is_constant() &&
+                NNFUSION_CHECK(alpha->is_constant() &&
                                input_gnodes[4]->get_element_type() == element::i64)
                     << "Addmm alpha must be int";
 
@@ -1027,7 +1027,8 @@ namespace nnfusion
                     std::make_shared<op::Sum>(reduction_axes), {input}); // 1, 20
 
                 const auto& et = sum_gnode->get_element_type();
-                auto divisor_op = op::Constant::create(et, sum_gnode->get_shape(), {num_feature});
+                auto divisor_op = std::make_shared<op::Constant>(
+                    et, sum_gnode->get_shape(), std::vector<size_t>{num_feature});
                 auto divisor_gnode = m_graph->add_node_and_edge(divisor_op, GNodeVector({}));
 
                 auto mean_gnode = m_graph->add_node_and_edge(std::make_shared<op::Divide>(),
@@ -1057,7 +1058,8 @@ namespace nnfusion
                                                                  {std_sum_gnode, divisor_gnode});
                 auto std_sqrt_gnode =
                     m_graph->add_node_and_edge(std::make_shared<op::Sqrt>(), {std_mean_gnode});
-                auto eps_op = op::Constant::create(et, std_sqrt_gnode->get_shape(), {eps});
+                auto eps_op = std::make_shared<op::Constant>(
+                    et, std_sqrt_gnode->get_shape(), std::vector<float>{eps});
                 auto eps_gnode = m_graph->add_node_and_edge(eps_op, GNodeVector({}));
                 auto std_gnode = m_graph->add_node_and_edge(std::make_shared<op::Add>(),
                                                             {std_sqrt_gnode, eps_gnode}); // 1, 20

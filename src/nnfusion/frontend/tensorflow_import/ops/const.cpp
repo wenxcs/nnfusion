@@ -228,7 +228,5 @@ namespace nnfusion
                 return ret;
             }
         } // namespace tensorflow_import
-
-    } // namespace frontend
-
+    }     // namespace frontend
 } // namespace nnfusion

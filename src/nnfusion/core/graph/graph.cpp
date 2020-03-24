@@ -177,22 +177,8 @@ GNodeVector Graph::get_ordered_ops(bool include_control_deps)
                nullptr,
                [&](std::shared_ptr<GNode> node) { nodes.push_back(node); },
                NodeComparatorName());
-    GNodeVector update_nodes;
-    for (auto node : nodes)
-    {
-        if (node->get_op_type() == "Constant")
-        {
-            update_nodes.push_back(node);
-        }
-    }
-    for (auto node : nodes)
-    {
-        if (node->get_op_type() != "Constant")
-        {
-            update_nodes.push_back(node);
-        }
-    }
-    return update_nodes;
+
+    return nodes;
 }
 
 GNodeVector Graph::get_const_nodes()
@@ -200,7 +186,7 @@ GNodeVector Graph::get_const_nodes()
     GNodeVector const_nodes;
     for (auto node : get_nodes())
     {
-        if (node->get_op_type() == "Constant")
+        if (node->is_constant())
         {
             const_nodes.push_back(node);
         }
@@ -359,7 +345,7 @@ void Graph::set_default_parameters()
     m_parameters.clear();
     for (auto node : m_nodes)
     {
-        if (node != nullptr && node->get_op_ptr()->is_parameter())
+        if (node != nullptr && node->is_parameter())
         {
             m_parameters.push_back(node);
         }

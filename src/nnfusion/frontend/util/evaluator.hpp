@@ -27,7 +27,7 @@ namespace nnfusion
                 if (it != dict.end())
                     return it->second;
 
-                if (gnode->get_op_type() == "Constant")
+                if (gnode->is_constant())
                 {
                     auto const_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
                     std::vector<char> one(const_op->get_data_size());
@@ -143,7 +143,7 @@ namespace nnfusion
             template <typename T>
             bool GetValueFromNGraphOp(std::shared_ptr<GNode> gnode, std::vector<T>* values)
             {
-                if (gnode->get_op_type() != "Constant")
+                if (!gnode->is_constant())
                 {
                     auto outs = get_node_outputs(gnode);
                     NNFUSION_CHECK(outs.size() == 1);
