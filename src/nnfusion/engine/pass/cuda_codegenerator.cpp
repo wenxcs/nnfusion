@@ -901,7 +901,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                        ->get_code();
                         }
 
-                        if (enable_debug)
+                        if (enable_debug && !gnode->get_op_ptr()->is_output())
                         {
                             for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                             {
@@ -919,10 +919,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         }
                         if (enable_timing)
                         {
-                            lu_kernel_entry
+                            lu_thread_func_call
                                 << "if (!hEvents[eventCnt]) "
                                    "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
-                            lu_kernel_entry
+                            lu_thread_func_call
                                 << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
                         }
                     }
@@ -992,6 +992,30 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             lu_kernel_entry
                                 << CPU_async_manager->emit_event_record(async_info.notify_barrier)
                                        ->get_code();
+                        }
+                        if (enable_debug && !gnode->get_op_ptr()->is_output())
+                        {
+                            for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
+                            {
+                                if (kernel->m_context->outputs[i]
+                                        ->get_element_type()
+                                        .c_type_string() != "float")
+                                    continue;
+                                auto out_name = kernel->m_context->output_names[i];
+                                lu_kernel_entry << "Debug(\"" << node_name << ", " << out_name
+                                                << "\", " << out_name << ", \""
+                                                << join(kernel->m_context->input_names) << "\", "
+                                                << kernel->m_context->outputs[i]->size(false)
+                                                << ");\n";
+                            }
+                        }
+                        if (enable_timing)
+                        {
+                            lu_kernel_entry
+                                << "if (!hEvents[eventCnt]) "
+                                   "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                            lu_kernel_entry
+                                << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
                         }
                     }
                 }
