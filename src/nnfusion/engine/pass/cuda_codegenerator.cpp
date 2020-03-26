@@ -750,9 +750,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         function_call.insert(pos + 1, kernel_stream[kernel] + ", ");
                 }
                 kernel_func_call[kernel] = function_call;
-                std::string thread_name =
-                    thread->is_default_stream() ? "default" : thread->get_name();
-                thread_kernels_entry[thread_name].push_back(kernel);
 
                 if (func_name.compare(0, 9, "Constant_") == 0 ||
                     func_name.compare(0, 9, "Variable_") == 0)
@@ -825,6 +822,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         //     lu_main_init
                         //         << CUDA_async_manager->emit_event_record(async_info.record_event)->get_code();
                         // }
+                    }
+                    else
+                    {
+                        std::string thread_name =
+                            thread->is_default_stream() ? "default" : thread->get_name();
+                        thread_kernels_entry[thread_name].push_back(kernel);
                     }
                 }
             }
