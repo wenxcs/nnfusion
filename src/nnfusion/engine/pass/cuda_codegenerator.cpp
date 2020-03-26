@@ -727,20 +727,38 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                    decleard_function_LU.end());
                     func_name = decleard_function_LU[func_key]->get_code();
                 }
+                // get kernel func call
+                std::string function_call = fu->get_specialized_funciton_call(func_name);
+                int pos_left = function_call.find("<<<"), pos_right = function_call.find(">>>(");
+                if (pos_left >= 0 && pos_right >= 0)
+                {
+                    std::string builder = function_call.substr(0, pos_left) + "_Call(";
+                    builder += function_call.substr(pos_left + 3, pos_right - pos_left - 3) + ", ";
+                    // add stream info
+                    builder += kernel_stream[kernel] + ", ";
+                    builder += function_call.substr(pos_right + 4);
+                    function_call = std::move(builder);
+                }
+                // add stream or handle for cudalib emitter function call
+                else
+                {
+                    int pos = function_call.find("(");
+                    if (kernel_handle.find(kernel) != kernel_handle.end())
+                        function_call.insert(pos + 1, kernel_handle[kernel] + ", ");
+
+                    if (fu->body_unit->get_code().find("stream") != string::npos)
+                        function_call.insert(pos + 1, kernel_stream[kernel] + ", ");
+                }
+                kernel_func_call[kernel] = function_call;
+                std::string thread_name =
+                    thread->is_default_stream() ? "default" : thread->get_name();
+                thread_kernels_entry[thread_name].push_back(kernel);
 
                 if (func_name.compare(0, 9, "Constant_") == 0 ||
                     func_name.compare(0, 9, "Variable_") == 0)
                 {
                     NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
                         << "Kernel function calls in cuda_init() should use default stream.";
-                    std::string function_call = fu->call_unit->get_code();
-                    // add stream info
-                    int pos = function_call.find("(");
-                    if (fu->body_unit->get_code().find("stream") != string::npos)
-                    {
-                        std::string stream_name = kernel_stream[kernel] + ", ";
-                        function_call.insert(pos + 1, stream_name);
-                    }
                     // if (!async_info.wait_events.empty())
                     // {
                     //     for (auto event : async_info.wait_events)
@@ -750,7 +768,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     //                     ->get_code();
                     //     }
                     // }
-                    lu_main_init << func_name << function_call;
+                    auto function_call = kernel_func_call[kernel];
+                    lu_main_init << function_call;
                     // if (async_info.record_event != nullptr)
                     // {
                     //     lu_main_init
@@ -783,56 +802,29 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         }
                     }
 
-                    auto& call_place = const_inputs ? lu_main_init : lu_kernel_entry;
-                    if (const_inputs)
-                        NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
-                            << "Kernel function calls in cuda_init() should use default stream.";
-
-                    // const string node_name = (kernel->m_context->gnode)
-                    //                              ? kernel->m_context->gnode->get_name()
-                    //                              : "internal_node";
-                    // if (!const_inputs)
-                    //     call_place << " // order=" << ++kernel_order << ", name=" << node_name
-                    //                << "\n";
                     // Put memcpy here
                     lu_kernel_entry << kernel_memcpy[kernel.get()];
 
-                    std::string function_call = fu->get_specialized_funciton_call(func_name);
-                    int pos_left = function_call.find("<<<"),
-                        pos_right = function_call.find(">>>(");
-                    if (pos_left >= 0 && pos_right >= 0)
-                    {
-                        std::string builder = function_call.substr(0, pos_left) + "_Call(";
-                        builder +=
-                            function_call.substr(pos_left + 3, pos_right - pos_left - 3) + ", ";
-                        // add stream info
-                        builder += kernel_stream[kernel] + ", ";
-                        builder += function_call.substr(pos_right + 4);
-                        function_call = std::move(builder);
-                    }
-                    // add stream or handle for cudalib emitter function call
-                    else
-                    {
-                        int pos = function_call.find("(");
-                        if (kernel_handle.find(kernel) != kernel_handle.end())
-                            function_call.insert(pos + 1, kernel_handle[kernel] + ", ");
-
-                        if (fu->body_unit->get_code().find("stream") != string::npos)
-                            function_call.insert(pos + 1, kernel_stream[kernel] + ", ");
-                    }
-
-                    kernel_func_call[kernel] = function_call;
-
                     if (const_inputs)
                     {
-                        call_place << function_call;
-                    }
-                    else
-                    {
-                        kernel_func_call[kernel] = function_call;
-                        std::string thread_name =
-                            thread->is_default_stream() ? "default" : thread->get_name();
-                        thread_kernels_entry[thread_name].push_back(kernel);
+                        NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
+                            << "Kernel function calls in cuda_init() should use default stream.";
+                        // if (!async_info.wait_events.empty())
+                        // {
+                        //     for (auto event : async_info.wait_events)
+                        //     {
+                        //         lu_main_init
+                        //             << CUDA_async_manager->emit_event_wait(async_info.execution_stream, event)
+                        //                     ->get_code();
+                        //     }
+                        // }
+                        auto function_call = kernel_func_call[kernel];
+                        lu_main_init << function_call;
+                        // if (async_info.record_event != nullptr)
+                        // {
+                        //     lu_main_init
+                        //         << CUDA_async_manager->emit_event_record(async_info.record_event)->get_code();
+                        // }
                     }
                 }
             }
