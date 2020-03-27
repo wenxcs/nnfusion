@@ -38,13 +38,13 @@ namespace nnfusion
                     use_nesterov = (bool)cfg["use_nesterov"];
                     lr = cfg["lr"].is_null() ? 0.001 : (float)cfg["lr"];
                     momentum = cfg["momentum"].is_null() ? 0.001 : (float)cfg["momentum"];
-                    std::vector<int32_t> indices = cfg["indices"];
-                    int N = indices.size();
-                    int first_dim_size = m_context->inputs[0]->get_shape()[0];
+                    std::vector<int64_t> indices = cfg["indices"];
+                    size_t N = indices.size();
+                    size_t first_dim_size = m_context->inputs[0]->get_shape()[0];
 
-                    for (int i = 0; i < N; i++)
+                    for (size_t i = 0; i < N; i++)
                     {
-                        int index = indices[i];
+                        auto index = indices[i];
                         NNFUSION_CHECK(index < first_dim_size) << "Index " << index << "at offset "
                                                                << i
                                                                << " in indices is out of range";
@@ -68,10 +68,13 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     auto& cfg = generic_op->localOpConfig.getRoot();
-                    std::vector<int32_t> indices = cfg["indices"];
+                    std::vector<int64_t> indices = cfg["indices"];
+                    std::string Tindices =
+                        cfg["Tindices"].is_null() ? "int32_t" : (std::string)cfg["Tindices"];
+
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
-                    lu << "const int32_t indices[] = {" << join(indices) << "};\n";
+                    lu << "const " << Tindices << " indices[] = {" << join(indices) << "};\n";
                     lu << "const uint32_t ref_offset = " << ref_offset << ";\n";
                     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
                     lu << "if(tid < " << threads << ")\n";

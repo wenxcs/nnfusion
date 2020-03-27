@@ -1731,8 +1731,8 @@ namespace nnfusion
                 NNFUSION_CHECK(nnfusion::is_vector_or_higher(var_shape))
                     << "var must be at least 1 dimensional";
 
-                std::vector<int32_t> indices;
-                bool status = GetValueFromNGraphOp<int32_t>(indices_gnode, &indices);
+                std::vector<int64> indices;
+                bool status = GetValueFromNGraphOp<int64>(indices_gnode, &indices);
                 NNFUSION_CHECK(status);
 
                 std::vector<float> lr_value;
@@ -1749,11 +1749,20 @@ namespace nnfusion
                 status = GetNodeAttr(node.attr(), "use_nesterov", use_nesterov);
                 NNFUSION_CHECK(status);
 
+                tensorflow::DataType dtype;
+                status = GetNodeAttr(node.attr(), "Tindices", dtype);
+                NNFUSION_CHECK(status);
+                nnfusion::element::Type ng_et;
+                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
+
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["use_nesterov"] = use_nesterov;
                 myConfig["lr"] = lr_value[0];
                 myConfig["momentum"] = momentum_value[0];
                 myConfig["indices"] = indices;
+                myConfig["Tindices"] = ng_et.c_type_string();
 
                 auto generic_op =
                     std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
@@ -2754,6 +2763,7 @@ namespace nnfusion
                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto& shape = input_gnode->get_shape();
 
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "out_type", dtype);
@@ -2764,14 +2774,70 @@ namespace nnfusion
 
                 NNFUSION_CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
 
-                nnfusion::op::OpConfig::any myConfig;
-                myConfig["out_type"] = ng_et.c_type_string();
+                nnfusion::Shape output_shape(1, shape.size());
 
-                auto generic_op =
-                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto shape_op = std::make_shared<op::Constant>(ng_et, output_shape, shape);
+                auto shape_gnode = m_graph->add_node_and_edge(shape_op, GNodeVector({}));
+                NamedNodeVector ret{{node.name(), shape_gnode}};
+                return ret;
+            }
 
-                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
-                NamedNodeVector ret{{node.name(), generic_gnode}};
+            NamedNodeVector TranslateUniqueOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto& input_shape = input_gnode->get_shape();
+                NNFUSION_CHECK(nnfusion::is_vector(input_shape)) << "unique expects a 1D vector.";
+
+                tensorflow::DataType out_idx;
+                auto status = GetNodeAttr(node.attr(), "out_idx", out_idx);
+                NNFUSION_CHECK(status);
+                nnfusion::element::Type ng_et_idx;
+                status = TFDataTypeToNGraphElementType(out_idx, &ng_et_idx);
+                NNFUSION_CHECK(status);
+                NNFUSION_CHECK(ng_et_idx == nnfusion::element::i32 ||
+                               ng_et_idx == nnfusion::element::i64);
+
+                std::vector<int64> input_vec;
+                status = GetValueFromNGraphOp<int64>(input_gnode, &input_vec);
+                NNFUSION_CHECK(status);
+
+                NNFUSION_CHECK(input_vec.size() <= std::numeric_limits<size_t>::max())
+                    << "unique does not support input tensors larger than "
+                    << std::numeric_limits<size_t>::max() << " elements";
+
+                size_t N = input_vec.size();
+                std::vector<int64> out_y;
+                std::unordered_map<int64, int64> uniq;
+                uniq.reserve(2 * N);
+                std::vector<int64> idx_vec(N);
+                for (size_t i = 0, j = 0; i < N; ++i)
+                {
+                    auto it = uniq.insert(std::make_pair(input_vec[i], j));
+                    idx_vec[i] = it.first->second;
+                    if (it.second)
+                    {
+                        ++j;
+                    }
+                }
+                size_t uniq_size = uniq.size();
+                std::vector<int64> y_vec(uniq_size);
+                for (auto it : uniq)
+                {
+                    y_vec[it.second] = it.first;
+                }
+
+                auto y_op = std::make_shared<op::Constant>(
+                    input_gnode->get_element_type(), nnfusion::Shape{uniq_size}, y_vec);
+                y_op->set_name(node.name() + "y");
+                auto y_gnode = m_graph->add_node_and_edge(y_op, GNodeVector({}));
+
+                auto idx_op = std::make_shared<op::Constant>(ng_et_idx, input_shape, idx_vec);
+                idx_op->set_name(node.name() + "idx");
+                auto idx_gnode = m_graph->add_node_and_edge(idx_op, GNodeVector({}));
+
+                NamedNodeVector ret{{node.name(), y_gnode}, {node.name(), idx_gnode}};
                 return ret;
             }
 
@@ -2938,6 +3004,7 @@ namespace nnfusion
                 {"TanhGrad", TranslateTanhGradOp},
                 {"Tile", TranslateTileOp},
                 //{"", TranslateTransposeOp},
+                {"Unique", TranslateUniqueOp},
                 {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
                 {"VariableV2", TranslateTensorOp<op::Variable>},
                 {"Transpose", TranslateTransposeToReshapeOp},

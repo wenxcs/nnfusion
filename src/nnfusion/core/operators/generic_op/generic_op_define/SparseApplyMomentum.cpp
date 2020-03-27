@@ -6,7 +6,8 @@ REGISTER_OP(SparseApplyMomentum)
     .attr<bool>("use_nesterov", false)
     .attr<float>("lr", 0.001)
     .attr<float>("momentum", 0.001)
-    .attr<std::vector<int32_t>>("indices")
+    .attr<std::vector<int64_t>>("indices")
+    .attr<nnfusion::op::OpConfig::any>("Tindices", "int32_t")
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
 
         NNFUSION_CHECK(gnode->get_input_size() == 3)

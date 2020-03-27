@@ -558,6 +558,23 @@ TEST(nnfusion_tensorflow_import, apply_momentum_op)
     }
 }
 
+// test unique, shape, stridedslice, unsortedsegmentsum and sparseapplymomentum ops
+TEST(nnfusion_tensorflow_import, sparse_apply_momentum_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_sparse_apply_momentum_graph.pb"));
+
+    Inputs inputs{};
+    Outputs expected_outputs{{0.9878794, 0.9878794, 0.9959598, 0.9959598, 1.0, 1.0}};
+
+    Outputs outputs{execute(model, inputs, "NNFusion")};
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_TRUE(test::all_close_f(expected_outputs[i], outputs[i]));
+    }
+}
+
 TEST(nnfusion_tensorflow_import, reduce_sum_op)
 {
     auto model = frontend::load_tensorflow_model(file_util::path_join(
