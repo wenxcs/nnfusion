@@ -35,6 +35,8 @@ void ThreadPool::Schedule(std::function<void()> fn) {
 }
 
 void ThreadPool::ScheduleSync(std::function<void()> fn) {
+  fn();
+/*
   Barrier barrier(static_cast<unsigned int>(1));
   std::function<void()> fn_wrapper = [&barrier, &fn]() {
     fn();
@@ -42,11 +44,18 @@ void ThreadPool::ScheduleSync(std::function<void()> fn) {
   };
   impl_->Schedule([&fn_wrapper]() { fn_wrapper();});
   barrier.Wait();
+*/
 }
 
 void ThreadPool::ParallelFor(int32_t total, std::function<void(int32_t)> fn) {
   if (total <= 0)
     return;
+
+  if (total == 1)
+  {
+    fn(0);
+    return;
+  }
 
   // TODO: Eigen supports a more efficient ThreadPoolDevice mechanism
   // We will simply rely on the work queue and stealing in the short term.

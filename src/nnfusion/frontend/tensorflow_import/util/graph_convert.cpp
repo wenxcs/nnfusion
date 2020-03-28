@@ -2943,6 +2943,7 @@ namespace nnfusion
                 {"DivNoNan", TranslateBinaryOp<op::DivNoNan>},
                 {"DynamicStitch", TranslateDynamicStitchOp},
                 {"Equal", TranslateBinaryOp<op::Equal>},
+                {"NotEqual", TranslateBinaryOp<op::NotEqual>},
                 {"Exp", TranslateUnaryOp<op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
                 {"Fill", TranslateFillOp},

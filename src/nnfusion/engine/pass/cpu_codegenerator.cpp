@@ -616,6 +616,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 #include <stdlib.h>
 #include "nnfusion_rt.h"
 )";
+    LanguageUnit fillval("fillval");
+
     LanguageUnit& lu_main = *this->lu_main;
     {
         lu_main << function_include << "\n";
@@ -637,8 +639,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
                         << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
                         << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << " * "
-                        << tensor.get_element_type().size() << ");\n";
+                        << tensor.get_tensor_layout()->get_size() << ");\n";
+
+                fillval << "for (int i = 0; i < " << tensor.get_tensor_layout()->get_size()
+                        << "; ++i) " << tensor.get_name() << "_host[i] = 1.0f;\n";
             }
 
             lu_main << "\n//output arguments\n";
@@ -651,6 +655,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
                         << tensor.get_tensor_layout()->get_size() << ");\n ";
             }
+            lu_main << "\n//fill input values\n";
+            lu_main << fillval.get_code();
 
             vector<string> params;
             for (int i = 0; i < tu->arg.size(); i++)
@@ -664,11 +670,19 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 params.push_back(tv->get_name() + "_host");
             }
 
+            lu_main << "\n//warm up\n";
+            lu_main << "int warm_steps = 5;\n";
+            lu_main << "for(int i_=0; i_<warm_steps; i_++)\n";
+            lu_main.block_begin();
+            // kernel launch
+            lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
+            lu_main.block_end();
+
             lu_main << "\n//time measurement\n";
             lu_main << "auto t_start = Clock::now();\n\n";
             lu_main << "//kernel call\n";
-            lu_main << "int steps = 100;\n";
-            lu_main << "for(int i_=0; i_<steps; i_++)\n";
+            lu_main << "int test_steps = 100;\n";
+            lu_main << "for(int i_=0; i_<test_steps; i_++)\n";
             lu_main.block_begin();
             // kernel launch
             lu_main << "kernel_entry(" << join(params, ", ") << ");\n";
@@ -677,7 +691,21 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "\n//time measurement\n";
             lu_main << "auto t_end = Clock::now();\n";
             lu_main << "std::chrono::duration<double, std::milli> fp_ms = t_end - t_start;\n\n";
-            lu_main << "printf(\"function execution time: %f ms\\n\", fp_ms.count()/steps);\n";
+
+            for (size_t i = 0; i < tu->out.size(); i++)
+            {
+                auto& tensor = *tu->out[i];
+                lu_main << "printf(\"%s \\n\", \"" << tensor.get_name() << ":\");\n"
+                        << "for (int i = 0; i < "
+                        << std::min(size_t(10), tensor.get_tensor_layout()->get_size())
+                        << "; ++i) printf(\"%e \", (float)" << tensor.get_name() << "_host[i]); "
+                        << "\nprintf(\" .. (size = " << tensor.get_tensor_layout()->get_size()
+                        << ", ends with %e);\\n\", (float)" << tensor.get_name() << "_host["
+                        << tensor.get_tensor_layout()->get_size() - 1 << "]);\n";
+            }
+
+            lu_main
+                << "\nprintf(\"function execution time: %f ms\\n\", fp_ms.count()/test_steps);\n";
             lu_main << "\n//free context\n";
             lu_main << "cpu_free();\n";
         }
@@ -738,7 +766,7 @@ endforeach()
                  << "\n";
     }
 
-    lu_cmake << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11\")\n"
+    lu_cmake << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -march=native\")\n"
              << "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n";
     if (global_required.count("header::cblas") > 0)
     {

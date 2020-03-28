@@ -233,13 +233,8 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             if (deduped_name == tensor->get_name())
             {
                 writer << tensor_declare(tensor);
-                if (tensor->get_device_type() == GENERIC_CPU)
-                    writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
-                else
-                {
-                    writer << tensor_alloc_cuda(tensor);
-                    writer << tensor_cpy_h2d(tensor, tensor->get_name() + "_host");
-                }
+                writer << tensor_alloc_cuda(tensor);
+                writer << tensor_cpy_h2d(tensor, tensor->get_name() + "_host");
             }
         }
 
@@ -252,10 +247,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
                 writer << tensor_declare(tensor);
                 if (inplace_map.find(i) == inplace_map.end())
                 {
-                    if (tensor->get_device_type() == GENERIC_CPU)
-                        writer << tensor->get_name() << " = " << tensor->get_name() + "_host;\n";
-                    else
-                        writer << tensor_alloc_cuda(tensor);
+                    writer << tensor_alloc_cuda(tensor);
                 }
                 else
                 {
@@ -272,10 +264,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             if (deduped_name == tensor->get_name())
             {
                 writer << tensor_declare(tensor);
-                if (tensor->get_device_type() == GENERIC_CPU)
-                    writer << tensor_alloc_host(tensor);
-                else
-                    writer << tensor_alloc_cuda(tensor);
+                writer << tensor_alloc_cuda(tensor);
             }
         }
 
@@ -302,8 +291,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             auto& tensor = out[i];
             if (deduped_name == tensor->get_name())
             {
-                if (tensor->get_device_type() != GENERIC_CPU)
-                    writer << tensor_cpy_d2h(tensor->get_name() + "_host", tensor);
+                writer << tensor_cpy_d2h(tensor->get_name() + "_host", tensor);
             }
         }
 
@@ -313,8 +301,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             auto& tensor = arg[i];
             if (deduped_name == tensor->get_name())
             {
-                if (tensor->get_device_type() != GENERIC_CPU)
-                    writer << tensor_free_cuda(tensor);
+                writer << tensor_free_cuda(tensor);
             }
         }
 
@@ -326,8 +313,7 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             {
                 if (inplace_map.find(i) == inplace_map.end())
                 {
-                    if (tensor->get_device_type() != GENERIC_CPU)
-                        writer << tensor_free_cuda(tensor);
+                    writer << tensor_free_cuda(tensor);
                 }
             }
         }

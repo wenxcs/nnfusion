@@ -663,7 +663,7 @@ MlasGetMaximumThreadCount(
     MLAS_UNREFERENCED_PARAMETER(ThreadPool);
 #else
     if (ThreadPool != nullptr) {
-        return ThreadPool->NumThreads() + 1;
+        return ThreadPool->NumThreads();
     }
 #endif
 

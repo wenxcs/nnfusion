@@ -131,8 +131,8 @@ namespace nnfusion
                         {
                             runtime = nnfusion::profiler::ReferenceRuntime::Runtime();
                             NNFUSION_CHECK(runtime->check_env());
-                            // TODO: need to fill correct kernel_regs list for CPU
-                            NNFUSION_CHECK_FAIL();
+                            kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
+                                it->get_op_type(), GENERIC_CPU, DT_FLOAT);
                         }
                         else
                         {
