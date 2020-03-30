@@ -1,4 +1,4 @@
-// Microsoft (c) 2019, NNFusion Team
+// Microsoft (c) 2020, NNFusion Team
 
 #pragma once
 
@@ -255,17 +255,26 @@ namespace nnfusion
                         // Print codes for each Op
                         if (curr->is_constant())
                         {
-                            // TODO:
-                            // 1) handle more types than float only;
-                            NNFUSION_CHECK(curr->get_output_element_type(0) ==
-                                           nnfusion::element::f32);
                             auto p_const =
                                 std::dynamic_pointer_cast<op::Constant>(curr->get_op_ptr());
                             NNFUSION_CHECK(p_const != nullptr);
-                            auto dptr = (float*)p_const->get_data_ptr();
-                            auto size = p_const->get_data_size();
-                            NNFUSION_CHECK(size % sizeof(float) == 0);
-                            size /= sizeof(float);
+                            const void* dptr = p_const->get_data_ptr();
+                            size_t size = p_const->get_data_size();
+
+                            std::vector<std::string> types;
+                            if (curr->get_output_element_type(0).c_type_string() == "float")
+                                types = {"float", "FLOAT"};
+                            else if (curr->get_output_element_type(0).c_type_string() == "int")
+                                types = {"unsigned int", "UNSIGNED_INT"};
+                            else if (curr->get_output_element_type(0).c_type_string() == "char")
+                                types = {"char", "CHAR"};
+                            else
+                            {
+                                NNFUSION_LOG(ERROR)
+                                    << "Unsupported Type: "
+                                    << curr->get_output_element_type(0).c_type_string();
+                                assert(0);
+                            }
 
                             NNFUSION_CHECK(
                                 0 == system("mkdir -p nnfusion_rt/graphcore_codegen/Constant"));
@@ -274,30 +283,36 @@ namespace nnfusion
                                           .c_str(),
                                       "wb");
                             NNFUSION_CHECK(fp != nullptr);
-                            NNFUSION_CHECK(size == fwrite(dptr, sizeof(float), size, fp));
+                            NNFUSION_CHECK(size == fwrite(dptr, 1, size, fp));
                             fclose(fp);
 
-                            fout << "Tensor " << arg_names[curr]
-                                 << " = g.addConstant<float>(FLOAT, {";
+                            fout << "Tensor " << arg_names[curr] << " = g.addConstant<" << types[0]
+                                 << ">(" << types[1] << ", {";
                             fout << no_scaler(join_collections(
                                 curr->get_output_shape(0),
                                 [](int idx, ssize_t it) { return std::to_string(it); }));
-                            fout << "}, load_const<float>(\"" << arg_names[curr]
+                            fout << "}, load_const<" << types[0] << ">(\"" << arg_names[curr]
                                  << "\")); place_tensor(g, " << arg_names[curr] << ");\n";
                         }
                         else if (curr->is_parameter())
                         {
                             // TODO:
                             // 1) using g.addVariable + stream_HtoD instead of addConstant;
-                            // 2) handle more types than float only;
-                            assert(curr->get_output_element_type(0) == nnfusion::element::f32);
-                            fout << "Tensor " << arg_names[curr]
-                                 << " = g.addConstant<float>(FLOAT, {";
+                            std::vector<std::string> types;
+                            if (curr->get_output_element_type(0) == nnfusion::element::f32)
+                                types = {"float", "FLOAT", "1.0f"};
+                            else if (curr->get_output_element_type(0) == nnfusion::element::i32)
+                                types = {"unsigned int", "UNSIGNED_INT", "1"};
+                            else
+                                assert(0);
+                            fout << "Tensor " << arg_names[curr] << " = g.addConstant<" << types[0]
+                                 << ">(" << types[1] << ", {";
                             auto str_vect = vector_to_string(curr->get_output_shape(0));
                             fout << no_scaler(join_collections(
                                 curr->get_output_shape(0),
                                 [](int idx, ssize_t it) { return std::to_string(it); }));
-                            fout << "}, {1.0f}); place_tensor(g, " << arg_names[curr] << ");\n";
+                            fout << "}, {" << types[2] << "}); place_tensor(g, " << arg_names[curr]
+                                 << ");\n";
                         }
                         else
                         {
@@ -333,9 +348,19 @@ namespace nnfusion
                                      []() {
                                          return "topi=topi.add(args(\"input0\"), args(\"input1\"))";
                                      }},
+                                    {"Subtract",
+                                     []() {
+                                         return "topi=topi.subtract(args(\"input0\"), "
+                                                "args(\"input1\"))";
+                                     }},
                                     {"Divide",
                                      []() {
                                          return "topi=topi.divide(args(\"input0\"), "
+                                                "args(\"input1\"))";
+                                     }},
+                                    {"Power",
+                                     []() {
+                                         return "topi=topi.power(args(\"input0\"), "
                                                 "args(\"input1\"))";
                                      }},
                                     {"Multiply",
@@ -353,6 +378,11 @@ namespace nnfusion
                                      []() { return "topi=topi.sigmoid(args(\"input0\"))"; }},
                                     {"Relu6",
                                      []() { return "topi=topi.clip(args(\"input0\"), 0, 6)"; }},
+                                    {"LessEq",
+                                     []() {
+                                         return "topi=topi.less_equal(args(\"input0\"), "
+                                                "args(\"input1\"))";
+                                     }},
                                 };
 
                             if (elementwise_ops.count(curr->get_op_ptr()->get_op_type()))
@@ -379,6 +409,12 @@ namespace nnfusion
                                     expr,
                                     {{"common_shape",
                                       "[ " + std::to_string(num_elements / y) + " ]"}}));
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "Result")
+                            {
+                                standard_kernel = false;
+                                fout << "Tensor &" << arg_names[curr] << " = "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ";\n";
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Broadcast")
                             {
@@ -513,6 +549,100 @@ namespace nnfusion
                                              arg_names[curr->get_in_edge(1)->get_src()] +
                                                  (_op->get_transpose_B() ? ".transpose()" : "")},
                                         });
+                                }
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "BatchMatMul")
+                            {
+                                auto generic_op = get_op_object<nnfusion::op::GenericOp>(curr);
+                                bool transA = generic_op->localOpConfig.getRoot()["adj_x"]["b"];
+                                bool transB = generic_op->localOpConfig.getRoot()["adj_y"]["b"];
+
+                                auto shape_0 = curr->get_input_shape(0);
+                                auto shape_1 = curr->get_input_shape(1);
+                                auto out_shape = curr->get_output_shape(0);
+
+                                NNFUSION_CHECK(shape_0.size() == shape_1.size());
+
+                                int batch = 1;
+                                for (int i = shape_0.size() - 3; i >= 0; --i)
+                                    batch *= shape_0[i];
+
+                                if (1)
+                                {
+                                    new_super_step();
+
+                                    standard_kernel = false;
+                                    assert(curr->get_output_element_type(0) ==
+                                           nnfusion::element::f32);
+
+                                    fout << op::create_code_from_template(
+                                        "Tensor @out_name@ = poplin::matMulGrouped(g, "
+                                        "@A@.reshape({@batch@, @orginA..@})@transA@, "
+                                        "@B@.reshape({@batch@, @orginB..@})@transB@, prog, "
+                                        "FLOAT).reshape({@out_shape@});\n",
+                                        {
+                                            {"out_name", arg_names[curr]},
+                                            {"out_shape",
+                                             join_collections(out_shape,
+                                                              [](int idx, ssize_t val) {
+                                                                  return std::to_string(val);
+                                                              })},
+                                            {"batch", batch},
+                                            {"A", arg_names[curr->get_in_edge(0)->get_src()]},
+                                            {"B", arg_names[curr->get_in_edge(1)->get_src()]},
+                                            {"orginA..",
+                                             std::to_string(shape_0[shape_0.size() - 2]) + ", " +
+                                                 std::to_string(shape_0[shape_0.size() - 1])},
+                                            {"orginB..",
+                                             std::to_string(shape_1[shape_1.size() - 2]) + ", " +
+                                                 std::to_string(shape_1[shape_1.size() - 1])},
+                                            {"transA", transA ? ".dimShuffle({0, 2, 1})" : ""},
+                                            {"transB", transB ? ".dimShuffle({0, 2, 1})" : ""},
+                                        });
+                                }
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "Convert")
+                            {
+                                auto _op = get_op_object<nnfusion::op::Convert>(curr);
+                                auto dtype = _op->get_convert_element_type();
+                                std::string output_type;
+                                if (dtype == nnfusion::element::f32)
+                                    output_type = "FLOAT";
+                                else if (dtype == nnfusion::element::i32)
+                                    output_type = "UNSIGNED_INT";
+                                else
+                                    assert(0);
+
+                                new_super_step();
+                                standard_kernel = false;
+                                fout << "Tensor " << arg_names[curr] << " = popops::cast(g, "
+                                     << arg_names[curr->get_in_edge(0)->get_src()] << ", "
+                                     << output_type << ", prog);\n";
+                            }
+                            else if (curr->get_op_ptr()->get_op_type() == "GatherV2")
+                            {
+                                auto generic_op = get_op_object<nnfusion::op::GenericOp>(curr);
+                                int axis = generic_op->localOpConfig.getRoot()["axis"];
+
+                                auto shape_0 = curr->get_input_shape(0);
+                                auto shape_1 = curr->get_in_edge(1)->get_src()->get_output_shape(0);
+                                int N = shape_0[0], K = shape_0[1], M = shape_1[1];
+
+                                if (1)
+                                {
+                                    new_super_step();
+
+                                    standard_kernel = false;
+                                    assert(curr->get_output_element_type(0) ==
+                                           nnfusion::element::f32);
+
+                                    fout << op::create_code_from_template(
+                                        "Tensor @out_name@ = popops::gather(g, @A@, @B@, @axis@, "
+                                        "prog, popops::GatherParams());\n",
+                                        {{"out_name", arg_names[curr]},
+                                         {"A", arg_names[curr->get_in_edge(0)->get_src()]},
+                                         {"B", arg_names[curr->get_in_edge(1)->get_src()]},
+                                         {"axis", axis}});
                                 }
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Convolution")

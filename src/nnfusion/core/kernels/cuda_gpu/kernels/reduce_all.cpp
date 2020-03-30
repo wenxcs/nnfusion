@@ -46,7 +46,8 @@ namespace nnfusion
 
                     int axis = cfg["axis"];
                     NNFUSION_CHECK(axis == -1);
-                    NNFUSION_CHECK(std::string("bool") == m_context->dtypes[0]);
+                    NNFUSION_CHECK(std::string("bool") == m_context->dtypes[0] ||
+                                   std::string("char") == m_context->dtypes[0]);
                     // NNFUSION_CHECK(axis >= 0 && axis < input_shape_0.size());
                     size_t size = 1;
                     for (int i = 0; i < input_shape_0.size(); ++i)

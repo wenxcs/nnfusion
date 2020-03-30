@@ -139,7 +139,7 @@ namespace nnfusion
                 NNFUSION_CHECK(ret);
                 if (et == nnfusion::element::character)
                 {
-                    NNFUSION_CHECK(ng_shape.size() == 1)
+                    NNFUSION_CHECK(ng_shape.size() <= 1)
                         << "For string type constant op, only one dimension support!";
                     *ng_node = std::make_shared<nnfusion::op::Constant>(
                         et, nnfusion::Shape{const_values.size()}, const_values);

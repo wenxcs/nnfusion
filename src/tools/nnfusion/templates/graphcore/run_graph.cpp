@@ -22,7 +22,9 @@
 #include <popnn/SpatialSoftMax.hpp>
 #include <popnn/codelets.hpp>
 
+#include <popops/Cast.hpp>
 #include <popops/ElementWise.hpp>
+#include <popops/Gather.hpp>
 #include <popops/Pad.hpp>
 #include <popops/Reduce.hpp>
 #include <popops/codelets.hpp>
@@ -225,6 +227,7 @@ poplar::Tensor compute_task(poplar::Graph& g,
 
 extern "C" float tanhf(float);
 extern "C" float expf(float);
+extern "C" float powf(float, float);
 #define __expf expf
 
 template <class T> inline T max(const T &x, const T &y) { return x > y ? x : y; }

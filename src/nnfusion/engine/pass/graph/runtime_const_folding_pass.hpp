@@ -146,14 +146,28 @@ namespace nnfusion
                             auto kernel = kernel_reg->m_factory(ctx);
                             if (!kernel->get_or_emit_source())
                                 continue;
+                            if (!this->fast_debug)
+                            {
+                                nnfusion::profiler::ProfilingContext::Pointer pctx =
+                                    make_shared<nnfusion::profiler::ProfilingContext>(kernel,
+                                                                                      false);
 
-                            nnfusion::profiler::ProfilingContext::Pointer pctx =
-                                make_shared<nnfusion::profiler::ProfilingContext>(kernel, false);
-
-                            nnfusion::profiler::Profiler prof(runtime, pctx);
-                            if (!prof.mixed_type_execute(raw_inputs, raw_outputs))
-                                continue;
-
+                                nnfusion::profiler::Profiler prof(runtime, pctx);
+                                if (!prof.mixed_type_execute(raw_inputs, raw_outputs))
+                                    continue;
+                            }
+                            else
+                            {
+                                raw_outputs.resize(it->get_output_size());
+                                for (int i = 0; i < raw_outputs.size(); ++i)
+                                {
+                                    auto& shape = it->get_output_shape(i);
+                                    auto size = it->get_output_element_type(i).size();
+                                    for (auto& it : shape)
+                                        size *= it;
+                                    raw_outputs[i].resize(size);
+                                }
+                            }
                             NNFUSION_LOG(INFO) << "  For node `" << it->get_name()
                                                << "`: get runtime output results of size "
                                                << raw_outputs.size();
@@ -226,7 +240,18 @@ namespace nnfusion
             public:
                 bool run_on_graph(std::shared_ptr<Graph>& graph) override
                 {
-                    this->backend = FLAGS_fconst_folding_backend;
+                    int at = FLAGS_fconst_folding_backend.find(":DEBUG");
+                    if (at >= 0)
+                    {
+                        this->backend = FLAGS_fconst_folding_backend.substr(0, at);
+                        this->fast_debug = true;
+                    }
+                    else
+                    {
+                        this->backend = FLAGS_fconst_folding_backend;
+                        this->fast_debug = false;
+                    }
+
                     if (this->backend == "")
                         return true;
 
@@ -261,6 +286,7 @@ namespace nnfusion
 
             private:
                 std::string backend;
+                bool fast_debug;
             };
         } // namespace pass
     }     // namespace graph

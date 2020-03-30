@@ -1649,7 +1649,7 @@ namespace nnfusion
                 std::vector<int> tf_axis;
                 bool status = GetValueFromNGraphOp<int>(axis_gnode, &tf_axis);
                 NNFUSION_CHECK(status);
-                NNFUSION_CHECK(tf_axis.size() == 1) << "Found axis in All op (" << node.name()
+                NNFUSION_CHECK(tf_axis.size() <= 1) << "Found axis in All op (" << node.name()
                                                     << ") translation to be non scalar, of size "
                                                     << tf_axis.size();
 
@@ -2923,6 +2923,7 @@ namespace nnfusion
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<op::Abs>},
                 {"Add", TranslateBinaryOp<op::Add>},
+                {"AddV2", TranslateBinaryOp<op::Add>},
                 {"AddN", TranslateAddNOp},
                 {"All", TranslateAllOp},
                 {"ApplyGradientDescent", TranslateApplyGradientDescentOp},

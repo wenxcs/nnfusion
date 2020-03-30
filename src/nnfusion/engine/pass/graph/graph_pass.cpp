@@ -25,9 +25,9 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     GraphPassManager pass_manager;
     // Generate result op must before LivenessPass
     // Generate result is implemented in gradient weight mapping pass
-    pass_manager.register_pass<GraphCoreCodegenPass>();
     pass_manager.register_pass<GradientWeightMappingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
+    pass_manager.register_pass<GraphCoreCodegenPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
     pass_manager.register_pass<GemmFusionPass>();
