@@ -85,12 +85,9 @@ void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor,
                                          shared_ptr<descriptor::Tensor> root_tensor,
                                          size_t offset)
 {
-    tensor->set_pool_offset(root_tensor->get_pool_offset() + offset);
+    tensor->set_pool_offset(offset);
     auto root = root_tensor;
-    if (root->get_root_tensor())
-    {
-        root = root->get_root_tensor();
-    }
+    NNFUSION_CHECK(!(root->get_root_tensor()));
     tensor->set_root_tensor(root);
     size_t ref_count = root->ref();
     NNFUSION_CHECK(ref_count > 1);

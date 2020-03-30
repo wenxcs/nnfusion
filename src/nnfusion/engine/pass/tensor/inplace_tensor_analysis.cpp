@@ -43,11 +43,11 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
     struct input_info
     {
-        std::shared_ptr<nnfusion::graph::GNode> input_node;
         std::shared_ptr<descriptor::Tensor> tensor;
         size_t offset = 0;
     };
     std::unordered_map<std::shared_ptr<descriptor::Tensor>, struct input_info> inplace_inputs;
+    std::unordered_map<std::shared_ptr<descriptor::Tensor>, size_t> inplace_use_count;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, size_t> orders;
     size_t node_order = 0;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, ir::Instruction::Pointer>
@@ -96,7 +96,6 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                     can_do_inplace_concat = false;
                                     break;
                                 }
-                                input_gnode = info.input_node;
                                 input = info.tensor;
                             }
 
@@ -109,6 +108,16 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                                      std::pair<std::shared_ptr<descriptor::Tensor>,
                                                                size_t>>>();
                                 if (in_place_outputs.count(input) > 0)
+                                {
+                                    can_do_inplace_concat = false;
+                                    break;
+                                }
+                            }
+
+                            for (auto cand : input_candidates)
+                            {
+                                // duplicated candidates
+                                if (cand.second = input)
                                 {
                                     can_do_inplace_concat = false;
                                     break;
@@ -150,6 +159,28 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                     {input, std::make_pair(output, oi_pair.input_offset)});
 
                                 (*ins)["InplaceTensorMapping"] = in_place_outputs;
+
+                                inplace_inputs[input].tensor = output;
+                                inplace_inputs[input].offset = oi_pair.input_offset;
+                                if (inplace_use_count.count(output) == 0)
+                                    inplace_use_count[output] = 0;
+                                inplace_use_count[output] += 1;
+
+                                if (inplace_use_count[input] > 0)
+                                {
+                                    // update tensors who refer to this input
+                                    for (auto oi : inplace_inputs)
+                                    {
+                                        if (oi.second.tensor == input)
+                                        {
+                                            auto offset = oi.second.offset;
+                                            inplace_inputs[oi.first] = inplace_inputs[input];
+                                            inplace_inputs[oi.first].offset += offset;
+                                        }
+                                    }
+                                    inplace_use_count[output] += inplace_use_count[input];
+                                    inplace_use_count[input] = 0;
+                                }
 
                                 // move the allocation of concat output tensor to the first input node
                                 if (i == first_candidate)
@@ -193,8 +224,8 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             {
                                 if (!oi_pair.destructive ||
                                     (!input_gnode->is_constant() && !input->is_persistent() &&
-                                     (!input->get_root_tensor() ||
-                                      !input->get_root_tensor()->is_persistent()) &&
+                                     (inplace_inputs.count(input) == 0 ||
+                                      inplace_use_count[inplace_inputs[input].tensor] == 0) &&
                                      gnode->liveness_free_list.count(input) != 0))
                                 {
                                     in_place_outputs.insert(
@@ -207,10 +238,13 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                     }
                                     else
                                     {
-                                        inplace_inputs[output].input_node = input_gnode;
                                         inplace_inputs[output].tensor = input;
                                         inplace_inputs[output].offset = oi_pair.input_offset;
                                     }
+                                    auto input_tensor = inplace_inputs[output].tensor;
+                                    if (inplace_use_count.count(input_tensor) == 0)
+                                        inplace_use_count[input_tensor] = 0;
+                                    inplace_use_count[input_tensor] += 1;
                                 }
                             }
                         }
@@ -219,6 +253,18 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                         {
                             (*ins)["InplaceTensorMapping"] = in_place_outputs;
                         }
+                    }
+                }
+
+                // decrease inplace_use_count
+                for (std::shared_ptr<descriptor::Tensor> tensor : gnode->liveness_free_list)
+                {
+                    if (inplace_inputs.count(tensor) > 0)
+                    {
+                        auto input_tensor = inplace_inputs[tensor].tensor;
+                        NNFUSION_CHECK(inplace_use_count.count(input_tensor) > 0);
+                        NNFUSION_CHECK(inplace_use_count[input_tensor] > 0);
+                        inplace_use_count[input_tensor]--;
                     }
                 }
             }

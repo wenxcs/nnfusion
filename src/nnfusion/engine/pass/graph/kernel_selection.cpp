@@ -213,7 +213,7 @@ bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>
     auto dev_name = FLAGS_fdefault_device.c_str();
     NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
 
-    std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
+    std::vector<std::shared_ptr<GNode>> nodes = graph->get_ordered_ops();
     for (auto it : nodes)
     {
         if (!(*it)["Kernel_Selection_Result"].is_valid())

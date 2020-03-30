@@ -277,6 +277,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 continue;
             }
 
+            bool kernel_emitted = false;
             if ((*ins)["Kernel_Selection_Result"].is_valid())
             {
                 auto res = (*ins)["Kernel_Selection_Result"]
@@ -284,6 +285,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (res.second->get_or_emit_source() != nullptr)
                 {
                     block_kernels.push_back(res.second);
+                    kernel_emitted = true;
 
                     LanguageUnit m;
                     if ((*ins)["memcpy_pair"].is_valid())
@@ -303,17 +305,17 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         kernel_memcpy[res.second.get()] = m.get_code();
                     }
                 }
-                else
-                {
-                    auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-                        "AnyOP", CUDA_GPU, DT_FLOAT);
-                    NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op="
-                                                          << ins->getGNode()->get_op_type();
-                    shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
-                    auto kernel = kernel_reg->m_factory(ctx);
-                    kernel->get_or_emit_source();
-                    block_kernels.push_back(kernel);
-                }
+            }
+            if (!kernel_emitted)
+            {
+                auto kernel_reg =
+                    KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
+                NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op="
+                                                      << ins->getGNode()->get_op_type();
+                shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
+                auto kernel = kernel_reg->m_factory(ctx);
+                kernel->get_or_emit_source();
+                block_kernels.push_back(kernel);
             }
         }
         kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());

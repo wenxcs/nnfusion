@@ -62,16 +62,6 @@ namespace nnfusion
                     out_rank = rank - reduce_rank;
                     reduce_op = CudaOpMap<T>::op;
 
-                    // add inplace tag
-                    if (reduce_rank == 0 || shape_size(input_shape) == shape_size(output_shape))
-                    {
-                        if (!ctx->annotations)
-                        {
-                            ctx->annotations = std::make_shared<Annotations>();
-                            ctx->annotations->add_in_place_oi_pair({0, 0, true});
-                        }
-                    }
-
                     // use to determine if it is RowReduction
                     std::vector<size_t> axes_flag(input_shape.size(), 0);
                     for (auto const& axis : reduce_axis)
@@ -82,13 +72,16 @@ namespace nnfusion
                     width = 1;
                     is_row_reduction = true;
                     int i = 0;
-                    for (; i < axes_flag.size() && axes_flag[i] == 0; i++)
+                    while (i < input_shape.size() && input_shape[i] == 1)
+                        i++;
+                    for (; i < axes_flag.size() && (axes_flag[i] == 0 || input_shape[i] == 1); i++)
                     {
                         height *= input_shape[i];
                     }
                     for (; i < axes_flag.size(); i++)
                     {
-                        if (axes_flag[i] == 0)
+                        if ((axes_flag[i] == 0 && input_shape[i] > 1) ||
+                            (axes_flag[i] == 1 && input_shape[i] == 0))
                         {
                             is_row_reduction = false;
                             break;
@@ -101,7 +94,7 @@ namespace nnfusion
                         is_row_reduction = false;
                     }
                     // current row_reduction implementation is now working for max/min/prod reduction if width is not warp alignment
-                    if (reduce_op != "Add") // && width % 32 != 0)
+                    if (reduce_op != "add") // && width % 32 != 0)
                     {
                         is_row_reduction = false;
                     }
@@ -127,7 +120,7 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     // Trivial case: no reduction axes.
-                    if (reduce_rank == 0)
+                    if (reduce_rank == 0 || shape_size(input_shape) == shape_size(output_shape))
                     {
                         return nullptr;
                     }
@@ -557,14 +550,14 @@ if (thread_idx == 0) output0[block_idx] = val;
                         if (!ctx->annotations)
                         {
                             ctx->annotations = std::make_shared<Annotations>();
-                            ctx->annotations->add_in_place_oi_pair({0, 0, true});
                         }
+                        ctx->annotations->add_in_place_oi_pair({0, 0, false});
                     }
                 }
 
                 LanguageUnit_p emit_function_body() override
                 {
-                    if (reduce_rank != 0)
+                    if (reduce_rank != 0 && shape_size(input_shape) != shape_size(output_shape))
                     {
                         return nullptr;
                     }

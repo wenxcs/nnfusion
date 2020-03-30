@@ -107,10 +107,15 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             for (std::shared_ptr<descriptor::Tensor> tensor : ref_tensors)
             {
                 NNFUSION_CHECK(in_place_outputs.count(tensor) > 0);
-                auto root_tensor = in_place_outputs.at(tensor).first;
+                auto parent_tensor = in_place_outputs.at(tensor).first;
                 size_t tensor_offset = in_place_outputs.at(tensor).second;
+
+                auto root_tensor = parent_tensor->get_root_tensor()
+                                       ? parent_tensor->get_root_tensor()
+                                       : parent_tensor;
                 auto allocator = maf.get_allocator(root_tensor);
-                allocator->allocate(tensor, root_tensor, tensor_offset);
+                allocator->allocate(
+                    tensor, root_tensor, parent_tensor->get_pool_offset() + tensor_offset);
             }
 
             if (!m_disable_memory_sharing)

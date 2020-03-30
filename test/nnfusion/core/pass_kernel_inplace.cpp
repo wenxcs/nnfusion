@@ -20,6 +20,7 @@ using namespace nnfusion::profiler;
 
 bool run(std::shared_ptr<nnfusion::graph::Graph> graph)
 {
+    graph->set_default_outputs();
     GraphPassManager pass_manager;
 
     pass_manager.register_pass<OpInplacePass>();
