@@ -8,6 +8,7 @@
 
 #include "gflags/gflags.h"
 #include "nnfusion/engine/external/backend.hpp"
+#include "nnfusion/frontend/onnx_import/onnx.hpp"
 #include "nnfusion/frontend/tensorflow_import/tensorflow.hpp"
 #include "nnfusion/frontend/torchscript_import/torchscript.hpp"
 #include "nnfusion/frontend/util/parameter.hpp"
@@ -118,10 +119,12 @@ int main(int argc, char** argv)
         graph = nnfusion::frontend::load_torchscript_model(model, params_vec);
     }
 #endif
+#if NNFUSION_ONNX_IMPORT_ENABLE
     else if (format == "onnx")
     {
-        //graph = ngraph::onnx_import::import_onnx_function(model);
+        graph = nnfusion::frontend::load_onnx_model(model);
     }
+#endif
     else
     {
         throw nnfusion::errors::NotSupported("Unsupported model format '" + format +

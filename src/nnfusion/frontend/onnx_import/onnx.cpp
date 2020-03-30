@@ -1,105 +1,35 @@
-//*****************************************************************************
-// Copyright 2017-2018 Intel Corporation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
+//----------------------------------------------------------------------------------------------
+//  Copyright (c) Microsoft Corporation. All rights reserved.
+//  Licensed under the MIT License. See License.txt in the project root for license information.
+//----------------------------------------------------------------------------------------------
 
 #include <fstream>
 
-#include "ngraph/except.hpp"
-
-#include "core/graph.hpp"
-#include "core/model.hpp"
-#include "core/node.hpp"
-
 #include "onnx.hpp"
-#include "ops_bridge.hpp"
+#include "util/graph_convert.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace detail
+        std::shared_ptr<nnfusion::graph::Graph> load_onnx_model(std::istream& sin)
         {
-            namespace error
-            {
-                struct file_open : ngraph_error
-                {
-                    explicit file_open(const std::string& path)
-                        : ngraph_error{"failure opening file:" + path}
-                    {
-                    }
-                };
+            onnx::ModelProto onnx_graph;
+            NNFUSION_CHECK(onnx_graph.ParseFromIstream(&sin))
+                << "failure parsing data from the stream";
 
-                struct stream_parse : ngraph_error
-                {
-                    explicit stream_parse(std::istream&)
-                        : ngraph_error{"failure parsing data from the stream"}
-                    {
-                    }
-                };
+            NNFUSION_LOG(INFO) << "Import ONNX Graph Size: [" << onnx_graph.ByteSizeLong() << "]";
+            auto graph_convert = onnx_import::GraphConvert{onnx_graph};
 
-            } // namespace error
-        }     // namespace detail
-
-        /*
-        std::vector<std::shared_ptr<Function>> load_onnx_model(std::istream& sin)
-        {
-            onnx::ModelProto model_proto;
-            if (!model_proto.ParseFromIstream(&sin))
-            {
-                throw detail::error::stream_parse{sin};
-            }
-            std::vector<std::shared_ptr<Function>> output_functions;
-            Model model{model_proto};
-            Graph graph{model_proto.graph(), model};
-            for (const auto& output : graph.get_outputs())
-            {
-                output_functions.emplace_back(std::make_shared<Function>(
-                    graph.get_ng_node_from_cache(output.get_name()), graph.get_ng_parameters()));
-            }
-            return output_functions;
+            std::shared_ptr<nnfusion::graph::Graph> graph = graph_convert.get_graph();
+            return graph;
         }
 
-        std::vector<std::shared_ptr<Function>> load_onnx_model(const std::string& path)
+        std::shared_ptr<nnfusion::graph::Graph> load_onnx_model(const std::string& path)
         {
             std::ifstream ifs{path, std::ios::in | std::ios::binary};
-            if (!ifs.is_open())
-            {
-                throw detail::error::file_open{path};
-            }
+            NNFUSION_CHECK(ifs.is_open()) << "failure opening file:" + path;
             return load_onnx_model(ifs);
         }
-
-        std::shared_ptr<Function> import_onnx_function(std::istream& sin)
-        {
-            return load_onnx_model(sin).front();
-        }
-
-        std::shared_ptr<Function> import_onnx_function(const std::string& path)
-        {
-            return load_onnx_model(path).front();
-        }
-        */
-
-        void register_operator(const std::string& name,
-                               std::int64_t version,
-                               const std::string& domain,
-                               Operator fn)
-        {
-            OperatorsBridge::register_operator(name, version, domain, std::move(fn));
-        }
-
-    } // namespace onnx_import
-
-} // namespace ngraph
+    } // namespace frontend
+} // namespace nnfusion

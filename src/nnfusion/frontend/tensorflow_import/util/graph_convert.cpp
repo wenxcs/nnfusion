@@ -125,15 +125,15 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 auto status = GetNodeAttr(node.attr(), "dtype", dtype);
                 NNFUSION_CHECK(status);
-                nnfusion::element::Type ng_et;
-                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                nnfusion::element::Type nnfusion_et;
+                status = TFDataTypeToNNFusionElementType(dtype, &nnfusion_et);
                 NNFUSION_CHECK(status);
                 tensorflow::TensorShapeProto tf_shape = node.attr().at("shape").shape();
                 nnfusion::Shape ng_shape;
                 status = TFTensorShapeToNGraphShape(tf_shape, &ng_shape);
                 NNFUSION_CHECK(status);
 
-                auto input_op = std::make_shared<T>(ng_et, ng_shape);
+                auto input_op = std::make_shared<T>(nnfusion_et, ng_shape);
                 input_op->set_name(node.name());
                 auto input_gnode = m_graph->add_node_and_edge(input_op, GNodeVector({}));
                 NamedNodeVector ret{{node.name(), input_gnode}};
@@ -470,10 +470,10 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "DstT", dtype);
                 NNFUSION_CHECK(status);
-                nnfusion::element::Type ng_et;
-                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                nnfusion::element::Type nnfusion_et;
+                status = TFDataTypeToNNFusionElementType(dtype, &nnfusion_et);
                 NNFUSION_CHECK(status);
-                auto cast_op = std::make_shared<op::Convert>(ng_et);
+                auto cast_op = std::make_shared<op::Convert>(nnfusion_et);
                 cast_op->set_name(node.name());
                 auto cast_gnode = m_graph->add_node_and_edge(cast_op, {input_gnode});
 
@@ -1470,20 +1470,20 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 status = GetNodeAttr(node.attr(), "T", dtype);
                 NNFUSION_CHECK(status);
-                nnfusion::element::Type ng_et;
-                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                nnfusion::element::Type nnfusion_et;
+                status = TFDataTypeToNNFusionElementType(dtype, &nnfusion_et);
                 NNFUSION_CHECK(status);
 
-                NNFUSION_CHECK(ng_et == nnfusion::element::f32);
+                NNFUSION_CHECK(nnfusion_et == nnfusion::element::f32);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["axis"] = one_hot_axis;
                 myConfig["depth"] = depth[0];
                 myConfig["off_value"] = off_value[0];
                 myConfig["on_value"] = on_value[0];
-                myConfig["T"] = ng_et.c_type_string();
+                myConfig["T"] = nnfusion_et.c_type_string();
 
-                //features_gnode->set_output_type(0, ng_et, features_gnode->get_shape());
+                //features_gnode->set_output_type(0, nnfusion_et, features_gnode->get_shape());
 
                 auto generic_op =
                     std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
@@ -1752,17 +1752,18 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 status = GetNodeAttr(node.attr(), "Tindices", dtype);
                 NNFUSION_CHECK(status);
-                nnfusion::element::Type ng_et;
-                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                nnfusion::element::Type nnfusion_et;
+                status = TFDataTypeToNNFusionElementType(dtype, &nnfusion_et);
                 NNFUSION_CHECK(status);
-                NNFUSION_CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
+                NNFUSION_CHECK(nnfusion_et == nnfusion::element::i32 ||
+                               nnfusion_et == nnfusion::element::i64);
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["use_nesterov"] = use_nesterov;
                 myConfig["lr"] = lr_value[0];
                 myConfig["momentum"] = momentum_value[0];
                 myConfig["indices"] = indices;
-                myConfig["Tindices"] = ng_et.c_type_string();
+                myConfig["Tindices"] = nnfusion_et.c_type_string();
 
                 auto generic_op =
                     std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
@@ -2768,15 +2769,15 @@ namespace nnfusion
                 tensorflow::DataType dtype;
                 bool status = GetNodeAttr(node.attr(), "out_type", dtype);
                 NNFUSION_CHECK(status);
-                nnfusion::element::Type ng_et;
-                status = TFDataTypeToNGraphElementType(dtype, &ng_et);
+                nnfusion::element::Type nnfusion_et;
+                status = TFDataTypeToNNFusionElementType(dtype, &nnfusion_et);
                 NNFUSION_CHECK(status);
 
-                NNFUSION_CHECK(ng_et == nnfusion::element::i32 || ng_et == nnfusion::element::i64);
+                NNFUSION_CHECK(nnfusion_et == nnfusion::element::i32 ||
+                               nnfusion_et == nnfusion::element::i64);
 
                 nnfusion::Shape output_shape(1, shape.size());
-
-                auto shape_op = std::make_shared<op::Constant>(ng_et, output_shape, shape);
+                auto shape_op = std::make_shared<op::Constant>(nnfusion_et, output_shape, shape);
                 auto shape_gnode = m_graph->add_node_and_edge(shape_op, GNodeVector({}));
                 NamedNodeVector ret{{node.name(), shape_gnode}};
                 return ret;
@@ -2793,11 +2794,11 @@ namespace nnfusion
                 tensorflow::DataType out_idx;
                 auto status = GetNodeAttr(node.attr(), "out_idx", out_idx);
                 NNFUSION_CHECK(status);
-                nnfusion::element::Type ng_et_idx;
-                status = TFDataTypeToNGraphElementType(out_idx, &ng_et_idx);
+                nnfusion::element::Type nnfusion_et_idx;
+                status = TFDataTypeToNNFusionElementType(out_idx, &nnfusion_et_idx);
                 NNFUSION_CHECK(status);
-                NNFUSION_CHECK(ng_et_idx == nnfusion::element::i32 ||
-                               ng_et_idx == nnfusion::element::i64);
+                NNFUSION_CHECK(nnfusion_et_idx == nnfusion::element::i32 ||
+                               nnfusion_et_idx == nnfusion::element::i64);
 
                 std::vector<int64> input_vec;
                 status = GetValueFromNGraphOp<int64>(input_gnode, &input_vec);
@@ -2833,7 +2834,7 @@ namespace nnfusion
                 y_op->set_name(node.name() + "y");
                 auto y_gnode = m_graph->add_node_and_edge(y_op, GNodeVector({}));
 
-                auto idx_op = std::make_shared<op::Constant>(ng_et_idx, input_shape, idx_vec);
+                auto idx_op = std::make_shared<op::Constant>(nnfusion_et_idx, input_shape, idx_vec);
                 idx_op->set_name(node.name() + "idx");
                 auto idx_gnode = m_graph->add_node_and_edge(idx_op, GNodeVector({}));
 
@@ -3110,10 +3111,6 @@ namespace nnfusion
                         {
                             m_graph_outputs.emplace_back(gnode);
                         }
-                        if (gnode->is_parameter())
-                        {
-                            m_graph_parameters.emplace_back(gnode);
-                        }
                     }
 
                     for (size_t i = 0; i < tf_node_outputs_[node_idx].size(); ++i)
@@ -3192,4 +3189,3 @@ namespace nnfusion
         } // namespace tensorflow_import
     }     // namespace frontend
 } // namespace nnfusion
-//----------------------------------------------------------------------------------------------

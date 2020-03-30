@@ -28,7 +28,7 @@ REGISTER_OP(Shape)
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
         std::string dtype;
         bool ret =
-            element::Type::ngraph_element_type_to_dtype_string(gnode->get_element_type(), dtype);
+            element::Type::nnfusion_element_type_to_dtype_string(gnode->get_element_type(), dtype);
         NNFUSION_CHECK(ret);
 
         return op::create_code_from_template(

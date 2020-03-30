@@ -54,8 +54,8 @@ std::vector<const element::Type*> element::Type::get_known_types()
     return rc;
 }
 
-bool element::Type::ngraph_element_type_to_dtype_string(const element::Type& ng_et,
-                                                        std::string& dtype)
+bool element::Type::nnfusion_element_type_to_dtype_string(const element::Type& ng_et,
+                                                          std::string& dtype)
 {
     if (ng_et == element::boolean)
         dtype = "char";

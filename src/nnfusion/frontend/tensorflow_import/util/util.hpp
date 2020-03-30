@@ -122,8 +122,8 @@ namespace nnfusion
             // Converts a TensorFlow DataType to an nGraph element::Type. Returns
             // false if the element type is not supported by nGraph
             // Core. Otherwise returns true.
-            bool TFDataTypeToNGraphElementType(const tensorflow::DataType tf_dt,
-                                               nnfusion::element::Type* ng_et);
+            bool TFDataTypeToNNFusionElementType(const tensorflow::DataType tf_dt,
+                                                 nnfusion::element::Type* ng_et);
 
             // Converts a TensorFlow TensorShape to an nGraph Shape. Requires that none of
             // the dimension lengths in tf_shape are negative.

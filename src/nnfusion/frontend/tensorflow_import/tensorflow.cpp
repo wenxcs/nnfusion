@@ -32,15 +32,5 @@ namespace nnfusion
             NNFUSION_CHECK(ifs.is_open()) << "failure opening file:" + path;
             return load_tensorflow_model(ifs);
         }
-
-        // void register_operator(const std::string& name,
-        //                        std::int64_t version,
-        //                        const std::string& domain,
-        //                        Operator fn)
-        // {
-        //     OperatorsBridge::register_operator(name, version, domain, std::move(fn));
-        // }
-
     } // namespace frontend
-
 } // namespace nnfusion

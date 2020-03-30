@@ -11,8 +11,8 @@ namespace nnfusion
     {
         namespace tensorflow_import
         {
-            bool TFDataTypeToNGraphElementType(const tensorflow::DataType tf_dt,
-                                               nnfusion::element::Type* ng_et)
+            bool TFDataTypeToNNFusionElementType(const tensorflow::DataType tf_dt,
+                                                 nnfusion::element::Type* ng_et)
             {
                 switch (tf_dt)
                 {

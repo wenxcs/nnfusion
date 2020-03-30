@@ -21,5 +21,4 @@ namespace nnfusion
         std::shared_ptr<nnfusion::graph::Graph>
             load_torchscript_model(const std::string&, const std::vector<ParamInfo>&);
     } // namespace frontend
-
 } // namespace nnfusion

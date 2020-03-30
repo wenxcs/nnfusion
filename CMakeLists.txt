@@ -93,8 +93,8 @@ include(var_functions)
 
 # Options for Compiling
 option(NGRAPH_DEBUG_ENABLE "Enable output for NGRAPH_DEBUG statements" FALSE)
-option(NGRAPH_ONNX_IMPORT_ENABLE "Enable ONNX importer" FALSE)
 option(NGRAPH_CODE_COVERAGE_ENABLE "Enable code coverage data collection" FALSE)
+option(NNFUSION_ONNX_IMPORT_ENABLE "Enable ONNX importer for NNFusion" TRUE)
 option(NNFUSION_TENSORFLOW_IMPORT_ENABLE "Enable Tensorflow importer for NNFusion" TRUE)
 option(NNFUSION_TORCHSCRIPT_IMPORT_ENABLE "Enable TorchScript importer for NNFusion" FALSE)
 option(NGRAPH_USE_SYSTEM_PROTOBUF "Use system provided Protobuf shared object(Onnx support required Protobuf-3.5.1 from our thirdparty repo)" FALSE)
@@ -120,9 +120,9 @@ option(NNFUSION_ENABLE "Control the building of the nnfusion backend" TRUE)
 set(NNFUSION_THIRDPARTY_FOLDER "" CACHE STRING "NNFusion Thirdpary libraries folder location")
 
 #Disable ONNXIFI
-#if (NGRAPH_ONNX_IMPORT_ENABLE)
-#    set(NGRAPH_USE_SYSTEM_PROTOBUF FALSE)
-#    option(NGRAPH_ONNXIFI_ENABLE "Enable ONNX Interface for Framework Integration" TRUE)
+#if (NNFUSION_ONNX_IMPORT_ENABLE)
+    #set(NGRAPH_USE_SYSTEM_PROTOBUF FALSE)
+    #option(NGRAPH_ONNXIFI_ENABLE "Enable ONNX Interface for Framework Integration" TRUE)
 #endif()
 
 #-----------------------------------------------------------------------------------------------
@@ -265,7 +265,7 @@ endif()
 
 add_definitions(-DNNFUSION_TORCHSCRIPT_IMPORT_ENABLE=${NNFUSION_TORCHSCRIPT_IMPORT_ENABLE})
 
-if (NGRAPH_ONNX_IMPORT_ENABLE OR NNFUSION_TENSORFLOW_IMPORT_ENABLE)
+if (NNFUSION_ONNX_IMPORT_ENABLE OR NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     if (NOT NGRAPH_USE_SYSTEM_PROTOBUF)
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/protobuf/README.md")
             message(STATUS "Use submodule protobuf.")

@@ -76,7 +76,8 @@ namespace nnfusion
             bool operator<(const Type& other) const;
             friend std::ostream& operator<<(std::ostream&, const Type&);
             static std::vector<const Type*> get_known_types();
-            static bool ngraph_element_type_to_dtype_string(const Type& ng_et, std::string& dtype);
+            static bool nnfusion_element_type_to_dtype_string(const Type& ng_et,
+                                                              std::string& dtype);
 
             /// Returns true if the type is floating point, else false.
             bool get_is_real() const { return m_is_real; }

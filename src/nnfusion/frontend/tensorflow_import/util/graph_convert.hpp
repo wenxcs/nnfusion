@@ -34,7 +34,6 @@ namespace nnfusion
                 const tensorflow::GraphDef* tf_graph_proto;
 
                 GNodeVector m_graph_outputs;
-                GNodeVector m_graph_parameters;
 
                 NodeMap m_node_map;
 

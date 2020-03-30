@@ -21,6 +21,5 @@ namespace nnfusion
 
         // Convert an TensorFlow model to a nnfusion graph
         std::shared_ptr<nnfusion::graph::Graph> load_tensorflow_model(const std::string&);
-    } // namespace tensorflow_import
-
+    } // namespace frontend
 } // namespace nnfusion

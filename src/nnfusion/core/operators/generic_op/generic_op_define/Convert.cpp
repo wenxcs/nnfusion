@@ -10,7 +10,7 @@ REGISTER_OP(Convert)
         NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
 
         std::string dtype;
-        bool ret = element::Type::ngraph_element_type_to_dtype_string(
+        bool ret = element::Type::nnfusion_element_type_to_dtype_string(
             op->get_convert_element_type(), dtype);
         NNFUSION_CHECK(ret == true) << "cast type is not supported: "
                                     << op->get_convert_element_type().c_type_string();
