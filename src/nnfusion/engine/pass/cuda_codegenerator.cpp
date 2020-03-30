@@ -731,15 +731,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 // get kernel func call
                 std::string function_call = fu->get_specialized_funciton_call(func_name);
-                int pos_left = function_call.find("<<<"), pos_right = function_call.find(">>>(");
-                if (pos_left >= 0 && pos_right >= 0)
+                int pos_right = function_call.find(">>>(");
+                if (pos_right >= 0)
                 {
-                    std::string builder = function_call.substr(0, pos_left) + "_Call(";
-                    builder += function_call.substr(pos_left + 3, pos_right - pos_left - 3) + ", ";
-                    // add stream info
-                    builder += kernel_stream[kernel] + ", ";
-                    builder += function_call.substr(pos_right + 4);
-                    function_call = std::move(builder);
+                    function_call.insert(pos_right, ", " + kernel_stream[kernel]);
                 }
                 // add stream or handle for cudalib emitter function call
                 else
@@ -844,7 +839,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (thread_name != "default")
                 {
                     // add thread_calls definition
-                    lu_thread_func_call << "extern \"C\" void " << thread_name << "_Call(";
+                    lu_thread_func_call << "extern \"C\" void " << thread_name << "(";
                     lu_thread_func_call << kernel_entry_params << ")\n";
                     lu_thread_func_call.block_begin();
                     //int func_call_count = 1;
@@ -929,7 +924,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     std::string std_thread_func_name =
                         std::string("thread_func") + std::to_string(thread_func_call_count);
                     std::string thread_call_str = std::string("(") + thread_name +
-                                                  std::string("_Call, ") + kernel_entry_args +
+                                                  std::string(", ") + kernel_entry_args +
                                                   std::string(");\n");
                     std::string std_thread_func_call = std::string("auto ") + std_thread_func_name +
                                                        std::string(" = std::bind") +

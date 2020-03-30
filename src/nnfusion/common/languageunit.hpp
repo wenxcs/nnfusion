@@ -71,7 +71,7 @@ namespace nnfusion
             NNFUSION_CHECK_NOT_NULLPTR(this->signature_unit);
             string fname = func_name == "" ? this->name_unit->get_code() : func_name;
             string sig = this->signature_unit->get_code();
-            size_t pos = sig.find("(");
+            size_t pos = sig.find_last_of("(");
             NNFUSION_CHECK(pos > 0 && pos < sig.size());
             sig.insert(pos, fname);
             return sig;

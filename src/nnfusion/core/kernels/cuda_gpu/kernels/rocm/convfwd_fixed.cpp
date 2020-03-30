@@ -80,14 +80,29 @@ namespace nnfusion
                         return true;
                     };
                     std::string templ;
-                    if (matching({128, 3, 227, 227},
-                                 {96, 3, 11, 11},
-                                 {128, 96, 55, 55},
+                    if (matching({1, 32, 170, 96},
+                                 {32, 32, 21, 11},
+                                 {1, 32, 75, 86},
                                  {1, 1},
                                  {1, 1},
-                                 {4, 4},
+                                 {2, 1},
                                  {0, 0},
                                  {0, 0}))
+                    {
+                        templ =
+                            "rocm_adapter/fixed_kernels/convfwd/"
+                            "conv2d_fwd_1_32_170_96_32_21-11_2-1_0-0.h.in";
+                        m_gridDim = dim3(86, 1, 1);
+                        m_blockDim = dim3(1, 15, 32);
+                    }
+                    else if (matching({128, 3, 227, 227},
+                                      {96, 3, 11, 11},
+                                      {128, 96, 55, 55},
+                                      {1, 1},
+                                      {1, 1},
+                                      {4, 4},
+                                      {0, 0},
+                                      {0, 0}))
                     {
                         templ =
                             "rocm_adapter/fixed_kernels/convfwd/"
@@ -115,7 +130,7 @@ namespace nnfusion
                     return _lu;
                 }
 
-                void set_launch_config() override { GENERIC_OP_LOGGING(); }
+                void set_launch_config() override {}
             };
         } // namespace cuda
     }     // namespace kernels

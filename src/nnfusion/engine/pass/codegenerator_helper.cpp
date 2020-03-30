@@ -115,66 +115,12 @@ FunctionFile_p FunctionFile::convert_from(FunctionUnit_p fu)
     def << fu->body_unit->get_code() << "\n";
     def.block_end();
 
-    // This is for function wrapper, nnfusion_rt.o will have symbol of this;
-    std::string sig = fu->get_specialized_signature();
-    int pos = sig.find(" __global__ "), next;
-    if (pos >= 0)
-    {
-        while (pos < sig.size() && sig[pos] == ' ')
-            ++pos;
-        sig = sig.substr(pos + 12);
-        pos = sig.find("(");
-        if (pos >= 0)
-        {
-            std::string args = sig.substr(pos);
-            assert(args.size() > 0 && args[args.size() - 1] == ')');
-            args[args.size() - 1] = ',';
-
-            sig.insert(pos, "_Call");
-            sig.insert(pos + 6,
-                       "const dim3 &grids, const dim3 &blocks, unsigned mem, "
-                       "cudaStream_t stream, ");
-            def << "\n" << sig << "\n{\n";
-            def << "    return " << fu->name_unit->get_code()
-                << "<<<grids, blocks, mem, stream>>>(";
-
-            std::vector<std::string> params;
-            for (pos = 0; next = args.find(',', pos), next >= 0; pos = next + 1)
-            {
-                int start = next - 1;
-                while (start >= 0 &&
-                       (isalpha(args[start]) || isdigit(args[start]) || args[start] == '_'))
-                    --start;
-                params.push_back(args.substr(start + 1, next - start - 1));
-            }
-            def << join(params, ", ") << ");\n";
-            def << "}\n";
-        }
-    }
-
     LanguageUnit dec("dec");
     {
         std::string sig = fu->get_specialized_signature();
-        int pos = sig.find(" __global__ "), next;
-        if (pos >= 0)
-        {
-            while (pos < sig.size() && sig[pos] == ' ')
-                ++pos;
-            sig = sig.substr(pos + 12); // Remove __global__
-            pos = sig.find("(");
-            if (pos >= 0)
-            {
-                std::string args = sig.substr(pos);
-                assert(args.size() > 0 && args[args.size() - 1] == ')');
-                args[args.size() - 1] = ',';
-
-                sig.insert(pos, "_Call");
-                sig.insert(pos + 6,
-                           "const dim3 &grids, const dim3 &blocks, unsigned mem, "
-                           "cudaStream_t stream, ");
-            }
-        }
-        dec << "\nextern " << sig << ";\n";
+        if (sig.find("extern ") != 0)
+            sig = "extern " + sig;
+        dec << "\n" << sig << ";\n";
     }
 
     string sname = fu->name_unit->get_code();

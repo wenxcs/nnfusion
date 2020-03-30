@@ -4,6 +4,8 @@
 #include "../../cuda_emitter.hpp"
 #include "../../cuda_langunit.hpp"
 
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
+
 namespace nnfusion
 {
     namespace kernels
@@ -81,19 +83,35 @@ namespace nnfusion
                     }
 
                     {
-                        // lu << "cudnnDataType_t data_type = " << get_cudnn_datatype(dtype) << ";\n";
-                        lu << cudnn_tensor_descriptor_from_shape(input_shape, "tensor_desc_0")
-                                  ->get_code();
-                        lu << cudnn_tensor_descriptor_from_shape(output_shape, "tensor_desc_1")
-                                  ->get_code();
-                        lu << get_cudnn_filter_descriptor(filter_shape, "filter_desc")->get_code();
-                        lu << get_cudnn_convolution_descriptor(padding_below,
-                                                               window_movement_strides,
-                                                               window_dilation_strides,
-                                                               "conv_desc")
-                                  ->get_code();
+                        std::map<std::string, size_t> j_map;
+                        j_map["N"] = input_shape[0];
+                        j_map["CI"] = input_shape[1];
+                        j_map["H"] = input_shape[2];
+                        j_map["W"] = input_shape[3];
+                        j_map["CO"] = output_shape[1];
+                        j_map["HO"] = output_shape[2];
+                        j_map["WO"] = output_shape[3];
+                        j_map["KH"] = filter_shape[2];
+                        j_map["KW"] = filter_shape[3];
+                        j_map["S0"] = window_movement_strides[0];
+                        j_map["S1"] = window_movement_strides[1];
+                        j_map["P0"] = padding_below[0];
+                        j_map["P1"] = padding_below[1];
 
-                        lu << R"(
+                        auto str = op::create_code_from_template(R"(
+    miopenTensorDescriptor_t tensor_desc_0, tensor_desc_1, filter_desc;
+    miopenConvolutionDescriptor_t conv_desc;
+
+    CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&tensor_desc_0));
+    CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&tensor_desc_1));
+    CUDNN_SAFE_CALL(miopenCreateTensorDescriptor(&filter_desc));
+    CUDNN_SAFE_CALL(miopenCreateConvolutionDescriptor(&conv_desc));
+
+    CUDNN_SAFE_CALL(miopenSet4dTensorDescriptor(tensor_desc_0, CUDNN_DATA_FLOAT, @N@, @CI@, @H@, @W@));
+    CUDNN_SAFE_CALL(miopenSet4dTensorDescriptor(tensor_desc_1, CUDNN_DATA_FLOAT, @N@, @CO@, @HO@, @WO@));
+    CUDNN_SAFE_CALL(miopenSet4dTensorDescriptor(filter_desc, CUDNN_DATA_FLOAT, @CO@, @CI@, @KH@, @KW@));
+    CUDNN_SAFE_CALL(miopenInitConvolutionDescriptor(conv_desc, CUDNN_CROSS_CORRELATION, @P0@, @P1@, @S0@, @S1@, 1, 1));
+
 	static bool inited = false; static int returnedAlgoCount, fastest = 0;
 	static miopenConvAlgoPerf_t perfResults[4];
 	static size_t workspace_size_in_bytes = 0;
@@ -102,6 +120,7 @@ namespace nnfusion
 	if (!inited) {
 		inited = true;
 		fprintf(stderr, "[MIOpen] Convolution running auto-tune for Forward-Data;\n");
+        try {
 		CUDNN_SAFE_CALL(miopenFindConvolutionForwardAlgorithm(cudnn_handle,
 			tensor_desc_0, input0, filter_desc, input1, conv_desc, tensor_desc_1, output0,
 			4, &returnedAlgoCount, perfResults, workspace_ptr, workspace_size_in_bytes, false));
@@ -110,15 +129,18 @@ namespace nnfusion
 				fastest = i;
 		workspace_size_in_bytes = perfResults[fastest].memory;
 		CUDA_SAFE_CALL(cudaMalloc(&workspace_ptr, workspace_size_in_bytes));
+        } catch (...) { fprintf(stderr, "No any MIOpen algorithms support this Conv2D: (@N@, @CI@, @H@, @W@) -> (@N@, @CO@, @HO@, @WO@), pad = (@P0@, @P1@), srd = (@S0@, @S1@).\n"); abort(); }
 	}
 	CUDNN_SAFE_CALL(miopenConvolutionForward(cudnn_handle,
 		&alpha, tensor_desc_0, input0, filter_desc, input1, conv_desc, perfResults[fastest].fwd_algo,
 		&beta, tensor_desc_1, output0, workspace_ptr, workspace_size_in_bytes));
-	CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_0));
-	CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(tensor_desc_1));
-	CUDNN_SAFE_CALL(cudnnDestroyFilterDescriptor(filter_desc));
-	CUDNN_SAFE_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-)";
+	CUDNN_SAFE_CALL(miopenDestroyTensorDescriptor(tensor_desc_0));
+	CUDNN_SAFE_CALL(miopenDestroyTensorDescriptor(tensor_desc_1));
+	CUDNN_SAFE_CALL(miopenDestroyTensorDescriptor(filter_desc));
+	CUDNN_SAFE_CALL(miopenDestroyConvolutionDescriptor(conv_desc));
+)",
+                                                                 j_map);
+                        lu << str;
                     }
 
                     return _lu;
