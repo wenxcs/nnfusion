@@ -115,7 +115,7 @@ namespace nnfusion
                                 bool is_constant = false,
                                 bool is_parameter = false,
                                 bool is_RDMA_tensor = false,
-                                int group = -1,
+                                const std::string& group = "",
                                 size_t device_id = 0);
 
             virtual const shared_ptr<nnfusion::descriptor::Tensor>
@@ -127,7 +127,7 @@ namespace nnfusion
                                 bool is_constant = false,
                                 bool is_parameter = false,
                                 bool is_RDMA_tensor = false,
-                                int group = -1,
+                                const std::string& group = "",
                                 size_t device_id = 0);
 
             // A kernel only emits kernel code once

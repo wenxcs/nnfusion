@@ -380,8 +380,8 @@ MemoryAllocator*
     nnfusion::MemoryAllocatorFactory::get_allocator(shared_ptr<descriptor::Tensor> tensor)
 {
     auto group = tensor->get_group();
-    NNFUSION_CHECK(group != -1);
-    std::string search_name = tensor->get_device_name() + "_" + to_string(group);
+    NNFUSION_CHECK(group != "");
+    std::string search_name = tensor->get_device_name() + "_" + group;
     if (m_allocator_list.find(search_name) != m_allocator_list.end())
     {
         return m_allocator_list[search_name];
@@ -391,12 +391,11 @@ MemoryAllocator*
         if (tensor->is_RDMA_tensor())
         {
             auto device_type = tensor->get_device_type();
-            RDMAMemoryAllocator* allocator =
-                new RDMAMemoryAllocator(m_alignment,
-                                        m_disable_reuse,
-                                        device_type,
-                                        tensor->get_device_id(),
-                                        "group" + to_string(group) + "_RDMA");
+            RDMAMemoryAllocator* allocator = new RDMAMemoryAllocator(m_alignment,
+                                                                     m_disable_reuse,
+                                                                     device_type,
+                                                                     tensor->get_device_id(),
+                                                                     "group_" + group + "_RDMA");
             m_allocator_list[search_name] = allocator;
             return allocator;
         }
@@ -411,7 +410,7 @@ MemoryAllocator*
                                                     m_disable_reuse,
                                                     CUDA_GPU,
                                                     tensor->get_device_id(),
-                                                    "group" + to_string(group));
+                                                    "group_" + group);
                 break;
             }
             case ROCM_GPU:
@@ -420,7 +419,7 @@ MemoryAllocator*
                                                     m_disable_reuse,
                                                     ROCM_GPU,
                                                     tensor->get_device_id(),
-                                                    "group" + to_string(group));
+                                                    "group_" + group);
                 break;
             }
             case GENERIC_CPU:
@@ -429,7 +428,7 @@ MemoryAllocator*
                                                     m_disable_reuse,
                                                     GENERIC_CPU,
                                                     tensor->get_device_id(),
-                                                    "group" + to_string(group));
+                                                    "group_" + group);
                 break;
             }
             default: NNFUSION_LOG(ERROR) << "No valid allocator found: " << search_name; break;

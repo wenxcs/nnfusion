@@ -208,15 +208,16 @@ FunctionUnit_p KernelEmitter::emit_source()
     return fu;
 }
 
-const shared_ptr<nnfusion::descriptor::Tensor> KernelEmitter::allocate_tensor(Shape shape,
-                                                                              element::Type elt,
-                                                                              string name,
-                                                                              bool is_persistent,
-                                                                              bool is_constant,
-                                                                              bool is_parameter,
-                                                                              bool is_RDMA_tensor,
-                                                                              int group,
-                                                                              size_t device_id)
+const shared_ptr<nnfusion::descriptor::Tensor>
+    KernelEmitter::allocate_tensor(Shape shape,
+                                   element::Type elt,
+                                   string name,
+                                   bool is_persistent,
+                                   bool is_constant,
+                                   bool is_parameter,
+                                   bool is_RDMA_tensor,
+                                   const std::string& group,
+                                   size_t device_id)
 {
     // Internal access of this tensor should be like temp0, temp1 ...
     // External access of this tensor should be like Conv1_temp0, Conv2_temp1...
@@ -253,7 +254,7 @@ const shared_ptr<nnfusion::descriptor::Tensor>
                                    bool is_constant,
                                    bool is_parameter,
                                    bool is_RDMA_tensor,
-                                   int group,
+                                   const std::string& group,
                                    size_t device_id)
 {
     // Internal access of this tensor should be like temp0, temp1 ...

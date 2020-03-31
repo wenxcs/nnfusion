@@ -49,7 +49,7 @@ namespace nnfusion
                    bool is_constant = false,
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
-                   int group = -1,
+                   const std::string& group = "",
                    size_t device_id = 0);
 
             Tensor(const nnfusion::element::Type& element_type,
@@ -60,7 +60,7 @@ namespace nnfusion
                    bool is_constant = false,
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
-                   int group = -1,
+                   const std::string& group = "",
                    size_t device_id = 0);
 
             const std::string& get_name() const { return m_name; }
@@ -104,8 +104,8 @@ namespace nnfusion
             void set_constant(bool value = true) { m_constant = value; }
             void set_parameter(bool value = true) { m_parameter = value; }
             void set_RDMA(bool value = true) { m_RDMA = value; }
-            void set_group(int group) { m_group = group; }
-            int get_group() const { return m_group; }
+            void set_group(const std::string& group) { m_group = group; }
+            const std::string& get_group() const { return m_group; }
             void set_device_type(NNFusion_DeviceType device_type) { m_device_type = device_type; }
             NNFusion_DeviceType get_device_type() const { return m_device_type; }
             void set_device_id(size_t device_id) { m_device_id = device_id; }
@@ -133,7 +133,7 @@ namespace nnfusion
             bool m_RDMA;
             std::shared_ptr<Tensor> m_root_tensor;
             size_t m_ref_count;
-            int m_group;
+            std::string m_group;
             NNFusion_DeviceType m_device_type;
             size_t m_device_id;
         };

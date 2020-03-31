@@ -65,21 +65,19 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 for (size_t i = 0; i < kernel_context->inputs.size(); i++)
                 {
                     auto tensor = kernel_context->inputs[i];
-                    int group = tensor->get_group();
-                    if (group != stream_id)
-                        cross_stream.insert(tensor);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
                 // set output tensor's group id
                 for (size_t i = 0; i < kernel_context->outputs.size(); i++)
                 {
                     auto tensor = kernel_context->outputs[i];
-                    tensor->set_group(stream_id);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
                 // set temp tensor's group id
                 for (size_t i = 0; i < kernel_context->tensors.size(); i++)
                 {
                     auto tensor = kernel_context->tensors[i];
-                    tensor->set_group(stream_id);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
             }
 
@@ -90,7 +88,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
                     tensor->set_parameter();
                     // set tensor's group id
-                    tensor->set_group(stream_id);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
             }
             if (gnode->is_variable())
@@ -100,7 +98,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
                     tensor->set_persistent();
                     // set tensor's group id
-                    tensor->set_group(stream_id);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
             }
             if (gnode->get_op_ptr()->is_output())
@@ -110,16 +108,14 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
                     tensor->set_persistent();
                     // set tensor's group id
-                    tensor->set_group(stream_id);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
                 for (size_t i = 0; i < gnode->get_input_size(); ++i)
                 {
                     shared_ptr<descriptor::Tensor> tensor = gnode->get_input_tensor_ptr(i);
                     tensor->set_persistent();
                     // add cross_stream tensor
-                    int group = tensor->get_group();
-                    if (group != stream_id)
-                        cross_stream.insert(tensor);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
             }
             if (auto constant_node =
@@ -137,7 +133,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                         tensor->set_persistent();
                     }
                     // set tensor's group id
-                    tensor->set_group(stream_id);
+                    set_tensor_group(tensor, to_string(stream_id));
                 }
             }
         }
@@ -276,4 +272,23 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     }
 
     return true;
+}
+void TensorLivenessAnalysis::set_tensor_group(shared_ptr<descriptor::Tensor> tensor,
+                                              const std::string& group)
+{
+    if (tensor->get_group() == "")
+    {
+        if (tensor->is_persistent())
+        {
+            tensor->set_group("persist");
+        }
+        else
+        {
+            tensor->set_group(group);
+        }
+    }
+    else if (tensor->get_group() != group)
+    {
+        cross_stream.insert(tensor);
+    }
 }

@@ -249,17 +249,36 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
     int n_stream = FLAGS_fnum_stream;
     if (n_stream < 0)
         n_stream = 1;
-    // if (n_stream == 1)
-    // {
-    //     for (auto gnode : graph->get_ordered_ops())
-    //     {
-    //         if (!(*gnode)["Async_info"].is_valid())
-    //             (*gnode)["Async_info"] = AsyncExecutionInfo();
-    //         auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-    //         async_info.execution_stream = async_manager->set_stream(0, "default");
-    //     }
-    // }
-    // else
+    if (n_stream == 1)
+    {
+        for (auto gnode : graph->get_ordered_ops())
+        {
+            if (!(*gnode)["Async_info"].is_valid())
+                (*gnode)["Async_info"] = AsyncExecutionInfo();
+            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+
+            if (m_device == GENERIC_CPU)
+            {
+                async_info.execution_thread = async_manager->set_stream(0, "default");
+            }
+            else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
+            {
+                auto thread = async_info.execution_thread;
+                NNFUSION_CHECK(thread != nullptr);
+                if (thread->is_default_stream())
+                {
+                    async_info.execution_stream = async_manager->set_stream(0, "default");
+                }
+                else
+                {
+                    std::string thread_symbol = thread->get_symbol() + "_thread_";
+                    async_info.execution_stream =
+                        async_manager->set_stream(0, thread_symbol + "base");
+                }
+            }
+        }
+    }
+    else
     {
         //const
         set<string> constant_vals;
