@@ -60,6 +60,7 @@ namespace nnfusion
         class Negative;
         class Not;
         class Sqrt;
+        class Rsqrt;
         class Select;
         class And;
         class Or;
@@ -196,6 +197,20 @@ namespace nnfusion
             {
                 static constexpr const char* op = "sqrtf";
                 static constexpr const char* math_kernel = nullptr;
+            };
+
+            template <>
+            struct CudaOpMap<nnfusion::op::Rsqrt>
+            {
+                static constexpr const char* op = "rsqrtf";
+                static constexpr const char* math_kernel = nullptr;
+            };
+
+            template <>
+            struct CudaOpMap<nnfusion::op::Square>
+            {
+                static constexpr const char* op = "squaref";
+                static constexpr const char* math_kernel = "x0 * x0";
             };
 
             template <>

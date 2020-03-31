@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string>
 #include "../cpu_kernel_emitter.hpp"
-#include "antares_ops.hpp"
+#include "../cpu_kernelops.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
@@ -27,16 +27,20 @@ namespace nnfusion
                     nnfusion::Shape input_shape = ctx->inputs[0]->get_shape();
                     nnfusion::Shape output_shape = ctx->outputs[0]->get_shape();
 
-                    std::string tvm_op = TvmOpMap<T>::op;
+                    // Handle the cases that input tensor is not matrix.
+                    if (input_shape.size() != 2)
+                    {
+                        std::string tvm_op = CpuOpMap<T>::antares_op;
 
-                    auto expression = op::create_code_from_template(
-                        R"( - input("input0", @input_shape@); output(@output_shape@, topi=@tvm_op@(args("input0"), axis=@axis@, keepdims=True)); )",
-                        {{"input_shape", vector_to_string(input_shape)},
-                         {"output_shape", vector_to_string(output_shape)},
-                         {"tvm_op", tvm_op},
-                         {"axis", vector_to_string(reduce_axis)}});
+                        auto expression = op::create_code_from_template(
+                            R"( - input("input0", @input_shape@); output(@output_shape@, topi=@tvm_op@(args("input0"), axis=@axis@, keepdims=True)); )",
+                            {{"input_shape", vector_to_string(input_shape)},
+                             {"output_shape", vector_to_string(output_shape)},
+                             {"tvm_op", tvm_op},
+                             {"axis", vector_to_string(reduce_axis)}});
 
-                    initialize(expression);
+                        initialize(expression);
+                    }
                 }
             };
         } // namespace cpu

@@ -14,10 +14,10 @@ file(GLOB mlas_kernels mlas/*.cpp)
 file(GLOB antares_kernels antares/*.cpp)
 
 set(KERNELS
-    ${eigen_kernels}
-    ${mkl_kernels}
     ${reference_kernels}
     ${general_kernels}
+    ${mkl_kernels}
+    ${eigen_kernels}
     ${mlas_kernels}
     ${antares_kernels}
 )

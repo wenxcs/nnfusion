@@ -65,6 +65,7 @@ set(SRC
     op_define/result.cpp
     op_define/reverse_sequence.cpp
     op_define/reverse.cpp
+    op_define/rsqrt.cpp
     op_define/select_and_scatter.cpp
     op_define/select.cpp
     op_define/sigmoid.cpp
@@ -77,6 +78,7 @@ set(SRC
     op_define/stop_gradient.cpp
     op_define/subtract.cpp
     op_define/sum.cpp
+    op_define/square.cpp
     op_define/tan.cpp
     op_define/tanh.cpp
     op_define/topk.cpp

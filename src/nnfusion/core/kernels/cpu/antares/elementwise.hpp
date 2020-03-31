@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "../cpu_kernel_emitter.hpp"
-#include "antares_ops.hpp"
+#include "../cpu_kernelops.hpp"
 
 namespace nnfusion
 {
@@ -30,7 +30,7 @@ namespace nnfusion
                         expression << "input(\"input" << i << "\", "
                                    << vector_to_string(shape, " * ") << "); ";
                     }
-                    std::string tvm_op = TvmOpMap<T>::op;
+                    std::string tvm_op = CpuOpMap<T>::antares_op;
                     expression << "output(" << vector_to_string(shape, " * ") << ", topi=" << tvm_op
                                << "(";
                     for (size_t i = 0; i < num_inputs - 1; ++i)

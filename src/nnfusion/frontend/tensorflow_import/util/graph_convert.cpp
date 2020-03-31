@@ -14,6 +14,8 @@
 
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
+DECLARE_string(fdefault_device);
+
 // todo: add control edge ?
 namespace nnfusion
 {
@@ -1935,31 +1937,6 @@ namespace nnfusion
                 return ret;
             }
 
-            NamedNodeVector TranslateRsqrtOp(const tensorflow::NodeDef& node,
-                                             const NodeMap& all_ng_nodes,
-                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
-            {
-                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
-
-                // Create a constant tensor populated with the value -1/2.
-                // (1/sqrt(x) = x^(-1/2))
-                auto shape = input_gnode->get_shape();
-                std::vector<std::string> constant_values(nnfusion::shape_size(shape), "-0.5");
-
-                auto exponent_op = std::make_shared<op::Constant>(
-                    input_gnode->get_element_type(), shape, constant_values);
-                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, GNodeVector({}));
-
-                // Raise each element of the input to the power -0.5.
-                auto power_op = std::make_shared<op::Power>();
-                power_op->set_name(node.name());
-                auto power_gnode =
-                    m_graph->add_node_and_edge(power_op, {input_gnode, exponent_gnode});
-
-                NamedNodeVector ret{{node.name(), power_gnode}};
-                return ret;
-            }
-
             NamedNodeVector TranslateRsqrtGradOp(const tensorflow::NodeDef& node,
                                                  const NodeMap& all_ng_nodes,
                                                  std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2734,31 +2711,6 @@ namespace nnfusion
                 return ret;
             }
 
-            NamedNodeVector TranslateSquareOp(const tensorflow::NodeDef& node,
-                                              const NodeMap& all_ng_nodes,
-                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
-            {
-                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
-
-                // Create a constant tensor populated with the value 2.
-                // (Square(x) = x^2)
-                auto shape = input_gnode->get_shape();
-                std::vector<std::string> constant_values(nnfusion::shape_size(shape), "2");
-
-                auto exponent_op = std::make_shared<op::Constant>(
-                    input_gnode->get_element_type(), shape, constant_values);
-                auto exponent_gnode = m_graph->add_node_and_edge(exponent_op, GNodeVector({}));
-
-                // Raise each element of the input to the power 2.
-                auto power_op = std::make_shared<op::Power>();
-                power_op->set_name(node.name());
-                auto power_gnode =
-                    m_graph->add_node_and_edge(power_op, {input_gnode, exponent_gnode});
-
-                NamedNodeVector ret{{node.name(), power_gnode}};
-                return ret;
-            }
-
             NamedNodeVector TranslateShapeOp(const tensorflow::NodeDef& node,
                                              const NodeMap& all_ng_nodes,
                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2980,7 +2932,7 @@ namespace nnfusion
                 {"ReluGrad", TranslateReluGradOp},
                 {"Relu6Grad", TranslateRelu6GradOp},
                 {"Reshape", TranslateReshapeOp},
-                {"Rsqrt", TranslateRsqrtOp},
+                {"Rsqrt", TranslateUnaryOp<op::Rsqrt>},
                 {"RsqrtGrad", TranslateRsqrtGradOp},
                 {"RealDiv", TranslateBinaryOp<op::Divide>},
                 {"ScatterSub", TranslateScatterOp},
@@ -3011,7 +2963,7 @@ namespace nnfusion
                 {"UnsortedSegmentSum", TranslateUnsortedSegmentSumOp},
                 {"VariableV2", TranslateTensorOp<op::Variable>},
                 {"Transpose", TranslateTransposeToReshapeOp},
-                {"Square", TranslateSquareOp},
+                {"Square", TranslateUnaryOp<op::Square>},
                 {"Shape", TranslateShapeOp},
                 {"Unpack", TranslateUnpackOp}};
 
