@@ -166,6 +166,7 @@ namespace nnfusion
                                     for (auto& it : shape)
                                         size *= it;
                                     raw_outputs[i].resize(size);
+                                    memset(raw_outputs[i].data(), 0, raw_outputs[i].size());
                                 }
                             }
                             NNFUSION_LOG(INFO) << "  For node `" << it->get_name()

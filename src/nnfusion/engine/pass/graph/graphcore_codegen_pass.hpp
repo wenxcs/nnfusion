@@ -13,6 +13,9 @@ using namespace nnfusion::graph;
 DECLARE_string(fdefault_device);
 
 DEFINE_bool(fgc_apply_blockfusion, true, "Whether to apply blockfusion for GraphCore codegen.");
+DEFINE_bool(fgc_using_constant,
+            false,
+            "Whether to use constant or fifo-stream for GraphCore codegen.");
 DEFINE_string(fantares_gc_server,
               "10.150.145.98:8883",
               "Antares graphcore server address and port, format: <ip>:<port>");
@@ -222,6 +225,7 @@ namespace nnfusion
                     NNFUSION_CHECK(0 == system("mkdir -p nnfusion_rt/graphcore_codegen"));
 
                     std::ofstream fout("nnfusion_rt/graphcore_codegen/nnfusion_rt.h");
+                    fout << "#if 1\n";
                     // Perform blockfusion
                     int offset = 0, step = 0;
                     auto new_super_step = [&]() {
@@ -286,18 +290,39 @@ namespace nnfusion
                             NNFUSION_CHECK(size == fwrite(dptr, 1, size, fp));
                             fclose(fp);
 
-                            fout << "Tensor " << arg_names[curr] << " = g.addConstant<" << types[0]
-                                 << ">(" << types[1] << ", {";
-                            fout << no_scaler(join_collections(
-                                curr->get_output_shape(0),
-                                [](int idx, ssize_t it) { return std::to_string(it); }));
-                            fout << "}, load_const<" << types[0] << ">(\"" << arg_names[curr]
-                                 << "\")); place_tensor(g, " << arg_names[curr] << ");\n";
+                            if (FLAGS_fgc_using_constant)
+                            {
+                                fout << "Tensor " << arg_names[curr] << " = g.addConstant<"
+                                     << types[0] << ">(" << types[1] << ", {";
+                                fout << no_scaler(join_collections(
+                                    curr->get_output_shape(0),
+                                    [](int idx, ssize_t it) { return std::to_string(it); }));
+                                fout << "}, load_const<" << types[0] << ">(\"" << arg_names[curr]
+                                     << "\")); place_tensor(g, " << arg_names[curr] << ");\n";
+                            }
+                            else
+                            {
+                                fout << "Tensor " << arg_names[curr] << " = g.addVariable("
+                                     << types[1] << ", {";
+                                fout << no_scaler(join_collections(
+                                    curr->get_output_shape(0),
+                                    [](int idx, ssize_t it) { return std::to_string(it); }));
+                                fout << "}, \"" << arg_names[curr] << "\"); place_tensor(g, "
+                                     << arg_names[curr] << ");\n";
+
+                                fout << "  auto host_" << arg_names[curr] << " = load_const<"
+                                     << types[0] << ">(\"" << arg_names[curr] << "\");\n";
+                                fout << "  data_ptrs.push_back({\"W_" << arg_names[curr]
+                                     << "\", host_" << arg_names[curr] << ".data()});\n";
+
+                                fout << "  prog.add(program::Copy(g.addHostToDeviceFIFO(\"W_"
+                                     << arg_names[curr] << "\", " << types[1] << ", "
+                                     << arg_names[curr] << ".numElements()), " << arg_names[curr]
+                                     << "));\n";
+                            }
                         }
                         else if (curr->is_parameter())
                         {
-                            // TODO:
-                            // 1) using g.addVariable + stream_HtoD instead of addConstant;
                             std::vector<std::string> types;
                             if (curr->get_output_element_type(0) == nnfusion::element::f32)
                                 types = {"float", "FLOAT", "1.0f"};
@@ -305,14 +330,37 @@ namespace nnfusion
                                 types = {"unsigned int", "UNSIGNED_INT", "1"};
                             else
                                 assert(0);
-                            fout << "Tensor " << arg_names[curr] << " = g.addConstant<" << types[0]
-                                 << ">(" << types[1] << ", {";
-                            auto str_vect = vector_to_string(curr->get_output_shape(0));
-                            fout << no_scaler(join_collections(
-                                curr->get_output_shape(0),
-                                [](int idx, ssize_t it) { return std::to_string(it); }));
-                            fout << "}, {" << types[2] << "}); place_tensor(g, " << arg_names[curr]
-                                 << ");\n";
+                            if (FLAGS_fgc_using_constant)
+                            {
+                                fout << "Tensor " << arg_names[curr] << " = g.addConstant<"
+                                     << types[0] << ">(" << types[1] << ", {";
+                                fout << no_scaler(join_collections(
+                                    curr->get_output_shape(0),
+                                    [](int idx, ssize_t it) { return std::to_string(it); }));
+                                fout << "}, {" << types[2] << "}); place_tensor(g, "
+                                     << arg_names[curr] << ");\n";
+                            }
+                            else
+                            {
+                                fout << "Tensor " << arg_names[curr] << " = g.addVariable("
+                                     << types[1] << ", {";
+                                fout << no_scaler(join_collections(
+                                    curr->get_output_shape(0),
+                                    [](int idx, ssize_t it) { return std::to_string(it); }));
+                                fout << "}, \"" << arg_names[curr] << "\"); place_tensor(g, "
+                                     << arg_names[curr] << ");\n";
+
+                                fout << "  auto host_" << arg_names[curr] << " = std::vector<"
+                                     << types[0] << ">(" << arg_names[curr] << ".numElements(), "
+                                     << types[2] << ");\n";
+                                fout << "  data_ptrs.push_back({\"W_" << arg_names[curr]
+                                     << "\", host_" << arg_names[curr] << ".data()});\n";
+
+                                fout << "  prog.add(program::Copy(g.addHostToDeviceFIFO(\"W_"
+                                     << arg_names[curr] << "\", " << types[1] << ", "
+                                     << arg_names[curr] << ".numElements()), " << arg_names[curr]
+                                     << "));\n";
+                            }
                         }
                         else
                         {
@@ -334,7 +382,8 @@ namespace nnfusion
                                     printf("[GraphCore] %s\n", expr.c_str());
                                     NNFUSION_CHECK(true == req.send_request(response));
                                     NNFUSION_CHECK(strncmp(response.c_str(), "[ERROR]", 7) != 0)
-                                        << expr;
+                                        << expr << "\n"
+                                        << response;
                                     code_cache[expr] = response;
                                     return std::move(response);
                                 }
@@ -830,26 +879,47 @@ namespace nnfusion
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "Sum")
                             {
-                                new_super_step();
-
-                                standard_kernel = false;
-
                                 auto _op = get_op_object<nnfusion::op::Sum>(curr);
                                 auto axes = _op->get_reduction_axes();
 
-                                fout << "Tensor " << arg_names[curr] << " = popops::reduce(g, "
-                                     << arg_names[curr->get_in_edge(0)->get_src()] << ", {"
-                                     << join_collections(axes,
-                                                         [](int idx, ssize_t val) {
-                                                             return std::to_string(val);
-                                                         })
-                                     << "}, popops::ReduceParams(popops::Operation::ADD), "
-                                        "prog).reshape({"
-                                     << join_collections(curr->get_output_shape(0),
-                                                         [&](int idx, ssize_t val) {
-                                                             return std::to_string(val);
-                                                         })
-                                     << "});\n";
+                                auto input_shape = curr->get_input_shape(0);
+                                NNFUSION_CHECK(axes.size() >= 1);
+                                int min_axis = INT_MAX;
+                                for (auto& axis : axes)
+                                    min_axis = min(min_axis, (int)axis);
+                                if (input_shape.size() - axes.size() == min_axis)
+                                {
+                                    int batch = 1, sample = 1;
+                                    for (int i = 0; i < min_axis; ++i)
+                                        batch *= input_shape[i];
+                                    for (int i = min_axis; i < input_shape.size(); ++i)
+                                        sample *= input_shape[i];
+
+                                    shards = std::vector<int>(1 + curr->get_input_size(), batch);
+                                    code = autogen(op::create_code_from_template(
+                                        "- input(\"input0\", [@sample@]); output([1], "
+                                        "topi=topi.sum(args(\"input0\"), axis=0, keepdims=True));",
+                                        {{"sample", sample}}));
+                                }
+                                else
+                                {
+                                    new_super_step();
+                                    standard_kernel = false;
+
+                                    fout << "Tensor " << arg_names[curr] << " = popops::reduce(g, "
+                                         << arg_names[curr->get_in_edge(0)->get_src()] << ", {"
+                                         << join_collections(axes,
+                                                             [](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "}, popops::ReduceParams(popops::Operation::ADD), "
+                                            "prog).reshape({"
+                                         << join_collections(curr->get_output_shape(0),
+                                                             [&](int idx, ssize_t val) {
+                                                                 return std::to_string(val);
+                                                             })
+                                         << "});\n";
+                                }
                             }
                             else if (curr->get_op_ptr()->get_op_type() == "MaxPool")
                             {
@@ -1116,13 +1186,17 @@ namespace nnfusion
                         if (blacklist.count(curr))
                             continue;
                         fout << "print_tensor(\"Result(" << arg_names[curr] << ")\", "
-                             << arg_names[curr] << ");\n";
-                        fout << std::endl;
+                             << arg_names[curr] << ");\n\n";
                     }
+
+                    fout << "#endif" << std::endl;
+
                     nnfusion::codegen::copy_file_from_templates(
                         "graphcore/Makefile", "nnfusion_rt/graphcore_codegen/Makefile");
                     nnfusion::codegen::copy_file_from_templates(
                         "graphcore/run_graph.cpp", "nnfusion_rt/graphcore_codegen/run_graph.cpp");
+                    nnfusion::codegen::copy_file_from_templates(
+                        "graphcore/picosha2.h", "nnfusion_rt/graphcore_codegen/picosha2.h");
                     NNFUSION_LOG(INFO) << "GraphCore codegen finished.";
                     exit(0);
                     return true;

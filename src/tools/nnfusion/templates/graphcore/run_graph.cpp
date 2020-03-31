@@ -8,6 +8,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "picosha2.h"
+
 #include <poplar/DeviceManager.hpp>
 #include <poplar/Engine.hpp>
 #include <poplar/Graph.hpp>
@@ -155,16 +157,7 @@ poplar::Tensor compute_task(poplar::Graph& g,
 
     std::string cs_name = "compset-" + std::to_string(step);
 
-    uint64_t hash_key = 0, i;
-    for (i = 0; i + 8 <= autogen.size(); i += 8)
-    {
-        hash_key = (hash_key * 3 + *(uint64_t*)(autogen.data() + i) * 7) + 11;
-    }
-    for (; i < autogen.size(); i += 1)
-    {
-        hash_key = (hash_key * 3 + *(uint8_t*)(autogen.data() + i) * 7) + 11;
-    }
-    std::string kernel_name = "AntaresVertexCodeletsImpl_" + std::to_string(hash_key);
+    std::string kernel_name = "AntaresVertexCodeletsImpl_" + picosha2::hash256_hex_string(autogen);
 
     static std::unordered_set<std::string> added_kernel_names;
 
@@ -344,12 +337,14 @@ int main(int argc, char** argv)
     popnn::addCodelets(g);
     popops::addCodelets(g);
 
-    do
-    {
-#include "nnfusion_rt.h"
-    } while (0);
+    std::vector<std::pair<const char*, void*>> data_ptrs;
 
+#include "nnfusion_rt.h"
+
+    printf("Ipu starts to build..\n");
     Engine engine(g, prog);
+    for (int i = 0; i < data_ptrs.size(); ++i)
+        engine.connectStream(data_ptrs[i].first, data_ptrs[i].second);
     engine.load(device);
 
     std::cout << "Running program\n";
