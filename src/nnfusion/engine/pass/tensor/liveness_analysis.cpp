@@ -24,7 +24,6 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, KernelEmitter::Pointer> op_kernels;
     std::unordered_set<shared_ptr<descriptor::Tensor>> persist_candidate;
-    std::unordered_set<shared_ptr<descriptor::Tensor>> cross_stream;
 
     auto default_device = FLAGS_fdefault_device.c_str();
     NNFusion_DeviceType device_type = nnfusion::get_device_type(default_device);

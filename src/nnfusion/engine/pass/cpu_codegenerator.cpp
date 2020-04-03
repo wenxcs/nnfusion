@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "codegenerator_helper.hpp"
 #include "cpu_codegenerator.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_kernel_emitter.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
@@ -24,6 +25,8 @@ using namespace nnfusion::async;
 
 DEFINE_int32(fnuma_node_num, 1, "");
 DEFINE_int32(fthread_num_per_node, 0, "");
+DEFINE_bool(fcpu_kernels_as_files, false, "Saving cpu kernels as standalone source code files.");
+DEFINE_int64(fcpu_kernels_files_number, -1, "Saving cpu kernels into how many source code files.");
 
 namespace
 {
@@ -64,8 +67,11 @@ bool CpuCodeGenerator::setpwd()
 {
     std::string working_dir = "./nnfusion_rt";
     std::string tar_path = working_dir + "/cpu_codegen/";
+    std::string kernels_path = working_dir + "/cpu_codegen/kernels/";
     create_dir(working_dir);
     create_dir(tar_path);
+    if (FLAGS_fcpu_kernels_as_files)
+        create_dir(kernels_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
 }
@@ -195,6 +201,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels;
     // Collect Function Definition
     {
+        vector<codegenerator::CPUFunctionFile> cpu_kernel_files;
+        if (FLAGS_fcpu_kernels_as_files && FLAGS_fcpu_kernels_files_number > 0)
+            cpu_kernel_files.resize(FLAGS_fcpu_kernels_files_number);
+        int cpu_kernel_n = 0;
         unordered_set<string> declared;
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
@@ -208,30 +218,53 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     global_required.insert(it.second->symbol);
                 }
             }
-            def << fu->comment_unit->get_code();
+            // def << fu->comment_unit->get_code();
             if (declared.count(fu->body_unit->symbol) == 0)
             {
-                string sig = fu->get_specialized_signature();
+                // string sig = fu->get_specialized_signature();
 
-                if (kernel->is_parallelism())
+                // if (kernel->is_parallelism())
+                // {
+                //     int pos = sig.find("(");
+                //     if (pos >= 0)
+                //     {
+                //         sig.insert(pos + 1, "concurrency::ThreadPool* thread_pool, ");
+                //     }
+                // }
+
+                // def << sig << "\n";
+                // def.block_begin();
+                // def << fu->body_unit->get_code() << "\n";
+                // def.block_end();
+                auto functionfile = codegenerator::CPUFunctionFile::convert_from(kernel);
+                if (FLAGS_fcpu_kernels_as_files)
                 {
-                    int pos = sig.find("(");
-                    if (pos >= 0)
-                    {
-                        sig.insert(pos + 1, "concurrency::ThreadPool* thread_pool, ");
-                    }
+                    def << functionfile->get_extern_declare();
+                    if (FLAGS_fcpu_kernels_files_number > 0)
+                        cpu_kernel_files[cpu_kernel_n].merge_from(functionfile);
+                    else
+                        functionfile->save_file();
                 }
-
-                def << sig << "\n";
-                def.block_begin();
-                def << fu->body_unit->get_code() << "\n";
-                def.block_end();
+                else
+                {
+                    def << functionfile->get_code();
+                }
                 declared.insert(fu->body_unit->symbol);
             }
             else
             {
                 def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
             }
+            if (FLAGS_fcpu_kernels_files_number > 0)
+            {
+                cpu_kernel_n++;
+                cpu_kernel_n %= FLAGS_fcpu_kernels_files_number;
+            }
+        }
+        if (FLAGS_fcpu_kernels_as_files && FLAGS_fcpu_kernels_files_number > 0)
+        {
+            for (int i = 0; i < FLAGS_fcpu_kernels_files_number; i++)
+                cpu_kernel_files[i].save_file();
         }
 
         //Write Dependency
@@ -767,7 +800,10 @@ endforeach()
     }
 
     lu_cmake << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -march=native\")\n"
-             << "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n";
+             << (FLAGS_fcpu_kernels_as_files ? "file(GLOB kernels "
+                                               "kernels/*.cpp)\nadd_library(nnfusion_cpu_rt "
+                                               "nnfusion_rt.cpp ${kernels})\n"
+                                             : "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n");
     if (global_required.count("header::cblas") > 0)
     {
         lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n\n";

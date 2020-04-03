@@ -2,6 +2,7 @@
 
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/common/languageunit.hpp"
+#include "nnfusion/core/kernels/kernel_emitter.hpp"
 
 namespace nnfusion
 {
@@ -14,15 +15,17 @@ namespace nnfusion
         {
         public:
             using FunctionFile_p = shared_ptr<FunctionFile>;
-            static FunctionFile_p convert_from(FunctionUnit_p fu);
+            static FunctionFile_p
+                convert_from(std::shared_ptr<nnfusion::kernels::KernelEmitter> kernel);
             FunctionFile(string extern_declare, LanguageUnit_p file_context);
             FunctionFile() { extern_declare = ""; }
             string get_extern_declare() { return extern_declare; };
-            void save_file();
+            virtual void save_file();
             void merge_from(FunctionFile_p func);
 
         private:
             string extern_declare;
+            string suffix_str = ".cu";
 
             /*
             Origninal FunctionUnit includes:
@@ -46,7 +49,25 @@ namespace nnfusion
 
             //\todo: IS THIS WAY GENERAL? Any C-series(*cc) compiler will support this way.
         };
+        class CPUFunctionFile : public FunctionFile
+        {
+        public:
+            using CPUFunctionFile_p = shared_ptr<CPUFunctionFile>;
+            static CPUFunctionFile_p
+                convert_from(std::shared_ptr<nnfusion::kernels::KernelEmitter> kernel);
+            CPUFunctionFile(string extern_declare, LanguageUnit_p file_context)
+                : FunctionFile(extern_declare, file_context)
+            {
+            }
+            CPUFunctionFile() { extern_declare = ""; }
+            void save_file() override;
+
+        private:
+            string extern_declare;
+            string suffix_str = ".cpp";
+        };
 
         using FunctionFile_p = FunctionFile::FunctionFile_p;
+        using CPUFunctionFile_p = CPUFunctionFile::CPUFunctionFile_p;
     } // namespace codegenerator
 } // namespace nnfusion

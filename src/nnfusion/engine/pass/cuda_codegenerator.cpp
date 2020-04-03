@@ -428,54 +428,23 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (kernel->is_static_function() ||
                 decleard_function_LU.find(func_key) == decleard_function_LU.end())
             {
-                std::string sig = fu->get_specialized_signature();
-                int pos = sig.find(" __global__ "), next;
-                if (pos >= 0)
+                auto functionfile = codegenerator::FunctionFile::convert_from(kernel);
+                if (FLAGS_fcuda_kernels_as_files)
                 {
-                    auto functionfile = codegenerator::FunctionFile::convert_from(fu);
-                    if (FLAGS_fcuda_kernels_as_files)
-                    {
-                        def << functionfile->get_extern_declare();
-                        if (FLAGS_fcuda_kernels_files_number > 0)
-                            cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
-                        else
-                            functionfile->save_file();
-                    }
+                    def << functionfile->get_extern_declare();
+                    if (FLAGS_fcuda_kernels_files_number > 0)
+                        cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
                     else
-                    {
-                        def << functionfile->get_code();
-                    }
-
-                    if (!kernel->is_static_function())
-                    {
-                        decleard_function_LU[func_key] = fu->name_unit;
-                    }
+                        functionfile->save_file();
                 }
-                // cuda lib kernel
                 else
                 {
-                    // add stream or handle parameter for cuda lib kernel
-                    int pos = sig.find("(");
-                    if (handle_cudnn >= 0)
-                        sig.insert(pos + 1, "cudnnHandle_t cudnn_handle, ");
+                    def << functionfile->get_code();
+                }
 
-                    if (handle_cublas >= 0)
-                        sig.insert(pos + 1, "cublasHandle_t cublas_handle, ");
-
-                    if (fu->body_unit->get_code().find("stream") != string::npos)
-                        sig.insert(pos + 1, "cudaStream_t stream, ");
-
-                    def << "\n";
-                    def << fu->comment_unit->get_code();
-                    def << "\n";
-                    def << sig << "\n";
-                    def.block_begin();
-                    def << body_unit << "\n";
-                    def.block_end();
-                    if (!kernel->is_static_function())
-                    {
-                        decleard_function_LU[func_key] = fu->name_unit;
-                    }
+                if (!kernel->is_static_function())
+                {
+                    decleard_function_LU[func_key] = fu->name_unit;
                 }
             }
             else
