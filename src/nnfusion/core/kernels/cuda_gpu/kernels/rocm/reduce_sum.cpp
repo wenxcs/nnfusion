@@ -19,78 +19,114 @@ namespace nnfusion
                 {
                 }
 
+                LanguageUnit_p put_source(const std::string& code)
+                {
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+                    auto& lu = *_lu;
+                    lu << code;
+                    return _lu;
+                }
+
                 LanguageUnit_p emit_function_body() override
                 {
                     auto& ctx = m_context;
+                    auto _op = dynamic_pointer_cast<nnfusion::op::Sum>(ctx->gnode->get_op_ptr());
+
                     auto input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
                     auto output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
-                    size_t in_size = 1LU, out_size = 1LU;
-                    for (auto it : input_shape)
-                        in_size *= it;
-                    for (auto it : output_shape)
-                        out_size *= it;
+                    auto reduce_axis = _op->get_reduction_axes();
 
-                    size_t blockY;
-                    std::string lda_offset;
-                    if (out_size == 1)
+                    int min_axis = input_shape.size(), max_axis = -1, reduce_scale = 1;
+                    for (auto& axis : reduce_axis)
                     {
-                        blockY = 1;
-                        lda_offset = "";
+                        min_axis = min(min_axis, (int)axis);
+                        max_axis = max(max_axis, (int)axis);
+                        reduce_scale *= input_shape[axis];
                     }
-                    else if (input_shape.size() == 2 && output_shape.size() == 1 &&
-                             input_shape[0] != input_shape[1] && input_shape[0] == output_shape[0])
+                    size_t tensor_size = std::accumulate(
+                        input_shape.begin(), input_shape.end(), 1LU, std::multiplies<int>());
+                    if (reduce_scale == 1 || min_axis > max_axis) // as memcpy
                     {
-                        blockY = input_shape[0];
-                        lda_offset = "blockIdx.y * dataSize + ";
-                        // cancel fixing this branch
-                        return nullptr;
+                        int blocks = tensor_size, threads = 1;
+                        for (int i = 1024; i > 1; --i)
+                        {
+                            if (tensor_size % i == 0)
+                            {
+                                threads = i;
+                                blocks = tensor_size / i;
+                                break;
+                            }
+                        }
+                        m_gridDim = dim3(blocks, 1, 1);
+                        m_blockDim = dim3(threads, 1, 1);
+
+                        return put_source(nnfusion::op::create_code_from_template(
+                            R"(output0[((int)blockIdx.x) * @num_threads@ + ((int)threadIdx.x)] = input0[((int)blockIdx.x) * @num_threads@ + ((int)threadIdx.x)];)",
+                            {{"num_threads", threads}}));
                     }
-                    else
-                        return nullptr;
+                    else // ReduceSum 2D
+                    {
+                        int groups, samples, stride_group, stride_sample;
+                        if (min_axis == 0 &&
+                            max_axis ==
+                                input_shape.size() - reduce_axis.size() - 1) // A[X][Y] -> B[Y]
+                        {
+                            samples = std::accumulate(input_shape.begin(),
+                                                      input_shape.begin() + reduce_axis.size(),
+                                                      1LU,
+                                                      std::multiplies<int>());
+                            groups = tensor_size / samples;
+                            stride_group = 1;
+                            stride_sample = groups;
+                        }
+                        else if (min_axis == input_shape.size() - reduce_axis.size() &&
+                                 max_axis == input_shape.size() - 1) // A[X][Y] -> B[X]
+                        {
+                            samples = std::accumulate(input_shape.end() - reduce_axis.size(),
+                                                      input_shape.end(),
+                                                      1LU,
+                                                      std::multiplies<int>());
+                            groups = tensor_size / samples;
+                            stride_group = samples;
+                            stride_sample = 1;
+                        }
+                        else
+                            return nullptr;
 
-                    m_gridDim = dim3(1, blockY, 1);
-                    m_blockDim = dim3(64, 1, 1);
+                        int numThreads = 4; // tunable: 2, 4, 8, 16, 32, 64, 128, 512, 1024
+                        m_gridDim = dim3(1, groups, 1);
+                        m_blockDim = dim3(numThreads, 1, 1);
 
-                    auto templ = nnfusion::op::create_code_from_template(
-                        R"(
-    constexpr unsigned int gridDimX = 1;
-    constexpr unsigned int blockSize = 64;
-    constexpr unsigned int gridDimY = @gridDimY@;
-    constexpr unsigned int dataSize = @dataSize@;
+                        return put_source(nnfusion::op::create_code_from_template(
+                            R"(
+    constexpr int numThreads = @num_threads@;
+    extern __shared__ float Isdata[numThreads];
+    int tid = threadIdx.x;
+    Isdata[tid] = 0;
 
-    extern __shared__ float sdata[blockSize];
-    unsigned int tid = threadIdx.x;
-    unsigned int i = tid;
-    sdata[tid] = 0;
+    int i = tid;
     #pragma unroll
-    while (i < dataSize) { sdata[tid] += input0[@lda_offset@i]; i += blockSize * gridDimX; }
-    if (blockSize >= 128) { __syncthreads(); }
-    if (blockSize >= 512) { if (tid < 256) { sdata[tid] += sdata[tid + 256]; } __syncthreads(); }
-    if (blockSize >= 256) { if (tid < 128) { sdata[tid] += sdata[tid + 128]; } __syncthreads(); }
+    while (i < @samples@) { Isdata[tid] += input0[i * @stride_sample@ + ((int)blockIdx.y) * @stride_group@]; i += numThreads; }
+    if (numThreads >= 128) { __syncthreads(); }
 
-    // warp_reduce
-    volatile float *__sdata = (volatile float *)sdata;
-    if (blockSize >= 128) __sdata[tid] += __sdata[tid + 64];
-#ifndef __HIP_PLATFORM_HCC__
-    __syncthreads();
-#endif
-    if (blockSize >= 64) __sdata[tid] += __sdata[tid + 32];
-    if (blockSize >= 32) __sdata[tid] += __sdata[tid + 16];
-    if (blockSize >= 16) __sdata[tid] += __sdata[tid + 8];
-    if (blockSize >= 8) __sdata[tid] += __sdata[tid + 4];
-    if (blockSize >= 4) __sdata[tid] += __sdata[tid + 2];
-    if (blockSize >= 2) __sdata[tid] += __sdata[tid + 1];
+    if (numThreads >= 512) { if (tid < 256) { Isdata[tid] += Isdata[tid + 256]; } __syncthreads(); }
+    if (numThreads >= 256) { if (tid < 128) { Isdata[tid] += Isdata[tid + 128]; } __syncthreads(); }
 
-    if (tid == 0) output0[blockIdx.y] = sdata[0];
-                        )",
-                        {{"gridDimY", m_gridDim.y},
-                         {"dataSize", in_size},
-                         {"lda_offset", lda_offset}});
-
-                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
-                    auto& lu = *_lu;
-                    lu << templ;
-                    return _lu;
+    volatile float *__sdata = (volatile float *)Isdata;
+    if (numThreads >= 128) __sdata[tid] += __sdata[tid + 64];
+    if (numThreads >= 64) __sdata[tid] += __sdata[tid + 32];
+    if (numThreads >= 32) __sdata[tid] += __sdata[tid + 16];
+    if (numThreads >= 16) __sdata[tid] += __sdata[tid + 8];
+    if (numThreads >= 8) __sdata[tid] += __sdata[tid + 4];
+    if (numThreads >= 4) __sdata[tid] += __sdata[tid + 2];
+    if (numThreads >= 2) __sdata[tid] += __sdata[tid + 1];
+    if (tid == 0) output0[((int)blockIdx.y)] = Isdata[0];
+)",
+                            {{"samples", samples},
+                             {"stride_sample", stride_sample},
+                             {"stride_group", stride_group},
+                             {"num_threads", numThreads}}));
+                    }
                 }
 
                 LanguageUnit_p emit_dependency() override
