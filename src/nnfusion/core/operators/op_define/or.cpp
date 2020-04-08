@@ -9,3 +9,8 @@ Or::Or()
     : BinaryElementwiseLogical("Or")
 {
 }
+
+ReduceAny::ReduceAny(const nnfusion::AxisSet& reduction_axes)
+    : ArithmeticReduction("ReduceAny", reduction_axes)
+{
+}

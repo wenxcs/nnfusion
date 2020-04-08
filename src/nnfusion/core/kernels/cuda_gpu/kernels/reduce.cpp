@@ -44,3 +44,11 @@ REGISTER_KERNEL_EMITTER("Sum",
 REGISTER_KERNEL_EMITTER("Sum",                                                     // op_name
                         Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
                         cuda::ReduceMemcpy<nnfusion::op::Add>)
+
+REGISTER_KERNEL_EMITTER("ReduceAny",
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        cuda::Reduce<nnfusion::op::Or>)
+
+REGISTER_KERNEL_EMITTER("ReduceAny",                                               // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+                        cuda::ReduceMemcpy<nnfusion::op::Or>)

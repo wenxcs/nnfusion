@@ -1937,6 +1937,55 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateReduceAnyOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                NamedNodeVector ret;
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto axes_gnode = GetInputNode(all_ng_nodes, node, 1);
+                NNFUSION_CHECK(input_gnode->get_output_element_type(0).c_type_string() == "bool")
+                    << "Input tensor of ReduceAny op should be bool, but gaven as "
+                    << input_gnode->get_output_element_type(0).c_type_string() << ".";
+
+                nnfusion::Shape output_shape;
+                vector<int32_t> axis;
+                bool status = GetValueFromNGraphOp<int32_t>(axes_gnode, &axis);
+                auto input_rank = input_gnode->get_shape().size();
+
+                std::vector<size_t> ng_reduction_axes_vect(axis.size());
+                std::transform(
+                    axis.begin(),
+                    axis.end(),
+                    ng_reduction_axes_vect.begin(),
+                    [input_rank](int idx) { return idx + (idx < 0 ? (int)input_rank : 0); });
+
+                nnfusion::AxisSet ng_reduction_axes(ng_reduction_axes_vect);
+
+                auto or_op = std::make_shared<op::ReduceAny>(ng_reduction_axes);
+                or_op->set_name(node.name());
+                auto ret_gnode = m_graph->add_node_and_edge(or_op, {input_gnode});
+
+                bool keepdims;
+                if (!GetNodeAttr(node.attr(), "keepdims", keepdims))
+                    ;
+                NNFUSION_CHECK(GetNodeAttr(node.attr(), "keep_dims", keepdims));
+
+                if (keepdims)
+                {
+                    nnfusion::AxisVector ng_axis_order(ret_gnode->get_output_shape(0).size());
+                    std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
+
+                    auto reshape_op = std::make_shared<op::Reshape>(
+                        ng_axis_order, input_gnode->get_output_shape(0));
+                    reshape_op->set_name(node.name() + "_keepdims");
+                    ret_gnode = m_graph->add_node_and_edge(reshape_op, {ret_gnode});
+                }
+
+                ret.push_back({node.name(), ret_gnode});
+                return ret;
+            }
+
             NamedNodeVector TranslateRsqrtGradOp(const tensorflow::NodeDef& node,
                                                  const NodeMap& all_ng_nodes,
                                                  std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2451,6 +2500,46 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector
+                TranslateReverseSequenceOp(const tensorflow::NodeDef& node,
+                                           const NodeMap& all_ng_nodes,
+                                           std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto seq_length = GetInputNode(all_ng_nodes, node, 1);
+                int64_t seq_dim, batch_dim;
+                bool status = GetNodeAttr(node.attr(), "seq_dim", seq_dim);
+                NNFUSION_CHECK(status);
+                status = GetNodeAttr(node.attr(), "batch_dim", batch_dim);
+                NNFUSION_CHECK(status);
+                // Get the seq_lengths:vector<int64> from RS op
+                NNFUSION_CHECK(seq_length->is_constant()) << "Not support variable as seq_lenghth.";
+                auto const_node =
+                    static_pointer_cast<nnfusion::op::Constant>(seq_length->get_op_ptr());
+                nnfusion::op::OpConfig::any myConfig;
+                myConfig["seq_axis"] = seq_dim;
+                myConfig["batch_axis"] = batch_dim;
+
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                vector<int64_t> seq_lengths;
+                NNFUSION_CHECK(GetValueFromNGraphOp<int64_t>(seq_length, &seq_lengths));
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
+                for (auto& l : seq_lengths)
+                    NNFUSION_CHECK(l <= input_gnode->get_output_shape(0)[seq_dim])
+                        << "The elements of seq_lengths must obey seq_lengths[i] <= "
+                           "input.dims[seq_dim], and seq_lengths must be a vector of length "
+                           "input.dims[batch_dim].";
+
+                NNFUSION_CHECK(seq_lengths.size() == input_gnode->get_output_shape(0)[batch_dim])
+                    << "The elements of seq_lengths must obey seq_lengths[i] <= "
+                       "input.dims[seq_dim], and seq_lengths must be a vector of length "
+                       "input.dims[batch_dim].";
+                (*generic_gnode)["ReverseSequenceOp::seq_lengths"] = seq_lengths;
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateScatterOp(const tensorflow::NodeDef& node,
                                                const NodeMap& all_ng_nodes,
                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -2927,6 +3016,7 @@ namespace nnfusion
                 {"PreventGradient", TranslateIdentityOp},
                 {"Pow", TranslateBinaryOp<op::Power>},
                 {"Range", TranslateRangeOp},
+                {"Any", TranslateReduceAnyOp},
                 {"Relu", TranslateUnaryOp<op::Relu>},
                 {"Relu6", TranslateUnaryOp<op::Relu6>},
                 {"ReluGrad", TranslateReluGradOp},
@@ -2935,6 +3025,7 @@ namespace nnfusion
                 {"Rsqrt", TranslateUnaryOp<op::Rsqrt>},
                 {"RsqrtGrad", TranslateRsqrtGradOp},
                 {"RealDiv", TranslateBinaryOp<op::Divide>},
+                {"ReverseSequence", TranslateReverseSequenceOp},
                 {"ScatterSub", TranslateScatterOp},
                 {"ScatterAdd", TranslateScatterOp},
                 {"ScatterMin", TranslateScatterOp},

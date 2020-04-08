@@ -18,6 +18,19 @@ using namespace nnfusion;
 using Inputs = std::vector<std::vector<float>>;
 using Outputs = std::vector<std::vector<float>>;
 
+vector<vector<bool>> char_to_bool(vector<vector<char>> chars)
+{
+    vector<vector<bool>> ret(chars.size());
+    for (size_t i = 0; i < ret.size(); i++)
+    {
+        for (size_t j = 0; j < chars[i].size(); j++)
+        {
+            ret[i].push_back(bool(chars[i][j]));
+        }
+    }
+    return ret;
+}
+
 template <typename T, typename T1 = T>
 std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Graph>& graph,
                                      std::vector<std::vector<T>> args,
@@ -28,7 +41,15 @@ std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Grap
     NNFUSION_CHECK(parms_gnodes.size() == args.size())
         << "number of parameters and arguments don't match";
 
-    auto graph_evaluate = make_shared<nnfusion::profiler::GraphEvaluate>(graph, CUDA_GPU);
+    NNFusion_DeviceType dt = CUDA_GPU;
+    if (backend_id == "NNFusion::CUDA_GPU")
+        dt = CUDA_GPU;
+    else if (backend_id == "NNFusion::ROCM_GPU")
+        dt = ROCM_GPU;
+    else if (backend_id == "NNFusion::GENERIC_CPU")
+        dt = GENERIC_CPU;
+
+    auto graph_evaluate = make_shared<nnfusion::profiler::GraphEvaluate>(graph, dt);
     auto res = graph_evaluate->eval<T, T1>(args);
 
     auto output_gnodes = graph->get_outputs();
@@ -499,6 +520,23 @@ TEST(nnfusion_tensorflow_import, tanh_op)
     }
 }
 
+TEST(nnfusion_tensorflow_import, reverse_sequence)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reverse_sequence_graph.pb"));
+
+    vector<vector<int32_t>> inputs;
+    vector<vector<int32_t>> expected_outputs{{0, 0, 5, 4, 3, 2, 1, 0, 2, 1, 0, 0, 0, 0, 0, 0,
+                                              3, 2, 1, 4, 0, 0, 0, 0, 5, 4, 3, 2, 1, 6, 7, 8}};
+
+    vector<vector<int32_t>> outputs{execute(model, inputs, "NNFusion::CUDA_GPU")};
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_EQ(expected_outputs[i], outputs[i]);
+    }
+}
+
 TEST(nnfusion_tensorflow_import, sigmoid_op)
 {
     auto model = frontend::load_tensorflow_model(
@@ -860,6 +898,34 @@ TEST(nnfusion_tensorflow_import, reduce_sum_null_op)
     Outputs expected_outputs{{1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.}};
 
     Outputs outputs{execute(model, inputs, "NNFusion")};
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_EQ(expected_outputs[i], outputs[i]);
+    }
+}
+
+TEST(nnfusion_tensorflow_import, reduce_any_0_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_any_0_graph.pb"));
+    vector<vector<char>> inputs{};
+    vector<vector<bool>> expected_outputs{{true}};
+    vector<vector<bool>> outputs = char_to_bool(execute(model, inputs, "NNFusion::CUDA_GPU"));
+    EXPECT_EQ(outputs.size(), expected_outputs.size());
+    for (std::size_t i = 0; i < expected_outputs.size(); ++i)
+    {
+        EXPECT_EQ(expected_outputs[i], outputs[i]);
+    }
+}
+
+TEST(nnfusion_tensorflow_import, reduce_any_1_op)
+{
+    auto model = frontend::load_tensorflow_model(file_util::path_join(
+        SERIALIZED_ZOO, "tensorflow/frozen_op_graph/frozen_reduce_any_1_graph.pb"));
+    vector<vector<char>> inputs{};
+    vector<vector<bool>> expected_outputs{{true, false}};
+    vector<vector<bool>> outputs = char_to_bool(execute(model, inputs, "NNFusion::CUDA_GPU"));
     EXPECT_EQ(outputs.size(), expected_outputs.size());
     for (std::size_t i = 0; i < expected_outputs.size(); ++i)
     {

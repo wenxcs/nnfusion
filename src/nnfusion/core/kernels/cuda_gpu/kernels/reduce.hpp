@@ -49,6 +49,12 @@ namespace nnfusion
                         reduce_axis = reduce->get_reduction_axes();
                         init_value = " = 0.0";
                     }
+                    else if (auto reduce = dynamic_pointer_cast<nnfusion::op::ReduceAny>(
+                                 ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                        init_value = " = false";
+                    }
                     else
                     {
                         NNFUSION_CHECK_FAIL() << "incorrect kernel for reduce";
@@ -519,6 +525,11 @@ if (thread_idx == 0) output0[block_idx] = val;
                     }
                     else if (auto reduce =
                                  dynamic_pointer_cast<nnfusion::op::Sum>(ctx->gnode->get_op_ptr()))
+                    {
+                        reduce_axis = reduce->get_reduction_axes();
+                    }
+                    else if (auto reduce = dynamic_pointer_cast<nnfusion::op::ReduceAny>(
+                                 ctx->gnode->get_op_ptr()))
                     {
                         reduce_axis = reduce->get_reduction_axes();
                     }
