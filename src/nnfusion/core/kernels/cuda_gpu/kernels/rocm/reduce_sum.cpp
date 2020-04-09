@@ -47,6 +47,8 @@ namespace nnfusion
                         input_shape.begin(), input_shape.end(), 1LU, std::multiplies<int>());
                     if (reduce_scale == 1 || min_axis > max_axis) // as memcpy
                     {
+                        return nullptr; // using cuda's inplace solution
+
                         int blocks = tensor_size, threads = 1;
                         for (int i = 1024; i > 1; --i)
                         {
@@ -67,9 +69,7 @@ namespace nnfusion
                     else // ReduceSum 2D
                     {
                         int groups, samples, stride_group, stride_sample;
-                        if (min_axis == 0 &&
-                            max_axis ==
-                                input_shape.size() - reduce_axis.size() - 1) // A[X][Y] -> B[Y]
+                        if (min_axis == 0 && max_axis == reduce_axis.size() - 1) // A[X][Y] -> B[Y]
                         {
                             samples = std::accumulate(input_shape.begin(),
                                                       input_shape.begin() + reduce_axis.size(),
