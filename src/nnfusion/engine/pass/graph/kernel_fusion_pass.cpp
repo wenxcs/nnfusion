@@ -131,8 +131,14 @@ private:
             ready.push(node->get_id());
             return;
         }
+        auto reshape = std::dynamic_pointer_cast<nnfusion::op::Reshape>(op);
 
         if (std::dynamic_pointer_cast<nnfusion::op::ElementwiseArithmetic>(op))
+        {
+            elem_ready.push_front(node->get_id());
+        }
+        else if (reshape && !(reshape->get_is_transpose()) &&
+                 (shape_size(node->get_input_shape(0)) == shape_size(node->get_output_shape(0))))
         {
             elem_ready.push_front(node->get_id());
         }
@@ -340,64 +346,70 @@ private:
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
+                    // prune un-connected Reshape node, as these reshape node can be emlimated in codegen
+                    std::unordered_set<size_t> kept_nodes;
+                    for (auto elem_id : tn->elem_group->nodes)
+                    {
+                        NNFUSION_CHECK(elem_id < m_nodes.size());
+                        auto elem_tn = m_nodes[elem_id];
+                        NNFUSION_CHECK_NOT_NULLPTR(elem_tn->node);
+                        if (auto elem_op =
+                                std::dynamic_pointer_cast<nnfusion::op::ElementwiseArithmetic>(
+                                    elem_tn->node->get_op_ptr()))
+                        {
+                            kept_nodes.insert(elem_id);
+                            for (auto in_edge : elem_tn->node->get_in_edges())
+                            {
+                                if (in_edge->is_control_edge())
+                                    continue;
+                                auto input_node = in_edge->get_src();
+                                while (input_node &&
+                                       std::dynamic_pointer_cast<nnfusion::op::Reshape>(
+                                           input_node->get_op_ptr()))
+                                {
+                                    kept_nodes.insert(input_node->get_id());
+                                    input_node = input_node->get_in_edge(0)->get_src();
+                                }
+                            }
+                        }
+                    }
+
+                    auto temp = tn->elem_group->nodes;
+                    tn->elem_group->nodes.clear();
+                    for (auto elem_id : temp)
+                    {
+                        if (kept_nodes.count(elem_id) > 0)
+                        {
+                            tn->elem_group->nodes.push_back(elem_id);
+                        }
+                    }
+
+                    // fuse broadcast nodes
                     std::vector<size_t> fusable_input_nodes;
                     for (auto elem_id : tn->elem_group->nodes)
                     {
                         NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto elem_tn = m_nodes[elem_id];
                         NNFUSION_CHECK_NOT_NULLPTR(elem_tn->node);
+
                         for (auto in_edge : elem_tn->node->get_in_edges())
                         {
                             if (in_edge->is_control_edge())
                                 continue;
                             auto input_node = in_edge->get_src();
-                            while (input_node)
+                            // A conservative way to avoid loop on DAG: only fuse node with single output
+                            if (input_node->get_out_edges().size() > 1)
+                                continue;
+
+                            if (auto bc = std::dynamic_pointer_cast<nnfusion::op::Broadcast>(
+                                    input_node->get_op_ptr()))
                             {
-                                // A conservative way to avoid loop on DAG: only fuse node with single output
-                                if (input_node->get_out_edges().size() > 1)
-                                {
-                                    break;
-                                }
-                                auto op = input_node->get_op_ptr();
-                                if (auto bc =
-                                        std::dynamic_pointer_cast<nnfusion::op::Broadcast>(op))
-
-                                {
-                                    if (bc->is_inner_broadcast() || bc->is_outer_broadcast())
-                                    {
-                                        fusable_input_nodes.push_back(input_node->get_id());
-                                        // cannot fuse more nodes before broadcast
-                                        break;
-                                    }
-                                }
-                                else if (auto rs =
-                                             std::dynamic_pointer_cast<nnfusion::op::Reshape>(op))
-                                {
-                                    if (!(rs->get_is_transpose()) &&
-                                        (nnfusion::shape_size(input_node->get_output_shape(0)) ==
-                                         nnfusion::shape_size(elem_tn->node->get_output_shape(0))))
-                                        fusable_input_nodes.push_back(input_node->get_id());
-                                }
-                                else
-                                {
-                                    break;
-                                }
-
-                                bool input_set = false;
-                                for (auto edge : input_node->get_in_edges())
-                                {
-                                    if (!edge->is_control_edge())
-                                    {
-                                        NNFUSION_CHECK(input_set == false)
-                                            << "Reshape and Broadcast can only have 1 input!";
-                                        input_node = edge->get_src();
-                                        input_set = true;
-                                    }
-                                }
+                                if (bc->is_inner_broadcast() || bc->is_outer_broadcast())
+                                    fusable_input_nodes.push_back(input_node->get_id());
                             }
                         }
                     }
-                    // insert reshape and broadcast nodes into this element group
+                    // insert broadcast nodes into this element group
                     tn->elem_group->nodes.insert(tn->elem_group->nodes.begin(),
                                                  fusable_input_nodes.begin(),
                                                  fusable_input_nodes.end());

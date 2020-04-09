@@ -57,17 +57,22 @@ void Broadcast::inner_or_outer_broadcast()
     nnfusion::AxisSet outer_axes;
     size_t rest_size = 1;
     bool count_size_only = false;
+    size_t no_need_broadcast = 0;
     for (size_t i = 0; i < m_shape.size(); i++)
     {
-        if (m_broadcast_axes.count(i) > 0 && !count_size_only)
+        if ((m_broadcast_axes.count(i) > 0 || m_shape[i] == 1) && !count_size_only)
+        {
             outer_axes.insert(i);
+            if (m_shape[i] == 1)
+                no_need_broadcast++;
+        }
         else
         {
             count_size_only = true;
             rest_size *= m_shape[i];
         }
     }
-    if (outer_axes.size() == m_broadcast_axes.size())
+    if (outer_axes.size() == m_broadcast_axes.size() + no_need_broadcast)
     {
         m_is_outer_broadcast = true;
         m_outer_bc_size = rest_size;
@@ -79,6 +84,8 @@ void Broadcast::inner_or_outer_broadcast()
     {
         if (m_broadcast_axes.count(i) > 0)
             inner_axes.insert(i);
+        else if (m_shape[i] == 1)
+            continue;
         else
             break;
     }
