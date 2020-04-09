@@ -79,18 +79,6 @@ namespace
     }
 }
 
-template <class T>
-std::vector<T> load_const(const std::string& name)
-{
-    std::ifstream t("Constant/" + name);
-    std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-    assert(str.size() % sizeof(T) == 0);
-    std::vector<T> result(str.size() / sizeof(T));
-    for (int i = 0; i < result.size(); ++i)
-        result[i] = ((T*)str.data())[i];
-    return std::move(result);
-}
-
 void place_tensor(poplar::Graph& g, poplar::Tensor& tensor)
 {
     return poputil::mapTensorLinearly(g, tensor);
@@ -105,6 +93,52 @@ void place_tensor(poplar::Graph& g, poplar::Tensor& tensor)
     auto t = tensor.reshape({(size_t)y, (size_t)per_tile});
     for (int i = 0; i < y; ++i)
         g.setTileMapping(t[i], i);
+}
+
+template <class T>
+poplar::Tensor load_constant(poplar::Graph& g,
+                             std::vector<std::pair<std::string, void*>>& data_ptrs,
+                             poplar::Type dtype,
+                             std::vector<std::size_t> shapes,
+                             const std::string& name)
+{
+    if (shapes.size() == 0)
+        shapes = {1};
+
+    size_t tensor_size = 1LU;
+    for (auto& shape : shapes)
+        tensor_size *= shape;
+
+    T* hptr = (T*)malloc(tensor_size * sizeof(T));
+    if (name == "")
+    {
+        for (int i = 0; i < tensor_size; ++i)
+            hptr[i] = 1;
+    }
+    else
+    {
+        std::ifstream t("Constant/" + name);
+        std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+        assert(str.size() == tensor_size * sizeof(T));
+
+        memcpy(hptr, str.data(), str.size());
+    }
+
+    poplar::Tensor ret;
+    if (getenv("USE_CONST"))
+    {
+        ret = g.addConstant<T>(dtype, shapes, hptr);
+    }
+    else
+    {
+        ret = g.addVariable(dtype, poplar::ArrayRef<std::size_t>(shapes), name);
+        data_ptrs.push_back({"W_" + name, hptr});
+        prog.add(poplar::program::Copy(g.addHostToDeviceFIFO("W_" + name, dtype, ret.numElements()),
+                                       ret));
+    }
+
+    place_tensor(g, ret);
+    return std::move(ret);
 }
 
 void print_tensor(const std::string& tensor_name, const poplar::Tensor& tensor)
@@ -125,7 +159,7 @@ poplar::Tensor compute_task(poplar::Graph& g,
     assert(shards.size() == inputs.size() + 1);
     static int disable_blockfusion = -1, normal_step = 0;
     if (disable_blockfusion < 0)
-        disable_blockfusion = getenv("NO_FUSE") ? 1 : 0;
+        disable_blockfusion = getenv("FUSE") ? 0 : 1;
     if (disable_blockfusion)
     {
         step = normal_step++;
@@ -337,7 +371,7 @@ int main(int argc, char** argv)
     popnn::addCodelets(g);
     popops::addCodelets(g);
 
-    std::vector<std::pair<const char*, void*>> data_ptrs;
+    std::vector<std::pair<std::string, void*>> data_ptrs;
 
 #include "nnfusion_rt.h"
 

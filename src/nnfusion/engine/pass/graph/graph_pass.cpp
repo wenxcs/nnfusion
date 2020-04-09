@@ -6,10 +6,11 @@
 #include "assign_async_info_pass.hpp"
 #include "assign_layout_pass.hpp"
 #include "blockfusion_pass.hpp"
+#include "codegen_dxcompute_pass.hpp"
+#include "codegen_graphcore_pass.hpp"
 #include "device_dispatcher.hpp"
 #include "gemm_fusion_pass.hpp"
 #include "gradient_weight_mapping_pass.hpp"
-#include "graphcore_codegen_pass.hpp"
 #include "kernel_fusion_pass.hpp"
 #include "kernel_selection.hpp"
 #include "multi_reshape_folding_pass.hpp"
@@ -20,6 +21,10 @@
 using namespace nnfusion::pass::graph;
 using namespace std;
 
+DEFINE_string(fantares_codegen_server,
+              "",
+              "Antares codegen server address and port, format: <ip>:<port>");
+
 bool GraphPass::run(std::shared_ptr<Graph> graph)
 {
     GraphPassManager pass_manager;
@@ -28,6 +33,7 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<GradientWeightMappingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<GraphCoreCodegenPass>();
+    pass_manager.register_pass<DirectComputeCodegenPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
     pass_manager.register_pass<GemmFusionPass>();
