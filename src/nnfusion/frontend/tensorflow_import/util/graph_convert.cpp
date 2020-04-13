@@ -38,7 +38,7 @@ namespace nnfusion
                     node.name(),
                     node.op(), // select which existing kernels to use;
                     nnfusion::op::OpConfig::any{});
-                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnodes});
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, input_gnodes);
                 NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }

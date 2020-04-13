@@ -16,26 +16,6 @@ namespace nnfusion
             class Tensor
             {
             public:
-                enum class Type
-                {
-                    undefined = onnx::TensorProto_DataType_UNDEFINED,
-                    float32 = onnx::TensorProto_DataType_FLOAT,
-                    uint8 = onnx::TensorProto_DataType_UINT8,
-                    int8 = onnx::TensorProto_DataType_INT8,
-                    uint16 = onnx::TensorProto_DataType_UINT16,
-                    int16 = onnx::TensorProto_DataType_INT16,
-                    int32 = onnx::TensorProto_DataType_INT32,
-                    int64 = onnx::TensorProto_DataType_INT64,
-                    string = onnx::TensorProto_DataType_STRING,
-                    boolean = onnx::TensorProto_DataType_BOOL,
-                    float16 = onnx::TensorProto_DataType_FLOAT16,
-                    float64 = onnx::TensorProto_DataType_DOUBLE,
-                    uint32 = onnx::TensorProto_DataType_UINT32,
-                    uint64 = onnx::TensorProto_DataType_UINT64,
-                    complex64 = onnx::TensorProto_DataType_COMPLEX64,
-                    complex128 = onnx::TensorProto_DataType_COMPLEX128
-                };
-
                 Tensor() = delete;
                 explicit Tensor(const onnx::TensorProto& tensor)
                     : m_tensor_proto{&tensor}
@@ -63,13 +43,6 @@ namespace nnfusion
                 {
                     NNFUSION_CHECK(m_tensor_proto->has_name()) << "tensor has no name specified.";
                     return m_tensor_proto->name();
-                }
-
-                Type get_type() const
-                {
-                    NNFUSION_CHECK(m_tensor_proto->has_data_type())
-                        << "tensor has no data type specified.";
-                    return static_cast<Type>(m_tensor_proto->data_type());
                 }
 
                 const element::Type& get_ng_type() const

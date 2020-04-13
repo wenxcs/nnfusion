@@ -28,15 +28,25 @@ add_library(onnx_import STATIC
         ops_bridge.cpp
         core/attribute.hpp
         core/attribute.cpp
-        core/graph.hpp
-        core/graph.cpp
         core/node.hpp
         core/node.cpp
         core/tensor.hpp
         core/value_info.hpp
-        op/abs.hpp
+        op/batch_norm.hpp
+        op/binaryop.hpp
+        op/cast.hpp
+        op/clip.hpp
+        op/concat.hpp
+        op/constant.hpp
+        op/index_reduce.hpp
+        op/pool.hpp
+        op/unaryop.hpp
+        util/broadcasting.hpp
+        util/broadcasting.cpp
         util/graph_convert.cpp
         util/graph_convert.hpp
+        util/reshape.hpp
+        util/reshape.cpp
         util/util.hpp
         util/util.cpp)
 

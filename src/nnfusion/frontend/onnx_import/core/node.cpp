@@ -6,7 +6,6 @@
 #include "onnx/onnx-ml.pb.h"
 
 #include "attribute.hpp"
-#include "graph.hpp"
 #include "node.hpp"
 #include "tensor.hpp"
 
@@ -30,17 +29,11 @@ namespace nnfusion
                 }
 
                 const std::vector<Attribute>& attributes() const;
-                //NodeVector get_ng_nodes(const Node& node) const;
-                //NodeVector get_ng_inputs() const;
 
-                const std::string& domain() const;
-                const std::string& op_type() const;
-                const std::string& name() const;
-
-                const std::string& description() const;
                 const std::vector<std::reference_wrapper<const std::string>>&
                     get_output_names() const;
-                const std::string& output(int index) const;
+
+                bool has_attribute(const std::string& name) const;
 
                 template <typename T>
                 T get_attribute_value(const std::string& name, T default_value) const;
@@ -54,23 +47,23 @@ namespace nnfusion
                 const onnx::NodeProto* m_node_proto;
                 std::vector<Attribute> m_attributes;
                 std::vector<std::reference_wrapper<const std::string>> m_output_names;
-                mutable std::string m_description;
             };
 
             const onnx::NodeProto& Node::Impl::node_proto() const { return *m_node_proto; }
             const std::vector<Attribute>& Node::Impl::attributes() const { return m_attributes; }
-            const std::string& Node::Impl::domain() const { return m_node_proto->domain(); }
-            const std::string& Node::Impl::op_type() const { return m_node_proto->op_type(); }
-            const std::string& Node::Impl::name() const { return m_node_proto->name(); }
             const std::vector<std::reference_wrapper<const std::string>>&
                 Node::Impl::get_output_names() const
             {
                 return m_output_names;
             }
 
-            const std::string& Node::Impl::output(int index) const
+            bool Node::Impl::has_attribute(const std::string& name) const
             {
-                return m_node_proto->output(index);
+                auto it = std::find_if(
+                    std::begin(m_attributes),
+                    std::end(m_attributes),
+                    [&](const Attribute& attribute) { return attribute.get_name() == name; });
+                return !(it == std::end(m_attributes));
             }
 
             template <typename T>
@@ -95,41 +88,9 @@ namespace nnfusion
                     std::end(m_attributes),
                     [&](const Attribute& attribute) { return attribute.get_name() == name; });
                 NNFUSION_CHECK(it != std::end(m_attributes))
-                    << "Node (" + this->name() + "): unknown attribute \'" + name + "\'";
+                    << "Node (" + m_node_proto->name() + "): unknown attribute \'" + name + "\'";
 
                 return it->template get_value<T>();
-            }
-
-            /*
-
-            NodeVector Node::Impl::get_ng_inputs() const
-            {
-                NodeVector result;
-                for (const auto& name : m_node_proto->input())
-                {
-                    result.push_back(m_graph->get_ng_node_from_cache(name));
-                }
-                return result;
-            }
-            */
-            const std::string& Node::Impl::description() const
-            {
-                if (m_description.empty())
-                {
-                    if (!name().empty())
-                    {
-                        m_description = name();
-                    }
-                    else
-                    {
-                        for (std::size_t index = 0; index < m_output_names.size(); ++index)
-                        {
-                            m_description +=
-                                (index != 0 ? ", " : "") + m_output_names.at(index).get();
-                        }
-                    }
-                }
-                return m_description;
             }
 
             Node::Node(const onnx::NodeProto& node_proto)
@@ -147,17 +108,17 @@ namespace nnfusion
             {
             }
 
-            const std::string& Node::domain() const { return m_pimpl->domain(); }
-            const std::string& Node::op_type() const { return m_pimpl->op_type(); }
-            const std::string& Node::get_description() const { return m_pimpl->description(); }
-            const std::string& Node::get_name() const { return m_pimpl->name(); }
             const std::vector<std::reference_wrapper<const std::string>>&
                 Node::get_output_names() const
             {
                 return m_pimpl->get_output_names();
             }
 
-            const std::string& Node::output(int index) const { return m_pimpl->output(index); }
+            bool Node::has_attribute(const std::string& name) const
+            {
+                return m_pimpl->has_attribute(name);
+            }
+
             template <>
             float Node::get_attribute_value(const std::string& name, float default_value) const
             {
@@ -193,9 +154,11 @@ namespace nnfusion
             }
 
             template <>
-            Graph Node::get_attribute_value(const std::string& name, Graph default_value) const
+            onnx::GraphProto Node::get_attribute_value(const std::string& name,
+                                                       onnx::GraphProto default_value) const
             {
-                return m_pimpl->template get_attribute_value<Graph>(name, std::move(default_value));
+                return m_pimpl->template get_attribute_value<onnx::GraphProto>(
+                    name, std::move(default_value));
             }
 
             template <>
@@ -241,10 +204,11 @@ namespace nnfusion
             }
 
             template <>
-            std::vector<Graph> Node::get_attribute_value(const std::string& name,
-                                                         std::vector<Graph> default_value) const
+            std::vector<onnx::GraphProto>
+                Node::get_attribute_value(const std::string& name,
+                                          std::vector<onnx::GraphProto> default_value) const
             {
-                return m_pimpl->template get_attribute_value<std::vector<Graph>>(
+                return m_pimpl->template get_attribute_value<std::vector<onnx::GraphProto>>(
                     name, std::move(default_value));
             }
 
@@ -285,9 +249,9 @@ namespace nnfusion
             }
 
             template <>
-            Graph Node::get_attribute_value(const std::string& name) const
+            onnx::GraphProto Node::get_attribute_value(const std::string& name) const
             {
-                return m_pimpl->template get_attribute_value<Graph>(name);
+                return m_pimpl->template get_attribute_value<onnx::GraphProto>(name);
             }
 
             template <>
@@ -327,9 +291,9 @@ namespace nnfusion
             }
 
             template <>
-            std::vector<Graph> Node::get_attribute_value(const std::string& name) const
+            std::vector<onnx::GraphProto> Node::get_attribute_value(const std::string& name) const
             {
-                return m_pimpl->template get_attribute_value<std::vector<Graph>>(name);
+                return m_pimpl->template get_attribute_value<std::vector<onnx::GraphProto>>(name);
             }
 
         } // namespace onnx_import

@@ -25,7 +25,7 @@ namespace nnfusion
             class GraphConvert
             {
             public:
-                GraphConvert(const onnx::ModelProto& proto);
+                GraphConvert(const onnx::ModelProto& model_proto);
 
                 std::shared_ptr<nnfusion::graph::Graph> get_graph() { return m_graph; }
                 const std::string& get_onnx_proto_producer_name() const
@@ -48,7 +48,7 @@ namespace nnfusion
                     return onnx_model_proto->producer_version();
                 }
 
-                NamedNodeVector convert_node(const onnx::NodeProto& node);
+                NamedNodeVector convert_node(const onnx::NodeProto& node_proto);
 
                 /// \brief Access an operator object by its type name and domain name
                 /// The function will return the operator object if it exists, or report an error

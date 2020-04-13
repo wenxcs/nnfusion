@@ -14,9 +14,6 @@ namespace nnfusion
     {
         namespace onnx_import
         {
-            // forward declarations
-            class Graph;
-
             namespace detail
             {
                 template <typename T>
@@ -257,7 +254,7 @@ namespace nnfusion
                 float get_float() const { return m_attribute_proto->f(); }
                 int64_t get_integer() const { return m_attribute_proto->i(); }
                 const std::string& get_string() const { return m_attribute_proto->s(); }
-                Graph get_graph() const;
+                onnx::GraphProto get_graphproto() const;
 
                 std::vector<Tensor> get_tensor_array() const
                 {
@@ -283,7 +280,7 @@ namespace nnfusion
                             std::end(m_attribute_proto->strings())};
                 }
 
-                std::vector<Graph> get_graph_array() const;
+                std::vector<onnx::GraphProto> get_graphproto_array() const;
 
                 /* explicit */ operator onnx::AttributeProto_AttributeType() const
                 {

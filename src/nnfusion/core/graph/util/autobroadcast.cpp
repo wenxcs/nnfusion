@@ -61,9 +61,9 @@ namespace nnfusion
         /// arg1 and/or arg2, as well as what the final resulting shape shall be.
         ///
         /// If this algorithm cannot handle the particular combination of shapes supplied as inputs, throw
-        /// an ngraph::builder::autobroadcast_incompatible_shapes exception.
+        /// an nnfusion::builder::autobroadcast_incompatible_shapes exception.
         ///
-        /// \exception ngraph::builder::autobroadcast_incompatible_shapes
+        /// \exception nnfusion::builder::autobroadcast_incompatible_shapes
         static Autobroadcast_plan
             compute_shapes_and_broadcast_axes(const nnfusion::Shape& arg1_in_shape,
                                               const nnfusion::Shape& arg2_in_shape)
@@ -201,4 +201,4 @@ namespace nnfusion
         }
 
     } // namespace builder
-} // namespace ngraph
+} // namespace nnfusion

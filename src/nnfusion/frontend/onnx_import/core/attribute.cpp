@@ -4,7 +4,6 @@
 //----------------------------------------------------------------------------------------------
 
 #include "attribute.hpp"
-#include "graph.hpp"
 
 namespace nnfusion
 {
@@ -12,17 +11,17 @@ namespace nnfusion
     {
         namespace onnx_import
         {
-            std::vector<Graph> Attribute::get_graph_array() const
+            std::vector<onnx::GraphProto> Attribute::get_graphproto_array() const
             {
-                std::vector<Graph> result;
-                for (const auto& graph : m_attribute_proto->graphs())
+                std::vector<onnx::GraphProto> result;
+                for (const auto& graphproto : m_attribute_proto->graphs())
                 {
-                    result.emplace_back(graph);
+                    result.emplace_back(graphproto);
                 }
                 return result;
             }
 
-            Graph Attribute::get_graph() const { return Graph{m_attribute_proto->g()}; }
+            onnx::GraphProto Attribute::get_graphproto() const { return m_attribute_proto->g(); }
         } // namespace onnx_import
     }     // namespace frontend
 } // namespace nnfusion

@@ -4,8 +4,8 @@
 //----------------------------------------------------------------------------------------------
 
 #include "util.hpp"
+#include "../core/node.hpp"
 #include "../core/tensor.hpp"
-
 namespace nnfusion
 {
     namespace frontend
@@ -127,6 +127,104 @@ namespace nnfusion
                     nodes.push_back(GetInputNode(all_ng_nodes, node, i));
                 }
                 return nodes;
+            }
+
+            Shape get_kernel_shape(const Node& node,
+                                   const std::shared_ptr<graph::GNode> input_gnode)
+            {
+                std::size_t input_spacial_dims = input_gnode->get_shape().size() - 2;
+                return node.get_attribute_value<std::vector<std::size_t>>(
+                    "kernel_shape", std::vector<std::size_t>(input_spacial_dims, 1UL));
+            }
+
+            Strides get_strides(const Node& node, const Shape& kernel_shape)
+            {
+                return get_strides_helper(node, "strides", kernel_shape);
+            }
+
+            Strides get_strides(const Node& node, const std::shared_ptr<graph::GNode> input_gnode)
+            {
+                return get_strides(node, get_kernel_shape(node, input_gnode));
+            }
+
+            Strides get_dilations(const Node& node, const std::shared_ptr<graph::GNode> input_gnode)
+            {
+                return get_strides_helper(node, "dilations", get_kernel_shape(node, input_gnode));
+            }
+
+            std::pair<CoordinateDiff, CoordinateDiff> get_pads(const Node& node,
+                                                               const Shape& kernel_shape)
+            {
+                CoordinateDiff pads;
+                if (node.has_attribute("pads"))
+                {
+                    auto pads_int64 = node.get_attribute_value<std::vector<int64_t>>("pads");
+                    pads = CoordinateDiff{std::begin(pads_int64), std::end(pads_int64)};
+                }
+                else
+                {
+                    std::string auto_pad{node.get_attribute_value<std::string>("auto_pad", "")};
+                    if (!auto_pad.empty())
+                    {
+                        pads = get_auto_pads(kernel_shape, auto_pad);
+                    }
+                }
+                if (pads.empty())
+                {
+                    pads = CoordinateDiff(static_cast<std::ptrdiff_t>(kernel_shape.size()), 0UL);
+                }
+
+                if (pads.size() != kernel_shape.size() * 2)
+                {
+                    // Paddings specified in (H, W, C) format.
+                    return {pads, pads};
+                }
+                else
+                {
+                    return {{std::begin(pads) + pads.size() / 2, std::end(pads)},
+                            {std::begin(pads), std::begin(pads) + pads.size() / 2}};
+                }
+            }
+
+            CoordinateDiff get_auto_pads(const Shape& kernel_shape, const std::string& auto_pad)
+            {
+                CoordinateDiff pads;
+
+                // Add padding to the input to match the size of output size.
+                auto pad_value = [](size_t dim) { return (static_cast<float>(dim) - 1.f) / 2.f; };
+
+                if (auto_pad == "SAME_UPPER")
+                {
+                    for (size_t dim : kernel_shape)
+                    {
+                        pads.emplace_back(std::floor(pad_value(dim)));
+                    }
+                    for (size_t dim : kernel_shape)
+                    {
+                        pads.emplace_back(std::ceil(pad_value(dim)));
+                    }
+                }
+                else if (auto_pad == "SAME_LOWER")
+                {
+                    for (size_t dim : kernel_shape)
+                    {
+                        pads.emplace_back(std::ceil(pad_value(dim)));
+                    }
+                    for (size_t dim : kernel_shape)
+                    {
+                        pads.emplace_back(std::floor(pad_value(dim)));
+                    }
+                }
+
+                return pads;
+            }
+
+            Strides get_strides_helper(const Node& node,
+                                       const std::string& name,
+                                       const Shape& kernel_shape)
+            {
+                return node.get_attribute_value<std::vector<std::size_t>>(
+                    name, std::vector<std::size_t>(kernel_shape.size(), 1UL));
             }
 
         } // namespace onnx_import

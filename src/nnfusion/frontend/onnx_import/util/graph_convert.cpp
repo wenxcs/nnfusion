@@ -12,11 +12,12 @@ namespace nnfusion
     {
         namespace onnx_import
         {
-            GraphConvert::GraphConvert(const onnx::ModelProto& proto)
-                : onnx_model_proto{&proto}
-                , onnx_graph_proto(&(proto.graph()))
+            GraphConvert::GraphConvert(const onnx::ModelProto& model_proto)
+                : onnx_model_proto{&model_proto}
+                , onnx_graph_proto(&(model_proto.graph()))
                 , m_graph(new nnfusion::graph::Graph())
             {
+                NNFUSION_LOG(INFO) << onnx_model_proto->DebugString();
                 // Note: onnx connect nodes by tensor's name instead of op name
                 /*
                 ir_version: 3
@@ -183,10 +184,10 @@ namespace nnfusion
                 NNFUSION_LOG(INFO) << "convert graph done";
             }
 
-            NamedNodeVector GraphConvert::convert_node(const onnx::NodeProto& node)
+            NamedNodeVector GraphConvert::convert_node(const onnx::NodeProto& node_proto)
             {
-                NamedNodeVector ret =
-                    get_convert_func(node.op_type(), node.domain())(node, m_node_map, m_graph);
+                NamedNodeVector ret = get_convert_func(node_proto.op_type(), node_proto.domain())(
+                    node_proto, m_node_map, m_graph);
 
                 return std::move(ret);
             }
