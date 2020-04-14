@@ -21,6 +21,14 @@ REGISTER_OP(Reshape)
         else
         {
             // For cases with "is_transpose==false", the ReshapeMemcpy kernel will be selected.
+            std::vector<int> input_order;
+            for (int i = 0; i < gnode->get_input_shape(0).size(); ++i)
+                input_order.push_back(i);
+            expression = op::create_code_from_template(
+                R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.transpose(args("input0"), axes=@input_order@)); )",
+                {{"input_shape", vector_to_string(gnode->get_input_shape(0))},
+                 {"output_shape", vector_to_string(gnode->get_input_shape(0))},
+                 {"input_order", vector_to_string(input_order)}});
         }
         return expression;
     });

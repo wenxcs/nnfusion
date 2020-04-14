@@ -8,7 +8,7 @@ namespace nnfusion_dml {
 	std::vector<T> load_data(const std::string &name, size_t num_elements) {
 		std::vector<T> ret(num_elements);
 
-		std::ifstream t("Constant\\" + name);
+		std::ifstream t("Constant\\" + name, ios_base::binary);
 		if (t.fail()) {
 		  if (name != "")
 			  std::cout << "[Warn] Cannot find constant data from: `Constant\\" << name << "`, going to fill with pre-defined values." << std::endl;
@@ -99,10 +99,15 @@ namespace nnfusion_dml {
 			device.MapCopyFromResource(deviceCPUSrcX.Get(), dst.data(), bufferSize);
 			T* buffer = (T*)dst.data();
 			std::cout << "Result(" << name << ") = {";
+
 			for (int i = 0; i < dst.size(); ++i) {
 				if (i)
 					std::cout << ", ";
 				std::cout << dst[i];
+				if (i >= 10 && i + 1 < dst.size()) {
+					std::cout << " .. ";
+					i = dst.size() - 2;
+				}
 			}
 			std::cout << "}\n" << std::endl;
 		}
@@ -144,6 +149,7 @@ namespace nnfusion_dml {
 				std::wcout << L"[Error] Cannot find HLSL data from: `" << path << L"`, please copy the full codegen folder!" << std::endl;
 				_exit(1);
 			}
+			std::wcout << L"[Info] Loading HLSL data from: `" << path << L"` .." << std::endl;
 			fin.close();
 			IFE(D3DCompileFromFile(path.c_str(), NULL, NULL, "CSMain", "cs_5_0", 0, 0, &computeShader, NULL));
 

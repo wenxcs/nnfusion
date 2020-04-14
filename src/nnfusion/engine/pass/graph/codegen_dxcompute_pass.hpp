@@ -190,21 +190,8 @@ namespace nnfusion
                             ++step, offset = 0;
                     };
 
-                    auto print_standard_codegen = [&](std::shared_ptr<GNode>& curr,
-                                                      std::ofstream& fout,
-                                                      const std::string& code) {
-
-                        NNFUSION_CHECK(
-                            0 == system(("mkdir -p nnfusion_rt/" + currentBackend + "_codegen/HLSL")
-                                            .c_str()));
-                        FILE* fp = fopen(("nnfusion_rt/" + currentBackend + "_codegen/HLSL/" +
-                                          arg_names[curr] + ".hlsl")
-                                             .c_str(),
-                                         "wb");
-                        NNFUSION_CHECK(fp != nullptr);
-                        NNFUSION_CHECK(code.size() == fwrite(code.c_str(), 1, code.size(), fp));
-                        fclose(fp);
-
+                    auto print_standard_codegen = [&](
+                        std::shared_ptr<GNode>& curr, std::ofstream& fout, std::string code) {
                         int at_x = code.find("blockIdx.x ="),
                             blockX = (at_x >= 0)
                                          ? atoi(code.c_str() + at_x + sizeof("blockIdx.x ="))
@@ -217,7 +204,56 @@ namespace nnfusion
                             blockZ = (at_z >= 0)
                                          ? atoi(code.c_str() + at_z + sizeof("blockIdx.z ="))
                                          : 1;
-                        // "\nStructuredBuffer"
+
+                        int concurrency = 1024;
+                        at_x = at_y = at_z = 1;
+                        for (int i = concurrency; i > 1; --i)
+                            if (blockX % i == 0)
+                            {
+                                concurrency /= i;
+                                blockX /= i, at_x = i;
+                                break;
+                            }
+                        for (int i = concurrency; i > 1; --i)
+                            if (blockY % i == 0)
+                            {
+                                concurrency /= i;
+                                blockY /= i, at_y = i;
+                                break;
+                            }
+                        for (int i = std::min(concurrency, 64); i > 1; --i)
+                            if (blockZ % i == 0)
+                            {
+                                concurrency /= i;
+                                blockZ /= i, at_z = i;
+                                break;
+                            }
+                        int symbol = code.find("[numthreads(1, 1, 1)]");
+                        NNFUSION_CHECK(symbol >= 0);
+
+                        std::stringstream result;
+                        result << code.substr(0, symbol + sizeof("[numthreads(") - 1);
+                        result << at_x << ", " << at_y << ", " << at_z << ")]";
+                        result << code.substr(symbol + sizeof("[numthreads(1, 1, 1)]") - 1);
+                        code = result.str();
+
+                        static std::unordered_map<std::string, std::string> dedupe_kernels;
+                        auto kernel = dedupe_kernels.find(code);
+                        if (kernel == dedupe_kernels.end())
+                        {
+                            NNFUSION_CHECK(0 == system(("mkdir -p nnfusion_rt/" + currentBackend +
+                                                        "_codegen/HLSL")
+                                                           .c_str()));
+                            FILE* fp = fopen(("nnfusion_rt/" + currentBackend + "_codegen/HLSL/" +
+                                              arg_names[curr] + ".hlsl")
+                                                 .c_str(),
+                                             "wb");
+                            NNFUSION_CHECK(fp != nullptr);
+                            NNFUSION_CHECK(code.size() == fwrite(code.c_str(), 1, code.size(), fp));
+                            fclose(fp);
+                            dedupe_kernels[code] = arg_names[curr];
+                            kernel = dedupe_kernels.find(code);
+                        }
 
                         fout << "NNfusionTensor " << arg_names[curr] << "(device, {"
                              << join_collections(
@@ -235,7 +271,7 @@ namespace nnfusion
                             fout << arg_names[curr->get_in_edge(i)->get_src()];
                         }
                         fout << "}, { " << arg_names[curr] << " }, {" << blockX << ", " << blockY
-                             << ", " << blockZ << "}, L\"" << arg_names[curr] << ".hlsl\");";
+                             << ", " << blockZ << "}, L\"" << kernel->second << ".hlsl\");";
                     };
 
                     auto codegen_for_elementwise = [&](std::shared_ptr<GNode>& curr,
@@ -286,6 +322,11 @@ namespace nnfusion
                         codegen_for_elementwise(
                             curr, fout, "topi=topi.less_equal(args(\"input0\"), args(\"input1\"))");
                     };
+                    kernel_dict["Maximum"] = [&](std::shared_ptr<GNode>& curr,
+                                                 std::ofstream& fout) {
+                        codegen_for_elementwise(
+                            curr, fout, "topi=topi.maximum(args(\"input0\"), args(\"input1\"))");
+                    };
                     kernel_dict["Exp"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.exp(args(\"input0\"))");
                     };
@@ -307,8 +348,14 @@ namespace nnfusion
                                                  std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.sigmoid(args(\"input0\"))");
                     };
+                    kernel_dict["Square"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(curr, fout, "topi=topi.sqrt(args(\"input0\"))");
+                    };
+                    kernel_dict["Rsqrt"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(curr, fout, "topi=topi.rsqrt(args(\"input0\"))");
+                    };
 
-                    // Other Ops
+                    // Non-standard Ops
                     kernel_dict["Constant"] = [&](std::shared_ptr<GNode>& curr,
                                                   std::ofstream& fout) {
                         auto p_const = std::dynamic_pointer_cast<op::Constant>(curr->get_op_ptr());
@@ -362,22 +409,53 @@ namespace nnfusion
                              << arg_names[curr->get_in_edge(0)->get_src()] << ");\n";
                     };
 
-                    kernel_dict["Broadcast"] = [&](std::shared_ptr<GNode>& curr,
-                                                   std::ofstream& fout) {
-                        auto _op = get_op_object<nnfusion::op::Broadcast>(curr);
-                        auto axes = _op->get_broadcast_axes();
+                    kernel_dict["Concat"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        auto _op = get_op_object<nnfusion::op::Concat>(curr);
+                        auto axis = _op->get_concatenation_axis();
+                        if (axis != curr->get_output_shape(0).size() - 1 && axis != 0)
+                            UNHANDLED_CASE(curr);
+                        ssize_t groups = 1, samples = 1, stride = 1;
+                        if (axis == curr->get_output_shape(0).size() - 1)
+                        {
+                            samples = curr->get_output_shape(0).back();
+                            for (int i = 0; i + 1 < curr->get_output_shape(0).size(); ++i)
+                                groups *= curr->get_output_shape(0)[i];
+                            stride = 1;
+                        }
+                        else
+                        {
+                            samples = curr->get_output_shape(0)[0];
+                            for (int i = 1; i < curr->get_output_shape(0).size(); ++i)
+                                groups *= curr->get_output_shape(0)[i];
+                            stride = groups;
+                        }
+                        int num_inputs = curr->get_input_size();
+                        int base_offset = 0;
+                        auto dtype = curr->get_output_element_type(0).c_type_string();
 
-                        auto original_out_shape = curr->get_output_shape(0);
-                        std::vector<int> out_shape(original_out_shape.begin(),
-                                                   original_out_shape.end()),
-                            in_shape = out_shape;
-                        for (auto& it : axes)
-                            in_shape[it] = 1;
-
-                        auto code = autogen(op::create_code_from_template(
-                            R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.broadcast_to(args("input0"), @output_shape@)); )",
-                            {{"input_shape", in_shape}, {"output_shape", out_shape}}));
-                        print_standard_codegen(curr, fout, code);
+                        std::stringstream result;
+                        result << "struct type_" << dtype << " { " << dtype << " v; };\n\n";
+                        for (int i = 0; i < num_inputs; ++i)
+                            result << "StructuredBuffer<type_" << dtype << "> input" << i
+                                   << ": register(t" << i << ");\n";
+                        result << "RWStructuredBuffer<type_" << dtype
+                               << "> output0: register(u0);\n";
+                        result << "\n[numthreads(1, 1, 1)]\nvoid CSMain(uint3 blockIdx : "
+                                  "SV_DispatchThreadID) {\n";
+                        result << "  // thread_extent: blockIdx.x = " << groups * samples << "\n";
+                        result << "  if (0) ;\n";
+                        for (int i = 0; i < num_inputs; ++i)
+                        {
+                            int last_offset = base_offset;
+                            base_offset += stride * ((axis == curr->get_output_shape(0).size() - 1)
+                                                         ? curr->get_input_shape(i).back()
+                                                         : curr->get_input_shape(i)[0]);
+                            result << "  else if (((int)blockIdx.x) < " << base_offset << ")\n";
+                            result << "    output0[((int)blockIdx.x)] = input" << i
+                                   << "[((int)blockIdx.x) - " << last_offset << "];\n";
+                        }
+                        result << "}\n";
+                        print_standard_codegen(curr, fout, result.str());
                     };
 
                     while (gen_q.size() > 0 || pend_q.size() > 0)
@@ -390,14 +468,16 @@ namespace nnfusion
                         gen_q.pop_front();
                         visited.insert(curr);
 
-                        // fout << "DEBUG(\"" << arg_names[curr] << "\");\n";
-
                         auto entry = kernel_dict.find(curr->get_op_ptr()->get_op_type());
                         if (entry != kernel_dict.end())
                             entry->second(curr, fout);
                         else
                         {
-                            UNHANDLED_CASE(curr);
+                            auto code = nnfusion::op::get_translation(curr);
+                            if (code != "")
+                                print_standard_codegen(curr, fout, autogen(code));
+                            else
+                                UNHANDLED_CASE(curr);
                         }
                         fout << std::endl;
 
@@ -433,9 +513,10 @@ namespace nnfusion
                     }
 
                     fout << "#endif\n\n";
-                    fout << "device.pCommandQueue->ExecuteCommandLists(cmdQueue.size(), "
-                            "cmdQueue.data());\ndevice.AwaitExecution();\n\n";
-
+                    fout << R"(
+  device.pCommandQueue->ExecuteCommandLists(cmdQueue.size(), cmdQueue.data());
+  device.AwaitExecution();
+)";
                     // Print Results
                     for (auto& curr : graph->get_outputs()) // Print output nodes
                     {
@@ -445,8 +526,24 @@ namespace nnfusion
                              << curr->get_output_element_type(0).c_type_string() << ">(device, \""
                              << arg_names[curr] << "\");\n";
                     }
+
+                    fout << R"(
+  std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+  constexpr int NUM_STEPS = 10;
+  for (int i = 0; i < NUM_STEPS; i++) {
+    device.pCommandQueue->ExecuteCommandLists(cmdQueue.size(), cmdQueue.data());
+    device.AwaitExecution();
+  }
+  std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "DxCompute Time per Run = " << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() / NUM_STEPS << " sec.\n";
+
+)";
+
                     fout << std::endl;
 
+                    nnfusion::codegen::copy_file_from_templates(
+                        currentBackend + "/DxCompute.vcxproj",
+                        "nnfusion_rt/" + currentBackend + "_codegen/DxCompute.vcxproj");
                     nnfusion::codegen::copy_file_from_templates(currentBackend + "/run_graph.cpp",
                                                                 "nnfusion_rt/" + currentBackend +
                                                                     "_codegen/run_graph.cpp");

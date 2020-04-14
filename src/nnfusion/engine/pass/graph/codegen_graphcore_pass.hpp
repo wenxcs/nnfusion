@@ -475,7 +475,7 @@ namespace nnfusion
                         NNFUSION_CHECK(_op->get_transpose_A() == false);
 
                         auto shape_0 = curr->get_input_shape(0);
-                        auto shape_1 = curr->get_in_edge(1)->get_src()->get_output_shape(0);
+                        auto shape_1 = curr->get_input_shape(1);
                         int N = shape_0[0], K = shape_0[1], M = shape_1[1];
 
                         if (getenv("GC_POPDOT") == nullptr && N == 1 && M <= max_tiles)

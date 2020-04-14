@@ -2,7 +2,7 @@
 
 int main(int argc, char** argv)
 {
-    D3DDevice device(true, true);
+    D3DDevice device(false, false);
     device.Init();
 
     using namespace nnfusion_dml;

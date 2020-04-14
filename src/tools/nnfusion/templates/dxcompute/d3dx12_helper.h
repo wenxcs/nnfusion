@@ -13,6 +13,7 @@
 #include <map>
 #include <algorithm>
 #include <numeric>
+#include <chrono>
 #include <direct.h>
 #pragma once
 
@@ -24,13 +25,8 @@ using namespace std;
 using namespace Microsoft::WRL;
 
 
-inline void IFE(HRESULT hr)
-{
-    if (FAILED(hr))
-    {
-        throw hr;
-    }
-}
+#define IFE(x)  ((FAILED(x)) ? (printf("Error-line: (%s) %d\n", __FILE__, __LINE__), _exit(1), 0): 1)
+
 
 inline void IFB(HRESULT hr)
 {
