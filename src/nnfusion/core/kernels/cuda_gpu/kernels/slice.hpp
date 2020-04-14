@@ -32,6 +32,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
+                bool is_eliminative() override;
 
             private:
                 nnfusion::Shape input_shape, output_shape, lower_bounds;

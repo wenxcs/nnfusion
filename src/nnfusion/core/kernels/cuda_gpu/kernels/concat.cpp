@@ -36,6 +36,20 @@ namespace nnfusion
                             break;
                     }
 
+                    if (is_memcpy)
+                    {
+                        size_t offset = 0;
+                        size_t data_type_size = ctx->outputs[0]->get_element_type().size();
+                        for (size_t idx = 0; idx < ctx->inputs.size(); idx++)
+                        {
+                            if (!ctx->annotations)
+                                ctx->annotations = std::make_shared<Annotations>();
+                            ctx->annotations->add_in_place_oi_pair(oi_pair(0, idx, false, offset));
+                            auto& input_shape = ctx->inputs[idx]->get_shape();
+                            offset += shape_size(input_shape) * data_type_size;
+                        }
+                    }
+
                     input_num = ctx->inputs.size();
                     split_input_size =
                         256; //max num of inputs fit 4KB parameter space: 256 * 8 + 7 * ?
@@ -87,15 +101,32 @@ namespace nnfusion
                     custom_tag = tag.str();
                 }
 
+                bool is_eliminative() override
+                {
+                    if (is_memcpy &&
+                        m_context->inputs[0]->get_pool_offset() ==
+                            m_context->outputs[0]->get_pool_offset())
+                        return true;
+                    else
+                        return false;
+                }
+
                 LanguageUnit_p emit_function_body() override
                 {
-                    if (is_memcpy)
-                    {
-                        return nullptr;
-                    }
-
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& writer = *_lu;
+
+                    if (is_memcpy)
+                    {
+                        writer << "if (input0 == output0) {\n";
+                        size_t offset = 0;
+                        for (int i = 0; i < m_context->inputs.size(); i++)
+                        {
+                            writer << "  assert(input" << i << " == output0 + " << offset << ");\n";
+                            offset += shape_size(m_context->inputs[i]->get_shape());
+                        }
+                        writer << "  return;\n}\n";
+                    }
 
                     for (uint32_t i = 0, n = 0; i < input_num; i += split_input_size, n++)
                     {
@@ -320,6 +351,15 @@ namespace nnfusion
                     }
                     lu << "}\n";
 
+                    lu << "else {\n";
+                    size_t offset = 0;
+                    for (int i = 0; i < m_context->inputs.size(); i++)
+                    {
+                        lu << "  assert(input" << i << " == output0 + " << offset << ");\n";
+                        offset += shape_size(m_context->inputs[i]->get_shape());
+                    }
+                    lu << "}\n";
+
                     return _lu;
                 }
                 LanguageUnit_p emit_dependency() override
@@ -345,6 +385,6 @@ REGISTER_KERNEL_EMITTER("Concat",                                  //op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT), //attrs
                         cuda::Concat)                              // constructor
 
-REGISTER_KERNEL_EMITTER("Concat",                                                  // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
-                        cuda::ConcatMemCpy)                                        // constructor
+// REGISTER_KERNEL_EMITTER("Concat",                                                  // op_name
+//                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
+//                         cuda::ConcatMemCpy)                                        // constructor

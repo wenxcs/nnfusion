@@ -79,6 +79,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
+                bool is_eliminative() override;
 
             private:
                 nnfusion::Shape arg_shape;

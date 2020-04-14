@@ -284,7 +284,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
                 if (res.second->get_or_emit_source() != nullptr)
                 {
-                    block_kernels.push_back(res.second);
+                    if (!(res.second->is_eliminative()))
+                        block_kernels.push_back(res.second);
                     kernel_emitted = true;
 
                     LanguageUnit m;
@@ -823,6 +824,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
                         lu_thread_func_call << " // order=" << ++kernel_order
                                             << ", name=" << node_name << "\n";
+                        if (kernel->is_eliminative())
+                            lu_thread_func_call << "// eliminated\n";
 
                         if (!async_info.wait_barriers.empty())
                         {
@@ -917,6 +920,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                                  : "internal_node";
                     lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
                                     << "\n";
+                    if (kernel->is_eliminative())
+                        lu_kernel_entry << "// eliminated\n";
                     {
                         auto gnode = kernel->m_context->gnode;
                         auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();

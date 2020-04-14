@@ -43,6 +43,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
     struct input_info
     {
+        std::shared_ptr<nnfusion::graph::GNode> input_node;
         std::shared_ptr<descriptor::Tensor> tensor;
         size_t offset = 0;
     };
@@ -52,6 +53,9 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     size_t node_order = 0;
     std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, ir::Instruction::Pointer>
         node_to_ins;
+
+    size_t annotate_concat = 0;
+    size_t inplace_concat = 0;
 
     for (auto iterator : p)
     {
@@ -74,6 +78,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     // concat in_place_oi should be treated differently
                     if (std::dynamic_pointer_cast<nnfusion::op::Concat>(gnode->get_op_ptr()))
                     {
+                        annotate_concat++;
                         NNFUSION_CHECK(annotations->get_in_place_oi_pairs().size() ==
                                        kernel->m_context->inputs.size());
                         std::vector<std::pair<std::shared_ptr<nnfusion::graph::GNode>,
@@ -81,6 +86,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             input_candidates;
                         size_t first_candidate = 0;
                         bool can_do_inplace_concat = true;
+                        bool is_persistent = false;
 
                         for (auto oi_pair : annotations->get_in_place_oi_pairs())
                         {
@@ -88,14 +94,22 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             auto input = kernel->m_context->inputs[oi_pair.input];
                             auto input_gnode = gnode->get_in_edge(oi_pair.input)->get_src();
 
+                            if (input_gnode->is_parameter())
+                            {
+                                can_do_inplace_concat = false;
+                                break;
+                            }
+
                             if (inplace_inputs.count(input) > 0)
                             {
                                 auto info = inplace_inputs[input];
-                                if (info.offset > 0 || info.tensor->size() != input->size())
+                                if (info.offset > 0 || info.tensor->size() != input->size() ||
+                                    info.tensor->is_parameter())
                                 {
                                     can_do_inplace_concat = false;
                                     break;
                                 }
+                                input_gnode = info.input_node;
                                 input = info.tensor;
                             }
 
@@ -116,13 +130,22 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
                             for (auto cand : input_candidates)
                             {
+                                auto tensor_a = cand.second;
+                                auto tensor_b = input;
+                                if (inplace_inputs.count(tensor_a) > 0)
+                                    tensor_a = inplace_inputs[tensor_a].tensor;
+                                if (inplace_inputs.count(tensor_b) > 0)
+                                    tensor_b = inplace_inputs[tensor_b].tensor;
+
                                 // duplicated candidates
-                                if (cand.second = input)
+                                if (tensor_a == tensor_b)
                                 {
                                     can_do_inplace_concat = false;
                                     break;
                                 }
                             }
+                            if (input->is_persistent())
+                                is_persistent = true;
 
                             input_candidates.push_back({input_gnode, input});
                             if (orders[input_gnode] <
@@ -134,6 +157,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
                         if (can_do_inplace_concat)
                         {
+                            inplace_concat++;
                             for (size_t i = 0; i < input_candidates.size(); i++)
                             {
                                 auto oi_pair = annotations->get_in_place_oi_pairs()[i];
@@ -141,6 +165,12 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 auto input = input_candidates[i].second;
                                 auto input_gnode = input_candidates[i].first;
                                 auto ins = node_to_ins[input_gnode];
+
+                                if (is_persistent)
+                                {
+                                    output->set_persistent();
+                                    output->set_group("persist");
+                                }
 
                                 std::map<std::shared_ptr<descriptor::Tensor>,
                                          std::pair<std::shared_ptr<descriptor::Tensor>, size_t>>
@@ -160,6 +190,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
                                 (*ins)["InplaceTensorMapping"] = in_place_outputs;
 
+                                inplace_inputs[input].input_node = gnode;
                                 inplace_inputs[input].tensor = output;
                                 inplace_inputs[input].offset = oi_pair.input_offset;
                                 if (inplace_use_count.count(output) == 0)
@@ -238,6 +269,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                     }
                                     else
                                     {
+                                        inplace_inputs[output].input_node = input_gnode;
                                         inplace_inputs[output].tensor = input;
                                         inplace_inputs[output].offset = oi_pair.input_offset;
                                     }
@@ -270,6 +302,9 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             }
         }
     }
+
+    NNFUSION_LOG(INFO) << "Inpalce tensor analysis: annotated concat: " << annotate_concat
+                       << ", inlace_concat: " << inplace_concat;
 
     return true;
 }

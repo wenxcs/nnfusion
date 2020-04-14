@@ -173,6 +173,16 @@ cuda::SliceMemCpy::SliceMemCpy(shared_ptr<KernelContext> ctx)
     custom_tag = tag.str();
 }
 
+bool cuda::SliceMemCpy::is_eliminative()
+{
+    if (is_memcpy &&
+        m_context->inputs[0]->get_pool_offset() + input_offset * data_type_size ==
+            m_context->outputs[0]->get_pool_offset())
+        return true;
+    else
+        return false;
+}
+
 LanguageUnit_p cuda::SliceMemCpy::emit_function_body()
 {
     if (!is_memcpy)

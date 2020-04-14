@@ -566,6 +566,16 @@ if (thread_idx == 0) output0[block_idx] = val;
                     }
                 }
 
+                bool is_eliminative() override
+                {
+                    if ((reduce_rank == 0 || shape_size(input_shape) == shape_size(output_shape)) &&
+                        m_context->inputs[0]->get_pool_offset() ==
+                            m_context->outputs[0]->get_pool_offset())
+                        return true;
+                    else
+                        return false;
+                }
+
                 LanguageUnit_p emit_function_body() override
                 {
                     if (reduce_rank != 0 && shape_size(input_shape) != shape_size(output_shape))

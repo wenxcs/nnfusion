@@ -78,6 +78,7 @@ namespace nnfusion
             // not static
             virtual bool is_static_function() { return false; }
             virtual bool is_parallelism() { return m_intra_op_parallelism; };
+            virtual bool is_eliminative() { return false; }
             // The context for this kernel
             shared_ptr<KernelContext> m_context;
 

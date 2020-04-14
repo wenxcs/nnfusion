@@ -476,6 +476,15 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
     custom_tag = tag.str();
 }
 
+bool cuda::ReshapeMemcpy::is_eliminative()
+{
+    if (is_memcpy &&
+        m_context->inputs[0]->get_pool_offset() == m_context->outputs[0]->get_pool_offset())
+        return true;
+    else
+        return false;
+}
+
 LanguageUnit_p cuda::ReshapeMemcpy::emit_function_body()
 {
     if (!is_memcpy && !is_noop)
