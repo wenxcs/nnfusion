@@ -149,10 +149,62 @@ FunctionFile_p FunctionFile::convert_from(std::shared_ptr<nnfusion::kernels::Ker
     def << body_unit << "\n";
     def.block_end();
 
+#ifdef __USING_HOST_CALL_FORMAT___
+    // Turn to Host Call Format in Kernel Definition
+    pos = sig.find(" __global__ ");
+    if (pos >= 0)
+    {
+        pos = sig.find("void ", pos);
+        NNFUSION_CHECK(pos >= 0);
+        pos += sizeof("void ") - 1;
+
+        auto host_sig = sig.substr(pos);
+        pos = host_sig.find("(");
+        NNFUSION_CHECK(pos >= 0);
+
+        auto func_name = host_sig.substr(0, pos);
+        auto args = host_sig.substr(pos + 1);
+        NNFUSION_CHECK(args[args.size() - 1] == ')');
+        def << "extern void " << func_name
+            << "_Call(const dim3 &grids, const dim3 &blocks, unsigned mem, cudaStream_t stream, "
+            << args << " {\n";
+
+        args[args.size() - 1] = ',';
+
+        std::vector<std::string> params;
+        for (int i = 0, j; j = args.find(',', i), j >= 0; i = j + 1)
+        {
+            int start = args.find_last_of(' ', j) + 1;
+            NNFUSION_CHECK(start >= 1);
+            params.push_back(args.substr(start, j - start));
+        }
+
+        def << "    " << func_name << "<<<grids, blocks, mem, stream>>>(" << join(params, ", ")
+            << ");\n";
+        def << "}\n";
+    }
+#endif
+
     LanguageUnit dec("dec");
     {
         if (sig.find("extern ") != 0)
             sig = "extern " + sig;
+#ifdef __USING_HOST_CALL_FORMAT___
+        // Turn to Host Call Format in Kernel Declaration
+        int pos = sig.find("__global__");
+        if (pos >= 0)
+        {
+            pos = sig.find("void ", pos);
+            NNFUSION_CHECK(pos >= 0);
+            int comma = sig.find('(', pos);
+            NNFUSION_CHECK(comma >= 0);
+
+            sig =
+                "extern " + sig.substr(pos, comma - pos) +
+                "_Call(const dim3 &grids, const dim3 &blocks, unsigned mem, cudaStream_t stream, " +
+                sig.substr(comma + 1);
+        }
+#endif
         dec << "\n" << sig << ";\n";
     }
 

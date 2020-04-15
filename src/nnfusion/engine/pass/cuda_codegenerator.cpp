@@ -703,6 +703,18 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (pos_right >= 0)
                 {
                     function_call.insert(pos_right, ", " + kernel_stream[kernel]);
+#ifdef __USING_HOST_CALL_FORMAT___
+                    // Turn to Host Call Format in kernel_entry()
+                    int pos_left = function_call.find("<<<");
+                    NNFUSION_CHECK(pos_left >= 0);
+                    function_call = function_call.substr(0, pos_left) + "_Call(" +
+                                    function_call.substr(pos_left + sizeof("<<<") - 1);
+
+                    pos_right = function_call.find(">>>(");
+                    NNFUSION_CHECK(pos_right >= 0);
+                    function_call = function_call.substr(0, pos_right) + ", " +
+                                    function_call.substr(pos_right + sizeof(">>>(") - 1);
+#endif
                 }
                 // add stream or handle for cudalib emitter function call
                 else
