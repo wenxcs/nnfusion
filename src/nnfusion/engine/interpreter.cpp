@@ -12,7 +12,13 @@
 using namespace nnfusion::pass;
 
 DECLARE_string(fdefault_device);
-DECLARE_bool(fcuda_kernels_as_files);
+DEFINE_bool(fcuda_kernels_as_files, false, "Saving cuda kernels as standalone source code files.");
+DEFINE_int64(fcuda_kernels_files_number,
+             -1,
+             "Saving cuda kernels into how many source code files.");
+
+DEFINE_bool(fkernels_as_files, false, "Saving kernels as standalone source code files.");
+DEFINE_int64(fkernels_files_number, -1, "Saving kernels into how many source code files.");
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
@@ -21,6 +27,12 @@ Interpreter::Interpreter()
     // Todo: find another way
     auto dev_name = FLAGS_fdefault_device.c_str();
     NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
+
+    // To be compatible with former cli
+    //Todo(wenxh): Remove this;
+    FLAGS_fkernels_as_files = FLAGS_fkernels_as_files || FLAGS_fcuda_kernels_as_files;
+    FLAGS_fkernels_files_number =
+        max(FLAGS_fkernels_files_number, FLAGS_fcuda_kernels_files_number);
 
     // kernel selection
     // m_passes->push_back(make_shared<DefaultDeviceDispatcher>());

@@ -1,5 +1,7 @@
 // Microsoft (c) 2019, Wenxiang Hu
 
+#include <dirent.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -13,6 +15,8 @@ using namespace nnfusion::kernels;
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 #include "nnfusion/engine/op.hpp"
+
+DECLARE_bool(fkernels_as_files);
 
 namespace nnfusion
 {
@@ -42,8 +46,11 @@ include_directories(
 )" << (super_scaler_enable
            ? "find_library(ssrocm libsuper_scaler_rocm.so ${CMAKE_CURRENT_SOURCE_DIR})"
            : "")
+               << (FLAGS_fkernels_as_files
+                       ? "file(GLOB kernels kernels/*.cpp)\nadd_library(nnfusion_naive_rt "
+                         "nnfusion_rt.cpp ${kernels})\n"
+                       : "add_library(nnfusion_naive_rt nnfusion_rt.cpp)\n")
                << R"(
-add_library(nnfusion_naive_rt nnfusion_rt.cpp)
 add_executable(main_test main_test.cpp)
 target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas )"
                << (super_scaler_enable ? "${ssrocm} ${MPI_LIBRARIES}" : "") << R"()
@@ -86,6 +93,46 @@ endif()
             NNFUSION_CHECK(
                 0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
                             "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
+            // Update for kernels
+            if (FLAGS_fkernels_as_files)
+            {
+                auto list_dir = [](string path, string has_str) {
+                    vector<string> files;
+                    struct dirent* entry;
+                    DIR* dir = opendir(path.c_str());
+                    if (dir == NULL)
+                    {
+                        return files;
+                    }
+
+                    while ((entry = readdir(dir)) != NULL)
+                    {
+                        string tstr(entry->d_name);
+                        if (tstr.find(has_str) < tstr.length() && tstr.length() > 3)
+                            files.push_back(path + "/" + tstr);
+                    }
+                    closedir(dir);
+                    return files;
+                };
+
+                auto kernels = list_dir("kernels", ".cu");
+                for (auto kernel : kernels)
+                {
+                    auto raw_kernel = kernel;
+                    kernel.replace(kernel.find(".cu"), 3, ".cpp");
+                    string grepv = hipify_exec + " " + raw_kernel +
+                                   " | grep -v 'include.*cublas_v2' | grep -v 'include.*cuda.h' | "
+                                   "grep -v 'include.*cudnn' > " +
+                                   kernel + " && rm " + raw_kernel;
+                    NNFUSION_CHECK(0 == system((grepv).c_str())) << grepv;
+                    string hipcmd =
+                        "sed -i 's/#include <hip\\/hip_runtime.h>/#include "
+                        "\"..\\/rocm_adapter.h\"\\n#include "
+                        "<hip\\/hip_runtime.h>/g' " +
+                        kernel;
+                    NNFUSION_CHECK(0 == system((hipcmd).c_str())) << hipcmd;
+                }
+            }
             // update for rocm_adapter.h
             nnfusion::codegen::copy_file_from_templates("rocm_adapter/rocm_adapter.h",
                                                         "./rocm_adapter.h");

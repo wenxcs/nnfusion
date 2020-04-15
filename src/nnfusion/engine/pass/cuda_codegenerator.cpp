@@ -23,11 +23,9 @@ using namespace nnfusion::async;
 
 DEFINE_bool(fcodegen_debug, false, "Add debug functions in Codegen-ed project.");
 DEFINE_bool(fcodegen_timing, false, "Add timing functions in Codegen-ed project.");
-DEFINE_bool(fcuda_kernels_as_files, false, "Saving cuda kernels as standalone source code files.");
-DEFINE_int64(fcuda_kernels_files_number,
-             -1,
-             "Saving cuda kernels into how many source code files.");
 DECLARE_bool(frt_const_folding);
+DECLARE_bool(fkernels_as_files);
+DECLARE_int64(fkernels_files_number);
 //DECLARE_int32(fnuma_node_num);
 //DECLARE_int32(fthread_num_per_node);
 
@@ -106,7 +104,7 @@ find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
 )" << (super_scaler_enable ? "find_library(SUPER_SCALER_LIBRARIES libsuper_scaler.so "
                              "${CMAKE_CURRENT_SOURCE_DIR})"
                            : "")
-       << (FLAGS_fcuda_kernels_as_files
+       << (FLAGS_fkernels_as_files
                ? "file(GLOB kernels kernels/*.cu)\ncuda_add_library(nnfusion_naive_rt "
                  "nnfusion_rt.cu ${kernels})\n"
                : "cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)\n")
@@ -160,7 +158,7 @@ bool CudaCodeGenerator::setpwd()
     std::string kernels_path = working_dir + "/" + get_target_name() + "/kernels/";
     create_dir(working_dir);
     create_dir(tar_path);
-    if (FLAGS_fcuda_kernels_as_files)
+    if (FLAGS_fkernels_as_files)
         create_dir(kernels_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
@@ -373,8 +371,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // Collect Function Definition
     {
         vector<codegenerator::FunctionFile> cuda_kernel_files;
-        if (FLAGS_fcuda_kernels_as_files && FLAGS_fcuda_kernels_files_number > 0)
-            cuda_kernel_files.resize(FLAGS_fcuda_kernels_files_number);
+        if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
+            cuda_kernel_files.resize(FLAGS_fkernels_files_number);
         int cuda_kernel_n = 0;
         LanguageUnit def("FUNCTIONS");
         int count_k = 0;
@@ -430,10 +428,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 decleard_function_LU.find(func_key) == decleard_function_LU.end())
             {
                 auto functionfile = codegenerator::FunctionFile::convert_from(kernel);
-                if (FLAGS_fcuda_kernels_as_files)
+                if (FLAGS_fkernels_as_files)
                 {
                     def << functionfile->get_extern_declare();
-                    if (FLAGS_fcuda_kernels_files_number > 0)
+                    if (FLAGS_fkernels_files_number > 0)
                         cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
                     else
                         functionfile->save_file();
@@ -452,15 +450,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 //def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
             }
-            if (FLAGS_fcuda_kernels_files_number > 0)
+            if (FLAGS_fkernels_files_number > 0)
             {
                 cuda_kernel_n++;
-                cuda_kernel_n %= FLAGS_fcuda_kernels_files_number;
+                cuda_kernel_n %= FLAGS_fkernels_files_number;
             }
         }
-        if (FLAGS_fcuda_kernels_as_files && FLAGS_fcuda_kernels_files_number > 0)
+        if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
         {
-            for (int i = 0; i < FLAGS_fcuda_kernels_files_number; i++)
+            for (int i = 0; i < FLAGS_fkernels_files_number; i++)
                 cuda_kernel_files[i].save_file();
         }
 
@@ -479,7 +477,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
             {
                 // This for dealing with Concat Op's special cases;
-                if (FLAGS_fcuda_kernels_as_files &&
+                if (FLAGS_fkernels_as_files &&
                     it.second->symbol.find("_private_kernels") != string::npos)
                     continue;
                 lu << it.second->get_code();

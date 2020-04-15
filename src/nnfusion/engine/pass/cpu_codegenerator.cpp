@@ -25,8 +25,8 @@ using namespace nnfusion::async;
 
 DEFINE_int32(fnuma_node_num, 1, "");
 DEFINE_int32(fthread_num_per_node, 0, "");
-DEFINE_bool(fcpu_kernels_as_files, false, "Saving cpu kernels as standalone source code files.");
-DEFINE_int64(fcpu_kernels_files_number, -1, "Saving cpu kernels into how many source code files.");
+DECLARE_bool(fkernels_as_files);
+DECLARE_int64(fkernels_files_number);
 
 namespace
 {
@@ -70,7 +70,7 @@ bool CpuCodeGenerator::setpwd()
     std::string kernels_path = working_dir + "/cpu_codegen/kernels/";
     create_dir(working_dir);
     create_dir(tar_path);
-    if (FLAGS_fcpu_kernels_as_files)
+    if (FLAGS_fkernels_as_files)
         create_dir(kernels_path);
     int status = chdir(tar_path.c_str());
     return (bool)status;
@@ -202,8 +202,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // Collect Function Definition
     {
         vector<codegenerator::CPUFunctionFile> cpu_kernel_files;
-        if (FLAGS_fcpu_kernels_as_files && FLAGS_fcpu_kernels_files_number > 0)
-            cpu_kernel_files.resize(FLAGS_fcpu_kernels_files_number);
+        if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
+            cpu_kernel_files.resize(FLAGS_fkernels_files_number);
         int cpu_kernel_n = 0;
         unordered_set<string> declared;
         LanguageUnit def("FUNCTIONS");
@@ -237,10 +237,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 // def << fu->body_unit->get_code() << "\n";
                 // def.block_end();
                 auto functionfile = codegenerator::CPUFunctionFile::convert_from(kernel);
-                if (FLAGS_fcpu_kernels_as_files)
+                if (FLAGS_fkernels_as_files)
                 {
                     def << functionfile->get_extern_declare();
-                    if (FLAGS_fcpu_kernels_files_number > 0)
+                    if (FLAGS_fkernels_files_number > 0)
                         cpu_kernel_files[cpu_kernel_n].merge_from(functionfile);
                     else
                         functionfile->save_file();
@@ -255,15 +255,15 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
             }
-            if (FLAGS_fcpu_kernels_files_number > 0)
+            if (FLAGS_fkernels_files_number > 0)
             {
                 cpu_kernel_n++;
-                cpu_kernel_n %= FLAGS_fcpu_kernels_files_number;
+                cpu_kernel_n %= FLAGS_fkernels_files_number;
             }
         }
-        if (FLAGS_fcpu_kernels_as_files && FLAGS_fcpu_kernels_files_number > 0)
+        if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
         {
-            for (int i = 0; i < FLAGS_fcpu_kernels_files_number; i++)
+            for (int i = 0; i < FLAGS_fkernels_files_number; i++)
                 cpu_kernel_files[i].save_file();
         }
 
@@ -800,10 +800,10 @@ endforeach()
     }
 
     lu_cmake << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -march=native\")\n"
-             << (FLAGS_fcpu_kernels_as_files ? "file(GLOB kernels "
-                                               "kernels/*.cpp)\nadd_library(nnfusion_cpu_rt "
-                                               "nnfusion_rt.cpp ${kernels})\n"
-                                             : "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n");
+             << (FLAGS_fkernels_as_files ? "file(GLOB kernels "
+                                           "kernels/*.cpp)\nadd_library(nnfusion_cpu_rt "
+                                           "nnfusion_rt.cpp ${kernels})\n"
+                                         : "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n");
     if (global_required.count("header::cblas") > 0)
     {
         lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n\n";
