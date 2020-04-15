@@ -8,11 +8,11 @@ namespace nnfusion
     {
         namespace cuda
         {
-            class Broadcast : public CudaEmitter
+            class Broadcast : public BlockCudaEmitter
             {
             public:
                 Broadcast(shared_ptr<KernelContext> ctx)
-                    : CudaEmitter(ctx)
+                    : BlockCudaEmitter(ctx)
                 {
                     auto _op =
                         static_pointer_cast<nnfusion::op::Broadcast>(ctx->gnode->get_op_ptr());
@@ -57,16 +57,27 @@ namespace nnfusion
                     custom_tag = tag.str();
 
                     // add inplace tag
-
+                    is_memcpy = false;
                     auto arg_shape = ctx->inputs[0]->get_shape();
                     if (axes.empty() || shape_size(arg_shape) == shape_size(result_shape))
                     {
+                        is_memcpy = true;
                         if (!ctx->annotations)
                         {
                             ctx->annotations = std::make_shared<Annotations>();
-                            ctx->annotations->add_in_place_oi_pair({0, 0, false});
                         }
+                        ctx->annotations->add_in_place_oi_pair({0, 0, false});
                     }
+                }
+
+                bool is_eliminative() override
+                {
+                    if (is_memcpy &&
+                        m_context->inputs[0]->get_pool_offset() ==
+                            m_context->outputs[0]->get_pool_offset())
+                        return true;
+                    else
+                        return false;
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -158,6 +169,7 @@ namespace nnfusion
                 nnfusion::Shape result_shape;
                 size_t rank;
                 AxisSet axes;
+                bool is_memcpy;
             };
 
             class RocmBroadcast : public Broadcast

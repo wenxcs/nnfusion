@@ -113,6 +113,8 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override
                 {
+                    if (input_num <= 256)
+                        return nullptr;
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& writer = *_lu;
 
@@ -280,17 +282,32 @@ namespace nnfusion
                 size_t axis;
                 bool is_memcpy;
             };
+        } // namespace cuda
+    }     // namespace kernels
+} // namespace nnfusion
 
-            class ConcatMemCpy : public CudaLibEmitter
+using namespace nnfusion;
+using namespace nnfusion::kernels;
+REGISTER_KERNEL_EMITTER("Concat",                                  //op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT), //attrs
+                        cuda::Concat)                              // constructor
+
+namespace nnfusion
+{
+    namespace kernels
+    {
+        namespace cuda
+        {
+            class ConcatKernel : public BlockCudaEmitter
             {
             public:
-                ConcatMemCpy(shared_ptr<KernelContext> ctx)
-                    : CudaLibEmitter(ctx)
+                ConcatKernel(shared_ptr<KernelContext> ctx)
+                    : BlockCudaEmitter(ctx)
                 {
-                    auto op = static_pointer_cast<nnfusion::op::Concat>(ctx->gnode->get_op_ptr());
+                    op = static_pointer_cast<nnfusion::op::Concat>(ctx->gnode->get_op_ptr());
+                    NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not Concat.";
 
-                    size_t axis = op->get_concatenation_axis();
-                    data_type_size = ctx->outputs[0]->get_element_type().size();
+                    this->axis = op->get_concatenation_axis();
 
                     is_memcpy = true;
                     for (size_t idx = 0; idx < ctx->inputs.size(); idx++)
@@ -310,58 +327,100 @@ namespace nnfusion
 
                     if (is_memcpy)
                     {
-                        input_sizes.resize(ctx->inputs.size());
                         size_t offset = 0;
+                        size_t data_type_size = ctx->outputs[0]->get_element_type().size();
                         for (size_t idx = 0; idx < ctx->inputs.size(); idx++)
                         {
-                            auto& input_shape = ctx->inputs[idx]->get_shape();
-                            input_sizes[idx] = shape_size(input_shape);
                             if (!ctx->annotations)
                                 ctx->annotations = std::make_shared<Annotations>();
                             ctx->annotations->add_in_place_oi_pair(oi_pair(0, idx, false, offset));
-                            offset += input_sizes[idx] * data_type_size;
+                            auto& input_shape = ctx->inputs[idx]->get_shape();
+                            offset += shape_size(input_shape) * data_type_size;
                         }
                     }
 
+                    input_num = ctx->inputs.size();
+                    inputs_strides = std::vector<uint32_t>(input_num, 1);
+                    output_stride = 0;
+                    concat_axis = this->axis;
+                    nthreads = 0;
+
+                    for (size_t i = 0; i < input_num; i++)
+                    {
+                        auto arg_rank = ctx->inputs[i]->get_shape().size();
+                        nthreads += shape_size(ctx->inputs[i]->get_shape());
+                        for (size_t j = concat_axis; j < arg_rank; j++)
+                        {
+                            inputs_strides[i] *= ctx->inputs[i]->get_shape()[j];
+                        }
+                        output_stride += inputs_strides[i];
+                    }
+
                     std::stringstream tag;
-                    tag << "_s" << join(ctx->outputs[0]->get_shape(), "_") << "_a_" << axis;
-                    for (size_t i = 0; i < ctx->inputs.size(); i++)
+                    tag << "_s" << join(ctx->outputs[0]->get_shape(), "_") << "_a_" << concat_axis;
+                    for (size_t i = 0; i < input_num; i++)
                     {
                         tag << "_i_" << join(ctx->inputs[i]->get_shape(), "_");
                     }
                     custom_tag = tag.str();
                 }
 
+                bool is_eliminative() override
+                {
+                    if (is_memcpy &&
+                        m_context->inputs[0]->get_pool_offset() ==
+                            m_context->outputs[0]->get_pool_offset())
+                        return true;
+                    else
+                        return false;
+                }
+
                 LanguageUnit_p emit_function_body() override
                 {
-                    if (!is_memcpy)
+                    // max num of inputs fit 4KB parameter space
+                    if (input_num > 256)
                     {
                         return nullptr;
                     }
 
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
-                    auto& lu = *_lu;
-                    size_t output_offset = 0;
-                    lu << "if (input0 != output0) {\n";
-                    for (size_t i = 0; i < input_sizes.size(); i++)
-                    {
-                        lu << "   cudaMemcpy(output0 + " << output_offset << ", input" << i << ", "
-                           << input_sizes[i] * data_type_size << ", cudaMemcpyDeviceToDevice);\n";
-                        output_offset += input_sizes[i];
-                    }
-                    lu << "}\n";
+                    auto& writer = *_lu;
 
-                    lu << "else {\n";
-                    size_t offset = 0;
-                    for (int i = 0; i < m_context->inputs.size(); i++)
+                    writer << "uint32_t inputs_strides[] = {" << join(inputs_strides) << "};\n";
+                    writer << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
+                    writer << "if(tid < " << nthreads << ")\n";
+                    writer.block_begin();
                     {
-                        lu << "  assert(input" << i << " == output0 + " << offset << ");\n";
-                        offset += shape_size(m_context->inputs[i]->get_shape());
+                        writer << "uint32_t block_id = tid / " << output_stride << ";\n";
+                        writer << "uint32_t block_idx = tid % " << output_stride << ";\n";
+                        writer << "uint32_t output_idx = block_id * " << output_stride
+                               << " + block_idx;\n";
+                        //writer << "out[output_idx] = 1;\n";
+                        for (size_t i = 0; i < input_num; i++)
+                        {
+                            writer << "if(block_idx < inputs_strides[" << i << "])\n";
+                            writer.block_begin();
+                            {
+                                writer << "output0[output_idx] = input" << i
+                                       << "[block_id * inputs_strides[" << i << "] + block_idx];\n";
+                                writer << "return;\n";
+                            }
+                            writer.block_end();
+                            writer << "block_idx -= inputs_strides[" << i << "];\n";
+                        }
                     }
-                    lu << "}\n";
-
+                    writer.block_end();
                     return _lu;
                 }
+
+                void set_launch_config() override
+                {
+                    uint32_t block_size_x = 512;
+                    uint32_t aligned_grid_size_x = align_to_block_size(nthreads, block_size_x);
+                    m_gridDim = dim3(aligned_grid_size_x, 1, 1);
+                    m_blockDim = dim3(block_size_x, 1, 1);
+                }
+
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
@@ -370,21 +429,20 @@ namespace nnfusion
                 }
 
             private:
-                bool is_memcpy;
-                size_t data_type_size;
-                std::vector<size_t> input_sizes;
-            };
+                shared_ptr<KernelContext> kernel_ctx;
+                shared_ptr<nnfusion::op::Concat> op;
 
+                size_t input_num, concat_axis;
+                std::vector<uint32_t> inputs_strides;
+                uint32_t nthreads;
+                uint32_t output_stride;
+                size_t axis;
+                bool is_memcpy;
+            };
         } // namespace cuda
     }     // namespace kernels
 } // namespace nnfusion
 
-using namespace nnfusion;
-using namespace nnfusion::kernels;
 REGISTER_KERNEL_EMITTER("Concat",                                  //op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT), //attrs
-                        cuda::Concat)                              // constructor
-
-// REGISTER_KERNEL_EMITTER("Concat",                                                  // op_name
-//                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
-//                         cuda::ConcatMemCpy)                                        // constructor
+                        cuda::ConcatKernel)                        // constructor

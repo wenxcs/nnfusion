@@ -126,7 +126,7 @@ namespace nnfusion
 
             std::string m_name;
             std::shared_ptr<layout::TensorLayout> m_tensor_layout;
-            size_t m_pool_offset{0};
+            size_t m_pool_offset{SIZE_MAX};
             bool m_persistent;
             bool m_constant;
             bool m_parameter;
