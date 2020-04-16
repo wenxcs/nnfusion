@@ -53,7 +53,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
                                           .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-                if (emitted_kernel.second->get_or_emit_source() == nullptr)
+                if (!emitted_kernel.second->is_emitted())
                 {
                     NNFUSION_CHECK_FAIL() << "Kernel should be emitted before this pass:"
                                           << gnode->get_name();

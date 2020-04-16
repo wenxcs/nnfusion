@@ -562,7 +562,7 @@ private:
                                 .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
                         KernelEmitter::Pointer kernel = nullptr;
 
-                        if (emitted_kernel.second->get_or_emit_source() == nullptr)
+                        if (!emitted_kernel.second->is_emitted())
                         {
                             NNFUSION_LOG(NNFUSION_WARNING)
                                 << "Kernel should be emitted before this pass:" << node->get_name();

@@ -1968,8 +1968,7 @@ namespace nnfusion
 
                 bool keepdims;
                 if (!GetNodeAttr(node.attr(), "keepdims", keepdims))
-                    ;
-                NNFUSION_CHECK(GetNodeAttr(node.attr(), "keep_dims", keepdims));
+                    NNFUSION_CHECK(GetNodeAttr(node.attr(), "keep_dims", keepdims));
 
                 if (keepdims)
                 {
@@ -2513,29 +2512,14 @@ namespace nnfusion
                 status = GetNodeAttr(node.attr(), "batch_dim", batch_dim);
                 NNFUSION_CHECK(status);
                 // Get the seq_lengths:vector<int64> from RS op
-                NNFUSION_CHECK(seq_length->is_constant()) << "Not support variable as seq_lenghth.";
-                auto const_node =
-                    static_pointer_cast<nnfusion::op::Constant>(seq_length->get_op_ptr());
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["seq_axis"] = seq_dim;
                 myConfig["batch_axis"] = batch_dim;
 
                 auto generic_op =
                     std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
-                vector<int64_t> seq_lengths;
-                NNFUSION_CHECK(GetValueFromNGraphOp<int64_t>(seq_length, &seq_lengths));
-                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {input_gnode});
-                for (auto& l : seq_lengths)
-                    NNFUSION_CHECK(l <= input_gnode->get_output_shape(0)[seq_dim])
-                        << "The elements of seq_lengths must obey seq_lengths[i] <= "
-                           "input.dims[seq_dim], and seq_lengths must be a vector of length "
-                           "input.dims[batch_dim].";
-
-                NNFUSION_CHECK(seq_lengths.size() == input_gnode->get_output_shape(0)[batch_dim])
-                    << "The elements of seq_lengths must obey seq_lengths[i] <= "
-                       "input.dims[seq_dim], and seq_lengths must be a vector of length "
-                       "input.dims[batch_dim].";
-                (*generic_gnode)["ReverseSequenceOp::seq_lengths"] = seq_lengths;
+                auto generic_gnode =
+                    m_graph->add_node_and_edge(generic_op, {input_gnode, seq_length});
                 NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;
             }

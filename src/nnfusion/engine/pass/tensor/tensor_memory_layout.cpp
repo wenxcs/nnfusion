@@ -48,7 +48,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                       .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
             KernelEmitter::Pointer kernel = nullptr;
 
-            if (emitted_kernel.second->get_or_emit_source() == nullptr)
+            if (!emitted_kernel.second->is_emitted())
                 // Can assign tensor layout even kernel is not emitted.
                 NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
                                                << gnode->get_name();

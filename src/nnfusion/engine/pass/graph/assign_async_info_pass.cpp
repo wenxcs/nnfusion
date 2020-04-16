@@ -189,7 +189,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                         (*gnode)["Kernel_Selection_Result"]
                             .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
 
-                    if (emitted_kernel.second->get_or_emit_source() == nullptr)
+                    if (!emitted_kernel.second->is_emitted())
                     {
                         NNFUSION_LOG(NNFUSION_WARNING)
                             << "Kernel should be emitted before this pass:" << gnode->get_name();
@@ -386,7 +386,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                         (*gnode)["Kernel_Selection_Result"]
                             .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
 
-                    if (emitted_kernel.second->get_or_emit_source() == nullptr)
+                    if (!emitted_kernel.second->is_emitted())
                     {
                         NNFUSION_LOG(NNFUSION_WARNING)
                             << "Kernel should be emitted before this pass:" << gnode->get_name();
