@@ -109,10 +109,20 @@ private:
         static const std::vector<std::string> fuseop_list = {};
         //{"MatMul", "Split", "Concat", "ConcatV2", "Reshape"};
 
-        static const std::vector<std::string> blacklist = {"Softmax"};
+        if (FLAGS_fdefault_device == "CPU")
+        {
+            // CPU backend will use eigen kernel for the following ops.
+            static const std::vector<std::string> blacklist = {
+                "Softmax", "Cos", "Sin", "Tanh", "Exp", "Log", "Power", "Sigmoid"};
+            op_blacklist.insert(blacklist.begin(), blacklist.end());
+        }
+        else
+        {
+            static const std::vector<std::string> blacklist = {"Softmax"};
+            op_blacklist.insert(blacklist.begin(), blacklist.end());
+        }
 
         fusion_ops.insert(fuseop_list.begin(), fuseop_list.end());
-        op_blacklist.insert(blacklist.begin(), blacklist.end());
 
         // RegisterFusionOpFilters();
         host_inputs = {
@@ -138,8 +148,10 @@ private:
             elem_ready.push_front(node->get_id());
         }
         else if (reshape && !(reshape->get_is_transpose()) &&
-                 (shape_size(node->get_input_shape(0)) == shape_size(node->get_output_shape(0))))
+                 (shape_size(node->get_input_shape(0)) == shape_size(node->get_output_shape(0))) &&
+                 FLAGS_fdefault_device != "CPU")
         {
+            // CPU backend will not fuse reshape kernel due to memcpy has better performance.
             elem_ready.push_front(node->get_id());
         }
         else if (fusion_ops.find(node->get_op_type()) != fusion_ops.end())
@@ -567,8 +579,17 @@ private:
 
                     if (all_kernel_emitted)
                     {
-                        auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-                            "ElementWiseFused", CUDA_GPU, DT_FLOAT);
+                        shared_ptr<const KernelRegistration> kernel_reg;
+                        if (FLAGS_fdefault_device != "CPU")
+                        {
+                            kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+                                "ElementWiseFused", CUDA_GPU, DT_FLOAT);
+                        }
+                        else
+                        {
+                            kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+                                "ElementwiseFused", GENERIC_CPU, DT_FLOAT);
+                        }
                         NNFUSION_CHECK_NOT_NULLPTR(kernel_reg);
                         auto ctx = std::make_shared<KernelContext>();
                         ctx->kernels = block_kernels;
@@ -705,7 +726,7 @@ private:
 bool KernelFusionPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
     auto dev_name = FLAGS_fdefault_device;
-    if (dev_name == "ROCm" || dev_name == "CUDA")
+    if (dev_name == "ROCm" || dev_name == "CUDA" || dev_name == "CPU")
     {
         NNFUSION_LOG(INFO) << "device: " << dev_name;
         KernelFuseOptimizer optimizer(graph);

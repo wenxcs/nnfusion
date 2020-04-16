@@ -77,6 +77,22 @@ namespace nnfusion
                 static std::unordered_map<std::string, std::string> s_cached_kernels;
             };
 
+            class SimdKernelEmitter : public CpuKernelEmitter
+            {
+            public:
+                SimdKernelEmitter(shared_ptr<KernelContext> ctx)
+                    : CpuKernelEmitter(ctx)
+                {
+                }
+
+                virtual std::pair<std::string, shared_ptr<LanguageUnit>> get_op_kernel()
+                {
+                    return std::make_pair("", nullptr);
+                }
+
+            protected:
+                const uint32_t m_simd_block_size = 8;
+            };
         } // namespace cpu
     }     // namespace kernels
 } // namespace nnfusion

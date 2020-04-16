@@ -144,7 +144,22 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
             }
 
-            if (kernel_regs.size() == 0 || !has_valid_kernel)
+            if (!has_valid_kernel)
+            {
+                if ((*ins)["Kernel_Selection_Result"].is_valid())
+                {
+                    auto res = (*ins)["Kernel_Selection_Result"]
+                                   .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
+                    if (res.second->get_or_emit_source() != nullptr)
+                    {
+                        if (!(res.second->is_eliminative()))
+                            kernels.push_back(res.second);
+                        has_valid_kernel = true;
+                    }
+                }
+            }
+
+            if (!has_valid_kernel)
             {
                 kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                     "AnyOP", GENERIC_CPU, DT_FLOAT);
@@ -197,7 +212,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
     }
 
-    lu << "#include \"nnfusion_rt.h\"\n\n";
+    lu << "#include \"nnfusion_rt.h\"\n";
     // std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels;
     // Collect Function Definition
     {
@@ -271,7 +286,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("header::") != string::npos)
                 lu << it.second->get_code();
-        lu << "#include<cstring>\n";
+        lu << "#include <cstring>\n";
         lu << "using namespace std;\n";
         lu << "\n";
         for (auto& it : re.local_symbol)

@@ -1,5 +1,6 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
+#include "../cpu_helper.hpp"
 #include "../cpu_kernel_emitter.hpp"
 #include "../cpu_kernelops.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
@@ -32,45 +33,28 @@ namespace nnfusion
                         return nullptr;
                     }
 
+                    auto op = CpuOpMap<T>::eigen_op;
+
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
 
-                    if (m_context->inputs.size() == 1)
+                    if (CpuOpMap<T>::eigen_math_kernel != nullptr)
                     {
-                        std::string op = CpuOpMap<T>::eigen_op;
-                        auto code = nnfusion::op::create_code_from_template(
-                            R"(
-Eigen::Map<Eigen::Array<@in_type@,@data_size@,1> > in(&input0[0]);
-Eigen::Map<Eigen::Array<@out_type@,@data_size@,1> > out(&output0[0]);
-out = in.@op@();
-)",
-                            {{"in_type", data_types[0]},
-                             {"out_type", data_types[1]},
-                             {"data_size", data_size},
-                             {"op", op}});
-                        lu << code;
+                        auto math_kernel = get_eigen_math_kernel(
+                            op, CpuOpMap<T>::eigen_math_kernel, data_size, data_types);
+                        NNFUSION_CHECK_NOT_NULLPTR(math_kernel);
+                        lu.require(math_kernel);
                     }
-                    else if (m_context->inputs.size() == 2)
+                    auto num_inputs = data_types.size() - 1;
+                    NNFUSION_CHECK(num_inputs > 0)
+                        << "At least one input and one output tesnor for elementwise-op.";
+
+                    lu << op << "_" << data_size << "(";
+                    for (size_t i = 0; i < num_inputs; ++i)
                     {
-                        std::string op = CpuOpMap<T>::eigen_op;
-                        auto code = nnfusion::op::create_code_from_template(
-                            R"(
-Eigen::Map<Eigen::Array<@in1_type@,@data_size@,1> > in1(&input0[0]);
-Eigen::Map<Eigen::Array<@in2_type@,@data_size@,1> > in2(&input1[0]);
-Eigen::Map<Eigen::Array<@out_type@,@data_size@,1> > out(&output0[0]);
-out = in1 @op@ in2;
-)",
-                            {{"in1_type", data_types[0]},
-                             {"in2_type", data_types[1]},
-                             {"out_type", data_types[2]},
-                             {"data_size", data_size},
-                             {"op", op}});
-                        lu << code;
+                        lu << "input" << i << ", ";
                     }
-                    else
-                    {
-                        return nullptr;
-                    }
+                    lu << "output0);";
 
                     return _lu;
                 }
