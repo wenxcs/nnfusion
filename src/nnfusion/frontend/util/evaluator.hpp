@@ -101,10 +101,6 @@ namespace nnfusion
                     nnfusion::profiler::Profiler prof(runtime, pctx);
                     if (!prof.mixed_type_execute(_inputs, _outputs))
                         continue;
-                    for (int j = 0; j < _outputs.size(); ++j)
-                        for (int i = 0; i < std::min(10LU, _outputs[j].size()); ++i)
-                            NNFUSION_LOG(INFO) << _outputs[j][i];
-                    puts("...");
 
                     NNFUSION_LOG(INFO) << "  For node `" << gnode->get_name()
                                        << "`: get runtime output results of size "

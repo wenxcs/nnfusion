@@ -136,6 +136,10 @@ endif()
             // update for rocm_adapter.h
             nnfusion::codegen::copy_file_from_templates("rocm_adapter/rocm_adapter.h",
                                                         "./rocm_adapter.h");
+            // fast compile script for dynamic shared lib
+            nnfusion::codegen::copy_file_from_templates(
+                "rocm_adapter/fastgen_for_sliced_kernels.sh", "./fastgen_for_sliced_kernels.sh");
+            NNFUSION_CHECK(0 == system("chmod a+x fastgen_for_sliced_kernels.sh"));
 
             // create_image_tests
             nnfusion::codegen::copy_file_from_templates("image_tests/image_test.cpp",

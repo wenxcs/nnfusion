@@ -349,7 +349,8 @@ namespace nnfusion
                         codegen_for_elementwise(curr, fout, "topi=topi.sigmoid(args(\"input0\"))");
                     };
                     kernel_dict["Square"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        codegen_for_elementwise(curr, fout, "topi=topi.sqrt(args(\"input0\"))");
+                        codegen_for_elementwise(
+                            curr, fout, "topi=topi.multiply(args(\"input0\"), args(\"input0\"))");
                     };
                     kernel_dict["Rsqrt"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.rsqrt(args(\"input0\"))");
@@ -408,7 +409,7 @@ namespace nnfusion
                              << "(device, cmdQueue, nullptr, "
                              << arg_names[curr->get_in_edge(0)->get_src()] << ");\n";
                     };
-
+#if 0
                     kernel_dict["Concat"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         auto _op = get_op_object<nnfusion::op::Concat>(curr);
                         auto axis = _op->get_concatenation_axis();
@@ -457,7 +458,7 @@ namespace nnfusion
                         result << "}\n";
                         print_standard_codegen(curr, fout, result.str());
                     };
-
+#endif
                     while (gen_q.size() > 0 || pend_q.size() > 0)
                     {
                         // Move to new super step if satisifed

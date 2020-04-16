@@ -393,7 +393,7 @@ int main(int argc, char** argv)
     run(1);
     if (getenv("PROF"))
         engine.printProfileSummary(std::cout, {{"showExecutionSteps", "false"}});
-
-    run(100);
+    run(1);
+    run(1);
     return EXIT_SUCCESS;
 }
