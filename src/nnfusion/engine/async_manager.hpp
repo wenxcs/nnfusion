@@ -59,19 +59,18 @@ public:
     const std::string& get_device_name() const { return m_stream->get_device_name(); }
     const std::string& get_name() const { return m_name; }
     const std::string& get_symbol() const { return m_symbol; }
-    // bool is_recorded() const { return m_recorded; }
 private:
     Event(size_t event_id,
           const shared_ptr<Stream>& stream,
           const shared_ptr<nnfusion::op::Op>& op,
           const string& symbol);
+    Event(size_t event_id, const shared_ptr<Stream>& stream, const string& symbol);
     // void set_recorded(bool value = true) { m_recorded = value; }
     size_t m_event_id;
     shared_ptr<Stream> m_stream;
     shared_ptr<nnfusion::op::Op> m_op;
     std::string m_name;
     std::string m_symbol;
-    // bool m_recorded;
 };
 
 class nnfusion::async::AsyncManager
@@ -82,6 +81,7 @@ public:
     shared_ptr<Event> set_event(const shared_ptr<Stream>& stream,
                                 const shared_ptr<nnfusion::op::Op>& op,
                                 const string& symbol = "");
+    shared_ptr<Event> set_event(const shared_ptr<Stream>& stream, const string& symbol = "");
     int num_stream() const { return m_stream_list.size(); }
     int num_non_default_stream() const { return m_num_non_default_stream; }
     int num_event() const { return m_event_list.size(); }
@@ -99,7 +99,9 @@ public:
 protected:
     AsyncManager(NNFusion_DeviceType device_type);
     std::unordered_map<std::string, shared_ptr<Stream>> m_stream_list;
+    std::unordered_map<int, std::vector<shared_ptr<Stream>>> m_dev_stream;
     std::unordered_map<std::string, shared_ptr<Event>> m_event_list;
+    std::unordered_map<int, std::vector<shared_ptr<Event>>> m_dev_event;
     NNFusion_DeviceType m_device_type;
     int m_num_non_default_stream;
 };

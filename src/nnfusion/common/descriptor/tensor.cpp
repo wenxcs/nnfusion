@@ -21,34 +21,6 @@
 #include "nnfusion/util/errors.hpp"
 //using namespace nnfusion;
 using namespace std;
-DEFINE_string(fdefault_device,
-              "CUDA",
-              "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
-nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,
-                                     const nnfusion::PartialShape& pshape,
-                                     const std::string& name,
-                                     bool is_persistent,
-                                     bool is_constant,
-                                     bool is_parameter,
-                                     bool is_RDMA_tensor,
-                                     const std::string& group,
-                                     size_t device_id)
-    : m_element_type(element_type)
-    , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
-    , m_partial_shape(pshape)
-    , m_name(name)
-    , m_persistent(is_persistent)
-    , m_constant(is_constant)
-    , m_parameter(is_parameter)
-    , m_RDMA(is_RDMA_tensor)
-    , m_root_tensor(nullptr)
-    , m_ref_count(1)
-    , m_group(group)
-    , m_device_id(device_id)
-{
-    auto default_device = FLAGS_fdefault_device.c_str();
-    m_device_type = nnfusion::get_device_type(default_device);
-}
 
 nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type,
                                      const nnfusion::PartialShape& pshape,
@@ -59,7 +31,7 @@ nnfusion::descriptor::Tensor::Tensor(const nnfusion::element::Type& element_type
                                      bool is_parameter,
                                      bool is_RDMA_tensor,
                                      const std::string& group,
-                                     size_t device_id)
+                                     int device_id)
     : m_element_type(element_type)
     , m_shape(pshape.is_static() ? pshape.to_shape() : nnfusion::Shape{})
     , m_partial_shape(pshape)
@@ -122,6 +94,21 @@ size_t nnfusion::descriptor::Tensor::get_pool_offset() const
     return m_pool_offset;
 }
 
+void nnfusion::descriptor::Tensor::set_pool(const std::string& pool)
+{
+    m_pool = pool;
+}
+
+const std::string& nnfusion::descriptor::Tensor::get_pool() const
+{
+    return m_pool;
+}
+
+bool nnfusion::descriptor::Tensor::is_same_address(std::shared_ptr<Tensor> tensor)
+{
+    return (m_pool == tensor->get_pool()) && (m_pool_offset == tensor->get_pool_offset());
+}
+
 size_t nnfusion::descriptor::Tensor::size(bool in_byte) const
 {
     size_t t_size;
@@ -153,8 +140,8 @@ void nnfusion::descriptor::Tensor::set_tensor_layout(
 
 std::string nnfusion::descriptor::Tensor::get_device_name() const
 {
-    std::string dt_str = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[m_device_type];
-    std::string device_name = (m_RDMA ? "RDMA_" : "_") + dt_str + "_" + std::to_string(m_device_id);
+    std::string device_name = (m_RDMA ? "RDMA_" : "_") + get_device_str(m_device_type) + "_" +
+                              std::to_string(m_device_id);
     return device_name;
 }
 

@@ -80,17 +80,17 @@ namespace nnfusion
         string get_specialized_funciton_call(string func_name = "")
         {
             NNFUSION_CHECK_NOT_NULLPTR(this->name_unit);
-            NNFUSION_CHECK_NOT_NULLPTR(this->signature_unit);
+            NNFUSION_CHECK_NOT_NULLPTR(this->call_unit);
             string fname = func_name == "" ? this->name_unit->get_code() : func_name;
             string call = this->call_unit->get_code();
 
-            size_t spos = call.find("cudaStream_t*");
-            if (spos == 0)
-            {
-                size_t pos = call.find("(");
-                call.insert(pos, fname);
-                return call;
-            }
+            // size_t spos = call.find("cudaStream_t*");
+            // if (spos == 0)
+            // {
+            //     size_t pos = call.find("(");
+            //     call.insert(pos, fname);
+            //     return call;
+            // }
             return fname + call;
         }
     };

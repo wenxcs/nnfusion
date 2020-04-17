@@ -112,6 +112,7 @@ bool ReferenceRuntime::codegen(const ProfilingContext::Pointer& ke)
         return s.str();
     };
 
+    fu = ke->kernel->get_or_emit_source(true);
     writer.block_begin();
     {
         for (size_t i = 0; i < temp.size(); i++)

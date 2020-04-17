@@ -94,6 +94,42 @@ LanguageUnit_p cuda::Softmax::emit_dependency()
     return _lu;
 }
 
+LanguageUnit_p cuda::Softmax::emit_function_signature()
+{
+    LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_sig"));
+    auto& lu = *_lu;
+
+    vector<string> params;
+    for (size_t i = 0; i < m_context->inputs.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->inputs[i]->get_element_type().c_type_string() << "* ";
+        ss << "input" << i;
+        params.push_back(ss.str());
+    }
+
+    for (size_t i = 0; i < m_context->outputs.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
+        ss << "output" << i;
+        params.push_back(ss.str());
+    }
+
+    for (size_t i = 0; i < m_context->tensors.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->tensors[i]->get_element_type().c_type_string() << "* ";
+        // defult name is: "persit0", "persist1" ...
+        ss << m_context->tensors[i]->get_name();
+        params.push_back(ss.str());
+    }
+
+    lu << "void "
+       << "(cudnnHandle_t cudnn_handle, " << join(params, ", ") << ")";
+    return _lu;
+}
+
 REGISTER_KERNEL_EMITTER("Softmax",                                                     // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel"), // attrs
                         cuda::Softmax) // constructor

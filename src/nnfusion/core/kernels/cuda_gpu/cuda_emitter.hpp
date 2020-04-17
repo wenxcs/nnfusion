@@ -75,7 +75,7 @@ namespace nnfusion
                 static const std::unordered_map<std::string, size_t> size_of_str_type;
 
                 size_t get_shared_memory_size() { return shared_memory_size; }
-                FunctionUnit_p get_or_emit_source() override
+                FunctionUnit_p get_or_emit_source(bool emit_func_call = false) override
                 {
                     if (!m_is_emitted)
                     {
@@ -85,7 +85,11 @@ namespace nnfusion
                         m_block_function_unit = this->emit_source();
                         is_emitting_block_kernel = temp;
                     }
-
+                    else
+                    {
+                        if (emit_func_call)
+                            m_function_unit->call_unit = emit_function_call();
+                    }
                     return is_emitting_block_kernel ? m_block_function_unit : m_function_unit;
                 }
 

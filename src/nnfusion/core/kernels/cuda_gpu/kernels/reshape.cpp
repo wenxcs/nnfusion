@@ -478,8 +478,7 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
 
 bool cuda::ReshapeMemcpy::is_eliminative()
 {
-    if (is_memcpy &&
-        m_context->inputs[0]->get_pool_offset() == m_context->outputs[0]->get_pool_offset())
+    if (is_memcpy && m_context->inputs[0]->is_same_address(m_context->outputs[0]))
         return true;
     else
         return false;
@@ -515,6 +514,42 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
     _lu->require(header::cuda);
+    return _lu;
+}
+
+LanguageUnit_p cuda::ReshapeMemcpy::emit_function_signature()
+{
+    LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_sig"));
+    auto& lu = *_lu;
+
+    vector<string> params;
+    for (size_t i = 0; i < m_context->inputs.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->inputs[i]->get_element_type().c_type_string() << "* ";
+        ss << "input" << i;
+        params.push_back(ss.str());
+    }
+
+    for (size_t i = 0; i < m_context->outputs.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
+        ss << "output" << i;
+        params.push_back(ss.str());
+    }
+
+    for (size_t i = 0; i < m_context->tensors.size(); i++)
+    {
+        stringstream ss;
+        ss << m_context->tensors[i]->get_element_type().c_type_string() << "* ";
+        // defult name is: "persit0", "persist1" ...
+        ss << m_context->tensors[i]->get_name();
+        params.push_back(ss.str());
+    }
+
+    lu << "void "
+       << "(cudaStream_t stream, " << join(params, ", ") << ")";
     return _lu;
 }
 

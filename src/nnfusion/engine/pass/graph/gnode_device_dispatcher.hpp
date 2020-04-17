@@ -11,7 +11,7 @@ namespace nnfusion
     {
         namespace graph
         {
-            class DefaultDeviceDispatcher : public GraphPassBase
+            class DefaultGNodeDeviceDispatcher : public GraphPassBase
             {
             public:
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;

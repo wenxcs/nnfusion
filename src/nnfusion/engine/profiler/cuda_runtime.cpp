@@ -45,10 +45,17 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     std::string body_unit = fu->body_unit->get_code();
     int pos_cudnn_handle = body_unit.find("cudnn_handle");
     int pos_cublas_handle = body_unit.find("cublas_handle");
+    auto gnode = ke->kernel->m_context->gnode;
     if (pos_cudnn_handle >= 0)
+    {
+        (*gnode)["handle"] = std::string("cudnn_handle");
         writer << "cudnnHandle_t cudnn_handle;\n";
+    }
     if (pos_cublas_handle >= 0)
+    {
+        (*gnode)["handle"] = std::string("cublas_handle");
         writer << "cublasHandle_t cublas_handle;\n";
+    }
 
     // Write function definition
     writer << fu->comment_unit->get_code();
@@ -271,6 +278,8 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         writer << "cudaEvent_t start, stop;\n";
         writer << "cudaEventCreate(&start);\n";
         writer << "cudaEventCreate(&stop);\n";
+
+        fu = ke->kernel->get_or_emit_source(true);
 
         writer << "for(int i=0; i < " << ke->warmup_times + ke->runtime_times << "; i++)\n";
         writer.block_begin();

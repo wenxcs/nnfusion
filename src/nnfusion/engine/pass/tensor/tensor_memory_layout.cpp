@@ -42,28 +42,18 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         {
             auto gnode = ins->getGNode();
             // do not allocate parameter tensors.
-            if (gnode->is_parameter())
+            if (gnode && gnode->is_parameter())
                 continue;
-            auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
-                                      .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-            KernelEmitter::Pointer kernel = nullptr;
-
-            if (!emitted_kernel.second->is_emitted())
-                // Can assign tensor layout even kernel is not emitted.
-                NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
-                                               << gnode->get_name();
-            kernel = emitted_kernel.second;
             // Tensors should be considered
             // Node: inputs outputs
             // Kernel Context: +tensors
-
             // <output, <input, offset>>
             std::map<std::shared_ptr<descriptor::Tensor>,
                      std::pair<std::shared_ptr<descriptor::Tensor>, size_t>>
                 in_place_outputs;
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> alloc_temp;
 
-            if (kernel != nullptr)
+            if (auto kernel = ins->getKernel())
             {
                 NNFUSION_CHECK_NOT_NULLPTR(kernel->m_context);
                 // Allocate temp tensors
@@ -86,8 +76,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             unordered_set<std::shared_ptr<descriptor::Tensor>> newlist(alloc_temp);
             // The output of output nodes refers to the input, so there is NO need
             // to allocate memory space for output of output nodes.
-            if (!gnode->get_op_ptr()->is_output())
-                newlist.insert(gnode->liveness_new_list.begin(), gnode->liveness_new_list.end());
+            if (!gnode || !gnode->get_op_ptr()->is_output())
+                newlist.insert(ins->liveness_new_list.begin(), ins->liveness_new_list.end());
 
             // Allocate in two passes to make sure ref-tensors is after non-ref-tensors
             std::vector<std::shared_ptr<descriptor::Tensor>> ref_tensors;
@@ -100,6 +90,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 else
                 {
                     auto allocator = maf.get_allocator(tensor);
+                    tensor->set_pool(allocator->get_name());
                     allocator->allocate(tensor);
                 }
             }
@@ -121,7 +112,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             if (!m_disable_memory_sharing)
             {
                 unordered_set<shared_ptr<descriptor::Tensor>> freelist(alloc_temp);
-                freelist.insert(gnode->liveness_free_list.begin(), gnode->liveness_free_list.end());
+                freelist.insert(ins->liveness_free_list.begin(), ins->liveness_free_list.end());
                 for (std::shared_ptr<descriptor::Tensor> tensor : freelist)
                 {
                     // persistent tensor will not be reused
@@ -136,7 +127,8 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             //dump memory trace at the time scale of node.
             if (dump_trace)
             {
-                mem_log << gnode->get_name() << "\n";
+                string name = gnode ? gnode->get_name() : ins->name();
+                mem_log << name << "\n";
                 for (const auto& allocator : MemoryAllocatorFactory::get_allocator_list())
                 {
                     allocator.second->dump(mem_log);
@@ -151,5 +143,6 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
         // close memory log file.
         mem_log.close();
     }
+    NNFUSION_LOG(INFO) << "---------------Tensor memory layout pass done.";
     return true;
 }

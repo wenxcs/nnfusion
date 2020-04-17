@@ -16,17 +16,12 @@ using namespace nnfusion::kernels;
 using namespace nnfusion::async;
 
 DEFINE_bool(frt_const_folding, false, "Add runtime constant folding.");
-DECLARE_string(fdefault_device);
 
 bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                  std::shared_ptr<TranslationUnit> tu)
 {
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
-    std::unordered_map<std::shared_ptr<nnfusion::graph::GNode>, KernelEmitter::Pointer> op_kernels;
     std::unordered_set<shared_ptr<descriptor::Tensor>> persist_candidate;
-
-    auto default_device = FLAGS_fdefault_device.c_str();
-    NNFusion_DeviceType device_type = nnfusion::get_device_type(default_device);
 
     auto& p = tu->program;
     for (auto block_iter : p)
@@ -34,95 +29,63 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins : *block_iter)
         {
             auto gnode = ins->getGNode();
-            if (!(*gnode)["Async_info"].is_valid())
+            if (!(*ins)["Async_info"].is_valid())
             {
-                NNFUSION_CHECK_FAIL() << "Async info should be assigned before this pass："
-                                      << gnode->get_name();
+                string name = gnode ? gnode->get_name() : ins->name();
+                NNFUSION_CHECK_FAIL() << "Async info should be assigned before this pass：" << name;
             }
-            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
             std::shared_ptr<nnfusion::async::Stream> stream;
 
-            if (device_type == GENERIC_CPU)
-                stream = async_info.execution_thread;
-            else if (device_type == CUDA_GPU || device_type == ROCM_GPU)
+            if (async_info.execution_stream != nullptr)
                 stream = async_info.execution_stream;
+            else
+                stream = async_info.execution_thread;
 
             auto stream_id = stream->get_stream_id();
-
-            if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
+            if (gnode && gnode->is_parameter())
             {
-                auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
-                                          .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-                if (!emitted_kernel.second->is_emitted())
+                auto& outputs = ins->get_outputs();
+                for (size_t i = 0; i < outputs.size(); i++)
                 {
-                    NNFUSION_CHECK_FAIL() << "Kernel should be emitted before this pass:"
-                                          << gnode->get_name();
-                }
-                op_kernels[gnode] = emitted_kernel.second;
-                // add cross_stream tensor
-                auto kernel_context = op_kernels[gnode]->m_context;
-                for (size_t i = 0; i < kernel_context->inputs.size(); i++)
-                {
-                    auto tensor = kernel_context->inputs[i];
-                    set_tensor_group(tensor, to_string(stream_id));
-                }
-                // set output tensor's group id
-                for (size_t i = 0; i < kernel_context->outputs.size(); i++)
-                {
-                    auto tensor = kernel_context->outputs[i];
-                    set_tensor_group(tensor, to_string(stream_id));
-                }
-                // set temp tensor's group id
-                for (size_t i = 0; i < kernel_context->tensors.size(); i++)
-                {
-                    auto tensor = kernel_context->tensors[i];
-                    set_tensor_group(tensor, to_string(stream_id));
-                }
-            }
-
-            if (gnode->is_parameter())
-            {
-                for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                {
-                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    auto tensor = outputs[i];
                     tensor->set_parameter();
-                    // set tensor's group id
                     set_tensor_group(tensor, to_string(stream_id));
                 }
             }
-            if (gnode->is_variable())
+            else if (gnode && gnode->is_variable())
             {
-                for (size_t i = 0; i < gnode->get_output_size(); ++i)
+                auto& outputs = ins->get_outputs();
+                for (size_t i = 0; i < outputs.size(); i++)
                 {
-                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    auto tensor = outputs[i];
                     tensor->set_persistent();
-                    // set tensor's group id
                     set_tensor_group(tensor, to_string(stream_id));
                 }
             }
-            if (gnode->get_op_ptr()->is_output())
+            else if (gnode && gnode->get_op_ptr()->is_output())
             {
-                for (size_t i = 0; i < gnode->get_output_size(); ++i)
+                auto& outputs = ins->get_outputs();
+                for (size_t i = 0; i < outputs.size(); i++)
                 {
-                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    auto tensor = outputs[i];
                     tensor->set_persistent();
-                    // set tensor's group id
                     set_tensor_group(tensor, to_string(stream_id));
                 }
-                for (size_t i = 0; i < gnode->get_input_size(); ++i)
+                auto& inputs = ins->get_inputs();
+                for (size_t i = 0; i < inputs.size(); i++)
                 {
-                    shared_ptr<descriptor::Tensor> tensor = gnode->get_input_tensor_ptr(i);
+                    auto tensor = inputs[i];
                     tensor->set_persistent();
-                    // add cross_stream tensor
                     set_tensor_group(tensor, to_string(stream_id));
                 }
             }
-            if (auto constant_node =
-                    std::dynamic_pointer_cast<nnfusion::op::Constant>(gnode->get_op_ptr()))
+            else if (gnode && gnode->is_constant())
             {
-                for (size_t i = 0; i < gnode->get_output_size(); ++i)
+                auto& outputs = ins->get_outputs();
+                for (size_t i = 0; i < outputs.size(); i++)
                 {
-                    shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
+                    auto tensor = outputs[i];
                     if (enable_rt_const_folding)
                     {
                         persist_candidate.insert(tensor);
@@ -131,7 +94,30 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         tensor->set_persistent();
                     }
-                    // set tensor's group id
+                    set_tensor_group(tensor, to_string(stream_id));
+                }
+            }
+            else
+            {
+                // add cross_stream tensor
+                auto& inputs = ins->get_inputs();
+                for (size_t i = 0; i < inputs.size(); i++)
+                {
+                    auto tensor = inputs[i];
+                    set_tensor_group(tensor, to_string(stream_id));
+                }
+                // set output tensor's group id
+                auto& outputs = ins->get_outputs();
+                for (size_t i = 0; i < outputs.size(); i++)
+                {
+                    auto tensor = outputs[i];
+                    set_tensor_group(tensor, to_string(stream_id));
+                }
+                // set temp tensor's group id
+                auto& tensors = ins->get_internal_tensors();
+                for (size_t i = 0; i < tensors.size(); i++)
+                {
+                    auto tensor = tensors[i];
                     set_tensor_group(tensor, to_string(stream_id));
                 }
             }
@@ -144,6 +130,8 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
         {
             for (auto ins : *block_iter)
             {
+                if (ins->has_name() && ins->name() == "Memcpy")
+                    continue;
                 auto gnode = ins->getGNode();
                 if (gnode->get_op_ptr()->is_tensor_op() || gnode->get_op_ptr()->is_output())
                 {
@@ -153,11 +141,11 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     bool is_all_const = true;
                     std::unordered_set<shared_ptr<descriptor::Tensor>> tmp;
-                    auto kernel = op_kernels[gnode];
-                    auto kernel_context = kernel->m_context;
-                    for (size_t i = 0; i < kernel_context->inputs.size(); i++)
+                    auto& inputs = ins->get_inputs();
+
+                    for (size_t i = 0; i < inputs.size(); i++)
                     {
-                        auto tensor = kernel_context->inputs[i];
+                        auto tensor = inputs[i];
                         if (persist_candidate.find(tensor) != persist_candidate.end())
                         {
                             tmp.insert(tensor);
@@ -170,9 +158,10 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
                     if (is_all_const)
                     {
-                        for (size_t i = 0; i < kernel_context->outputs.size(); i++)
+                        auto& outputs = ins->get_outputs();
+                        for (size_t i = 0; i < outputs.size(); i++)
                         {
-                            auto tensor = kernel_context->outputs[i];
+                            auto tensor = outputs[i];
                             persist_candidate.insert(tensor);
                         }
                     }
@@ -197,45 +186,22 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
         for (auto ins_it = block_p->rbegin(); ins_it != block_p->rend(); ins_it++)
         {
             auto ins = *ins_it;
-
-            auto gnode = ins->getGNode();
-            gnode->liveness_new_list.clear();
-            gnode->liveness_free_list.clear();
+            ins->liveness_new_list.clear();
+            ins->liveness_free_list.clear();
 
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> input_tensor_decls;
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> output_tensor_decls;
-
-            if (gnode->get_op_ptr()->is_tensor_op() || gnode->get_op_ptr()->is_output())
+            auto& inputs = ins->get_inputs();
+            for (size_t i = 0; i < inputs.size(); i++)
             {
-                for (size_t i = 0; i < gnode->get_input_size(); ++i)
-                {
-                    std::shared_ptr<descriptor::Tensor> tensor = gnode->get_input_tensor_ptr(i);
-                    input_tensor_decls.insert(tensor);
-                }
-
-                for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                {
-                    std::shared_ptr<descriptor::Tensor> tensor = gnode->get_output_tensor_ptr(i);
-                    output_tensor_decls.insert(tensor);
-                }
+                auto tensor = inputs[i];
+                input_tensor_decls.insert(tensor);
             }
-
-            else
+            auto& outputs = ins->get_outputs();
+            for (size_t i = 0; i < outputs.size(); i++)
             {
-                auto kernel = op_kernels[gnode];
-                auto kernel_context = kernel->m_context;
-
-                for (size_t i = 0; i < kernel_context->inputs.size(); i++)
-                {
-                    auto tensor = kernel_context->inputs[i];
-                    input_tensor_decls.insert(tensor);
-                }
-
-                for (size_t i = 0; i < kernel_context->outputs.size(); i++)
-                {
-                    auto tensor = kernel_context->outputs[i];
-                    output_tensor_decls.insert(tensor);
-                }
+                auto tensor = outputs[i];
+                output_tensor_decls.insert(tensor);
             }
 
             std::unordered_set<std::shared_ptr<descriptor::Tensor>> free_tensor_decls;
@@ -265,11 +231,12 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                     currently_live.erase(currently_live_it);
                 }
             }
-            gnode->liveness_free_list = free_tensor_decls;
-            gnode->liveness_new_list = new_tensor_decls;
+            ins->liveness_free_list = free_tensor_decls;
+            ins->liveness_new_list = new_tensor_decls;
         }
     }
 
+    NNFUSION_LOG(INFO) << "------------------Liveness analysis pass done.";
     return true;
 }
 void TensorLivenessAnalysis::set_tensor_group(shared_ptr<descriptor::Tensor> tensor,

@@ -14,7 +14,6 @@
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
-#include "nnfusion/engine/async_manager.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
 
 using namespace nnfusion;
@@ -222,6 +221,78 @@ std::vector<shared_ptr<const KernelRegistration>>
 //     return nullptr;
 // }
 
+nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
+    nnfusion::ir::Instruction::Pointer ins, bool func_call_only, const std::string& func_call)
+{
+    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(CUDA_GPU);
+    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+    auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
+    LanguageUnit_p _lu(new LanguageUnit("func_call"));
+    auto& lu = *_lu;
+    if (!func_call_only)
+    {
+        if (!async_info.wait_barriers.empty())
+        {
+            for (auto barrier : async_info.wait_barriers)
+            {
+                lu << CPU_async_manager->emit_event_wait(async_info.execution_thread, barrier)
+                          ->get_code();
+            }
+        }
+
+        if (!async_info.wait_events.empty())
+        {
+            for (auto event : async_info.wait_events)
+            {
+                lu << CUDA_async_manager->emit_event_wait(async_info.execution_stream, event)
+                          ->get_code();
+            }
+        }
+    }
+    if (ins->name() == "Memcpy")
+    {
+        string stream_name = async_info.execution_stream->get_name();
+        auto& inputs = ins->get_inputs();
+        NNFUSION_CHECK(inputs.size() == 1);
+        auto src_tensor = inputs[0];
+
+        auto& outputs = ins->get_outputs();
+        NNFUSION_CHECK(outputs.size() == 1);
+        auto dst_tensor = outputs[0];
+        NNFUSION_CHECK(src_tensor->get_device_type() == CUDA_GPU ||
+                       src_tensor->get_device_type() == ROCM_GPU);
+        NNFUSION_CHECK(dst_tensor->get_device_type() == CUDA_GPU ||
+                       dst_tensor->get_device_type() == ROCM_GPU);
+
+        lu << "cudaMemcpyAsync(" << dst_tensor->get_name() << ", " << src_tensor->get_name() << ", "
+           << dst_tensor->size() << ", cudaMemcpyDeviceToDevice, " << stream_name << ");\n";
+    }
+    else
+    {
+        if (ins->getKernel()->is_eliminative())
+        {
+            lu << "// eliminated\n";
+        }
+        else
+        {
+            lu << func_call;
+        }
+    }
+    if (!func_call_only)
+    {
+        if (async_info.record_event != nullptr)
+        {
+            lu << CUDA_async_manager->emit_event_record(async_info.record_event)->get_code();
+        }
+        if (async_info.notify_barrier != nullptr)
+        {
+            lu << CPU_async_manager->emit_event_record(async_info.notify_barrier)->get_code();
+        }
+    }
+
+    return _lu;
+}
+
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
 {
@@ -246,66 +317,27 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit lu_thread_func_call("THREAD_FUNCTION_CALL");
 
     bool rc = true;
-
-    std::vector<shared_ptr<KernelEmitter>> kernels;
-    std::unordered_map<KernelEmitter*, string> kernel_memcpy;
     auto& prog = tu->program;
     for (auto iterator : prog)
     {
-        std::vector<shared_ptr<KernelEmitter>> block_kernels;
         for (auto ins : *iterator)
         {
-            if (!(*ins)["Async_info"].is_valid())
-            {
-                NNFUSION_CHECK_FAIL() << "Async info should be be assigned before this pass:"
-                                      << ins->getGNode()->get_name();
-            }
-            if (ins->getGNode()->is_parameter())
+            if (ins->name() == "Memcpy" || (ins->getGNode() && ins->getGNode()->is_parameter()))
             {
                 continue;
             }
-            if (ins->getGNode()->is_constant() || ins->getGNode()->is_variable())
+            // emit constant kernel
+            if (ins->getGNode() && ins->getGNode()->is_constant())
             {
                 auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                     ins->getGNode()->get_op_type(), CUDA_GPU, DT_FLOAT);
                 shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                 auto kernel = kernel_reg->m_factory(ctx);
                 kernel->get_or_emit_source();
-                kernels.push_back(kernel);
+                ins->setKernel(kernel);
                 continue;
             }
-
-            bool kernel_emitted = false;
-            if ((*ins)["Kernel_Selection_Result"].is_valid())
-            {
-                auto res = (*ins)["Kernel_Selection_Result"]
-                               .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-                if (res.second->get_or_emit_source() != nullptr)
-                {
-                    if (!(res.second->is_eliminative()))
-                        block_kernels.push_back(res.second);
-                    kernel_emitted = true;
-
-                    LanguageUnit m;
-                    if ((*ins)["memcpy_pair"].is_valid())
-                    {
-                        auto mempairs = (*ins)["memcpy_pair"]
-                                            .as<unordered_map<shared_ptr<descriptor::Tensor>,
-                                                              shared_ptr<descriptor::Tensor>>>();
-                        for (auto& it : mempairs)
-                        {
-                            string memcpykind = it.first->get_device_type() == GENERIC_CPU
-                                                    ? "cudaMemcpyDeviceToHost"
-                                                    : "cudaMemcpyHostToDevice";
-                            m << "cudaMemcpy(" << it.first->get_name() << ", "
-                              << it.second->get_name() << ", " << memcpykind << ");\n";
-                        }
-                        // kernel_memcpy[matched_kernel.get()] = m.get_code();
-                        kernel_memcpy[res.second.get()] = m.get_code();
-                    }
-                }
-            }
-            if (!kernel_emitted)
+            if (!ins->getKernel())
             {
                 auto kernel_reg =
                     KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
@@ -314,12 +346,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                 auto kernel = kernel_reg->m_factory(ctx);
                 kernel->get_or_emit_source();
-                block_kernels.push_back(kernel);
+                ins->setKernel(kernel);
             }
         }
-        kernels.insert(kernels.end(), block_kernels.begin(), block_kernels.end());
     }
-
     NNFUSION_LOG(INFO) << "Start dump whole source file...\n";
     // Code Gen
     LanguageUnit& lu = *this->lu_nnfusion_rt;
@@ -346,27 +376,31 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             re.require(header::barrier);
         //re.require(declaration::typedef_int);
 
-        for (auto kernel : kernels)
+        for (auto iterator : prog)
         {
-            if (!(kernel->is_emitted()))
+            for (auto ins : *iterator)
             {
-                return false;
-            }
-
-            for (auto& it : kernel->get_or_emit_source()->dep_unit->local_symbol)
-            {
-                re.require(it.second);
-                global_required.insert(it.second->symbol);
+                if (ins->name() == "Memcpy" || (ins->getGNode() && ins->getGNode()->is_parameter()))
+                {
+                    continue;
+                }
+                auto kernel = ins->getKernel();
+                if (!kernel->is_emitted())
+                    return false;
+                for (auto& it : kernel->get_or_emit_source()->dep_unit->local_symbol)
+                {
+                    re.require(it.second);
+                    global_required.insert(it.second->symbol);
+                }
             }
         }
     }
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
-    std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_stream;
-    std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_handle;
-    std::unordered_map<string, string> cudnn_handle_stream;
-    std::unordered_map<string, string> cublas_handle_stream;
+    std::unordered_map<int, std::unordered_set<string>> dev_cudnn_handle;
+    std::unordered_map<int, std::unordered_set<string>> dev_cublas_handle;
+    std::unordered_map<string, string> handle_stream;
 
     // Collect Function Definition
     {
@@ -376,84 +410,91 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         int cuda_kernel_n = 0;
         LanguageUnit def("FUNCTIONS");
         int count_k = 0;
-        for (auto kernel : kernels)
+        for (auto iterator : prog)
         {
-            //get kernel's stream name
-            auto gnode = kernel->m_context->gnode;
-            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-            if (async_info.execution_stream->is_default_stream())
-                kernel_stream[kernel] = "0";
-            else
-                kernel_stream[kernel] = async_info.execution_stream->get_name();
-
-            FunctionUnit_p fu = kernel->get_or_emit_source();
-            for (auto& it : fu->body_unit->local_symbol)
+            for (auto ins : *iterator)
             {
-                if (it.second != fu->dep_unit)
+                auto kernel = ins->getKernel();
+                auto gnode = ins->getGNode();
+                if (ins->name() == "Memcpy" || (gnode && gnode->is_parameter()) ||
+                    (kernel && kernel->is_eliminative()))
+                    continue;
+                //get kernel's stream name
+                auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
+                int device_id = (*ins)["DeviceID"].as<int>();
+                string stream_name = async_info.execution_stream->get_name();
+
+                FunctionUnit_p fu = kernel->get_or_emit_source();
+                for (auto& it : fu->body_unit->local_symbol)
                 {
-                    re.require(it.second);
-                    global_required.insert(it.second->symbol);
+                    if (it.second != fu->dep_unit)
+                    {
+                        re.require(it.second);
+                        global_required.insert(it.second->symbol);
+                    }
                 }
-            }
-            // get kernel's handle name
-            string body_unit = fu->body_unit->get_code();
-            int handle_cudnn = body_unit.find("cudnn_handle");
-            int handle_cublas = body_unit.find("cublas_handle");
-            if (handle_cudnn >= 0)
-            {
-                kernel_handle[kernel] = "cudnn_handle_" + kernel_stream[kernel];
-                cudnn_handle_stream[kernel_handle[kernel]] = kernel_stream[kernel];
-            }
-            if (handle_cublas >= 0)
-            {
-                kernel_handle[kernel] = "cublas_handle_" + kernel_stream[kernel];
-                cublas_handle_stream[kernel_handle[kernel]] = kernel_stream[kernel];
-            }
-
-            // conv kernels in the the stream shares the same workspace_ptr
-            if (gnode->get_op_type() == "Convolution")
-            {
-                std::string s_workspace =
-                    "workspace_ptr_" + to_string(async_info.execution_stream->get_stream_id());
-                int pos = body_unit.find("workspace_ptr");
-                while (pos >= 0)
+                // get kernel's handle name
+                string body_unit = fu->body_unit->get_code();
+                int handle_cudnn = body_unit.find("cudnn_handle");
+                int handle_cublas = body_unit.find("cublas_handle");
+                if (handle_cudnn >= 0)
                 {
-                    body_unit.replace(pos, 13, s_workspace);
-                    pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
+                    string handle = "cudnn_handle_" + stream_name;
+                    (*gnode)["handle"] = handle;
+                    dev_cudnn_handle[device_id].insert(handle);
+                    handle_stream[handle] = stream_name;
                 }
-            }
-
-            string func_key = fu->signature_unit->get_code() + body_unit;
-            if (kernel->is_static_function() ||
-                decleard_function_LU.find(func_key) == decleard_function_LU.end())
-            {
-                auto functionfile = codegenerator::FunctionFile::convert_from(kernel);
-                if (FLAGS_fkernels_as_files)
+                if (handle_cublas >= 0)
                 {
-                    def << functionfile->get_extern_declare();
-                    if (FLAGS_fkernels_files_number > 0)
-                        cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
+                    string handle = "cublas_handle_" + stream_name;
+                    (*gnode)["handle"] = handle;
+                    dev_cublas_handle[device_id].insert(handle);
+                    handle_stream[handle] = stream_name;
+                }
+
+                // conv kernels in the the stream shares the same workspace_ptr
+                if (gnode->get_op_type() == "Convolution")
+                {
+                    std::string s_workspace =
+                        "workspace_ptr_" + to_string(async_info.execution_stream->get_stream_id());
+                    int pos = body_unit.find("workspace_ptr");
+                    while (pos >= 0)
+                    {
+                        body_unit.replace(pos, 13, s_workspace);
+                        pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
+                    }
+                }
+                string func_key = fu->signature_unit->get_code() + body_unit;
+                if (kernel->is_static_function() ||
+                    decleard_function_LU.find(func_key) == decleard_function_LU.end())
+                {
+                    auto functionfile = codegenerator::FunctionFile::convert_from(kernel);
+                    if (FLAGS_fkernels_as_files)
+                    {
+                        def << functionfile->get_extern_declare();
+                        if (FLAGS_fkernels_files_number > 0)
+                            cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
+                        else
+                            functionfile->save_file();
+                    }
                     else
-                        functionfile->save_file();
+                    {
+                        def << functionfile->get_code();
+                    }
+                    if (!kernel->is_static_function())
+                    {
+                        decleard_function_LU[func_key] = fu->name_unit;
+                    }
                 }
                 else
                 {
-                    def << functionfile->get_code();
+                    //def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
                 }
-
-                if (!kernel->is_static_function())
+                if (FLAGS_fkernels_files_number > 0)
                 {
-                    decleard_function_LU[func_key] = fu->name_unit;
+                    cuda_kernel_n++;
+                    cuda_kernel_n %= FLAGS_fkernels_files_number;
                 }
-            }
-            else
-            {
-                //def << "// Function declared:" << kernel->body_unit->symbol << "\n\n";
-            }
-            if (FLAGS_fkernels_files_number > 0)
-            {
-                cuda_kernel_n++;
-                cuda_kernel_n %= FLAGS_fkernels_files_number;
             }
         }
         if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
@@ -484,13 +525,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
         lu << "\n";
         // cublas and cudnn handle decl
-        for (auto cudnn_handle : cudnn_handle_stream)
+        for (auto& info : dev_cudnn_handle)
         {
-            lu << "cudnnHandle_t " << cudnn_handle.first << ";\n";
+            for (auto& cudnn_handle : info.second)
+                lu << "cudnnHandle_t " << cudnn_handle << ";\n";
         }
-        for (auto cublas_handle : cublas_handle_stream)
+        for (auto& info : dev_cublas_handle)
         {
-            lu << "cublasHandle_t " << cublas_handle.first << ";\n";
+            for (auto& cublas_handle : info.second)
+                lu << "cublasHandle_t " << cublas_handle << ";\n";
         }
         lu << "\n";
         // stream and event declaration
@@ -517,90 +560,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     bool enable_timing = FLAGS_fcodegen_timing;
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
 
-    // Generate graph configs
-    {
-        lu_kernel_entry << "\n#ifndef __NNFUSION_GRAPH_CONFIG__\n";
-        lu_kernel_entry << "#define __NNFUSION_GRAPH_CONFIG__\n";
-        lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_NUM " << tu->arg.size() << "\n";
-        lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_NUM " << tu->out.size() << "\n";
-        for (int i = 0; i < tu->arg.size(); i++)
-        {
-            lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_DTYPE_" << i << " "
-                            << tu->arg[i]->get_element_type().c_type_string() << "\n";
-            lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_SHAPE_" << i << " {";
-            auto& shape = tu->arg[i]->get_shape();
-            for (int j = 0; j < shape.size(); ++j)
-            {
-                if (j > 0)
-                    lu_kernel_entry << ", ";
-                lu_kernel_entry << shape[j];
-            }
-            lu_kernel_entry << "}\n";
-        }
-        for (int i = 0; i < tu->out.size(); i++)
-        {
-            lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_DTYPE_" << i << " "
-                            << tu->out[i]->get_element_type().c_type_string() << "\n";
-            lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_SHAPE_" << i << " {";
-            auto& shape = tu->out[i]->get_shape();
-            for (int j = 0; j < shape.size(); ++j)
-            {
-                if (j > 0)
-                    lu_kernel_entry << ", ";
-                lu_kernel_entry << shape[j];
-            }
-            lu_kernel_entry << "}\n";
-        }
-        lu_kernel_entry << "#endif\n\n";
-    }
-
     // Generate caller function body
     {
-        unordered_set<string> allocated;
-        std::string kernel_entry_params;
-        std::string kernel_entry_args;
-
-        lu_kernel_entry << "extern \"C\" int kernel_entry(";
-        // Add param
-        {
-            vector<string> params;
-            vector<string> args;
-            for (int i = 0; i < tu->arg.size(); i++)
-            {
-                auto tv = tu->arg[i];
-                string type = tv->get_element_type().c_type_string();
-                stringstream ss;
-                ss << type << "* " << tv->get_name();
-                allocated.insert(tv->get_name());
-                params.push_back(ss.str());
-                args.push_back(tv->get_name());
-            }
-
-            for (int i = 0; i < tu->out.size(); i++)
-            {
-                auto tv = tu->out[i];
-                string type = tv->get_element_type().c_type_string();
-                stringstream ss;
-                ss << type << "** " << tv->get_name();
-                allocated.insert(tv->get_name());
-                params.push_back(ss.str());
-                args.push_back(tv->get_name());
-            }
-            kernel_entry_params = join(params, ", ");
-            kernel_entry_args = join(args, ", ");
-
-            lu_kernel_entry << join(params, ", ");
-        }
-        lu_kernel_entry << ")";
-        lu_kernel_entry_header << lu_kernel_entry.get_code();
-        lu_kernel_entry << "\n";
-        lu_kernel_entry.block_begin();
-
-        // reset event/notification
-        lu_kernel_entry << CPU_async_manager->emit_event_reset()->get_code();
-        if (CPU_async_manager->num_non_default_stream() > 0)
-            lu_kernel_entry << "default_barrier.Reset();\n";
-
         //Planning
         size_t total_alloc = 0;
         for (const auto& allocator : allocator_list)
@@ -625,255 +586,326 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (CUDA_async_manager->num_event() > 0)
                 lu_main_init << CUDA_async_manager->emit_event_init()->get_code();
 
-            for (auto cudnn_handle : cudnn_handle_stream)
+            for (auto& info : dev_cudnn_handle)
             {
-                lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&" << cudnn_handle.first << "));\n";
-                if (cudnn_handle.second != "0")
-                    lu_main_init << "CUDNN_SAFE_CALL(cudnnSetStream(" << cudnn_handle.first << ", "
-                                 << cudnn_handle.second << "));\n";
+                int device_id = info.first;
+                lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                for (auto& cudnn_handle : info.second)
+                {
+                    lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&" << cudnn_handle << "));\n";
+                    auto stream = handle_stream[cudnn_handle];
+                    if (stream != "0")
+                        lu_main_init << "CUDNN_SAFE_CALL(cudnnSetStream(" << cudnn_handle << ", "
+                                     << stream << "));\n";
+                }
             }
-            for (auto cublas_handle : cublas_handle_stream)
+            for (auto& info : dev_cublas_handle)
             {
-                lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&" << cublas_handle.first << "));\n";
-                if (cublas_handle.second != "0")
-                    lu_main_init << "CUBLAS_SAFE_CALL(cublasSetStream(" << cublas_handle.first
-                                 << ", " << cublas_handle.second << "));\n";
+                int device_id = info.first;
+                lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                for (auto& cublas_handle : info.second)
+                {
+                    lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&" << cublas_handle << "));\n";
+                    auto stream = handle_stream[cublas_handle];
+                    if (stream != "0")
+                        lu_main_init << "CUBLAS_SAFE_CALL(cublasSetStream(" << cublas_handle << ", "
+                                     << stream << "));\n";
+                }
             }
-            // if (global_required.count("declaration::global_cublas_handle") > 0)
-            // {
-            //     lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&global_cublas_handle));\n";
-            // }
-            // if (global_required.count("declaration::global_cudnn_handle") > 0)
-            // {
-            //     lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&global_cudnn_handle));\n";
-            // }
             if (global_required.count("declaration::num_SMs") > 0)
             {
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
-            if (enable_timing)
-            {
-                lu_kernel_entry << "static cudaEvent_t hEvents[" << kernels.size() << "];\n";
-                lu_kernel_entry << "size_t eventCnt = 0;\n";
-                lu_kernel_entry << "if (!hEvents[eventCnt]) "
-                                   "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
-                lu_kernel_entry << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
-            }
             //const
             set<string> constant_vals;
-            // size_t kernel_order = 0;
-            std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> thread_kernels_entry;
+            std::unordered_map<string, vector<nnfusion::ir::Instruction::Pointer>>
+                thread_kernels_entry;
             std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_func_call;
-            for (auto kernel : kernels)
+            int pre_dev_id = 0;
+            lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << pre_dev_id << "));\n";
+            for (auto iterator : prog)
             {
-                auto gnode = kernel->m_context->gnode;
-                auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                auto thread = async_info.execution_thread;
-                FunctionUnit_p fu = kernel->get_or_emit_source();
-                std::string func_name;
-                if (kernel->is_static_function())
+                for (auto ins : *iterator)
                 {
-                    func_name = fu->name_unit->get_code();
-                }
-                else
-                {
-                    std::string body_unit = fu->body_unit->get_code();
-                    // conv kernels in the the stream shares the same workspace_ptr
-                    if (gnode->get_op_type() == "Convolution")
+                    auto kernel = ins->getKernel();
+                    auto gnode = ins->getGNode();
+                    auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
+                    int device_id = (*ins)["DeviceID"].as<int>();
+                    auto thread = async_info.execution_thread;
+                    auto thread_name = thread->get_name();
+
+                    if (!kernel)
                     {
-                        std::string s_workspace =
-                            "workspace_ptr_" +
-                            to_string(async_info.execution_stream->get_stream_id());
-                        int pos = body_unit.find("workspace_ptr");
-                        while (pos >= 0)
+                        if (ins->name() == "Memcpy")
                         {
-                            body_unit.replace(pos, 13, s_workspace);
-                            pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
+                            if ((*ins)["Memcpy_Constant_or_Variable"].is_valid() &&
+                                (*ins)["Memcpy_Constant_or_Variable"].as<bool>())
+                            {
+                                // lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id
+                                //              << "));\n";
+                                lu_main_init << func_call_codegen(ins, true)->get_code();
+                                if (enable_rt_const_folding)
+                                {
+                                    auto& outputs = ins->get_outputs();
+                                    NNFUSION_CHECK(outputs.size() == 1);
+                                    std::string out = outputs[0]->get_name();
+                                    constant_vals.insert(out);
+                                }
+                            }
+                            else
+                            {
+                                thread_kernels_entry[thread_name].push_back(ins);
+                            }
+                        }
+                        continue;
+                    }
+                    FunctionUnit_p fu = kernel->get_or_emit_source(true);
+                    std::string func_name;
+                    if (!kernel->is_eliminative())
+                    {
+                        if (kernel->is_static_function())
+                        {
+                            func_name = fu->name_unit->get_code();
+                        }
+                        else
+                        {
+                            std::string body_unit = fu->body_unit->get_code();
+                            // conv kernels in the the stream shares the same workspace_ptr
+                            if (gnode->get_op_type() == "Convolution")
+                            {
+                                std::string s_workspace =
+                                    "workspace_ptr_" +
+                                    to_string(async_info.execution_stream->get_stream_id());
+                                int pos = body_unit.find("workspace_ptr");
+                                while (pos >= 0)
+                                {
+                                    body_unit.replace(pos, 13, s_workspace);
+                                    pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
+                                }
+                            }
+                            string func_key = fu->signature_unit->get_code() + body_unit;
+                            NNFUSION_CHECK(decleard_function_LU.find(func_key) !=
+                                           decleard_function_LU.end());
+                            func_name = decleard_function_LU[func_key]->get_code();
                         }
                     }
-                    string func_key = fu->signature_unit->get_code() + body_unit;
-                    NNFUSION_CHECK(decleard_function_LU.find(func_key) !=
-                                   decleard_function_LU.end());
-                    func_name = decleard_function_LU[func_key]->get_code();
-                }
-                // get kernel func call
-                std::string function_call = fu->get_specialized_funciton_call(func_name);
-                int pos_right = function_call.find(">>>(");
-                if (pos_right >= 0)
-                {
-                    function_call.insert(pos_right, ", " + kernel_stream[kernel]);
+                    // get kernel func call
+                    std::string function_call = fu->get_specialized_funciton_call(func_name);
+                    int pos_right = function_call.find(">>>(");
+                    if (pos_right >= 0)
+                    {
 #ifdef __USING_HOST_CALL_FORMAT___
-                    // Turn to Host Call Format in kernel_entry()
-                    int pos_left = function_call.find("<<<");
-                    NNFUSION_CHECK(pos_left >= 0);
-                    function_call = function_call.substr(0, pos_left) + "_Call(" +
-                                    function_call.substr(pos_left + sizeof("<<<") - 1);
+                        // Turn to Host Call Format in kernel_entry()
+                        int pos_left = function_call.find("<<<");
+                        NNFUSION_CHECK(pos_left >= 0);
+                        function_call = function_call.substr(0, pos_left) + "_Call(" +
+                                        function_call.substr(pos_left + sizeof("<<<") - 1);
 
-                    pos_right = function_call.find(">>>(");
-                    NNFUSION_CHECK(pos_right >= 0);
-                    function_call = function_call.substr(0, pos_right) + ", " +
-                                    function_call.substr(pos_right + sizeof(">>>(") - 1);
+                        pos_right = function_call.find(">>>(");
+                        NNFUSION_CHECK(pos_right >= 0);
+                        function_call = function_call.substr(0, pos_right) + ", " +
+                                        function_call.substr(pos_right + sizeof(">>>(") - 1);
 #endif
-                }
-                // add stream or handle for cudalib emitter function call
-                else
-                {
-                    int pos = function_call.find("(");
-                    if (kernel_handle.find(kernel) != kernel_handle.end())
-                        function_call.insert(pos + 1, kernel_handle[kernel] + ", ");
-
-                    if (fu->body_unit->get_code().find("stream") != string::npos)
-                        function_call.insert(pos + 1, kernel_stream[kernel] + ", ");
-                }
-                kernel_func_call[kernel] = function_call;
-
-                if (func_name.compare(0, 9, "Constant_") == 0 ||
-                    func_name.compare(0, 9, "Variable_") == 0)
-                {
-                    NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
-                        << "Kernel function calls in cuda_init() should use default stream.";
-                    // if (!async_info.wait_events.empty())
-                    // {
-                    //     for (auto event : async_info.wait_events)
-                    //     {
-                    //         lu_main_init
-                    //             << CUDA_async_manager->emit_event_wait(async_info.execution_stream, event)
-                    //                     ->get_code();
-                    //     }
-                    // }
-                    auto function_call = kernel_func_call[kernel];
-                    lu_main_init << function_call;
-                    // if (async_info.record_event != nullptr)
-                    // {
-                    //     lu_main_init
-                    //         << CUDA_async_manager->emit_event_record(async_info.record_event)->get_code();
-                    // }
-
-                    if (enable_rt_const_folding)
-                    {
-                        for (auto& out : kernel->m_context->output_names)
-                            constant_vals.insert(out);
                     }
-                }
-                else
-                {
-                    // Put constant-able node into cuda_init();
-                    bool const_inputs = true;
-                    for (auto& in : kernel->m_context->input_names)
-                    {
-                        if (constant_vals.find(in) == constant_vals.end())
-                        {
-                            const_inputs = false;
-                            break;
-                        }
-                    }
-                    if (const_inputs)
-                    {
-                        for (auto& out : kernel->m_context->output_names)
-                        {
-                            constant_vals.insert(out);
-                        }
-                    }
+                    kernel_func_call[kernel] = function_call;
 
-                    // Put memcpy here
-                    lu_kernel_entry << kernel_memcpy[kernel.get()];
-
-                    if (const_inputs)
+                    if (gnode->is_constant() || gnode->is_variable())
                     {
                         NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
                             << "Kernel function calls in cuda_init() should use default stream.";
-                        // if (!async_info.wait_events.empty())
-                        // {
-                        //     for (auto event : async_info.wait_events)
-                        //     {
-                        //         lu_main_init
-                        //             << CUDA_async_manager->emit_event_wait(async_info.execution_stream, event)
-                        //                     ->get_code();
-                        //     }
-                        // }
+                        if (device_id != pre_dev_id)
+                        {
+                            lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                            pre_dev_id = device_id;
+                        }
                         auto function_call = kernel_func_call[kernel];
-                        lu_main_init << function_call;
-                        // if (async_info.record_event != nullptr)
-                        // {
-                        //     lu_main_init
-                        //         << CUDA_async_manager->emit_event_record(async_info.record_event)->get_code();
-                        // }
+                        lu_main_init << func_call_codegen(ins, true, function_call)->get_code();
+                        if (enable_rt_const_folding)
+                        {
+                            for (auto& out : kernel->m_context->output_names)
+                                constant_vals.insert(out);
+                        }
                     }
                     else
                     {
-                        std::string thread_name =
-                            thread->is_default_stream() ? "default" : thread->get_name();
-                        thread_kernels_entry[thread_name].push_back(kernel);
+                        // Put constant-able node into cuda_init();
+                        bool const_inputs = true;
+                        for (auto& in : kernel->m_context->input_names)
+                        {
+                            if (constant_vals.find(in) == constant_vals.end())
+                            {
+                                const_inputs = false;
+                                break;
+                            }
+                        }
+                        if (const_inputs)
+                        {
+                            for (auto& out : kernel->m_context->output_names)
+                            {
+                                constant_vals.insert(out);
+                            }
+                        }
+
+                        if (const_inputs)
+                        {
+                            NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
+                                << "Kernel function calls in cuda_init() should use default "
+                                   "stream.";
+
+                            auto function_call = kernel_func_call[kernel];
+                            //lu_main_init << function_call;
+                            lu_main_init << func_call_codegen(ins, true, function_call)->get_code();
+                        }
+                        else
+                        {
+                            thread_kernels_entry[thread->get_name()].push_back(ins);
+                        }
                     }
                 }
             }
 
+            // Generate graph configs
+            {
+                lu_kernel_entry << "\n#ifndef __NNFUSION_GRAPH_CONFIG__\n";
+                lu_kernel_entry << "#define __NNFUSION_GRAPH_CONFIG__\n";
+                lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_NUM " << tu->arg.size() << "\n";
+                lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_NUM " << tu->out.size() << "\n";
+                for (int i = 0; i < tu->arg.size(); i++)
+                {
+                    lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_DTYPE_" << i << " "
+                                    << tu->arg[i]->get_element_type().c_type_string() << "\n";
+                    lu_kernel_entry << "#define NNFUSION_GRAPH_INPUT_SHAPE_" << i << " {";
+                    auto& shape = tu->arg[i]->get_shape();
+                    for (int j = 0; j < shape.size(); ++j)
+                    {
+                        if (j > 0)
+                            lu_kernel_entry << ", ";
+                        lu_kernel_entry << shape[j];
+                    }
+                    lu_kernel_entry << "}\n";
+                }
+                for (int i = 0; i < tu->out.size(); i++)
+                {
+                    lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_DTYPE_" << i << " "
+                                    << tu->out[i]->get_element_type().c_type_string() << "\n";
+                    lu_kernel_entry << "#define NNFUSION_GRAPH_OUTPUT_SHAPE_" << i << " {";
+                    auto& shape = tu->out[i]->get_shape();
+                    for (int j = 0; j < shape.size(); ++j)
+                    {
+                        if (j > 0)
+                            lu_kernel_entry << ", ";
+                        lu_kernel_entry << shape[j];
+                    }
+                    lu_kernel_entry << "}\n";
+                }
+                lu_kernel_entry << "#endif\n\n";
+            }
+
             // emit function calls in kernel_entry()
+            unordered_set<string> allocated;
+            std::string kernel_entry_params;
+            std::string kernel_entry_args;
+
+            lu_kernel_entry << "extern \"C\" int kernel_entry(";
+            // Add param
+            {
+                vector<string> params;
+                vector<string> args;
+                for (int i = 0; i < tu->arg.size(); i++)
+                {
+                    auto tv = tu->arg[i];
+                    string type = tv->get_element_type().c_type_string();
+                    stringstream ss;
+                    ss << type << "* " << tv->get_name();
+                    allocated.insert(tv->get_name());
+                    params.push_back(ss.str());
+                    args.push_back(tv->get_name());
+                }
+
+                for (int i = 0; i < tu->out.size(); i++)
+                {
+                    auto tv = tu->out[i];
+                    string type = tv->get_element_type().c_type_string();
+                    stringstream ss;
+                    ss << type << "** " << tv->get_name();
+                    allocated.insert(tv->get_name());
+                    params.push_back(ss.str());
+                    args.push_back(tv->get_name());
+                }
+                kernel_entry_params = join(params, ", ");
+                kernel_entry_args = join(args, ", ");
+
+                lu_kernel_entry << join(params, ", ");
+            }
+            lu_kernel_entry << ")";
+            lu_kernel_entry_header << lu_kernel_entry.get_code();
+            lu_kernel_entry << "\n";
+            lu_kernel_entry.block_begin();
+
+            // reset event/notification
+            lu_kernel_entry << CPU_async_manager->emit_event_reset()->get_code();
+            if (CPU_async_manager->num_non_default_stream() > 0)
+                lu_kernel_entry << "default_barrier.Reset();\n";
+
             int thread_index = 0;
             int thread_func_call_count = 1;
             for (auto& tk : thread_kernels_entry)
             {
                 size_t kernel_order = 0;
                 auto& thread_name = tk.first;
-                if (thread_name != "default")
+                NNFUSION_CHECK(tk.second.size() > 0);
+                int device_id = (*tk.second[0])["DeviceID"].as<int>();
+                if (thread_name != "default_thread")
                 {
                     // add thread_calls definition
                     lu_thread_func_call << "extern \"C\" void " << thread_name << "(";
                     lu_thread_func_call << kernel_entry_params << ")\n";
                     lu_thread_func_call.block_begin();
-                    //int func_call_count = 1;
-                    for (auto kernel : tk.second)
+                    lu_thread_func_call << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                    if (enable_timing)
                     {
-                        auto gnode = kernel->m_context->gnode;
-                        auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+                        lu_thread_func_call << "static cudaEvent_t hEvents[" << tk.second.size() + 1
+                                            << "];\n";
+                        lu_thread_func_call << "size_t eventCnt = 0;\n";
+                        lu_thread_func_call
+                            << "if (!hEvents[eventCnt]) "
+                               "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                        lu_thread_func_call
+                            << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+                    }
 
-                        const string node_name = (kernel->m_context->gnode)
-                                                     ? kernel->m_context->gnode->get_name()
-                                                     : "internal_node";
+                    for (auto ins : tk.second)
+                    {
+                        auto kernel = ins->getKernel();
+                        if (!kernel)
+                        {
+                            if (ins->name() == "Memcpy")
+                            {
+                                lu_thread_func_call << " // order=" << ++kernel_order
+                                                    << ", name=memcpy\n";
+                                lu_thread_func_call << func_call_codegen(ins)->get_code();
+                                if (enable_timing)
+                                {
+                                    lu_thread_func_call
+                                        << "if (!hEvents[eventCnt]) "
+                                           "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                                    lu_thread_func_call << "CUDA_SAFE_CALL(cudaEventRecord(hEvents["
+                                                           "eventCnt++]));\n";
+                                }
+                            }
+                            continue;
+                        }
+                        auto gnode = ins->getGNode();
+                        auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
+                        const string node_name = gnode ? gnode->get_name() : "internal_node";
 
                         lu_thread_func_call << " // order=" << ++kernel_order
                                             << ", name=" << node_name << "\n";
-                        if (kernel->is_eliminative())
-                            lu_thread_func_call << "// eliminated\n";
-
-                        if (!async_info.wait_barriers.empty())
-                        {
-                            for (auto barrier : async_info.wait_barriers)
-                            {
-                                lu_thread_func_call
-                                    << CPU_async_manager
-                                           ->emit_event_wait(async_info.execution_thread, barrier)
-                                           ->get_code();
-                            }
-                        }
-
-                        if (!async_info.wait_events.empty())
-                        {
-                            for (auto event : async_info.wait_events)
-                            {
-                                lu_thread_func_call
-                                    << CUDA_async_manager
-                                           ->emit_event_wait(async_info.execution_stream, event)
-                                           ->get_code();
-                            }
-                        }
-
                         auto function_call = kernel_func_call[kernel];
-                        lu_thread_func_call << function_call;
 
-                        if (async_info.record_event != nullptr)
-                        {
-                            lu_thread_func_call
-                                << CUDA_async_manager->emit_event_record(async_info.record_event)
-                                       ->get_code();
-                        }
-                        if (async_info.notify_barrier != nullptr)
-                        {
-                            lu_thread_func_call
-                                << CPU_async_manager->emit_event_record(async_info.notify_barrier)
-                                       ->get_code();
-                        }
+                        lu_thread_func_call
+                            << func_call_codegen(ins, false, function_call)->get_code();
 
                         if (enable_debug && !gnode->get_op_ptr()->is_output())
                         {
@@ -901,6 +933,21 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         }
                     }
                     lu_thread_func_call << "default_barrier.Notify();\n";
+
+                    if (enable_timing)
+                    {
+                        lu_thread_func_call << "// Output Timing Result:\n";
+                        lu_thread_func_call << "CUDA_SAFE_CALL(cudaDeviceSynchronize());\n";
+                        lu_thread_func_call << "float total_ms = 0;\n";
+                        lu_thread_func_call
+                            << "for (size_t i = 1; i < eventCnt; ++i) { float ms; "
+                               "CUDA_SAFE_CALL(cudaEventElapsedTime(&ms, hEvents[i - 1], "
+                               "hEvents[i])); "
+                               "printf(\"%zd: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
+                        lu_thread_func_call
+                            << "printf(\" " << thread_name
+                            << ": Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
+                    }
                     lu_thread_func_call.block_end();
                     // add function call to kernel entry
                     std::string std_thread_func_name =
@@ -920,80 +967,83 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 ++thread_index;
             }
 
-            if (thread_kernels_entry.find("default") != thread_kernels_entry.end())
+            if (thread_kernels_entry.find("default_thread") != thread_kernels_entry.end())
             {
                 size_t kernel_order = 0;
-                for (auto kernel : thread_kernels_entry["default"])
+                auto& ins_vec = thread_kernels_entry["default_thread"];
+                NNFUSION_CHECK(ins_vec.size() > 0);
+                int device_id = (*ins_vec[0])["DeviceID"].as<int>();
+                lu_kernel_entry << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                if (enable_timing)
                 {
-                    const string node_name = (kernel->m_context->gnode)
-                                                 ? kernel->m_context->gnode->get_name()
-                                                 : "internal_node";
+                    lu_kernel_entry << "static cudaEvent_t hEvents[" << ins_vec.size() + 1
+                                    << "];\n";
+                    lu_kernel_entry << "size_t eventCnt = 0;\n";
+                    lu_kernel_entry << "if (!hEvents[eventCnt]) "
+                                       "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                    lu_kernel_entry << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+                }
+                for (auto ins : ins_vec)
+                {
+                    auto kernel = ins->getKernel();
+                    auto gnode = ins->getGNode();
+                    if (!kernel)
+                    {
+                        if (ins->name() == "Memcpy")
+                        {
+                            lu_kernel_entry << " // order=" << ++kernel_order << ", name=memcpy\n";
+                            lu_kernel_entry << func_call_codegen(ins)->get_code();
+                            if (enable_timing)
+                            {
+                                lu_kernel_entry
+                                    << "if (!hEvents[eventCnt]) "
+                                       "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                                lu_kernel_entry
+                                    << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+                            }
+                        }
+                        continue;
+                    }
+                    const string node_name = gnode ? gnode->get_name() : "internal_node";
                     lu_kernel_entry << " // order=" << ++kernel_order << ", name=" << node_name
                                     << "\n";
-                    if (kernel->is_eliminative())
-                        lu_kernel_entry << "// eliminated\n";
-                    {
-                        auto gnode = kernel->m_context->gnode;
-                        auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                        if (!async_info.wait_barriers.empty())
-                        {
-                            for (auto barrier : async_info.wait_barriers)
-                            {
-                                lu_kernel_entry
-                                    << CPU_async_manager
-                                           ->emit_event_wait(async_info.execution_thread, barrier)
-                                           ->get_code();
-                            }
-                        }
+                    auto func_call = kernel_func_call[kernel];
+                    lu_kernel_entry << func_call_codegen(ins, false, func_call)->get_code();
 
-                        if (!async_info.wait_events.empty())
+                    if (enable_debug && !gnode->get_op_ptr()->is_output())
+                    {
+                        for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                         {
-                            for (auto event : async_info.wait_events)
-                            {
-                                lu_kernel_entry
-                                    << CUDA_async_manager
-                                           ->emit_event_wait(async_info.execution_stream, event)
-                                           ->get_code();
-                            }
-                        }
-                        lu_kernel_entry << kernel_func_call[kernel];
-                        if (async_info.record_event != nullptr)
-                        {
-                            lu_kernel_entry
-                                << CUDA_async_manager->emit_event_record(async_info.record_event)
-                                       ->get_code();
-                        }
-                        if (async_info.notify_barrier != nullptr)
-                        {
-                            lu_kernel_entry
-                                << CPU_async_manager->emit_event_record(async_info.notify_barrier)
-                                       ->get_code();
-                        }
-                        if (enable_debug && !gnode->get_op_ptr()->is_output())
-                        {
-                            for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
-                            {
-                                if (kernel->m_context->outputs[i]
-                                        ->get_element_type()
-                                        .c_type_string() != "float")
-                                    continue;
-                                auto out_name = kernel->m_context->output_names[i];
-                                lu_kernel_entry << "Debug(\"" << node_name << ", " << out_name
-                                                << "\", " << out_name << ", \""
-                                                << join(kernel->m_context->input_names) << "\", "
-                                                << kernel->m_context->outputs[i]->size(false)
-                                                << ");\n";
-                            }
-                        }
-                        if (enable_timing)
-                        {
-                            lu_kernel_entry
-                                << "if (!hEvents[eventCnt]) "
-                                   "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
-                            lu_kernel_entry
-                                << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+                            if (kernel->m_context->outputs[i]->get_element_type().c_type_string() !=
+                                "float")
+                                continue;
+                            auto out_name = kernel->m_context->output_names[i];
+                            lu_kernel_entry << "Debug(\"" << node_name << ", " << out_name << "\", "
+                                            << out_name << ", \""
+                                            << join(kernel->m_context->input_names) << "\", "
+                                            << kernel->m_context->outputs[i]->size(false) << ");\n";
                         }
                     }
+                    if (enable_timing)
+                    {
+                        lu_kernel_entry << "if (!hEvents[eventCnt]) "
+                                           "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
+                        lu_kernel_entry
+                            << "CUDA_SAFE_CALL(cudaEventRecord(hEvents[eventCnt++]));\n";
+                    }
+                }
+
+                if (enable_timing)
+                {
+                    lu_kernel_entry << "// Output Timing Result:\n";
+                    lu_kernel_entry << "CUDA_SAFE_CALL(cudaDeviceSynchronize());\n";
+                    lu_kernel_entry << "float total_ms = 0;\n";
+                    lu_kernel_entry
+                        << "for (size_t i = 1; i < eventCnt; ++i) { float ms; "
+                           "CUDA_SAFE_CALL(cudaEventElapsedTime(&ms, hEvents[i - 1], hEvents[i])); "
+                           "printf(\"%zd: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
+                    lu_kernel_entry << "printf(\" default thread: Timing total (except outer "
+                                       "memcpy) = %g ms.\\n\", total_ms);\n";
                 }
             }
 
@@ -1008,38 +1058,28 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_free << "delete schedule_thread_pool;\n";
             }
             // destroy handle
-            for (auto cudnn_handle : cudnn_handle_stream)
+            for (auto& info : dev_cudnn_handle)
             {
-                lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(" << cudnn_handle.first << "));\n";
+                int device_id = info.first;
+                lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                for (auto& cudnn_handle : info.second)
+                {
+                    lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(" << cudnn_handle << "));\n";
+                }
             }
-            for (auto cublas_handle : cublas_handle_stream)
+            for (auto& info : dev_cublas_handle)
             {
-                lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(" << cublas_handle.first << "));\n";
+                int device_id = info.first;
+                lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+                for (auto& cublas_handle : info.second)
+                {
+                    lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(" << cublas_handle << "));\n";
+                }
             }
-            // if (global_required.count("declaration::global_cublas_handle") > 0)
-            // {
-            //     lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(global_cublas_handle));\n";
-            // }
-            // if (global_required.count("declaration::global_cudnn_handle") > 0)
-            // {
-            //     lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(global_cudnn_handle));\n";
-            // }
             if (global_required.count("header::super_scaler"))
             {
                 lu_kernel_entry << "super_scaler_sync();\n";
                 lu_main_free << "super_scaler_finalization();\n";
-            }
-            if (enable_timing)
-            {
-                lu_kernel_entry << "// Output Timing Result:\n";
-                lu_kernel_entry << "CUDA_SAFE_CALL(cudaDeviceSynchronize());\n";
-                lu_kernel_entry << "float total_ms = 0;\n";
-                lu_kernel_entry
-                    << "for (size_t i = 1; i < eventCnt; ++i) { float ms; "
-                       "CUDA_SAFE_CALL(cudaEventElapsedTime(&ms, hEvents[i - 1], hEvents[i])); "
-                       "printf(\"%zd: %.2f ms\\n\", i, ms), total_ms += ms; }\n";
-                lu_kernel_entry
-                    << "printf(\"Timing total (except outer memcpy) = %g ms.\\n\", total_ms);\n";
             }
         }
         for (const auto& allocator : allocator_list)
@@ -1061,8 +1101,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
             if (global_required.count("header::super_scaler"))
                 lu << "super_scaler_initialization();\n";
-            else
-                lu << "CUDA_SAFE_CALL(cudaSetDevice(0));\n";
+            // else
+            //     lu << "CUDA_SAFE_CALL(cudaSetDevice(0));\n";
             lu << lu_main_init.get_code();
         }
         lu.block_end();
@@ -1411,7 +1451,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     if (CPU_async_manager->num_non_default_stream() > 0)
     {
         lu_cmake << "# need to specify the correct path of eigen\n"
-                 << "set(EIGEN_DIR \"/usr/include/eigen3\")\n"
+                 << "set(EIGEN_DIR \"/usr/include/eigen3\" CACHE STRING \"EIGEN libraries folder "
+                    "location\")\n"
                  << "include_directories(${EIGEN_DIR})\n\n";
 
         char exe_path[PATH_MAX];

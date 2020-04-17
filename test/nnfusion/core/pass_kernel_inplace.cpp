@@ -7,7 +7,7 @@
 
 #include "gtest/gtest.h"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
-#include "nnfusion/engine/pass/graph/device_dispatcher.hpp"
+#include "nnfusion/engine/pass/graph/gnode_device_dispatcher.hpp"
 #include "nnfusion/engine/pass/graph/graph_pass.hpp"
 #include "nnfusion/engine/pass/graph/kernel_selection.hpp"
 #include "nnfusion/engine/pass/graph/manager.hpp"
@@ -26,7 +26,7 @@ bool run(std::shared_ptr<nnfusion::graph::Graph> graph)
     pass_manager.register_pass<OpInplacePass>();
 
     // The graph after this pass will have selected kernels
-    pass_manager.register_pass<DefaultDeviceDispatcher>();
+    pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
     pass_manager.register_pass<DefaultKernelSelector>();
     pass_manager.run_passes(graph);
 

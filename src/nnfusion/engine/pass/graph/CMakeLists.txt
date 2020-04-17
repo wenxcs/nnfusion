@@ -10,7 +10,7 @@ set(SRC
     graph_pass.cpp
     manager.cpp
     gradient_weight_mapping_pass.cpp
-    device_dispatcher.cpp
+    gnode_device_dispatcher.cpp
     kernel_selection.cpp
     blockfusion_pass.cpp
     assign_async_info_pass.cpp

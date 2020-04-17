@@ -45,23 +45,13 @@ namespace nnfusion
             Tensor(const nnfusion::element::Type& element_type,
                    const nnfusion::PartialShape& pshape,
                    const std::string& name,
+                   NNFusion_DeviceType device_type = UNKNOWN,
                    bool is_persistent = false,
                    bool is_constant = false,
                    bool is_parameter = false,
                    bool is_RDMA_tensor = false,
                    const std::string& group = "",
-                   size_t device_id = 0);
-
-            Tensor(const nnfusion::element::Type& element_type,
-                   const nnfusion::PartialShape& pshape,
-                   const std::string& name,
-                   NNFusion_DeviceType device_type,
-                   bool is_persistent = false,
-                   bool is_constant = false,
-                   bool is_parameter = false,
-                   bool is_RDMA_tensor = false,
-                   const std::string& group = "",
-                   size_t device_id = 0);
+                   int device_id = -1);
 
             const std::string& get_name() const { return m_name; }
             void set_tensor_type(const nnfusion::element::Type& element_type,
@@ -79,6 +69,9 @@ namespace nnfusion
 
             void set_pool_offset(size_t);
             size_t get_pool_offset() const;
+            void set_pool(const std::string& pool);
+            const std::string& get_pool() const;
+            bool is_same_address(std::shared_ptr<Tensor> tensor);
             size_t size(bool in_byte = true) const;
 
             void set_root_tensor(std::shared_ptr<Tensor> root_tensor)
@@ -108,8 +101,8 @@ namespace nnfusion
             const std::string& get_group() const { return m_group; }
             void set_device_type(NNFusion_DeviceType device_type) { m_device_type = device_type; }
             NNFusion_DeviceType get_device_type() const { return m_device_type; }
-            void set_device_id(size_t device_id) { m_device_id = device_id; }
-            size_t get_device_id() const { return m_device_id; }
+            void set_device_id(int device_id) { m_device_id = device_id; }
+            int get_device_id() const { return m_device_id; }
             std::string get_device_name() const;
 
             using Pointer = std::shared_ptr<Tensor>;
@@ -127,6 +120,7 @@ namespace nnfusion
             std::string m_name;
             std::shared_ptr<layout::TensorLayout> m_tensor_layout;
             size_t m_pool_offset{SIZE_MAX};
+            std::string m_pool;
             bool m_persistent;
             bool m_constant;
             bool m_parameter;
@@ -135,7 +129,7 @@ namespace nnfusion
             size_t m_ref_count;
             std::string m_group;
             NNFusion_DeviceType m_device_type;
-            size_t m_device_id;
+            int m_device_id;
         };
 
         std::ostream& operator<<(std::ostream&, const nnfusion::descriptor::Tensor&);

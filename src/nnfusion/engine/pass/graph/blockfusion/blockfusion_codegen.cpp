@@ -3,6 +3,7 @@
 #include "blockfusion_codegen.hpp"
 #include "nnfusion/core/kernels/common_langunit.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::blockfusion;
@@ -807,6 +808,16 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_function_call()
     vector<string> names;
     set_launch_config();
 
+    auto gnode = m_context->gnode;
+    NNFUSION_CHECK_NOT_NULLPTR(gnode);
+    string stream_name = "0";
+    if ((*gnode)["Async_info"].is_valid())
+    {
+        auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
+        if (async_info.execution_stream != nullptr)
+            stream_name = async_info.execution_stream->get_name();
+    }
+
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
     names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
     // for group_sync
@@ -814,8 +825,9 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_function_call()
     {
         names.push_back(this->m_context->tensors[0]->get_name());
     }
+
     lu << "<<<dim3(" << m_gridDim.x << ", " << m_gridDim.y << ", " << m_gridDim.z << "), dim3("
-       << m_blockDim.x << ", " << m_blockDim.y << ", " << m_blockDim.z << ") , 0"
+       << m_blockDim.x << ", " << m_blockDim.y << ", " << m_blockDim.z << "), 0, " << stream_name
        << ">>>(" << join(names, ", ") << ");\n";
 
     return _lu;

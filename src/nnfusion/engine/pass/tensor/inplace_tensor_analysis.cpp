@@ -28,18 +28,18 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
 
     auto& p = tu->program;
 
-    auto get_kernel = [](std::shared_ptr<ir::Instruction> ins) {
-        auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
-                                  .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-        KernelEmitter::Pointer kernel = nullptr;
+    // auto get_kernel = [](std::shared_ptr<ir::Instruction> ins) {
+    //     auto emitted_kernel = (*ins)["Kernel_Selection_Result"]
+    //                               .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
+    //     KernelEmitter::Pointer kernel = nullptr;
 
-        if (!emitted_kernel.second->is_emitted())
-            NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
-                                           << ins->getGNode()->get_name();
-        kernel = emitted_kernel.second;
+    //     if (emitted_kernel.second->get_or_emit_source() == nullptr)
+    //         NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
+    //                                        << ins->getGNode()->get_name();
+    //     kernel = emitted_kernel.second;
 
-        return kernel;
-    };
+    //     return kernel;
+    // };
 
     struct input_info
     {
@@ -61,6 +61,8 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     {
         for (auto ins : *iterator)
         {
+            if (ins->has_name() && ins->name() == "Memcpy")
+                continue;
             auto gnode = ins->getGNode();
             orders[gnode] = node_order++;
             node_to_ins[gnode] = ins;
@@ -69,7 +71,8 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
             if (gnode->is_parameter())
                 continue;
 
-            if (auto kernel = get_kernel(ins))
+            // if (auto kernel = get_kernel(ins))
+            if (auto kernel = ins->getKernel())
             {
                 NNFUSION_CHECK_NOT_NULLPTR(kernel->m_context);
 
@@ -164,7 +167,13 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 auto output = kernel->m_context->outputs[0];
                                 auto input = input_candidates[i].second;
                                 auto input_gnode = input_candidates[i].first;
-                                auto ins = node_to_ins[input_gnode];
+                                auto input_ins = node_to_ins[input_gnode];
+
+                                if (is_persistent)
+                                {
+                                    output->set_persistent();
+                                    output->set_group("persist");
+                                }
 
                                 if (is_persistent)
                                 {
@@ -175,10 +184,10 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 std::map<std::shared_ptr<descriptor::Tensor>,
                                          std::pair<std::shared_ptr<descriptor::Tensor>, size_t>>
                                     in_place_outputs;
-                                if ((*ins)["InplaceTensorMapping"].is_valid())
+                                if ((*input_ins)["InplaceTensorMapping"].is_valid())
                                 {
                                     in_place_outputs =
-                                        (*ins)["InplaceTensorMapping"]
+                                        (*input_ins)["InplaceTensorMapping"]
                                             .as<std::map<
                                                 std::shared_ptr<descriptor::Tensor>,
                                                 std::pair<std::shared_ptr<descriptor::Tensor>,
@@ -188,7 +197,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 in_place_outputs.insert(
                                     {input, std::make_pair(output, oi_pair.input_offset)});
 
-                                (*ins)["InplaceTensorMapping"] = in_place_outputs;
+                                (*input_ins)["InplaceTensorMapping"] = in_place_outputs;
 
                                 inplace_inputs[input].input_node = gnode;
                                 inplace_inputs[input].tensor = output;
@@ -216,11 +225,15 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 // move the allocation of concat output tensor to the first input node
                                 if (i == first_candidate)
                                 {
-                                    NNFUSION_CHECK(input_gnode->liveness_new_list.count(output) ==
-                                                   0);
-                                    NNFUSION_CHECK(gnode->liveness_new_list.count(output) > 0);
-                                    input_gnode->liveness_new_list.insert(output);
-                                    gnode->liveness_new_list.erase(output);
+                                    // NNFUSION_CHECK(input_gnode->liveness_new_list.count(output) ==
+                                    //                0);
+                                    // NNFUSION_CHECK(gnode->liveness_new_list.count(output) > 0);
+                                    // input_gnode->liveness_new_list.insert(output);
+                                    // gnode->liveness_new_list.erase(output);
+                                    NNFUSION_CHECK(input_ins->liveness_new_list.count(output) == 0);
+                                    NNFUSION_CHECK(ins->liveness_new_list.count(output) > 0);
+                                    input_ins->liveness_new_list.insert(output);
+                                    ins->liveness_new_list.erase(output);
                                 }
                             }
                         }
@@ -251,13 +264,13 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             // If the inplace is destructive, the output should not overwrite the constant tensor,
                             // parameter tensor and persistent tensor, and the input must be in free_list of this node.
                             // Otherwise, it is safe to do inplace reuse.
-                            if (gnode->liveness_new_list.count(output) != 0)
+                            if (ins->liveness_new_list.count(output) != 0)
                             {
                                 if (!oi_pair.destructive ||
                                     (!input_gnode->is_constant() && !input->is_persistent() &&
                                      (inplace_inputs.count(input) == 0 ||
                                       inplace_use_count[inplace_inputs[input].tensor] == 0) &&
-                                     gnode->liveness_free_list.count(input) != 0))
+                                     ins->liveness_free_list.count(input) != 0))
                                 {
                                     in_place_outputs.insert(
                                         {output, std::make_pair(input, oi_pair.input_offset)});
@@ -289,7 +302,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                 }
 
                 // decrease inplace_use_count
-                for (std::shared_ptr<descriptor::Tensor> tensor : gnode->liveness_free_list)
+                for (std::shared_ptr<descriptor::Tensor> tensor : ins->liveness_free_list)
                 {
                     if (inplace_inputs.count(tensor) > 0)
                     {

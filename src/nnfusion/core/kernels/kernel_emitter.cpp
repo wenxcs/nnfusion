@@ -1,6 +1,8 @@
 // Microsoft (c) 2019, NNFusion Team
 
 #include "kernel_emitter.hpp"
+#include "nnfusion/engine/async_manager.hpp"
+
 #include <string>
 
 using namespace nnfusion;
@@ -111,7 +113,33 @@ LanguageUnit_p KernelEmitter::emit_function_call()
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
     names.insert(names.end(), m_context->output_names.begin(), m_context->output_names.end());
     names.insert(names.end(), m_context->tensor_names.begin(), m_context->tensor_names.end());
-    lu << "(" << join(names, ", ") << ");\n";
+    lu << "(";
+
+    auto gnode = m_context->gnode;
+    string stream_name = "0";
+    if (m_function_unit != nullptr)
+    {
+        auto sig_unit = m_function_unit->signature_unit;
+        NNFUSION_CHECK_NOT_NULLPTR(sig_unit);
+        if (sig_unit->get_code().find("cudaStream_t") != string::npos)
+        {
+            if (gnode && (*gnode)["Async_info"].is_valid())
+            {
+                auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
+                if (async_info.execution_stream != nullptr)
+                    stream_name = async_info.execution_stream->get_name();
+            }
+            lu << stream_name << ", ";
+        }
+
+        if (gnode && (*gnode)["handle"].is_valid())
+        {
+            auto& handle_name = (*gnode)["handle"].as<string>();
+            lu << handle_name << ", ";
+        }
+    }
+    lu << join(names, ", ") << ");\n";
+
     return _lu;
 }
 
@@ -153,11 +181,12 @@ LanguageUnit_p KernelEmitter::emit_comments()
     return _lu;
 }
 
-FunctionUnit_p KernelEmitter::get_or_emit_source()
+FunctionUnit_p KernelEmitter::get_or_emit_source(bool emit_func_call)
 {
     if (m_is_emitted)
     {
-        m_function_unit->call_unit = emit_function_call();
+        if (emit_func_call)
+            m_function_unit->call_unit = emit_function_call();
         return m_function_unit;
     }
     m_function_unit = emit_source();
@@ -212,50 +241,13 @@ const shared_ptr<nnfusion::descriptor::Tensor>
     KernelEmitter::allocate_tensor(Shape shape,
                                    element::Type elt,
                                    string name,
-                                   bool is_persistent,
-                                   bool is_constant,
-                                   bool is_parameter,
-                                   bool is_RDMA_tensor,
-                                   const std::string& group,
-                                   size_t device_id)
-{
-    // Internal access of this tensor should be like temp0, temp1 ...
-    // External access of this tensor should be like Conv1_temp0, Conv2_temp1...
-    ///\important Important assumption! the tensor allocated can only be seen inside the kernel.
-    string t_name = "temp" + to_string(m_context->tensors.size());
-    // Generate tensor name
-    if (name.empty())
-    {
-        name = m_context->gnode->get_op_ptr()->get_unique_name();
-        name = name + "_" + t_name;
-    }
-    auto temp_tensor = make_shared<nnfusion::descriptor::Tensor>(elt,
-                                                                 shape,
-                                                                 name,
-                                                                 is_persistent,
-                                                                 is_constant,
-                                                                 is_parameter,
-                                                                 is_RDMA_tensor,
-                                                                 group,
-                                                                 device_id);
-    m_context->tensors.push_back(move(temp_tensor));
-    m_context->tensor_names.push_back(name);
-
-    NNFUSION_LOG(INFO) << "Tensor allocated:\t" << name << ", shape is:" << shape;
-    return m_context->tensors.back();
-}
-
-const shared_ptr<nnfusion::descriptor::Tensor>
-    KernelEmitter::allocate_tensor(Shape shape,
                                    NNFusion_DeviceType device_type,
-                                   element::Type elt,
-                                   string name,
                                    bool is_persistent,
                                    bool is_constant,
                                    bool is_parameter,
                                    bool is_RDMA_tensor,
-                                   const std::string& group,
-                                   size_t device_id)
+                                   const string& group,
+                                   int device_id)
 {
     // Internal access of this tensor should be like temp0, temp1 ...
     // External access of this tensor should be like Conv1_temp0, Conv2_temp1...

@@ -149,9 +149,9 @@ namespace nnfusion
             bool is_parameter() const { return m_op_ptr->is_parameter(); }
             /// Use instance ids for comparison instead of memory addresses to improve determinism
             bool operator<(const GNode& other) const { return m_instance_id < other.m_instance_id; }
-            // \todo make the hash code of different shared_ptr that point to the same address the same
-            std::unordered_set<std::shared_ptr<descriptor::Tensor>> liveness_new_list;
-            std::unordered_set<std::shared_ptr<descriptor::Tensor>> liveness_free_list;
+            // // \todo make the hash code of different shared_ptr that point to the same address the same
+            // std::unordered_set<std::shared_ptr<descriptor::Tensor>> liveness_new_list;
+            // std::unordered_set<std::shared_ptr<descriptor::Tensor>> liveness_free_list;
 
         protected:
             size_t m_id; // m_id is for graph, the index in graph m_nodes

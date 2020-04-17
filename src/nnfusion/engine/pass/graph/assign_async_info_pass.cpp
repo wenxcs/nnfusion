@@ -11,6 +11,7 @@ DECLARE_bool(fadd_allreduce);
 DECLARE_string(fdefault_device);
 DECLARE_bool(frt_const_folding);
 DEFINE_int32(fnum_stream, 1, "Number of streams. 0 means unlimited stream numbers.");
+DECLARE_int32(fnum_device);
 
 AssignAsyncInfoPass::AssignAsyncInfoPass()
 {
@@ -48,6 +49,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                                              shared_ptr<Graph>& graph)
 {
     bool enable_rt_const_folding = FLAGS_frt_const_folding;
+    int num_device = FLAGS_fnum_device;
 
     size_t num_async_node = 0;
     static const std::unordered_set<std::string> async_node = {"AllReduce"};
@@ -67,7 +69,21 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
         {
             (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-            async_info.execution_thread = CPU_async_manager->set_stream(0, "default");
+            int device_id = (*gnode)["DeviceID"].as<int>();
+            // constant and parameter ops are in cuda_init(), and use default/main thread
+            if (gnode->get_op_type() == "Constant" || gnode->get_op_ptr()->is_parameter())
+            {
+                async_info.execution_thread = CPU_async_manager->set_stream(device_id, "default");
+            }
+            else
+            {
+                if (num_device > 1)
+                    async_info.execution_thread =
+                        CPU_async_manager->set_stream(device_id, "dev" + to_string(device_id));
+                else
+                    async_info.execution_thread =
+                        CPU_async_manager->set_stream(device_id, "default");
+            }
         }
     }
     else
@@ -83,12 +99,14 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
             if (!(*gnode)["Async_info"].is_valid())
                 (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            int device_id = (*gnode)["DeviceID"].as<int>();
             if (async_info.execution_thread == nullptr)
             {
                 // constant, parameter and variable ops are in cuda_init(), and use default/main thread
                 if (gnode->get_op_ptr()->is_tensor_op())
                 {
-                    async_info.execution_thread = CPU_async_manager->set_stream(0, "default");
+                    async_info.execution_thread =
+                        CPU_async_manager->set_stream(device_id, "default");
 
                     if (enable_rt_const_folding)
                     {
@@ -103,7 +121,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                          (*gnode)["is_async_node"].as<bool>())
                 {
                     async_info.execution_thread =
-                        CPU_async_manager->set_stream(0, "async_" + to_string(count));
+                        CPU_async_manager->set_stream(device_id, "async_" + to_string(count));
                     if (count < max_num_async_thread)
                         count += 1;
                     std::vector<std::shared_ptr<nnfusion::graph::GNode>> stack;
@@ -133,7 +151,10 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
 
                     for (auto& out_edge : gnode->get_out_edges())
                     {
-                        add_gnode(out_edge->get_dst());
+                        auto out_gnode = out_edge->get_dst();
+                        int out_device_id = (*out_gnode)["DeviceID"].as<int>();
+                        if (out_device_id == device_id)
+                            add_gnode(out_edge->get_dst());
                     }
 
                     while (!stack.empty())
@@ -144,7 +165,10 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                         cur_async_info.execution_thread = async_info.execution_thread;
                         for (auto& out_edge : cur_gnode->get_out_edges())
                         {
-                            add_gnode(out_edge->get_dst());
+                            auto out_gnode = out_edge->get_dst();
+                            int out_device_id = (*out_gnode)["DeviceID"].as<int>();
+                            if (out_device_id == device_id)
+                                add_gnode(out_edge->get_dst());
                         }
                     }
                 }
@@ -153,7 +177,8 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                     for (auto& in_edge : gnode->get_in_edges())
                     {
                         auto in_gnode = in_edge->get_src();
-                        if (!in_gnode->get_op_ptr()->is_tensor_op())
+                        int in_device_id = (*in_gnode)["DeviceID"].as<int>();
+                        if (in_device_id == device_id && !in_gnode->get_op_ptr()->is_tensor_op())
                         {
                             auto& in_async_info =
                                 (*in_gnode)["Async_info"].as<AsyncExecutionInfo>();
@@ -168,7 +193,8 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
 
                     if (async_info.execution_thread == nullptr)
                     {
-                        async_info.execution_thread = CPU_async_manager->set_stream(0, "base");
+                        async_info.execution_thread =
+                            CPU_async_manager->set_stream(device_id, "dev" + to_string(device_id));
                     }
                 }
             }
@@ -182,6 +208,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
             for (auto gnode : graph->get_ordered_ops())
             {
                 auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+                int device_id = (*gnode)["DeviceID"].as<int>();
                 bool const_inputs = true;
                 if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
                 {
@@ -209,7 +236,8 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                         {
                             constant_vals.insert(out);
                         }
-                        async_info.execution_thread = CPU_async_manager->set_stream(0, "default");
+                        async_info.execution_thread =
+                            CPU_async_manager->set_stream(device_id, "default");
                     }
                 }
                 else
@@ -230,7 +258,8 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                             auto out = gnode->get_output_tensor_ptr(i)->get_name();
                             constant_vals.insert(out);
                         }
-                        async_info.execution_thread = CPU_async_manager->set_stream(0, "default");
+                        async_info.execution_thread =
+                            CPU_async_manager->set_stream(device_id, "default");
                     }
                 }
             }
@@ -256,10 +285,11 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
             if (!(*gnode)["Async_info"].is_valid())
                 (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            int device_id = (*gnode)["DeviceID"].as<int>();
 
             if (m_device == GENERIC_CPU)
             {
-                async_info.execution_thread = async_manager->set_stream(0, "default");
+                async_info.execution_thread = async_manager->set_stream(device_id, "default");
             }
             else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
             {
@@ -267,13 +297,13 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 NNFUSION_CHECK(thread != nullptr);
                 if (thread->is_default_stream())
                 {
-                    async_info.execution_stream = async_manager->set_stream(0, "default");
+                    async_info.execution_stream = async_manager->set_stream(device_id, "default");
                 }
                 else
                 {
                     std::string thread_symbol = thread->get_symbol() + "_thread_";
                     async_info.execution_stream =
-                        async_manager->set_stream(0, thread_symbol + "base");
+                        async_manager->set_stream(device_id, thread_symbol + "base");
                 }
             }
         }
@@ -306,17 +336,18 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
             if (!(*gnode)["Async_info"].is_valid())
                 (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            int device_id = (*gnode)["DeviceID"].as<int>();
             // all constant ops use default stream
             if (gnode->get_op_ptr()->is_tensor_op())
             {
                 if (m_device == GENERIC_CPU)
-                    async_info.execution_thread = async_manager->set_stream(0, "default");
+                    async_info.execution_thread = async_manager->set_stream(device_id, "default");
                 else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
                 {
                     auto thread = async_info.execution_thread;
                     NNFUSION_CHECK(thread != nullptr);
                     NNFUSION_CHECK(thread->is_default_stream());
-                    async_info.execution_stream = async_manager->set_stream(0, "default");
+                    async_info.execution_stream = async_manager->set_stream(device_id, "default");
                 }
 
                 if (enable_rt_const_folding)
@@ -335,7 +366,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                     if (m_device == GENERIC_CPU)
                     {
                         async_info.execution_thread =
-                            async_manager->set_stream(0, "base" + std::to_string(count));
+                            async_manager->set_stream(device_id, "base" + std::to_string(count));
                     }
                     else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
                     {
@@ -343,7 +374,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                         NNFUSION_CHECK(thread != nullptr);
                         std::string thread_symbol = thread->get_symbol() + "_thread_";
                         async_info.execution_stream = async_manager->set_stream(
-                            0, thread_symbol + "base" + std::to_string(count));
+                            device_id, thread_symbol + "base" + std::to_string(count));
                     }
                 }
             }
@@ -379,6 +410,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
             for (auto gnode : graph->get_ordered_ops())
             {
                 auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+                int device_id = (*gnode)["DeviceID"].as<int>();
                 bool const_inputs = true;
                 if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
                 {
@@ -409,7 +441,8 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                         auto thread = async_info.execution_thread;
                         NNFUSION_CHECK(thread != nullptr);
                         NNFUSION_CHECK(thread->is_default_stream());
-                        async_info.execution_stream = async_manager->set_stream(0, "default");
+                        async_info.execution_stream =
+                            async_manager->set_stream(device_id, "default");
                     }
                 }
                 else
@@ -433,7 +466,8 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                         auto thread = async_info.execution_thread;
                         NNFUSION_CHECK(thread != nullptr);
                         NNFUSION_CHECK(thread->is_default_stream());
-                        async_info.execution_stream = async_manager->set_stream(0, "default");
+                        async_info.execution_stream =
+                            async_manager->set_stream(device_id, "default");
                     }
                 }
             }
@@ -467,7 +501,7 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
             auto input_stream = input_async_info.execution_stream;
             auto input_thread = input_async_info.execution_thread;
 
-            if (input_thread->get_device_name() == thread->get_device_name())
+            // if (input_thread->get_device_name() == thread->get_device_name())
             {
                 if (input_thread->get_stream_id() != thread->get_stream_id())
                 {
@@ -480,35 +514,27 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
                 }
             }
             // todo: support cross-device event
-            else
-            {
-                throw nnfusion::errors::NotSupported("Cross-device barrier is not supported.");
-            }
+            // else
+            // {
+            //     throw nnfusion::errors::NotSupported("Cross-device barrier is not supported.");
+            // }
 
             if (m_device == CUDA_GPU || m_device == ROCM_GPU)
             {
-                if (input_stream->get_device_name() == stream->get_device_name())
+                if (input_stream->get_stream_id() != stream->get_stream_id())
                 {
-                    if (input_stream->get_stream_id() != stream->get_stream_id())
+                    // Cuda streams perform implicite sychronization with default(0) stream,
+                    // so there is no need to add event emplicitely.
+                    if (stream->is_default_stream() || input_stream->is_default_stream())
                     {
-                        // Cuda streams perform implicite sychronization with default(0) stream,
-                        // so there is no need to add event emplicitely.
-                        if (stream->is_default_stream() || input_stream->is_default_stream())
-                        {
-                            continue;
-                        }
-                        if (input_async_info.record_event == nullptr)
-                        {
-                            input_async_info.record_event = CUDA_async_manager->set_event(
-                                input_stream, input_gnode->get_op_ptr());
-                        }
-                        async_info.wait_events.push_back(input_async_info.record_event);
+                        continue;
                     }
-                }
-                // todo: support cross-device events
-                else
-                {
-                    throw nnfusion::errors::NotSupported("Cross-device event is not supported.");
+                    if (input_async_info.record_event == nullptr)
+                    {
+                        input_async_info.record_event =
+                            CUDA_async_manager->set_event(input_stream, input_gnode->get_op_ptr());
+                    }
+                    async_info.wait_events.push_back(input_async_info.record_event);
                 }
             }
         }

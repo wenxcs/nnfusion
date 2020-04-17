@@ -8,8 +8,9 @@
 #include "blockfusion_pass.hpp"
 #include "codegen_dxcompute_pass.hpp"
 #include "codegen_graphcore_pass.hpp"
-#include "device_dispatcher.hpp"
 #include "gemm_fusion_pass.hpp"
+#include "gnode_device_dispatcher.hpp"
+#include "gnode_device_dispatcher.hpp"
 #include "gradient_weight_mapping_pass.hpp"
 #include "kernel_fusion_pass.hpp"
 #include "kernel_selection.hpp"
@@ -41,7 +42,7 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     pass_manager.register_pass<OpInplacePass>();
 
     // The graph after this pass will have selected kernels
-    pass_manager.register_pass<DefaultDeviceDispatcher>();
+    pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<FetchBasedSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();

@@ -113,8 +113,6 @@ FunctionFile_p FunctionFile::convert_from(std::shared_ptr<nnfusion::kernels::Ker
 
     string body_unit = fu->body_unit->get_code();
     std::string sig = fu->get_specialized_signature();
-    int handle_cudnn = body_unit.find("cudnn_handle");
-    int handle_cublas = body_unit.find("cublas_handle");
     auto gnode = kernel->m_context->gnode;
     auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
 
@@ -130,18 +128,6 @@ FunctionFile_p FunctionFile::convert_from(std::shared_ptr<nnfusion::kernels::Ker
             pos = body_unit.find("workspace_ptr", pos + s_workspace.size());
         }
     }
-
-    // add stream or handle parameter for cuda lib kernel
-    int pos = sig.find("(");
-    if (handle_cudnn >= 0)
-        sig.insert(pos + 1, "cudnnHandle_t cudnn_handle, ");
-
-    if (handle_cublas >= 0)
-        sig.insert(pos + 1, "cublasHandle_t cublas_handle, ");
-
-    if (fu->body_unit->get_code().find("stream") != string::npos)
-        sig.insert(pos + 1, "cudaStream_t stream, ");
-
     // This for cudalib call or __global__ functions;
     def << fu->comment_unit->get_code();
     def << sig << "\n";
@@ -151,7 +137,7 @@ FunctionFile_p FunctionFile::convert_from(std::shared_ptr<nnfusion::kernels::Ker
 
 #ifdef __USING_HOST_CALL_FORMAT___
     // Turn to Host Call Format in Kernel Definition
-    pos = sig.find(" __global__ ");
+    int pos = sig.find(" __global__ ");
     if (pos >= 0)
     {
         pos = sig.find("void ", pos);

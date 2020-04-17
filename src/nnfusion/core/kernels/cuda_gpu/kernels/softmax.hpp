@@ -16,6 +16,7 @@ namespace nnfusion
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
+                LanguageUnit_p emit_function_signature() override;
                 LanguageUnit_p
                     cudnn_tensor_descriptor_from_shape_for_softmax(const nnfusion::Shape& shape,
                                                                    string desc);

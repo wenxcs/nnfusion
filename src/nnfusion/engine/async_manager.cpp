@@ -15,14 +15,21 @@ Stream::Stream(size_t stream_id,
 {
     if (device_type == GENERIC_CPU)
     {
-        m_name = symbol + "_thread_" + std::to_string(stream_id);
+        m_name = symbol + "_thread";
     }
     else
     {
-        m_name = symbol + "_stream_" + std::to_string(stream_id);
+        if (is_default_stream() && (device_type == CUDA_GPU || device_type == ROCM_GPU))
+        {
+            m_name = "0";
+        }
+        else
+        {
+            m_name = symbol + "_stream";
+        }
     }
 
-    std::string dt_name = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type];
+    std::string dt_name = get_device_str(device_type);
     m_device_name = dt_name + "_" + std::to_string(device_id);
 }
 
@@ -37,11 +44,26 @@ Event::Event(size_t event_id,
 {
     if (get_device_type() == GENERIC_CPU)
     {
-        m_name = symbol + "_" + op->get_unique_name() + "_barrier_" + std::to_string(event_id);
+        m_name = symbol + "_" + op->get_unique_name() + "_barrier";
     }
     else
     {
-        m_name = symbol + "_" + op->get_unique_name() + "_event_" + std::to_string(event_id);
+        m_name = symbol + "_" + op->get_unique_name() + "_event";
+    }
+}
+Event::Event(size_t event_id, const shared_ptr<Stream>& stream, const string& symbol)
+    : m_event_id(event_id)
+    , m_stream(stream)
+    , m_symbol(symbol)
+
+{
+    if (get_device_type() == GENERIC_CPU)
+    {
+        m_name = symbol + "_barrier";
+    }
+    else
+    {
+        m_name = symbol + "_event";
     }
 }
 
@@ -65,6 +87,7 @@ shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symb
         size_t stream_id = m_stream_list.size();
         shared_ptr<Stream> stream(new Stream(stream_id, m_device_type, device_id, symbol));
         m_stream_list[search_name] = stream;
+        m_dev_stream[device_id].push_back(stream);
 
         if (symbol != "default")
             m_num_non_default_stream += 1;
@@ -86,6 +109,23 @@ shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream,
     {
         size_t event_id = m_event_list.size();
         shared_ptr<Event> event(new Event(event_id, stream, op, symbol));
+        m_event_list[search_name] = event;
+        m_dev_event[event->get_device_id()].push_back(event);
+        return event;
+    }
+}
+
+shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream, const string& symbol)
+{
+    std::string search_name = stream->get_name() + symbol + "_event";
+    if (m_event_list.find(search_name) != m_event_list.end())
+    {
+        return m_event_list[search_name];
+    }
+    else
+    {
+        size_t event_id = m_event_list.size();
+        shared_ptr<Event> event(new Event(event_id, stream, symbol));
         m_event_list[search_name] = event;
         return event;
     }
@@ -164,12 +204,17 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_init()
 {
     LanguageUnit_p _lu(new LanguageUnit("stream_init"));
     auto& lu = *_lu;
-    for (auto stream_pair : m_stream_list)
+    for (auto& info : m_dev_stream)
     {
-        // Cuda default stream(0) need not to be created.
-        if (stream_pair.second->get_symbol() != "default")
+        if (info.second.size() > 1 || !info.second[0]->is_default_stream())
+            lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
+        for (auto stream : info.second)
         {
-            lu << "cudaStreamCreate(&" << stream_pair.second->get_name() << ");\n";
+            // Cuda default stream(0) need not to be created.
+            if (stream->get_symbol() != "default")
+            {
+                lu << "cudaStreamCreate(&" << stream->get_name() << ");\n";
+            }
         }
     }
     return _lu;
@@ -180,10 +225,14 @@ LanguageUnit_p CUDAAsyncManager::emit_event_init()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_init"));
     auto& lu = *_lu;
-    for (auto event_pair : m_event_list)
+    for (auto info : m_dev_event)
     {
-        lu << "cudaEventCreateWithFlags(&" << event_pair.second->get_name()
-           << ", cudaEventDisableTiming);\n";
+        lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
+        for (auto event : info.second)
+        {
+            lu << "cudaEventCreateWithFlags(&" << event->get_name()
+               << ", cudaEventDisableTiming);\n";
+        }
     }
     return _lu;
 }
@@ -192,8 +241,8 @@ LanguageUnit_p CUDAAsyncManager::emit_event_init()
 LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
 {
     // \todo: we only support stream synchronization on the same device.
-    NNFUSION_CHECK(stream->get_device_name() == event->get_device_name())
-        << "Unsupported event wait operation: synchronize streams on two different devices";
+    // CHECK(stream->get_device_name() == event->get_device_name())
+    //     << "Unsupported event wait operation: synchronize streams on two different devices";
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
     // if (!event->is_recorded())
@@ -222,9 +271,9 @@ LanguageUnit_p CPUAsyncManager::emit_event_decl()
 // emit code for waiting cpu event/notifications. The stream/thread is blocked until the event complete.
 LanguageUnit_p CPUAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
 {
-    // \todo: we only support stream synchronization on the same device.
-    NNFUSION_CHECK(stream->get_device_name() == event->get_device_name())
-        << "Unsupported event wait operation: synchronize streams on two different devices";
+    // // \todo: we only support stream synchronization on the same device.
+    // NNFUSION_CHECK(stream->get_device_name() == event->get_device_name())
+    //     << "Unsupported event wait operation: synchronize streams on two different devices";
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
 
@@ -252,12 +301,17 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_destroy()
 {
     LanguageUnit_p _lu(new LanguageUnit("stream_del"));
     auto& lu = *_lu;
-    for (auto stream_pair : m_stream_list)
+    for (auto& info : m_dev_stream)
     {
-        // Cuda default stream(0) need not to be destroyed.
-        if (stream_pair.second->get_symbol() != "default")
+        if (info.second.size() > 1 || !info.second[0]->is_default_stream())
+            lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
+        for (auto stream : info.second)
         {
-            lu << "cudaStreamDestroy(" << stream_pair.second->get_name() << ");\n";
+            // Cuda default stream(0) need not to be destroyed.
+            if (stream->get_symbol() != "default")
+            {
+                lu << "cudaStreamDestroy(" << stream->get_name() << ");\n";
+            }
         }
     }
     return _lu;
@@ -267,10 +321,12 @@ LanguageUnit_p CUDAAsyncManager::emit_event_destroy()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_del"));
     auto& lu = *_lu;
-    for (auto event_pair : m_event_list)
+    for (auto& info : m_dev_event)
     {
+        lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
+        for (auto event : info.second)
         {
-            lu << "cudaEventDestroy(" << event_pair.second->get_name() << ");\n";
+            lu << "cudaEventDestroy(" << event->get_name() << ");\n";
         }
     }
     return _lu;
@@ -286,7 +342,7 @@ LanguageUnit_p CPUAsyncManager::emit_event_record(shared_ptr<Event> event)
 
     return _lu;
 }
-// emit code for reseting all CPU events/notifications.
+// emit code for reseting all CPU notifications.
 LanguageUnit_p CPUAsyncManager::emit_event_reset()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_reset"));
@@ -302,7 +358,7 @@ std::unordered_map<std::string, AsyncManager*> AsyncManagerFactory::m_async_mana
 
 AsyncManager* AsyncManagerFactory::get_async_manager(NNFusion_DeviceType device_type)
 {
-    std::string dt_name = (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type];
+    std::string dt_name = get_device_str(device_type);
     if (m_async_manager.find(dt_name) != m_async_manager.end())
     {
         return m_async_manager[dt_name];

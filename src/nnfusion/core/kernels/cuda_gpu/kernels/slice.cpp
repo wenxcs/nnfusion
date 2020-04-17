@@ -64,7 +64,7 @@ cuda::Slice::Slice(shared_ptr<KernelContext> ctx)
 
 bool cuda::Slice::is_eliminative()
 {
-    if (is_memcpy &&
+    if (is_memcpy && m_context->inputs[0]->get_pool() == m_context->outputs[0]->get_pool() &&
         m_context->inputs[0]->get_pool_offset() + input_offset * data_type_size ==
             m_context->outputs[0]->get_pool_offset())
         return true;

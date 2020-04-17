@@ -134,7 +134,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 for (auto kernel_reg : kernel_regs)
                 {
                     auto kernel = kernel_reg->m_factory(ctx);
-                    if (kernel->get_or_emit_source())
+                    if (kernel->get_or_emit_source(true))
                     {
                         kernels.push_back(kernel);
                         need_intra_node_threadpool |= kernel->is_parallelism();
@@ -165,7 +165,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     "AnyOP", GENERIC_CPU, DT_FLOAT);
                 NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
                 auto kernel = kernel_reg->m_factory(ctx);
-                kernel->get_or_emit_source();
+                kernel->get_or_emit_source(true);
                 kernels.push_back(kernel);
             }
         }
@@ -204,7 +204,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 return false;
             }
 
-            for (auto& it : kernel->get_or_emit_source()->dep_unit->local_symbol)
+            for (auto& it : kernel->get_or_emit_source(true)->dep_unit->local_symbol)
             {
                 re.require(it.second);
                 global_required.insert(it.second->symbol);
@@ -224,7 +224,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         LanguageUnit def("FUNCTIONS");
         for (auto kernel : kernels)
         {
-            FunctionUnit_p fu = kernel->get_or_emit_source();
+            FunctionUnit_p fu = kernel->get_or_emit_source(true);
             for (auto& it : fu->body_unit->local_symbol)
             {
                 if (it.second != fu->dep_unit)
@@ -434,7 +434,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
                 auto stream = async_info.execution_thread;
 
-                FunctionUnit_p fu = kernel->get_or_emit_source();
+                FunctionUnit_p fu = kernel->get_or_emit_source(true);
                 //std::string read_const = fu->call_unit->get_code();
                 std::string func_name = fu->name_unit->get_code();
                 // emit function calls in cpu_init()
@@ -504,7 +504,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         //   auto func1 = std::bind(kernel_func_name, param1, param2, ...);
                         //   worker_thread_pool->ScheduleSync(func1, numa_node_id);
                         int numa_node = stream_index % numa_node_num;
-                        FunctionUnit_p fu = kernel->get_or_emit_source();
+                        FunctionUnit_p fu = kernel->get_or_emit_source(true);
                         string call_str = fu->call_unit->get_code();
                         if (kernel->is_parallelism())
                         {
@@ -561,7 +561,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 for (auto kernel : stream_kernels_entry["default"])
                 {
-                    FunctionUnit_p fu = kernel->get_or_emit_source();
+                    FunctionUnit_p fu = kernel->get_or_emit_source(true);
 
                     {
                         auto gnode = kernel->m_context->gnode;
@@ -795,7 +795,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         async_manager->num_non_default_stream() > 0)
     {
         lu_cmake << "# need to specify the correct path of eigen\n"
-                 << "set(EIGEN_DIR \"/usr/include/eigen3\")\n"
+                 << "set(EIGEN_DIR \"/usr/include/eigen3\" CACHE STRING \"EIGEN libraries folder "
+                    "location\")\n"
                  << "include_directories(${EIGEN_DIR})\n\n";
     }
 

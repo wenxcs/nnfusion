@@ -8,6 +8,7 @@
 
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
@@ -62,6 +63,17 @@ add_custom_command(
 )
 endif()
 )";
+            auto CPU_async_manager =
+                nnfusion::async::AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+            if (CPU_async_manager->num_non_default_stream() > 0)
+            {
+                lu << "# need to specify the correct path of eigen\n"
+                   << "set(EIGEN_DIR \"/usr/include/eigen3\" CACHE STRING \"EIGEN libraries folder "
+                      "location\")\n"
+                   << "include_directories(${EIGEN_DIR})\n\n";
+                lu << "include(threadpool/threadpool.cmake)\n";
+                lu << "target_link_libraries(nnfusion_naive_rt threadpool)\n\n";
+            }
             return lu.get_code();
         }
 
@@ -169,7 +181,7 @@ endif()
             for (auto& k : res)
             {
                 if (k.second != nullptr && k.first == device_type() &&
-                    k.second->get_or_emit_source() != nullptr)
+                    k.second->get_or_emit_source(true) != nullptr)
                 {
                     return k.second;
                 }
@@ -178,7 +190,7 @@ endif()
             for (auto& k : res)
             {
                 if (k.second != nullptr && k.first == NNFusion_DeviceType::CUDA_GPU &&
-                    k.second->get_or_emit_source() != nullptr)
+                    k.second->get_or_emit_source(true) != nullptr)
                 {
                     return k.second;
                 }

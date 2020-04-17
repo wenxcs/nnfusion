@@ -4,6 +4,7 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 #include "nnfusion/engine/interpreter.hpp"
 #include "nnfusion/engine/op.hpp"
 
@@ -24,8 +25,9 @@ namespace nnfusion
         virtual std::string get_target_name(void);
         virtual std::vector<shared_ptr<const kernels::KernelRegistration>>
             find_backend_kernels(const std::string& op_name, const shared_ptr<KernelContext>& ctx);
-        // virtual KernelEmitter::Pointer
-        //     match_kernel(std::vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>& res);
+        virtual nnfusion::LanguageUnit_p func_call_codegen(nnfusion::ir::Instruction::Pointer ins,
+                                                           bool func_call_only = false,
+                                                           const std::string& func_call = "");
         virtual NNFusion_DeviceType device_type() { return NNFusion_DeviceType::CUDA_GPU; }
     private:
         virtual bool projgen();

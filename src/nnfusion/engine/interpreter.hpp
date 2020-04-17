@@ -90,6 +90,10 @@ namespace nnfusion
 
         shared_ptr<InterpreterContext> m_trans_ctx;
         shared_ptr<vector<shared_ptr<IInterpreterPass>>> m_passes;
+
+    private:
+        void add_memcpy_ir(shared_ptr<nnfusion::graph::GNode> gnode,
+                           nnfusion::ir::BasicBlock::Pointer bb_main);
     };
 
     using Interpreter_p = shared_ptr<Interpreter>;

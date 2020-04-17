@@ -17,7 +17,7 @@ using namespace nnfusion::pass::graph;
 using namespace nnfusion::kernels;
 
 DEFINE_int32(fkernel_fusion_level, 3, "");
-DECLARE_string(fdefault_device);
+// DECLARE_string(fdefault_device);
 
 const static int DEFAULT_GROUP_ID = -1;
 
@@ -61,6 +61,8 @@ namespace
         size_t num_outputs;
 
         size_t output_size = 0; // used in element_group
+        NNFusion_DeviceType device_type = UNKNOWN;
+        int device_id = -1;
 
         std::vector<size_t> nodes;
     };
@@ -109,18 +111,13 @@ private:
         static const std::vector<std::string> fuseop_list = {};
         //{"MatMul", "Split", "Concat", "ConcatV2", "Reshape"};
 
-        if (FLAGS_fdefault_device == "CPU")
-        {
-            // CPU backend will use eigen kernel for the following ops.
-            static const std::vector<std::string> blacklist = {
-                "Softmax", "Cos", "Sin", "Tanh", "Exp", "Log", "Power", "Sigmoid"};
-            op_blacklist.insert(blacklist.begin(), blacklist.end());
-        }
-        else
-        {
-            static const std::vector<std::string> blacklist = {"Softmax"};
-            op_blacklist.insert(blacklist.begin(), blacklist.end());
-        }
+        // CPU backend will use eigen kernel for the following ops.
+        static const std::vector<std::string> cpu_blacklist = {
+            "Softmax", "Cos", "Sin", "Tanh", "Exp", "Log", "Power", "Sigmoid"};
+        cpu_op_blacklist.insert(cpu_blacklist.begin(), cpu_blacklist.end());
+
+        static const std::vector<std::string> blacklist = {"Softmax"};
+        op_blacklist.insert(blacklist.begin(), blacklist.end());
 
         fusion_ops.insert(fuseop_list.begin(), fuseop_list.end());
 
@@ -134,9 +131,10 @@ private:
                               std::deque<size_t>& fuse_ready,
                               std::deque<size_t>& elem_ready)
     {
+        auto dev_type = (*node)["DeviceType"].as<NNFusion_DeviceType>();
         auto op = node->get_op_ptr();
-
-        if (op_blacklist.count(node->get_op_type()) > 0)
+        if ((dev_type == GENERIC_CPU && cpu_op_blacklist.count(node->get_op_type()) > 0) ||
+            dev_type != GENERIC_CPU && op_blacklist.count(node->get_op_type()) > 0)
         {
             ready.push(node->get_id());
             return;
@@ -149,7 +147,7 @@ private:
         }
         else if (reshape && !(reshape->get_is_transpose()) &&
                  (shape_size(node->get_input_shape(0)) == shape_size(node->get_output_shape(0))) &&
-                 FLAGS_fdefault_device != "CPU")
+                 dev_type != GENERIC_CPU)
         {
             // CPU backend will not fuse reshape kernel due to memcpy has better performance.
             elem_ready.push_front(node->get_id());
@@ -203,9 +201,12 @@ private:
         WorkState state = PROCESS_READY_NODE;
         std::shared_ptr<FuseGroup> cur_group = nullptr;
         std::shared_ptr<FuseGroup> cur_elemgroup = nullptr;
+        std::unordered_map<string, std::shared_ptr<FuseGroup>> dev_group;
 
         for (auto node : m_graph->get_ordered_ops())
         {
+            auto n_device_type = (*node)["DeviceType"].as<NNFusion_DeviceType>();
+            auto n_device_id = (*node)["DeviceID"].as<int>();
             size_t id = node->get_id();
             m_nodes[id] = std::make_shared<TaggedNode>();
             m_nodes[id]->node = node;
@@ -246,13 +247,13 @@ private:
                     if (elem_ready.empty())
                     {
                         // Close the cur_group
-                        if (cur_group && cur_group->nodes.size() > 0)
+                        if (cur_group && cur_group->nodes.size() > 0 &&
+                            cur_group->device_type != UNKNOWN)
                         {
                             if (group_size(cur_group) > 1)
                             {
                                 groups->push_back(cur_group);
                             }
-
                             cur_group = nullptr;
                         }
                         state = PROCESS_READY_NODE;
@@ -266,10 +267,25 @@ private:
                 node_id = fuse_ready.front();
                 fuse_ready.pop_front();
                 tn = m_nodes[node_id];
-
-                if (!cur_group)
+                auto n_device_type = (*(tn->node))["DeviceType"].as<NNFusion_DeviceType>();
+                auto n_device_id = (*(tn->node))["DeviceID"].as<int>();
+                std::string dev_name = get_device_str(n_device_type) + to_string(n_device_id);
+                if (dev_group.find(dev_name) == dev_group.end())
+                {
                     cur_group = std::make_shared<FuseGroup>();
-                cur_group->nodes.push_back(node_id);
+                    cur_group->nodes.push_back(node_id);
+                    cur_group->device_type = n_device_type;
+                    cur_group->device_id = n_device_id;
+                    dev_group[dev_name] = cur_group;
+                }
+                else
+                {
+                    cur_group = dev_group[dev_name];
+                    cur_group->nodes.push_back(node_id);
+                }
+                // if (!cur_group)
+                //     cur_group = std::make_shared<FuseGroup>();
+                // cur_group->nodes.push_back(node_id);
                 break;
             }
 
@@ -283,6 +299,8 @@ private:
                         if (!cur_group)
                         {
                             cur_group = std::make_shared<FuseGroup>();
+                            cur_group->device_type = cur_elemgroup->device_type;
+                            cur_group->device_id = cur_elemgroup->device_id;
                         }
                         auto new_tn = std::make_shared<TaggedNode>();
                         new_tn->elem_group = cur_elemgroup;
@@ -305,7 +323,12 @@ private:
                 tn = m_nodes[node_id];
 
                 size_t tensor_size = nnfusion::shape_size(tn->node->get_output_shape(0));
-                if (cur_elemgroup && cur_elemgroup->output_size != tensor_size)
+                auto n_device_type = (*(tn->node))["DeviceType"].as<NNFusion_DeviceType>();
+                auto n_device_id = (*(tn->node))["DeviceID"].as<int>();
+
+                if (cur_elemgroup && (cur_elemgroup->output_size != tensor_size ||
+                                      cur_elemgroup->device_type != n_device_type ||
+                                      cur_elemgroup->device_id != n_device_id))
                 {
                     AppendElementGroup();
                 }
@@ -316,6 +339,8 @@ private:
                 }
                 cur_elemgroup->nodes.push_back(node_id);
                 cur_elemgroup->output_size = tensor_size;
+                cur_elemgroup->device_type = n_device_type;
+                cur_elemgroup->device_id = n_device_id;
                 break;
             }
 
@@ -327,11 +352,13 @@ private:
             if (tn)
             {
                 tn->visited = true;
+                auto n_device_type = (*(tn->node))["DeviceType"].as<NNFusion_DeviceType>();
+                auto n_device_id = (*(tn->node))["DeviceID"].as<int>();
                 for (auto edge : tn->node->get_out_edges())
                 {
                     auto dst = m_nodes[edge->get_dst()->get_id()];
-                    if (!dst)
-                        continue;
+                    auto dst_device_type = (*(dst->node))["DeviceType"].as<NNFusion_DeviceType>();
+                    auto dst_device_id = (*(dst->node))["DeviceID"].as<int>();
                     dst->ready_inputs++;
 
                     if (!(dst->visited) && (dst->ready_inputs >= dst->node->get_in_edges().size()))
@@ -548,7 +575,9 @@ private:
                     //LOG(INFO) << DebugStringFuseGroup(tn->elem_group);
                     std::vector<std::shared_ptr<KernelEmitter>> block_kernels;
                     bool all_kernel_emitted = true;
-                    NNFusion_DeviceType dev_type;
+                    NNFusion_DeviceType k_device_type;
+                    NNFusion_DeviceType n_device_type;
+                    int n_device_id;
 
                     // find and check whether all kernels are emitted
                     for (auto elem_id : tn->elem_group->nodes)
@@ -556,6 +585,8 @@ private:
                         NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto node = m_nodes[elem_id]->node;
                         NNFUSION_CHECK_NOT_NULLPTR(node);
+                        n_device_type = (*node)["DeviceType"].as<NNFusion_DeviceType>();
+                        n_device_id = (*node)["DeviceID"].as<int>();
 
                         auto emitted_kernel =
                             (*node)["Kernel_Selection_Result"]
@@ -572,15 +603,14 @@ private:
                         else
                         {
                             kernel = emitted_kernel.second;
-                            dev_type = emitted_kernel.first;
+                            k_device_type = emitted_kernel.first;
                             block_kernels.push_back(kernel);
                         }
                     }
-
                     if (all_kernel_emitted)
                     {
                         shared_ptr<const KernelRegistration> kernel_reg;
-                        if (FLAGS_fdefault_device != "CPU")
+                        if (n_device_type != GENERIC_CPU)
                         {
                             kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
                                 "ElementWiseFused", CUDA_GPU, DT_FLOAT);
@@ -602,7 +632,12 @@ private:
                         auto fused_node = std::make_shared<GNode>(fused_op, empty_inputs);
                         ctx->gnode = fused_node;
 
-                        (*fused_node)["Kernel_Selection_Result"] = std::make_pair(dev_type, kernel);
+                        (*fused_node)["Kernel_Selection_Result"] =
+                            std::make_pair(k_device_type, kernel);
+                        NNFUSION_CHECK(n_device_type != UNKNOWN);
+                        NNFUSION_CHECK(n_device_id != -1);
+                        (*fused_node)["DeviceType"] = n_device_type;
+                        (*fused_node)["DeviceID"] = n_device_id;
 
                         // replace original nodes with the fused node on graph
                         m_graph->add_node(fused_node);
@@ -661,7 +696,7 @@ private:
                         }
 
                         // ROCm can only support maximum 70 args for single kernel
-                        if (FLAGS_fdefault_device == "ROCm" &&
+                        if (n_device_type == ROCM_GPU &&
                             fused_node->get_in_edges().size() +
                                     fused_node->get_out_edges().size() >=
                                 70)
@@ -719,21 +754,13 @@ private:
     size_t ELEM_GROUP_NODEID;
 
     std::unordered_set<std::string> op_blacklist;
+    std::unordered_set<std::string> cpu_op_blacklist;
     std::unordered_set<std::string> fusion_ops;
     std::unordered_map<std::string, int> host_inputs;
 };
 
 bool KernelFusionPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
-    auto dev_name = FLAGS_fdefault_device;
-    if (dev_name == "ROCm" || dev_name == "CUDA" || dev_name == "CPU")
-    {
-        NNFUSION_LOG(INFO) << "device: " << dev_name;
-        KernelFuseOptimizer optimizer(graph);
-        return optimizer.Optimize();
-    }
-    else
-    {
-        return false;
-    }
+    KernelFuseOptimizer optimizer(graph);
+    return optimizer.Optimize();
 }

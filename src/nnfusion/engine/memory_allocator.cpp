@@ -18,8 +18,7 @@ nnfusion::MemoryAllocator::MemoryAllocator(size_t alignment,
     , m_device_id(device_id)
     , m_max_allocated{0}
     , m_symbol(symbol)
-    , m_name(symbol + "_" + (const char* []){"CUDA_GPU", "ROCM_GPU", "GENERIC_CPU"}[device_type] +
-             "_" + std::to_string(device_id) + "_allocator")
+    , m_name(symbol + "_" + get_device_str(device_type) + std::to_string(device_id) + "_allocator")
 {
     NNFUSION_CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
@@ -64,8 +63,6 @@ void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor)
 {
     size_t rc;
     size_t size = tensor->size();
-    ;
-
     switch (m_scheme)
     {
     case allocation_scheme::FIRST_FIT: rc = first_fit(size); break;
@@ -73,6 +70,7 @@ void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor)
     case allocation_scheme::NO_REUSE: rc = no_reuse_allocator(size); break;
     }
     tensor->set_pool_offset(rc);
+    tensor->set_pool(this->get_name());
     // add tensor allocated by this allocator
     m_allocated_tensors.push_back(tensor);
     if (record_trace)
@@ -86,6 +84,7 @@ void nnfusion::MemoryAllocator::allocate(shared_ptr<descriptor::Tensor> tensor,
                                          size_t offset)
 {
     tensor->set_pool_offset(offset);
+    tensor->set_pool(this->get_name());
     auto root = root_tensor;
     NNFUSION_CHECK(!(root->get_root_tensor()));
     tensor->set_root_tensor(root);
@@ -283,6 +282,7 @@ LanguageUnit_p nnfusion::MemoryAllocator::emit_memory_alloc()
     auto& lu = *_lu;
     if (m_max_allocated > 0)
     {
+        lu << "CUDA_SAFE_CALL(cudaSetDevice(" << m_device_id << "));\n";
         lu << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << this->get_name() << "_memory_pool,"
            << m_max_allocated << "));\n";
         lu << "CUDA_SAFE_CALL(cudaMemset((void*)" << this->get_name() << "_memory_pool, 0, "
@@ -290,6 +290,7 @@ LanguageUnit_p nnfusion::MemoryAllocator::emit_memory_alloc()
 
         for (auto tensor : m_allocated_tensors)
         {
+            NNFUSION_CHECK(tensor->get_pool() == this->get_name());
             lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string()
                << "*)(" << this->get_name() << "_memory_pool+" << tensor->get_pool_offset()
                << ");\n";
@@ -302,6 +303,7 @@ LanguageUnit_p nnfusion::MemoryAllocator::emit_memory_free()
 {
     LanguageUnit_p _lu(new LanguageUnit(this->get_name() + "_free"));
     auto& lu = *_lu;
+    lu << "CUDA_SAFE_CALL(cudaSetDevice(" << m_device_id << "));\n";
     lu << "CUDA_SAFE_CALL(cudaFree(" << this->get_name() + "_memory_pool));\n";
     return _lu;
 }
@@ -349,6 +351,7 @@ LanguageUnit_p nnfusion::HostMemoryAllocator::emit_memory_alloc()
         lu << this->get_name() << "_memory_pool = (char *)malloc(" << m_max_allocated << ");\n";
         for (auto tensor : m_allocated_tensors)
         {
+            NNFUSION_CHECK(tensor->get_pool() == this->get_name());
             lu << tensor->get_name() << " = (" << tensor->get_element_type().c_type_string()
                << "*)(" << this->get_name() << "_memory_pool+" << tensor->get_pool_offset()
                << ");\n";

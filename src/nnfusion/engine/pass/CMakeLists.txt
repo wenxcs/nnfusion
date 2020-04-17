@@ -11,6 +11,7 @@ set(SRC
     # tensor related
     tensor/tensor_memory_layout.cpp
     tensor/liveness_analysis.cpp
+    tensor/tensor_device_dispatcher.cpp
     tensor/inplace_tensor_analysis.cpp
 )
 add_library(nnfusion_engine_pass STATIC ${SRC})

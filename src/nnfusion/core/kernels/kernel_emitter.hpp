@@ -68,7 +68,7 @@ namespace nnfusion
             KernelEmitter(shared_ptr<KernelContext> ctx, string kernel_type);
 
             // Emit entire source code
-            virtual FunctionUnit_p get_or_emit_source();
+            virtual FunctionUnit_p get_or_emit_source(bool emit_func_call = false);
             virtual FunctionUnit_p emit_source();
 
             string get_kernel_type() { return m_kernel_type; }
@@ -112,24 +112,13 @@ namespace nnfusion
                 allocate_tensor(Shape shape,
                                 element::Type elt = element::f32,
                                 string name = "",
+                                NNFusion_DeviceType device_type = UNKNOWN,
                                 bool is_persistent = false,
                                 bool is_constant = false,
                                 bool is_parameter = false,
                                 bool is_RDMA_tensor = false,
-                                const std::string& group = "",
-                                size_t device_id = 0);
-
-            virtual const shared_ptr<nnfusion::descriptor::Tensor>
-                allocate_tensor(Shape shape,
-                                NNFusion_DeviceType device_type,
-                                element::Type elt = element::f32,
-                                string name = "",
-                                bool is_persistent = false,
-                                bool is_constant = false,
-                                bool is_parameter = false,
-                                bool is_RDMA_tensor = false,
-                                const std::string& group = "",
-                                size_t device_id = 0);
+                                const string& group = "",
+                                int device_id = -1);
 
             // A kernel only emits kernel code once
             bool m_is_emitted;
