@@ -23,9 +23,9 @@ REGISTER_OP(Sum)
                 sample *= input_shape[i];
 
             return op::create_code_from_template(
-                "- input(\"input0\", [@sample@]); output([1], "
-                "topi=topi.sum(args(\"input0\"), axis=0, keepdims=True));",
-                {{"sample", sample}});
+                "- input(\"input0\", [@batch@, @sample@]); output([@batch@], "
+                "topi=topi.sum(args(\"input0\"), axis=1, keepdims=True));",
+                {{"batch", batch}, {"sample", sample}});
         }
         else
         {
