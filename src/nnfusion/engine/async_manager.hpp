@@ -31,6 +31,12 @@ public:
     const std::string& get_device_name() const { return m_device_name; }
     const std::string& get_name() const { return m_name; };
     const std::string& get_symbol() const { return m_symbol; }
+    const std::unordered_map<std::string, std::string>& get_binding_symbol() const
+    {
+        return m_binding_symbol;
+    }
+    void add_binding_symbol(const std::string& binding_symbol);
+
 private:
     Stream(size_t stream_id,
            NNFusion_DeviceType device_type,
@@ -42,6 +48,7 @@ private:
     std::string m_device_name;
     std::string m_name;
     std::string m_symbol;
+    std::unordered_map<std::string, std::string> m_binding_symbol;
 };
 
 // Event of nnfusion can represent the event of gpu and the barrier of cpu.
@@ -65,7 +72,6 @@ private:
           const shared_ptr<nnfusion::op::Op>& op,
           const string& symbol);
     Event(size_t event_id, const shared_ptr<Stream>& stream, const string& symbol);
-    // void set_recorded(bool value = true) { m_recorded = value; }
     size_t m_event_id;
     shared_ptr<Stream> m_stream;
     shared_ptr<nnfusion::op::Op> m_op;

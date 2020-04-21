@@ -17,7 +17,7 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
                 LanguageUnit_p emit_function_signature() override;
-
+                bool require_cudnn_handle() override { return true; }
             private:
                 nnfusion::Shape input_shape, filter_shape, output_shape;
                 nnfusion::Strides window_dilation_strides, window_movement_strides,

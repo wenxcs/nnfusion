@@ -123,6 +123,7 @@ namespace nnfusion
                        << "(cudnnHandle_t cudnn_handle, " << join(params, ", ") << ")";
                     return _lu;
                 }
+                bool require_cudnn_handle() override { return true; }
             };
         } // namespace cuda
     }     // namespace kernels

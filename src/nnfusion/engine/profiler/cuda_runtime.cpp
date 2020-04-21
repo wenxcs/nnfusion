@@ -5,15 +5,41 @@
  */
 
 #include "cuda_runtime.hpp"
+#include "nnfusion/core/kernels/cuda_gpu/cuda_emitter.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 
 using namespace nnfusion::profiler;
 using namespace nnfusion::kernels;
+using namespace nnfusion::kernels::cuda;
 
 bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 {
     if (ke->source_code != nullptr)
         return true;
+
+    // assign async info
+    auto async_manager = nnfusion::async::AsyncManagerFactory::get_async_manager(CUDA_GPU);
+    auto gnode = ke->kernel->m_context->gnode;
+    (*gnode)["Async_info"] = nnfusion::async::AsyncExecutionInfo();
+    auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
+    async_info.execution_stream = async_manager->set_stream();
+    bool require_cudnn_handle = false;
+    bool require_cublas_handle = false;
+    if (auto kernel = std::dynamic_pointer_cast<CudaLibEmitter>(ke->kernel))
+    {
+        if (kernel->require_cudnn_handle())
+        {
+            async_info.execution_stream->add_binding_symbol("cudnn_handle");
+            require_cudnn_handle = true;
+        }
+        if (kernel->require_cublas_handle())
+        {
+            async_info.execution_stream->add_binding_symbol("cublas_handle");
+            require_cublas_handle = true;
+        }
+    }
+
     FunctionUnit_p fu = ke->kernel->get_or_emit_source();
     LanguageUnit writer(fu->name_unit->get_code() + ".cu");
     writer << "// Microsoft (c) 2019, NNFusion\n";
@@ -40,22 +66,19 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         if (it.second->symbol.find("declaration::") != string::npos)
             writer << it.second->get_code();
     writer << "\n";
-    writer << "cudaStream_t stream = 0;\n";
+    if (auto kernel = std::dynamic_pointer_cast<CudaLibEmitter>(ke->kernel))
+    {
+        if (kernel->require_cudnn_handle())
+        {
+            writer << "cudnnHandle_t cudnn_handle_0;\n";
+        }
+        if (kernel->require_cublas_handle())
+        {
+            writer << "cublasHandle_t cublas_handle_0;\n";
+        }
+    }
 
     std::string body_unit = fu->body_unit->get_code();
-    int pos_cudnn_handle = body_unit.find("cudnn_handle");
-    int pos_cublas_handle = body_unit.find("cublas_handle");
-    auto gnode = ke->kernel->m_context->gnode;
-    if (pos_cudnn_handle >= 0)
-    {
-        (*gnode)["handle"] = std::string("cudnn_handle");
-        writer << "cudnnHandle_t cudnn_handle;\n";
-    }
-    if (pos_cublas_handle >= 0)
-    {
-        (*gnode)["handle"] = std::string("cublas_handle");
-        writer << "cublasHandle_t cublas_handle;\n";
-    }
 
     // Write function definition
     writer << fu->comment_unit->get_code();
@@ -169,14 +192,13 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
     writer.block_begin();
     {
-        if (pos_cublas_handle >= 0)
+        if (require_cudnn_handle)
         {
-            writer << "CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle));\n";
+            writer << "CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle_0));\n";
         }
-
-        if (pos_cudnn_handle >= 0)
+        if (require_cublas_handle)
         {
-            writer << "CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle));\n";
+            writer << "CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_0));\n";
         }
 
         if (re->local_symbol.count("declaration::num_SMs") > 0)
@@ -340,15 +362,15 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
             }
         }
 
-        if (pos_cublas_handle >= 0)
+        if (require_cudnn_handle)
         {
-            writer << "CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle));\n";
+            writer << "CUDNN_SAFE_CALL(cudnnDestroy(cudnn_handle_0));\n";
+        }
+        if (require_cublas_handle)
+        {
+            writer << "CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_0));\n";
         }
 
-        if (pos_cudnn_handle >= 0)
-        {
-            writer << "CUDNN_SAFE_CALL(cudnnDestroy(cudnn_handle));\n";
-        }
         writer << "return milliseconds/" << ke->runtime_times << ";\n";
     }
     writer.block_end();

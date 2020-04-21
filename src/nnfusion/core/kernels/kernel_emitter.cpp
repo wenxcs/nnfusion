@@ -116,26 +116,31 @@ LanguageUnit_p KernelEmitter::emit_function_call()
     lu << "(";
 
     auto gnode = m_context->gnode;
-    string stream_name = "0";
     if (m_function_unit != nullptr)
     {
         auto sig_unit = m_function_unit->signature_unit;
         NNFUSION_CHECK_NOT_NULLPTR(sig_unit);
-        if (sig_unit->get_code().find("cudaStream_t") != string::npos)
+        if (gnode && (*gnode)["Async_info"].is_valid())
         {
-            if (gnode && (*gnode)["Async_info"].is_valid())
+            auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
+            auto stream = async_info.execution_stream;
+            if (stream)
             {
-                auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
-                if (async_info.execution_stream != nullptr)
-                    stream_name = async_info.execution_stream->get_name();
-            }
-            lu << stream_name << ", ";
-        }
+                if (sig_unit->get_code().find("cudaStream_t") != string::npos)
+                    lu << stream->get_name() << ", ";
 
-        if (gnode && (*gnode)["handle"].is_valid())
-        {
-            auto& handle_name = (*gnode)["handle"].as<string>();
-            lu << handle_name << ", ";
+                auto binding_symbol = stream->get_binding_symbol();
+                if (sig_unit->get_code().find("cudnnHandle_t") != string::npos)
+                {
+                    NNFUSION_CHECK(binding_symbol.find("cudnn_handle") != binding_symbol.end());
+                    lu << binding_symbol["cudnn_handle"] << ", ";
+                }
+                if (sig_unit->get_code().find("cublasHandle_t") != string::npos)
+                {
+                    NNFUSION_CHECK(binding_symbol.find("cublas_handle") != binding_symbol.end());
+                    lu << binding_symbol["cublas_handle"] << ", ";
+                }
+            }
         }
     }
     lu << join(names, ", ") << ");\n";

@@ -165,6 +165,8 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cuda_lib")
                 {
                 }
+                virtual bool require_cudnn_handle() { return false; }
+                virtual bool require_cublas_handle() { return false; }
             };
 
         } // namespace cuda

@@ -398,9 +398,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     lu << "#include \"nnfusion_rt.h\"\n\n";
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
-    std::unordered_map<int, std::unordered_set<string>> dev_cudnn_handle;
-    std::unordered_map<int, std::unordered_set<string>> dev_cublas_handle;
-    std::unordered_map<string, string> handle_stream;
 
     // Collect Function Definition
     {
@@ -433,24 +430,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         global_required.insert(it.second->symbol);
                     }
                 }
-                // get kernel's handle name
                 string body_unit = fu->body_unit->get_code();
-                int handle_cudnn = body_unit.find("cudnn_handle");
-                int handle_cublas = body_unit.find("cublas_handle");
-                if (handle_cudnn >= 0)
-                {
-                    string handle = "cudnn_handle_" + stream_name;
-                    (*gnode)["handle"] = handle;
-                    dev_cudnn_handle[device_id].insert(handle);
-                    handle_stream[handle] = stream_name;
-                }
-                if (handle_cublas >= 0)
-                {
-                    string handle = "cublas_handle_" + stream_name;
-                    (*gnode)["handle"] = handle;
-                    dev_cublas_handle[device_id].insert(handle);
-                    handle_stream[handle] = stream_name;
-                }
 
                 // conv kernels in the the stream shares the same workspace_ptr
                 if (gnode->get_op_type() == "Convolution")
@@ -524,18 +504,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu << it.second->get_code();
             }
         lu << "\n";
-        // cublas and cudnn handle decl
-        for (auto& info : dev_cudnn_handle)
-        {
-            for (auto& cudnn_handle : info.second)
-                lu << "cudnnHandle_t " << cudnn_handle << ";\n";
-        }
-        for (auto& info : dev_cublas_handle)
-        {
-            for (auto& cublas_handle : info.second)
-                lu << "cublasHandle_t " << cublas_handle << ";\n";
-        }
-        lu << "\n";
+
         // stream and event declaration
         if (CUDA_async_manager->num_stream() > 0)
             lu << CUDA_async_manager->emit_stream_decl()->get_code();
@@ -586,32 +555,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (CUDA_async_manager->num_event() > 0)
                 lu_main_init << CUDA_async_manager->emit_event_init()->get_code();
 
-            for (auto& info : dev_cudnn_handle)
-            {
-                int device_id = info.first;
-                lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
-                for (auto& cudnn_handle : info.second)
-                {
-                    lu_main_init << "CUDNN_SAFE_CALL(cudnnCreate(&" << cudnn_handle << "));\n";
-                    auto stream = handle_stream[cudnn_handle];
-                    if (stream != "0")
-                        lu_main_init << "CUDNN_SAFE_CALL(cudnnSetStream(" << cudnn_handle << ", "
-                                     << stream << "));\n";
-                }
-            }
-            for (auto& info : dev_cublas_handle)
-            {
-                int device_id = info.first;
-                lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
-                for (auto& cublas_handle : info.second)
-                {
-                    lu_main_init << "CUBLAS_SAFE_CALL(cublasCreate(&" << cublas_handle << "));\n";
-                    auto stream = handle_stream[cublas_handle];
-                    if (stream != "0")
-                        lu_main_init << "CUBLAS_SAFE_CALL(cublasSetStream(" << cublas_handle << ", "
-                                     << stream << "));\n";
-                }
-            }
             if (global_required.count("declaration::num_SMs") > 0)
             {
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
@@ -1057,25 +1000,25 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 lu_main_free << "delete schedule_thread_pool;\n";
             }
-            // destroy handle
-            for (auto& info : dev_cudnn_handle)
-            {
-                int device_id = info.first;
-                lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
-                for (auto& cudnn_handle : info.second)
-                {
-                    lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(" << cudnn_handle << "));\n";
-                }
-            }
-            for (auto& info : dev_cublas_handle)
-            {
-                int device_id = info.first;
-                lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
-                for (auto& cublas_handle : info.second)
-                {
-                    lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(" << cublas_handle << "));\n";
-                }
-            }
+            // // destroy handle
+            // for (auto& info : dev_cudnn_handle)
+            // {
+            //     int device_id = info.first;
+            //     lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+            //     for (auto& cudnn_handle : info.second)
+            //     {
+            //         lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(" << cudnn_handle << "));\n";
+            //     }
+            // }
+            // for (auto& info : dev_cublas_handle)
+            // {
+            //     int device_id = info.first;
+            //     lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
+            //     for (auto& cublas_handle : info.second)
+            //     {
+            //         lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(" << cublas_handle << "));\n";
+            //     }
+            // }
             if (global_required.count("header::super_scaler"))
             {
                 lu_kernel_entry << "super_scaler_sync();\n";

@@ -179,6 +179,7 @@ namespace nnfusion
                        << "(cublasHandle_t cublas_handle, " << join(params, ", ") << ")";
                     return _lu;
                 }
+                bool require_cublas_handle() override { return true; }
             };
         } // namespace cuda
     }     // namespace kernels

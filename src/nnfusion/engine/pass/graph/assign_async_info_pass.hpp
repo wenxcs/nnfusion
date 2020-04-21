@@ -27,6 +27,7 @@ namespace nnfusion
                 void assign_event_info(nnfusion::async::AsyncManager* CUDA_async_manager,
                                        nnfusion::async::AsyncManager* CPU_async_manager,
                                        std::shared_ptr<Graph>& graph);
+                KernelEmitter::Pointer get_kernel(std::shared_ptr<nnfusion::graph::GNode> gnode);
                 NNFusion_DeviceType m_device;
             };
         }

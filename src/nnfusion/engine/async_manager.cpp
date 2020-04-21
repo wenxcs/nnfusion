@@ -33,6 +33,16 @@ Stream::Stream(size_t stream_id,
     m_device_name = dt_name + "_" + std::to_string(device_id);
 }
 
+void Stream::add_binding_symbol(const std::string& binding_symbol)
+{
+    NNFUSION_CHECK(binding_symbol != "");
+    if (m_binding_symbol.find(binding_symbol) == m_binding_symbol.end())
+    {
+        std::string content = binding_symbol + "_" + this->get_name();
+        m_binding_symbol[binding_symbol] = content;
+    }
+}
+
 Event::Event(size_t event_id,
              const shared_ptr<Stream>& stream,
              const shared_ptr<nnfusion::op::Op>& op,
@@ -183,6 +193,16 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_decl()
         {
             lu << "cudaStream_t " << stream_pair.second->get_name() << ";\n";
         }
+        // binding info
+        for (auto binding_symbol_pair : stream_pair.second->get_binding_symbol())
+        {
+            if (binding_symbol_pair.first == "cudnn_handle")
+                lu << "cudnnHandle_t " << binding_symbol_pair.second << ";\n";
+            else if (binding_symbol_pair.first == "cublas_handle")
+                lu << "cublasHandle_t " << binding_symbol_pair.second << ";\n";
+            else
+                nnfusion::errors::RuntimeError("Unknown stream binding info.");
+        }
     }
     return _lu;
 }
@@ -211,9 +231,30 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_init()
         for (auto stream : info.second)
         {
             // Cuda default stream(0) need not to be created.
-            if (stream->get_symbol() != "default")
+            if (!stream->is_default_stream())
             {
-                lu << "cudaStreamCreate(&" << stream->get_name() << ");\n";
+                lu << "CUDA_SAFE_CALL(cudaStreamCreate(&" << stream->get_name() << "));\n";
+            }
+            // binding info
+            for (auto binding_symbol_pair : stream->get_binding_symbol())
+            {
+                if (binding_symbol_pair.first == "cudnn_handle")
+                {
+                    lu << "CUDNN_SAFE_CALL(cudnnCreate(&" << binding_symbol_pair.second << "));\n";
+                    if (!stream->is_default_stream())
+                        lu << "CUDNN_SAFE_CALL(cudnnSetStream(" << binding_symbol_pair.second
+                           << ", " << stream->get_name() << "));\n";
+                }
+                else if (binding_symbol_pair.first == "cublas_handle")
+                {
+                    lu << "CUBLAS_SAFE_CALL(cublasCreate(&" << binding_symbol_pair.second
+                       << "));\n";
+                    if (!stream->is_default_stream())
+                        lu << "CUBLAS_SAFE_CALL(cublasSetStream(" << binding_symbol_pair.second
+                           << ", " << stream->get_name() << "));\n";
+                }
+                else
+                    nnfusion::errors::RuntimeError("Unknown stream binding info.");
             }
         }
     }
@@ -230,8 +271,8 @@ LanguageUnit_p CUDAAsyncManager::emit_event_init()
         lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
         for (auto event : info.second)
         {
-            lu << "cudaEventCreateWithFlags(&" << event->get_name()
-               << ", cudaEventDisableTiming);\n";
+            lu << "CUDA_SAFE_CALL(cudaEventCreateWithFlags(&" << event->get_name()
+               << ", cudaEventDisableTiming));\n";
         }
     }
     return _lu;
@@ -240,14 +281,8 @@ LanguageUnit_p CUDAAsyncManager::emit_event_init()
 // emit code for waiting cuda event. The stream is blocked until the event complete.
 LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
 {
-    // \todo: we only support stream synchronization on the same device.
-    // CHECK(stream->get_device_name() == event->get_device_name())
-    //     << "Unsupported event wait operation: synchronize streams on two different devices";
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
-    // if (!event->is_recorded())
-    //     throw nnfusion::errors::RuntimeError("CUDA event error.");
-    //LOG(WARNING) << "CUDA event error.";
     if (stream->is_default_stream())
         lu << "cudaStreamWaitEvent(0, " << event->get_name() << ", 0 );\n";
     else
@@ -310,7 +345,22 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_destroy()
             // Cuda default stream(0) need not to be destroyed.
             if (stream->get_symbol() != "default")
             {
-                lu << "cudaStreamDestroy(" << stream->get_name() << ");\n";
+                lu << "CUDA_SAFE_CALL(cudaStreamDestroy(" << stream->get_name() << "));\n";
+            }
+            // binding info
+            for (auto binding_symbol_pair : stream->get_binding_symbol())
+            {
+                if (binding_symbol_pair.first == "cudnn_handle")
+                {
+                    lu << "CUDNN_SAFE_CALL(cudnnDestroy(" << binding_symbol_pair.second << "));\n";
+                }
+                else if (binding_symbol_pair.first == "cublas_handle")
+                {
+                    lu << "CUBLAS_SAFE_CALL(cublasDestroy(" << binding_symbol_pair.second
+                       << "));\n";
+                }
+                else
+                    nnfusion::errors::RuntimeError("Unknown stream binding info.");
             }
         }
     }
@@ -326,7 +376,7 @@ LanguageUnit_p CUDAAsyncManager::emit_event_destroy()
         lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
         for (auto event : info.second)
         {
-            lu << "cudaEventDestroy(" << event->get_name() << ");\n";
+            lu << "CUDA_SAFE_CALL(cudaEventDestroy(" << event->get_name() << "));\n";
         }
     }
     return _lu;

@@ -1,11 +1,13 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "assign_async_info_pass.hpp"
+#include "nnfusion/core/kernels/cuda_gpu/cuda_emitter.hpp"
 #include "nnfusion/util/util.hpp"
 
 using namespace nnfusion::graph;
 using namespace nnfusion::op;
 using namespace nnfusion::pass::graph;
 using namespace nnfusion::async;
+using namespace nnfusion::kernels::cuda;
 
 DECLARE_bool(fadd_allreduce);
 DECLARE_string(fdefault_device);
@@ -212,16 +214,7 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                 bool const_inputs = true;
                 if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
                 {
-                    auto emitted_kernel =
-                        (*gnode)["Kernel_Selection_Result"]
-                            .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-
-                    if (!emitted_kernel.second->is_emitted())
-                    {
-                        NNFUSION_LOG(NNFUSION_WARNING)
-                            << "Kernel should be emitted before this pass:" << gnode->get_name();
-                    }
-                    auto kernel = emitted_kernel.second;
+                    auto kernel = get_kernel(gnode);
                     for (auto& in : kernel->m_context->input_names)
                     {
                         if (constant_vals.find(in) == constant_vals.end())
@@ -286,7 +279,6 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             int device_id = (*gnode)["DeviceID"].as<int>();
-
             if (m_device == GENERIC_CPU)
             {
                 async_info.execution_thread = async_manager->set_stream(device_id, "default");
@@ -414,16 +406,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 bool const_inputs = true;
                 if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
                 {
-                    auto emitted_kernel =
-                        (*gnode)["Kernel_Selection_Result"]
-                            .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-
-                    if (!emitted_kernel.second->is_emitted())
-                    {
-                        NNFUSION_LOG(NNFUSION_WARNING)
-                            << "Kernel should be emitted before this pass:" << gnode->get_name();
-                    }
-                    auto kernel = emitted_kernel.second;
+                    auto kernel = get_kernel(gnode);
                     for (auto& in : kernel->m_context->input_names)
                     {
                         if (constant_vals.find(in) == constant_vals.end())
@@ -471,6 +454,20 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                     }
                 }
             }
+        }
+    }
+    // add binding info
+    for (auto gnode : graph->get_ordered_ops())
+    {
+        auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+        auto kernel = get_kernel(gnode);
+        if (auto kernel = std::dynamic_pointer_cast<CudaLibEmitter>(get_kernel(gnode)))
+        {
+            auto stream = async_info.execution_stream;
+            if (kernel->require_cudnn_handle())
+                stream->add_binding_symbol("cudnn_handle");
+            if (kernel->require_cublas_handle())
+                stream->add_binding_symbol("cublas_handle");
         }
     }
     NNFUSION_LOG(INFO) << "assign thread or stream info-------------------------------";
@@ -540,4 +537,22 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
         }
     }
     NNFUSION_LOG(INFO) << "assign event info-------------------------------";
+}
+
+KernelEmitter::Pointer
+    AssignAsyncInfoPass::get_kernel(std::shared_ptr<nnfusion::graph::GNode> gnode)
+{
+    KernelEmitter::Pointer kernel = nullptr;
+    if ((*gnode)["Kernel_Selection_Result"].is_valid())
+    {
+        auto emitted_kernel = (*gnode)["Kernel_Selection_Result"]
+                                  .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
+
+        if (!emitted_kernel.second->is_emitted())
+            NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
+                                           << gnode->get_op_type();
+        kernel = emitted_kernel.second;
+    }
+
+    return kernel;
 }
