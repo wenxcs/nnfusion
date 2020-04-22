@@ -338,7 +338,7 @@ namespace nnfusion
                         codegen_for_elementwise(curr, fout, "topi=topi.tanh(args(\"input0\"))");
                     };
                     kernel_dict["Relu"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        codegen_for_elementwise(curr, fout, "topi=topi.relu(args(\"input0\"))");
+                        codegen_for_elementwise(curr, fout, "topi=topi.nn.relu(args(\"input0\"))");
                     };
                     kernel_dict["Relu6"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(
