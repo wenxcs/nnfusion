@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -143,7 +144,8 @@ poplar::Tensor load_constant(poplar::Graph& g,
 
 void print_tensor(const std::string& tensor_name, const poplar::Tensor& tensor)
 {
-    prog.add(poplar::program::PrintTensor(tensor_name, tensor));
+    if (getenv("RESULT"))
+        prog.add(poplar::program::PrintTensor(tensor_name, tensor));
 }
 
 poplar::Tensor compute_task(poplar::Graph& g,
@@ -384,16 +386,18 @@ int main(int argc, char** argv)
     std::cout << "Running program\n";
     auto run = [&](int runs = 1) {
         auto start = std::chrono::high_resolution_clock::now();
-        engine.run(0);
+        for (int i = 0; i < runs; ++i)
+            engine.run(0);
         auto end = std::chrono::high_resolution_clock::now();
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-        std::cout << "Program complete once in " << ns * 1e-9 / runs << " sec.\n";
+        std::cout << std::fixed << std::setprecision(8) << "Program complete once in "
+                  << ns * 1e-9 / runs << " sec.\n";
     };
 
     run(1);
+    run(1000);
     if (getenv("PROF"))
         engine.printProfileSummary(std::cout, {{"showExecutionSteps", "false"}});
-    run(1);
     run(1);
     return EXIT_SUCCESS;
 }

@@ -205,38 +205,6 @@ namespace nnfusion
                                          ? atoi(code.c_str() + at_z + sizeof("blockIdx.z ="))
                                          : 1;
 
-                        int concurrency = 1024;
-                        at_x = at_y = at_z = 1;
-                        for (int i = concurrency; i > 1; --i)
-                            if (blockX % i == 0)
-                            {
-                                concurrency /= i;
-                                blockX /= i, at_x = i;
-                                break;
-                            }
-                        for (int i = concurrency; i > 1; --i)
-                            if (blockY % i == 0)
-                            {
-                                concurrency /= i;
-                                blockY /= i, at_y = i;
-                                break;
-                            }
-                        for (int i = std::min(concurrency, 64); i > 1; --i)
-                            if (blockZ % i == 0)
-                            {
-                                concurrency /= i;
-                                blockZ /= i, at_z = i;
-                                break;
-                            }
-                        int symbol = code.find("[numthreads(1, 1, 1)]");
-                        NNFUSION_CHECK(symbol >= 0);
-
-                        std::stringstream result;
-                        result << code.substr(0, symbol + sizeof("[numthreads(") - 1);
-                        result << at_x << ", " << at_y << ", " << at_z << ")]";
-                        result << code.substr(symbol + sizeof("[numthreads(1, 1, 1)]") - 1);
-                        code = result.str();
-
                         static std::unordered_map<std::string, std::string> dedupe_kernels;
                         auto kernel = dedupe_kernels.find(code);
                         if (kernel == dedupe_kernels.end())
@@ -409,56 +377,7 @@ namespace nnfusion
                              << "(device, cmdQueue, nullptr, "
                              << arg_names[curr->get_in_edge(0)->get_src()] << ");\n";
                     };
-#if 0
-                    kernel_dict["Concat"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        auto _op = get_op_object<nnfusion::op::Concat>(curr);
-                        auto axis = _op->get_concatenation_axis();
-                        if (axis != curr->get_output_shape(0).size() - 1 && axis != 0)
-                            UNHANDLED_CASE(curr);
-                        ssize_t groups = 1, samples = 1, stride = 1;
-                        if (axis == curr->get_output_shape(0).size() - 1)
-                        {
-                            samples = curr->get_output_shape(0).back();
-                            for (int i = 0; i + 1 < curr->get_output_shape(0).size(); ++i)
-                                groups *= curr->get_output_shape(0)[i];
-                            stride = 1;
-                        }
-                        else
-                        {
-                            samples = curr->get_output_shape(0)[0];
-                            for (int i = 1; i < curr->get_output_shape(0).size(); ++i)
-                                groups *= curr->get_output_shape(0)[i];
-                            stride = groups;
-                        }
-                        int num_inputs = curr->get_input_size();
-                        int base_offset = 0;
-                        auto dtype = curr->get_output_element_type(0).c_type_string();
 
-                        std::stringstream result;
-                        result << "struct type_" << dtype << " { " << dtype << " v; };\n\n";
-                        for (int i = 0; i < num_inputs; ++i)
-                            result << "StructuredBuffer<type_" << dtype << "> input" << i
-                                   << ": register(t" << i << ");\n";
-                        result << "RWStructuredBuffer<type_" << dtype
-                               << "> output0: register(u0);\n";
-                        result << "\n[numthreads(1, 1, 1)]\nvoid CSMain(uint3 blockIdx : "
-                                  "SV_DispatchThreadID) {\n";
-                        result << "  // thread_extent: blockIdx.x = " << groups * samples << "\n";
-                        result << "  if (0) ;\n";
-                        for (int i = 0; i < num_inputs; ++i)
-                        {
-                            int last_offset = base_offset;
-                            base_offset += stride * ((axis == curr->get_output_shape(0).size() - 1)
-                                                         ? curr->get_input_shape(i).back()
-                                                         : curr->get_input_shape(i)[0]);
-                            result << "  else if (((int)blockIdx.x) < " << base_offset << ")\n";
-                            result << "    output0[((int)blockIdx.x)] = input" << i
-                                   << "[((int)blockIdx.x) - " << last_offset << "];\n";
-                        }
-                        result << "}\n";
-                        print_standard_codegen(curr, fout, result.str());
-                    };
-#endif
                     while (gen_q.size() > 0 || pend_q.size() > 0)
                     {
                         // Move to new super step if satisifed
