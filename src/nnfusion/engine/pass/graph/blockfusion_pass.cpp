@@ -319,15 +319,18 @@ private:
             std::make_shared<KernelContext>(), virtual_device.get_block_executor_program());
         BlockFusionCudaCodegen& code_generator = *code_generator_p;
         auto blockfusion_func = code_generator.get_or_emit_source();
-        auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-            "BlockFusionFused", CUDA_GPU, DT_FLOAT);
-        NNFUSION_CHECK_NOT_NULLPTR(kernel_reg);
-        auto ctx = code_generator.get_kernel_context(); // for codegenerator
-        auto kernel = kernel_reg->m_factory(ctx);
-        auto blockfusion_fused_kernel = std::dynamic_pointer_cast<BlockFusionFused>(kernel);
-        NNFUSION_CHECK_NOT_NULLPTR(blockfusion_fused_kernel);
-        blockfusion_fused_kernel->set_blockfusion_function(blockfusion_func);
-        kernel->get_or_emit_source();
+        auto kernel = std::dynamic_pointer_cast<KernelEmitter>(code_generator_p);
+        auto ctx = code_generator.get_kernel_context();
+
+        // auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
+        //     "BlockFusionFused", CUDA_GPU, DT_FLOAT);
+        // NNFUSION_CHECK_NOT_NULLPTR(kernel_reg);
+        // auto ctx = code_generator.get_kernel_context(); // for codegenerator
+        // auto kernel = kernel_reg->m_factory(ctx);
+        // auto blockfusion_fused_kernel = std::dynamic_pointer_cast<BlockFusionFused>(kernel);
+        // NNFUSION_CHECK_NOT_NULLPTR(blockfusion_fused_kernel);
+        // blockfusion_fused_kernel->set_blockfusion_function(blockfusion_func);
+        // kernel->get_or_emit_source();
 
         blockfusion_profiler.set_profiling_context(virtual_device_p, code_generator_p);
         if (SkipGroupOnProfilingResult(blockfusion_profiler.get_profiling_result()))
@@ -349,6 +352,8 @@ private:
         ctx->gnode = fused_node;
 
         (*fused_node)["Kernel_Selection_Result"] = std::make_pair(CUDA_GPU, kernel);
+        (*fused_node)["DeviceType"] = CUDA_GPU;
+        int n_device_id;
 
         // rewrite the graph by replacing the group with fused node
         m_graph->add_node(fused_node);
@@ -359,6 +364,7 @@ private:
         for (auto node_id : group->nodes)
         {
             auto node = m_nodes[node_id]->node;
+            n_device_id = (*node)["DeviceID"].as<int>();
             for (const auto& in_edge : node->get_in_edges())
             {
                 if (std::find(group->nodes.begin(),
@@ -396,6 +402,9 @@ private:
                     fused_node, output_id, out_edge->get_dst(), out_edge->get_dst_input());
             }
         }
+
+        NNFUSION_CHECK(n_device_id != -1);
+        (*fused_node)["DeviceID"] = n_device_id;
 
         // ROCm can only support maximum 70 args for single kernel
         // CUDA support maxumum 4096 bytes for parameter space

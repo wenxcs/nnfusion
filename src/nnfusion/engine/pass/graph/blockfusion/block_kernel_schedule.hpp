@@ -13,10 +13,10 @@ public:
     using Pointer = shared_ptr<BlockKernelScheduleRecord>;
     BlockKernelScheduleRecord()
     {
-        NNFUSION_LOG(NNFUSION_WARNING)
-            << "BlockKernelScheduleRecord::BlockKernelScheduleRecord() must have "
-               "parameters. This warning may happen in the initialization of std::map, "
-               "which can be ignored.";
+        // NNFUSION_LOG(NNFUSION_WARNING)
+        //     << "BlockKernelScheduleRecord::BlockKernelScheduleRecord() must have "
+        //        "parameters. This warning may happen in the initialization of std::map, "
+        //        "which can be ignored.";
     }
     BlockKernelScheduleRecord(int _kernel_id, const std::vector<std::pair<int, int>>& _be_block_map)
     {

@@ -3016,6 +3016,7 @@ namespace nnfusion
                 {"ScatterMax", TranslateScatterOp},
                 {"Select", TranslateSelectOp},
                 {"Sigmoid", TranslateUnaryOp<op::Sigmoid>},
+                {"Sign", TranslateUnaryOp<op::Sign>},
                 {"Slice", TranslateSliceOp},
                 {"Softmax", TranslateSoftmaxOp},
                 {"Split", TranslateSplitOp},

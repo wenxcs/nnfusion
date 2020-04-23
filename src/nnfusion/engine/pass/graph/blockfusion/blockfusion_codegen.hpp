@@ -52,9 +52,10 @@ private:
     static int unique_func_id;
     BlockExecutorProgram block_executor_program;
 
-    std::unordered_map<std::string, std::string> in_args;
-    std::unordered_map<std::string, std::string> out_args;
+    // std::unordered_map<std::string, std::string> in_args;
+    // std::unordered_map<std::string, std::string> out_args;
     // std::unordered_map<std::string, std::string> local_tensors;
+    std::unordered_map<std::string, std::string> all_args;
 
     std::unordered_map<int, int> deduped_kernel_id_map; // <src_id, deduped_id>
 

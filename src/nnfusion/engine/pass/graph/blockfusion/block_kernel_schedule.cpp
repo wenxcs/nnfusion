@@ -39,12 +39,14 @@ std::vector<int> DefaultBlockKernelScheduler::get_ready_bes(int num_required_bes
     }
 
     // select bes_ready
+    int num_select_bes = 0;
     std::vector<int> bes_ready;
-    for (int be_id = 0; be_id < num_bes; be_id++)
+    for (int be_id = 0; be_id < num_bes && num_select_bes < num_required_bes; be_id++)
     {
         if (be_lane[be_id].size() <= time_start)
         {
             bes_ready.push_back(be_id);
+            num_select_bes++;
         }
     }
 

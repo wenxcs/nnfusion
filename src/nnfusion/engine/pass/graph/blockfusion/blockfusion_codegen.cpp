@@ -70,7 +70,78 @@ std::shared_ptr<KernelContext> BlockFusionCudaCodegen::FuseContext()
     // std::unordered_map<std::string, size_t> node_outputs;
     // std::unordered_map<std::string, shared_ptr<nnfusion::descriptor::Tensor>> tensors;
 
-    // analyze input and output
+    // // analyze input and output
+    // for (auto kernel_emitter : ctx->kernels)
+    // {
+    //     auto gnode = kernel_emitter->m_context->gnode;
+    //     for (size_t i = 0; i < gnode->get_input_size(); i++)
+    //     {
+    //         auto tv = gnode->get_input_tensor_ptr(i);
+    //         NNFUSION_CHECK_NOT_NULLPTR(tv);
+
+    //         ctx->inputs.push_back(tv);
+    //         ctx->input_names.push_back(tv->get_name());
+
+    //         // auto iter = node_outputs.find(tv->get_name());
+    //         // if (iter == node_outputs.end())
+    //         // {
+    //         //     ctx->inputs.push_back(tv);
+    //         //     ctx->input_names.push_back(tv->get_name());
+    //         // }
+    //         // else
+    //         // {
+    //         //     CHECK(iter->second > 0);
+    //         //     node_outputs[tv->get_name()] = node_outputs[tv->get_name()] - 1;
+    //         // }
+    //     }
+
+    //     for (size_t i = 0; i < gnode->get_output_size(); i++)
+    //     {
+    //         auto tv = gnode->get_output_tensor_ptr(i);
+    //         NNFUSION_CHECK_NOT_NULLPTR(tv);
+
+    //         ctx->outputs.push_back(tv);
+    //         ctx->output_names.push_back(tv->get_name());
+
+    //         // CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
+    //         // node_outputs[tv->get_name()] = gnode->get_output_users(0).size();
+    //         // tensors.insert(std::make_pair(tv->get_name(), tv));
+    //     }
+    // }
+
+    // // for (auto& iter : node_outputs)
+    // // {
+    // //     if (iter.second > 0)
+    // //     {
+    // //         ctx->output_names.push_back(iter.first);
+    // //         auto tw = tensors.find(iter.first);
+    // //         CHECK(tw != tensors.end());
+    // //         ctx->outputs.push_back(tw->second);
+    // //     }
+    // // }
+
+    std::unordered_map<std::string, size_t> node_inputs;
+    std::unordered_map<std::string, size_t> node_outputs;
+    for (auto kernel_emitter : ctx->kernels)
+    {
+        auto gnode = kernel_emitter->m_context->gnode;
+        for (size_t i = 0; i < gnode->get_output_size(); i++)
+        {
+            auto tv = gnode->get_output_tensor_ptr(i);
+            NNFUSION_CHECK_NOT_NULLPTR(tv);
+
+            if (node_outputs.find(tv->get_name()) == node_outputs.end())
+            {
+                node_outputs[tv->get_name()] = 1;
+                ctx->outputs.push_back(tv);
+                ctx->output_names.push_back(tv->get_name());
+            }
+            else
+            {
+                node_outputs[tv->get_name()]++;
+            }
+        }
+    }
     for (auto kernel_emitter : ctx->kernels)
     {
         auto gnode = kernel_emitter->m_context->gnode;
@@ -79,46 +150,21 @@ std::shared_ptr<KernelContext> BlockFusionCudaCodegen::FuseContext()
             auto tv = gnode->get_input_tensor_ptr(i);
             NNFUSION_CHECK_NOT_NULLPTR(tv);
 
-            ctx->inputs.push_back(tv);
-            ctx->input_names.push_back(tv->get_name());
-
-            // auto iter = node_outputs.find(tv->get_name());
-            // if (iter == node_outputs.end())
-            // {
-            //     ctx->inputs.push_back(tv);
-            //     ctx->input_names.push_back(tv->get_name());
-            // }
-            // else
-            // {
-            //     CHECK(iter->second > 0);
-            //     node_outputs[tv->get_name()] = node_outputs[tv->get_name()] - 1;
-            // }
-        }
-
-        for (size_t i = 0; i < gnode->get_output_size(); i++)
-        {
-            auto tv = gnode->get_output_tensor_ptr(i);
-            NNFUSION_CHECK_NOT_NULLPTR(tv);
-
-            ctx->outputs.push_back(tv);
-            ctx->output_names.push_back(tv->get_name());
-
-            // CHECK(node_outputs.find(tv->get_name()) == node_outputs.end());
-            // node_outputs[tv->get_name()] = gnode->get_output_users(0).size();
-            // tensors.insert(std::make_pair(tv->get_name(), tv));
+            if (node_outputs.find(tv->get_name()) == node_outputs.end())
+            {
+                if (node_inputs.find(tv->get_name()) == node_inputs.end())
+                {
+                    node_inputs[tv->get_name()] = 1;
+                    ctx->inputs.push_back(tv);
+                    ctx->input_names.push_back(tv->get_name());
+                }
+                else
+                {
+                    node_inputs[tv->get_name()]++;
+                }
+            }
         }
     }
-
-    // for (auto& iter : node_outputs)
-    // {
-    //     if (iter.second > 0)
-    //     {
-    //         ctx->output_names.push_back(iter.first);
-    //         auto tw = tensors.find(iter.first);
-    //         CHECK(tw != tensors.end());
-    //         ctx->outputs.push_back(tw->second);
-    //     }
-    // }
 
     for (auto arg : ctx->inputs)
     {
@@ -254,13 +300,13 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_block_executor_instruction_execute_b
     for (size_t i = 0; i < kernel_emitter->m_context->inputs.size(); i++)
     {
         std::stringstream ss;
-        ss << in_args[kernel_emitter->m_context->inputs[i]->get_name()];
+        ss << all_args[kernel_emitter->m_context->inputs[i]->get_name()];
         params.push_back(ss.str());
     }
     for (size_t i = 0; i < kernel_emitter->m_context->outputs.size(); i++)
     {
         stringstream ss;
-        ss << out_args[kernel_emitter->m_context->outputs[i]->get_name()];
+        ss << all_args[kernel_emitter->m_context->outputs[i]->get_name()];
         params.push_back(ss.str());
     }
     params.push_back("threadIdx.x");
@@ -455,13 +501,13 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_range_branch(int kernel_id,
     for (size_t i = 0; i < kernel_emitter->m_context->inputs.size(); i++)
     {
         std::stringstream ss;
-        ss << in_args[kernel_emitter->m_context->inputs[i]->get_name()];
+        ss << all_args[kernel_emitter->m_context->inputs[i]->get_name()];
         params.push_back(ss.str());
     }
     for (size_t i = 0; i < kernel_emitter->m_context->outputs.size(); i++)
     {
         stringstream ss;
-        ss << out_args[kernel_emitter->m_context->outputs[i]->get_name()];
+        ss << all_args[kernel_emitter->m_context->outputs[i]->get_name()];
         params.push_back(ss.str());
     }
     params.push_back("threadIdx.x");
@@ -521,18 +567,19 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_function_body_with_range_branch()
     LanguageUnit& lu = *_lu;
 
     // convert tensor name format
-    in_args.clear();
-    out_args.clear();
+    all_args.clear();
+    // in_args.clear();
+    // out_args.clear();
     // local_tensors.clear();
     for (int i = 0; i < m_context->inputs.size(); i++)
     {
         auto& tensor = m_context->inputs[i];
-        in_args[tensor->get_name()] = "input" + std::to_string(i);
+        all_args[tensor->get_name()] = "input" + std::to_string(i);
     }
     for (int i = 0; i < m_context->outputs.size(); i++)
     {
         auto& tensor = m_context->outputs[i];
-        out_args[tensor->get_name()] = "output" + std::to_string(i);
+        all_args[tensor->get_name()] = "output" + std::to_string(i);
     }
 
     lu << emit_alloc_shared()->get_code();
@@ -616,18 +663,19 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_function_body()
     LanguageUnit& lu = *_lu;
 
     // convert tensor name format
-    in_args.clear();
-    out_args.clear();
+    all_args.clear();
+    // in_args.clear();
+    // out_args.clear();
     // local_tensors.clear();
     for (int i = 0; i < m_context->inputs.size(); i++)
     {
         auto& tensor = m_context->inputs[i];
-        in_args[tensor->get_name()] = "input" + std::to_string(i);
+        all_args[tensor->get_name()] = "input" + std::to_string(i);
     }
     for (int i = 0; i < m_context->outputs.size(); i++)
     {
         auto& tensor = m_context->outputs[i];
-        out_args[tensor->get_name()] = "output" + std::to_string(i);
+        all_args[tensor->get_name()] = "output" + std::to_string(i);
     }
 
     lu << emit_alloc_shared()->get_code();
@@ -808,14 +856,17 @@ LanguageUnit_p BlockFusionCudaCodegen::emit_function_call()
     vector<string> names;
     set_launch_config();
 
-    auto gnode = m_context->gnode;
-    NNFUSION_CHECK_NOT_NULLPTR(gnode);
     string stream_name = "0";
-    if ((*gnode)["Async_info"].is_valid())
+    auto gnode = m_context->gnode;
+    if (gnode != nullptr)
     {
-        auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
-        if (async_info.execution_stream != nullptr)
-            stream_name = async_info.execution_stream->get_name();
+        NNFUSION_CHECK_NOT_NULLPTR(gnode);
+        if ((*gnode)["Async_info"].is_valid())
+        {
+            auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
+            if (async_info.execution_stream != nullptr)
+                stream_name = async_info.execution_stream->get_name();
+        }
     }
 
     names.insert(names.end(), m_context->input_names.begin(), m_context->input_names.end());
