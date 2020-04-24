@@ -396,7 +396,6 @@ bool FetchBasedSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& g
         auto selector = DefaultKernelSelector();
         return selector.run_on_graph(graph);
     }
-
     // auto dev_name = FLAGS_fdefault_device.c_str();
     // NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
 

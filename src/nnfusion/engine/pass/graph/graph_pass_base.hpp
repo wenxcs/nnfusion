@@ -13,7 +13,15 @@ namespace nnfusion
             class GraphPassBase
             {
             public:
-                virtual bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) = 0;
+                virtual bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
+                {
+                    return true;
+                }
+                virtual bool run_on_multi_graph(
+                    std::vector<std::shared_ptr<nnfusion::graph::Graph>>& graph_vec)
+                {
+                    return true;
+                }
             };
         }
     }

@@ -31,10 +31,12 @@ namespace nnfusion
         virtual NNFusion_DeviceType device_type() { return NNFusion_DeviceType::CUDA_GPU; }
     private:
         virtual bool projgen();
-        virtual bool setpwd();
+        virtual bool setpwd(std::shared_ptr<InterpreterContext> ctx,
+                            std::shared_ptr<TranslationUnit> tu);
 
     protected:
         LanguageUnit_p lu_cmakefile, lu_nnfusion_rt, lu_header, lu_main;
         bool super_scaler_enable = false;
+        std::shared_ptr<nnfusion::graph::Graph> m_graph;
     };
 } // namespace nnfusion

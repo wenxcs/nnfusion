@@ -28,7 +28,8 @@ bool run(std::shared_ptr<nnfusion::graph::Graph> graph)
     // The graph after this pass will have selected kernels
     pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
     pass_manager.register_pass<DefaultKernelSelector>();
-    pass_manager.run_passes(graph);
+    std::vector<std::shared_ptr<nnfusion::graph::Graph>> graph_vec{graph};
+    pass_manager.run_passes(graph_vec);
 
     return true;
 }

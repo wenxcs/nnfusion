@@ -51,6 +51,7 @@ public:
     static std::vector<std::string> get_registered_devices();
 
     virtual bool codegen(std::shared_ptr<nnfusion::graph::Graph> graph) { return false; }
+    virtual bool codegen(vector<std::shared_ptr<nnfusion::graph::Graph>>& graphs) { return false; }
 };
 
 using Backend = ngraph::runtime::Backend;
@@ -70,9 +71,7 @@ namespace nnfusion
     public:
         cuda_codegen();
         bool codegen(shared_ptr<graph::Graph> graph);
-
-    private:
-        map<shared_ptr<graph::Graph>, TranslationUnit> m_graph_map;
+        bool codegen(vector<shared_ptr<graph::Graph>>& graphs);
 
     protected:
         shared_ptr<Interpreter> m_functrans;

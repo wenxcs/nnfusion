@@ -103,7 +103,7 @@ public:
     virtual LanguageUnit_p emit_event_destroy();
 
 protected:
-    AsyncManager(NNFusion_DeviceType device_type);
+    AsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph, NNFusion_DeviceType device_type);
     std::unordered_map<std::string, shared_ptr<Stream>> m_stream_list;
     std::unordered_map<int, std::vector<shared_ptr<Stream>>> m_dev_stream;
     std::unordered_map<std::string, shared_ptr<Event>> m_event_list;
@@ -126,8 +126,8 @@ public:
     LanguageUnit_p emit_event_destroy() override;
 
 private:
-    CUDAAsyncManager()
-        : AsyncManager(CUDA_GPU)
+    CUDAAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
+        : AsyncManager(graph, CUDA_GPU)
     {
     }
 };
@@ -142,8 +142,8 @@ public:
     LanguageUnit_p emit_event_reset() override;
 
 private:
-    CPUAsyncManager()
-        : AsyncManager(GENERIC_CPU)
+    CPUAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
+        : AsyncManager(graph, GENERIC_CPU)
     {
     }
 };
@@ -152,7 +152,8 @@ class nnfusion::async::AsyncManagerFactory
 {
 public:
     AsyncManagerFactory() {}
-    static AsyncManager* get_async_manager(NNFusion_DeviceType device_type);
+    static AsyncManager* get_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
+                                           NNFusion_DeviceType device_type);
     static const std::unordered_map<std::string, AsyncManager*>& get_async_manager_list()
     {
         return m_async_manager;

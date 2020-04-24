@@ -15,7 +15,8 @@ namespace nnfusion
 
     private:
         virtual bool projgen();
-        virtual bool setpwd();
+        virtual bool setpwd(std::shared_ptr<InterpreterContext> ctx,
+                            std::shared_ptr<TranslationUnit> tu);
         LanguageUnit_p lu_cmakefile, lu_nnfusion_rt, lu_header, lu_main;
     };
 }

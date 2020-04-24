@@ -150,12 +150,18 @@ std::string CudaCodeGenerator::get_target_name()
     return "cuda_codegen";
 }
 
-bool CudaCodeGenerator::setpwd()
+bool CudaCodeGenerator::setpwd(std::shared_ptr<InterpreterContext> ctx,
+                               std::shared_ptr<TranslationUnit> tu)
 {
     std::string working_dir = "./nnfusion_rt";
-    std::string tar_path = working_dir + "/" + get_target_name() + "/";
-    std::string kernels_path = working_dir + "/" + get_target_name() + "/kernels/";
     create_dir(working_dir);
+    std::string tar_path = working_dir + "/" + get_target_name() + "/";
+    if (ctx->m_graphs.size() > 1)
+    {
+        create_dir(tar_path);
+        tar_path += tu->m_graph->get_name() + "/";
+    }
+    std::string kernels_path = tar_path + "kernels/";
     create_dir(tar_path);
     if (FLAGS_fkernels_as_files)
         create_dir(kernels_path);
@@ -224,8 +230,8 @@ std::vector<shared_ptr<const KernelRegistration>>
 nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
     nnfusion::ir::Instruction::Pointer ins, bool func_call_only, const std::string& func_call)
 {
-    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(CUDA_GPU);
-    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(m_graph, CUDA_GPU);
+    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(m_graph, GENERIC_CPU);
     auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
     LanguageUnit_p _lu(new LanguageUnit("func_call"));
     auto& lu = *_lu;
@@ -296,11 +302,12 @@ nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
 {
-    setpwd();
-
-    auto& allocator_list = MemoryAllocatorFactory::get_allocator_list();
-    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(CUDA_GPU);
-    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+    setpwd(ctx, tu);
+    m_graph = tu->m_graph;
+    NNFUSION_CHECK_NOT_NULLPTR(tu->memory_allocator_factory);
+    auto& allocator_list = tu->memory_allocator_factory->get_allocator_list();
+    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(m_graph, CUDA_GPU);
+    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(m_graph, GENERIC_CPU);
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cu"));
@@ -551,10 +558,15 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
 
             if (CUDA_async_manager->num_stream() > 0)
+            {
+                lu_main_init << "// create streams/handles\n";
                 lu_main_init << CUDA_async_manager->emit_stream_init()->get_code();
+            }
             if (CUDA_async_manager->num_event() > 0)
+            {
+                lu_main_init << " // create events\n";
                 lu_main_init << CUDA_async_manager->emit_event_init()->get_code();
-
+            }
             if (global_required.count("declaration::num_SMs") > 0)
             {
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
@@ -566,6 +578,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 thread_kernels_entry;
             std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_func_call;
             int pre_dev_id = 0;
+            lu_main_init << " // func call\n";
             lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << pre_dev_id << "));\n";
             for (auto iterator : prog)
             {
@@ -1426,5 +1439,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     // change to working directory
     int status = chdir("../../");
+    if (ctx->m_graphs.size() > 1)
+        status = chdir("../");
     return rc;
 }

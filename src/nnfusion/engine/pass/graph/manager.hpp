@@ -30,7 +30,7 @@ namespace nnfusion
                     m_pass_names.push_back(typeid(T).name());
                 }
 
-                bool run_passes(std::shared_ptr<nnfusion::graph::Graph> graph);
+                bool run_passes(std::vector<std::shared_ptr<nnfusion::graph::Graph>>& graph_vec);
 
             private:
                 std::vector<std::string> m_pass_names;

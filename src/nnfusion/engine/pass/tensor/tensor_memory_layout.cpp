@@ -24,15 +24,17 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                                    std::shared_ptr<TranslationUnit> tu)
 {
     bool dump_trace = FLAGS_fmem_trace;
-    string mem_log_path = FLAGS_fmem_log_path;
+    string mem_log_path = tu->m_graph->get_name() + "_" + FLAGS_fmem_log_path;
 
     // Open memory log file.
     std::ofstream mem_log;
     if (dump_trace)
         mem_log.open(mem_log_path);
 
-    MemoryAllocatorFactory maf(m_alignment, m_disable_memory_sharing);
-
+    NNFUSION_CHECK(tu->memory_allocator_factory == nullptr);
+    tu->memory_allocator_factory =
+        std::make_shared<MemoryAllocatorFactory>(m_alignment, m_disable_memory_sharing);
+    auto maf = tu->memory_allocator_factory;
     // std::unordered_set<shared_ptr<descriptor::Tensor>> persistent_tensors;
     auto& p = tu->program;
 
@@ -89,7 +91,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 else
                 {
-                    auto allocator = maf.get_allocator(tensor);
+                    auto allocator = maf->get_allocator(tensor);
                     tensor->set_pool(allocator->get_name());
                     allocator->allocate(tensor);
                 }
@@ -104,7 +106,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                 auto root_tensor = parent_tensor->get_root_tensor()
                                        ? parent_tensor->get_root_tensor()
                                        : parent_tensor;
-                auto allocator = maf.get_allocator(root_tensor);
+                auto allocator = maf->get_allocator(root_tensor);
                 allocator->allocate(
                     tensor, root_tensor, parent_tensor->get_pool_offset() + tensor_offset);
             }
@@ -119,7 +121,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
                     if (!tensor->is_persistent() && !tensor->is_parameter())
                     {
                         auto root_tensor = tensor->get_root_tensor();
-                        auto allocator = maf.get_allocator(root_tensor ? root_tensor : tensor);
+                        auto allocator = maf->get_allocator(root_tensor ? root_tensor : tensor);
                         allocator->free(tensor);
                     }
                 }
@@ -129,7 +131,7 @@ bool AssignTensorMemoryLayout::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 string name = gnode ? gnode->get_name() : ins->name();
                 mem_log << name << "\n";
-                for (const auto& allocator : MemoryAllocatorFactory::get_allocator_list())
+                for (const auto& allocator : maf->get_allocator_list())
                 {
                     allocator.second->dump(mem_log);
                 }

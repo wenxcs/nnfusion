@@ -64,7 +64,7 @@ add_custom_command(
 endif()
 )";
             auto CPU_async_manager =
-                nnfusion::async::AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+                nnfusion::async::AsyncManagerFactory::get_async_manager(m_graph, GENERIC_CPU);
             if (CPU_async_manager->num_non_default_stream() > 0)
             {
                 lu << "# need to specify the correct path of eigen\n"

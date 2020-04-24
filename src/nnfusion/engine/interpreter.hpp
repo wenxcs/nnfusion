@@ -4,6 +4,7 @@
 #include "nnfusion/common/common.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/IR/IR.hpp"
+#include "nnfusion/engine/memory_allocator.hpp"
 #include "nnfusion/engine/pass/graph/graph_pass.hpp"
 #include "op.hpp"
 
@@ -43,6 +44,7 @@ namespace nnfusion
         shared_ptr<set<shared_ptr<nnfusion::descriptor::Tensor>>> constants;
         vector<shared_ptr<nnfusion::descriptor::Tensor>> arg;
         vector<shared_ptr<nnfusion::descriptor::Tensor>> out;
+        shared_ptr<MemoryAllocatorFactory> memory_allocator_factory;
         nnfusion::ir::Program program;
         bool m_is_translated;
         size_t memory_pool_size;
@@ -60,15 +62,14 @@ namespace nnfusion
     class InterpreterContext
     {
     public:
-        shared_ptr<graph::Graph> m_graph;
-
-        // TODO: multi graphs?
+        //shared_ptr<graph::Graph> m_graph;
         unordered_set<shared_ptr<graph::Graph>> m_graphs;
         // Store Translated OP's
         unordered_map<shared_ptr<graph::GNode>, ir::Operator_p> m_node_inter_map;
         size_t m_offset;
         unordered_map<string, size_t> m_tensor_memory_buffers;
         unordered_map<string, string> m_variable_name_map;
+        TranslationUnitMap m_tus;
     };
 
     // This is to translate nnfusion::graph to NNFusion::IntermediateOP
@@ -82,7 +83,7 @@ namespace nnfusion
                     shared_ptr<InterpreterContext> ctx);
         ~Interpreter(){};
 
-        shared_ptr<TranslationUnitMap> translate(shared_ptr<graph::Graph> graph);
+        TranslationUnitMap& translate(shared_ptr<graph::Graph> graph);
 
         bool translate(TranslationUnit::Pointer tu);
 
@@ -92,7 +93,8 @@ namespace nnfusion
         shared_ptr<vector<shared_ptr<IInterpreterPass>>> m_passes;
 
     private:
-        void add_memcpy_ir(shared_ptr<nnfusion::graph::GNode> gnode,
+        void add_memcpy_ir(shared_ptr<graph::Graph> graph,
+                           shared_ptr<nnfusion::graph::GNode> gnode,
                            nnfusion::ir::BasicBlock::Pointer bb_main);
     };
 

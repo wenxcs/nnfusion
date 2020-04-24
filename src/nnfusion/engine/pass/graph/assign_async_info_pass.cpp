@@ -25,15 +25,15 @@ bool AssignAsyncInfoPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
     if (m_device == CUDA_GPU || m_device == ROCM_GPU)
     {
-        auto CPU_async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
-        auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(CUDA_GPU);
+        auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
+        auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
         assign_thread_info(CPU_async_manager, graph);
         naive_assign_stream_info(CUDA_async_manager, graph);
         assign_event_info(CUDA_async_manager, CPU_async_manager, graph);
     }
     else if (m_device == GENERIC_CPU)
     {
-        auto CPU_async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+        auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
         naive_assign_stream_info(CPU_async_manager, graph);
         assign_event_info(nullptr, CPU_async_manager, graph);
     }

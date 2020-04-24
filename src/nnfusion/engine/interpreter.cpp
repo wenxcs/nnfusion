@@ -74,28 +74,30 @@ bool Interpreter::translate(TranslationUnit::Pointer tu)
     return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
 }
 
-shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> graph)
+TranslationUnitMap& Interpreter::translate(shared_ptr<graph::Graph> graph)
 {
+    auto& _tus = m_trans_ctx->m_tus;
+    if (_tus.find(graph) != _tus.end() && _tus[graph]->m_is_translated)
+        return _tus;
     // run graph passes
+    std::vector<shared_ptr<graph::Graph>> graph_vec{graph};
     nnfusion::pass::graph::GraphPass graph_passes;
-    NNFUSION_CHECK(graph_passes.run(graph));
-
-    // TODO : multi graph ?
-    m_trans_ctx->m_graphs.insert(graph);
+    NNFUSION_CHECK(graph_passes.run(graph_vec) == true);
 
     // Iterator through all nodes
     static interpreter::ExtractGraphSignature extract_global;
-    shared_ptr<TranslationUnitMap> _tus(new TranslationUnitMap());
 
     // Deal with translation unit's program
-    for (const auto& current_graph : m_trans_ctx->m_graphs)
+    for (auto cur_graph : graph_vec)
     {
+        m_trans_ctx->m_graphs.insert(cur_graph);
+
         shared_ptr<TranslationUnit> _tu(new TranslationUnit());
-        _tus->emplace(current_graph, _tu);
-        NNFUSION_LOG(INFO) << "Translating graph:\t" << current_graph->get_name();
+        _tus.emplace(cur_graph, _tu);
+        NNFUSION_LOG(INFO) << "Translating graph:\t" << cur_graph->get_name();
 
         _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
-        _tu->m_graph = current_graph;
+        _tu->m_graph = cur_graph;
         auto bb_main = _tu->program.get_entry();
 
         // extract output_names/constants/arg/out for _tu, m_variable_name_map for m_trans_ctx
@@ -103,7 +105,7 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
             << "Error when extract global graph info.";
 
         // Translate the Node
-        for (auto gnode : graph->get_ordered_ops())
+        for (auto gnode : cur_graph->get_ordered_ops())
         {
             // Generate Translated OP
             // <todo> not sure translated
@@ -129,43 +131,23 @@ shared_ptr<TranslationUnitMap> Interpreter::translate(shared_ptr<graph::Graph> g
                 bb_main->push_back(ir);
 
                 // add memcpy ir and async info if the gnode and its output gnodes are in diffrent devices
-                add_memcpy_ir(gnode, bb_main);
+                add_memcpy_ir(cur_graph, gnode, bb_main);
             }
         }
-
-        /*
-
-        for (auto& ins : *bb_main)
-        {
-            std::stringstream ss;
-            ss << ins->name() << "\t { ";
-            ss << "INPUT:{";
-            for(auto& in: ins->Attr().ts("INPUT"))
-            {
-                ss << in.get_name() << ", ";
-            }
-            ss << "}, ";
-            ss << "OUTPUT:{";
-            for(auto& in: ins->Attr().ts("OUTPUT"))
-            {
-                ss << in.get_name() << ", ";
-            }
-            ss << "}, (tag:)";
-            ss << " DEBUG : " << ins->Tag().Get<int>("DEBUG") << " }";
-            NNFUSION_LOG(INFO) << ss.str();
-        }
-         */
-        translate(_tu);
+        if (translate(_tu))
+            _tu->m_is_translated = true;
     }
-    NNFUSION_LOG(INFO) << "-------------------translate graph done.";
-    return _tus;
+    return m_trans_ctx->m_tus;
 }
 
-void Interpreter::add_memcpy_ir(shared_ptr<nnfusion::graph::GNode> gnode,
+void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
+                                shared_ptr<nnfusion::graph::GNode> gnode,
                                 nnfusion::ir::BasicBlock::Pointer bb_main)
 {
-    auto CUDA_async_manager = nnfusion::async::AsyncManagerFactory::get_async_manager(CUDA_GPU);
-    auto CPU_async_manager = nnfusion::async::AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+    auto CUDA_async_manager =
+        nnfusion::async::AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
+    auto CPU_async_manager =
+        nnfusion::async::AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
     std::unordered_map<int, nnfusion::ir::Instruction::Pointer> dev_ir;
     auto n_device_type = (*gnode)["DeviceType"].as<NNFusion_DeviceType>();
     auto n_device_id = (*gnode)["DeviceID"].as<int>();

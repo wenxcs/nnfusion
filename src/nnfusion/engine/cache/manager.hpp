@@ -28,9 +28,10 @@ namespace nnfusion
             ~KernelCacheManager();
 
             std::string fetch(std::string identifier, std::string tag);
-            inline bool is_valid() { return valid; }
+            //inline bool is_valid() { return valid; }
+            bool is_valid() { return kernel_cache != nullptr; }
         private:
-            bool valid;
+            //bool valid;
             std::string m_path;
             static sqlite3* kernel_cache;
         };

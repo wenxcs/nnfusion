@@ -3060,7 +3060,6 @@ namespace nnfusion
 
             GraphConvert::GraphConvert(const tensorflow::GraphDef& proto)
                 : tf_graph_proto{&proto}
-                , m_graph(new nnfusion::graph::Graph())
             {
                 NNFUSION_LOG(INFO) << "Converting Tensorflow Graph";
 

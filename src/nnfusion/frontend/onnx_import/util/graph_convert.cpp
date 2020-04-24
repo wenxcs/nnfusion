@@ -15,7 +15,6 @@ namespace nnfusion
             GraphConvert::GraphConvert(const onnx::ModelProto& model_proto)
                 : onnx_model_proto{&model_proto}
                 , onnx_graph_proto(&(model_proto.graph()))
-                , m_graph(new nnfusion::graph::Graph())
             {
                 NNFUSION_LOG(INFO) << onnx_model_proto->DebugString();
                 // Note: onnx connect nodes by tensor's name instead of op name

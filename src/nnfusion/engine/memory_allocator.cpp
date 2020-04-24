@@ -376,8 +376,6 @@ nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory(size_t alignment, bool 
     NNFUSION_CHECK_WITH_EXCEPTION(m_alignment > 0, errors::InvalidArgument)
         << "Memory alignment must be > 0";
 }
-std::unordered_map<std::string, MemoryAllocator*>
-    nnfusion::MemoryAllocatorFactory::MemoryAllocatorFactory::m_allocator_list;
 
 MemoryAllocator*
     nnfusion::MemoryAllocatorFactory::get_allocator(shared_ptr<descriptor::Tensor> tensor)

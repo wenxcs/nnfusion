@@ -26,7 +26,7 @@ DEFINE_string(fantares_codegen_server,
               "",
               "Antares codegen server address and port, format: <ip>:<port>");
 
-bool GraphPass::run(std::shared_ptr<Graph> graph)
+bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
 {
     GraphPassManager pass_manager;
     // Generate result op must before LivenessPass
@@ -54,7 +54,5 @@ bool GraphPass::run(std::shared_ptr<Graph> graph)
     // assign stream
     pass_manager.register_pass<AssignAsyncInfoPass>();
 
-    pass_manager.run_passes(graph);
-
-    return true;
+    return pass_manager.run_passes(graph_vec);
 }

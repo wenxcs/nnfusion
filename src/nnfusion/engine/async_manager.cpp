@@ -77,7 +77,8 @@ Event::Event(size_t event_id, const shared_ptr<Stream>& stream, const string& sy
     }
 }
 
-AsyncManager::AsyncManager(NNFusion_DeviceType device_type)
+AsyncManager::AsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph,
+                           NNFusion_DeviceType device_type)
     : m_device_type(device_type)
     , m_num_non_default_stream{0}
 {
@@ -137,6 +138,7 @@ shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream, cons
         size_t event_id = m_event_list.size();
         shared_ptr<Event> event(new Event(event_id, stream, symbol));
         m_event_list[search_name] = event;
+        m_dev_event[event->get_device_id()].push_back(event);
         return event;
     }
 }
@@ -284,10 +286,10 @@ LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shar
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
     if (stream->is_default_stream())
-        lu << "cudaStreamWaitEvent(0, " << event->get_name() << ", 0 );\n";
+        lu << "CUDA_SAFE_CALL(cudaStreamWaitEvent(0, " << event->get_name() << ", 0 ));\n";
     else
-        lu << "cudaStreamWaitEvent(" << stream->get_name() << ", " << event->get_name()
-           << ", 0);\n";
+        lu << "CUDA_SAFE_CALL(cudaStreamWaitEvent(" << stream->get_name() << ", "
+           << event->get_name() << ", 0));\n";
     return _lu;
 }
 
@@ -322,10 +324,10 @@ LanguageUnit_p CUDAAsyncManager::emit_event_record(shared_ptr<Event> event)
     auto& lu = *_lu;
 
     if (event->get_stream()->is_default_stream())
-        lu << "cudaEventRecord(" << event->get_name() << ", 0);\n";
+        lu << "CUDA_SAFE_CALL(cudaEventRecord(" << event->get_name() << ", 0));\n";
     else
-        lu << "cudaEventRecord(" << event->get_name() << ", " << event->get_stream()->get_name()
-           << ");\n";
+        lu << "CUDA_SAFE_CALL(cudaEventRecord(" << event->get_name() << ", "
+           << event->get_stream()->get_name() << "));\n";
     // event->set_recorded();
 
     return _lu;
@@ -405,13 +407,15 @@ LanguageUnit_p CPUAsyncManager::emit_event_reset()
 }
 
 std::unordered_map<std::string, AsyncManager*> AsyncManagerFactory::m_async_manager;
-
-AsyncManager* AsyncManagerFactory::get_async_manager(NNFusion_DeviceType device_type)
+AsyncManager* AsyncManagerFactory::get_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
+                                                     NNFusion_DeviceType device_type)
 {
-    std::string dt_name = get_device_str(device_type);
-    if (m_async_manager.find(dt_name) != m_async_manager.end())
+    std::string search_name = get_device_str(device_type);
+    if (graph)
+        search_name += graph->get_name();
+    if (m_async_manager.find(search_name) != m_async_manager.end())
     {
-        return m_async_manager[dt_name];
+        return m_async_manager[search_name];
     }
     else
     {
@@ -420,24 +424,24 @@ AsyncManager* AsyncManagerFactory::get_async_manager(NNFusion_DeviceType device_
         {
         case CUDA_GPU:
         {
-            async_manager = new CUDAAsyncManager();
+            async_manager = new CUDAAsyncManager(graph);
             break;
         }
         //\ todo: temporirly rocm use cuda's async manager.
         case ROCM_GPU:
         {
-            async_manager = new CUDAAsyncManager();
+            async_manager = new CUDAAsyncManager(graph);
             break;
         }
         case GENERIC_CPU:
         {
-            async_manager = new CPUAsyncManager();
+            async_manager = new CPUAsyncManager(graph);
             break;
         }
         default: nnfusion::errors::NotSupported("The device is not supported.");
         }
         if (async_manager != nullptr)
-            m_async_manager[dt_name] = async_manager;
+            m_async_manager[search_name] = async_manager;
         return async_manager;
     }
 }

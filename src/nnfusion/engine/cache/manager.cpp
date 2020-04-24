@@ -4,8 +4,8 @@
 
 using namespace nnfusion::cache;
 
-sqlite3* KernelCacheManager::kernel_cache = NULL;
-
+// sqlite3* KernelCacheManager::kernel_cache = NULL;
+sqlite3* KernelCacheManager::kernel_cache = nullptr;
 KernelCacheManager::KernelCacheManager()
 {
     m_path = (getpwuid(getuid())->pw_dir + std::string("/.cache/nnfusion/kernel_cache.db"));
@@ -23,12 +23,13 @@ CREATE TABLE IF NOT EXISTS KernelCache(
    PRIMARY KEY (identifier, tag));
 )";
             NNFUSION_CHECK(SQLITE_OK == sqlite3_exec(kernel_cache, table_create, NULL, 0, NULL));
-            valid = true;
+            // valid = true;
         }
         else
         {
-            valid = false;
+            // valid = false;
             NNFUSION_LOG(NNFUSION_WARNING) << "Invalid path to kernel cache: " << m_path;
+            kernel_cache = nullptr;
         }
     }
 }

@@ -66,11 +66,17 @@ cuda_codegen::cuda_codegen()
 
 bool cuda_codegen::codegen(shared_ptr<graph::Graph> graph)
 {
-    TranslationUnit& graph_unit = m_graph_map[graph];
-    if (graph_unit.m_is_translated == false)
+    auto& tus = m_functrans->translate(graph);
+    NNFUSION_CHECK(!tus.empty());
+    return true;
+}
+
+bool cuda_codegen::codegen(vector<shared_ptr<graph::Graph>>& graphs)
+{
+    for (auto graph : graphs)
     {
-        auto tus = m_functrans->translate(graph);
-        NNFUSION_CHECK_NOT_NULLPTR(tus);
+        if (!this->codegen(graph))
+            return false;
     }
     return true;
 }

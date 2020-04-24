@@ -63,12 +63,18 @@ namespace
     }
 } // namespace
 
-bool CpuCodeGenerator::setpwd()
+bool CpuCodeGenerator::setpwd(std::shared_ptr<InterpreterContext> ctx,
+                              std::shared_ptr<TranslationUnit> tu)
 {
     std::string working_dir = "./nnfusion_rt";
-    std::string tar_path = working_dir + "/cpu_codegen/";
-    std::string kernels_path = working_dir + "/cpu_codegen/kernels/";
     create_dir(working_dir);
+    std::string tar_path = working_dir + "/cpu_codegen/";
+    if (ctx->m_graphs.size() > 1)
+    {
+        create_dir(tar_path);
+        tar_path += tu->m_graph->get_name() + "/";
+    }
+    std::string kernels_path = tar_path + "kernels/";
     create_dir(tar_path);
     if (FLAGS_fkernels_as_files)
         create_dir(kernels_path);
@@ -88,10 +94,11 @@ bool CpuCodeGenerator::projgen()
 bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                            std::shared_ptr<TranslationUnit> tu)
 {
-    setpwd();
+    setpwd(ctx, tu);
 
-    auto& allocator_list = MemoryAllocatorFactory::get_allocator_list();
-    auto async_manager = AsyncManagerFactory::get_async_manager(GENERIC_CPU);
+    NNFUSION_CHECK_NOT_NULLPTR(tu->memory_allocator_factory);
+    auto& allocator_list = tu->memory_allocator_factory->get_allocator_list();
+    auto async_manager = AsyncManagerFactory::get_async_manager(tu->m_graph, GENERIC_CPU);
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cpp"));
@@ -892,5 +899,7 @@ endif()
 
     // change to working directory
     int status = chdir("../../");
+    if (ctx->m_graphs.size() > 1)
+        status = chdir("../");
     return rc;
 }

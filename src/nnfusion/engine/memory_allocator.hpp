@@ -166,7 +166,7 @@ namespace nnfusion
         MemoryAllocatorFactory(size_t alignment = 1, bool disable_reuse = false);
         MemoryAllocator* get_allocator(shared_ptr<descriptor::Tensor> tensor);
         size_t get_alignment() const { return m_alignment; }
-        static const std::unordered_map<std::string, MemoryAllocator*>& get_allocator_list()
+        const std::unordered_map<std::string, MemoryAllocator*>& get_allocator_list()
         {
             return m_allocator_list;
         }
@@ -175,6 +175,6 @@ namespace nnfusion
         size_t m_alignment;
         bool m_disable_reuse;
         // map from names to allocators
-        static std::unordered_map<std::string, MemoryAllocator*> m_allocator_list;
+        std::unordered_map<std::string, MemoryAllocator*> m_allocator_list;
     };
 }

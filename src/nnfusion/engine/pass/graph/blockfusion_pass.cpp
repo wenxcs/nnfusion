@@ -464,6 +464,6 @@ bool BlockFusionPass::run_on_graph(std::shared_ptr<Graph>& graph)
     }
     else
     {
-        return false;
+        return true;
     }
 }
