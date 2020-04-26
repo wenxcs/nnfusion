@@ -14,6 +14,7 @@ DECLARE_string(fdefault_device);
 DECLARE_bool(frt_const_folding);
 DEFINE_int32(fnum_stream, 1, "Number of streams. 0 means unlimited stream numbers.");
 DECLARE_int32(fnum_device);
+DEFINE_bool(fuse_default_stream, true, "Use default stream.");
 
 AssignAsyncInfoPass::AssignAsyncInfoPass()
 {
@@ -271,7 +272,7 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
     int n_stream = FLAGS_fnum_stream;
     if (n_stream < 0)
         n_stream = 1;
-    if (n_stream == 1)
+    if (n_stream == 1 && FLAGS_fuse_default_stream)
     {
         for (auto gnode : graph->get_ordered_ops())
         {
