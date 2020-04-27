@@ -41,7 +41,11 @@ namespace nnfusion
                     auto& writer = *_lu;
                     writer << "std::ifstream bin_file(\"" << folder + const_name
                            << ".bin\" , std::ios::in | std::ios::binary);\n"
-                           // << "cudaMalloc((void**)out, " << op->get_data_size() << ");\n"
+                           << "if(bin_file.fail())\n"
+                           << "{\n"
+                           << "\tprintf(\"Load " << const_name << " failed.\\n\");\n"
+                           << "\texit(1);\n"
+                           << "}\n"
                            << "char* tmp_mem = new char[" << op->get_data_size() << "];\n"
                            << "bin_file.read(tmp_mem, " << op->get_data_size() << ");\n"
                            << "cudaMemcpyAsync(output0, tmp_mem, " << op->get_data_size()

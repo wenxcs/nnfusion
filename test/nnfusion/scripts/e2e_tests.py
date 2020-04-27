@@ -21,7 +21,7 @@ if not sys.argv[2].endswith("nnfusion"):
 models = sys.argv[1]
 nnfusion_cli = sys.argv[2]
 capability_list = os.environ.get('DEVICES', '').upper().split(",")
-testcase_list = os.environ.get('TESTS', '').upper().split(",")
+testcase_list = os.environ.get('TESTS', '').split(",")
 
 import testcases
 import e2e_evaluator
@@ -65,15 +65,16 @@ class E2EManager:
         if not(os.path.exists(models)):
             logging.error("Model folder is not existed.")
             os.mkdir(models)
+        newlist = list()
         for e in testcases.TestCases:
             if e.valid():
                 if "TESTS" in os.environ:
-                    if e.casename not in testcase_list:
-                        testcases.TestCases.remove(e)
+                    if e.casename in testcase_list:
+                        newlist.append(e)
                 else:
+                    newlist.append(e)
                     logging.info("%s valid!"%e.casename)
-            else:
-                testcases.TestCases.remove(e)
+        testcases.TestCases = newlist
 
     def report(self):
         manager = multiprocessing.Manager()
