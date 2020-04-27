@@ -336,12 +336,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             // emit constant kernel
             if (ins->getGNode() && ins->getGNode()->is_constant())
             {
-                auto kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-                    ins->getGNode()->get_op_type(), CUDA_GPU, DT_FLOAT);
-                shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
-                auto kernel = kernel_reg->m_factory(ctx);
+                auto kernel = (*ins)["Kernel_Selection_Result"]
+                                  .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>()
+                                  .second;
                 kernel->get_or_emit_source();
-                ins->setKernel(kernel);
                 continue;
             }
             if (!ins->getKernel())
@@ -595,19 +593,13 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         if (ins->name() == "Memcpy")
                         {
-                            if ((*ins)["Memcpy_Constant_or_Variable"].is_valid() &&
-                                (*ins)["Memcpy_Constant_or_Variable"].as<bool>())
+                            if ((*ins)["Memcpy_Constant_or_Variable"].is_valid_as<bool>() ||
+                                (enable_rt_const_folding &&
+                                 (*ins)["rt_const_folding"].is_valid_as<bool>()))
                             {
                                 // lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id
                                 //              << "));\n";
                                 lu_main_init << func_call_codegen(ins, true)->get_code();
-                                if (enable_rt_const_folding)
-                                {
-                                    auto& outputs = ins->get_outputs();
-                                    NNFUSION_CHECK(outputs.size() == 1);
-                                    std::string out = outputs[0]->get_name();
-                                    constant_vals.insert(out);
-                                }
                             }
                             else
                             {
@@ -666,7 +658,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                     kernel_func_call[kernel] = function_call;
 
-                    if (gnode->is_constant() || gnode->is_variable())
+                    if (gnode->is_constant() || gnode->is_variable() ||
+                        (enable_rt_const_folding && (*ins)["rt_const_folding"].is_valid_as<bool>()))
                     {
                         NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
                             << "Kernel function calls in cuda_init() should use default stream.";
@@ -677,46 +670,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         }
                         auto function_call = kernel_func_call[kernel];
                         lu_main_init << func_call_codegen(ins, true, function_call)->get_code();
-                        if (enable_rt_const_folding)
-                        {
-                            for (auto& out : kernel->m_context->output_names)
-                                constant_vals.insert(out);
-                        }
                     }
                     else
                     {
-                        // Put constant-able node into cuda_init();
-                        bool const_inputs = true;
-                        for (auto& in : kernel->m_context->input_names)
-                        {
-                            if (constant_vals.find(in) == constant_vals.end())
-                            {
-                                const_inputs = false;
-                                break;
-                            }
-                        }
-                        if (const_inputs)
-                        {
-                            for (auto& out : kernel->m_context->output_names)
-                            {
-                                constant_vals.insert(out);
-                            }
-                        }
-
-                        if (const_inputs)
-                        {
-                            NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
-                                << "Kernel function calls in cuda_init() should use default "
-                                   "stream.";
-
-                            auto function_call = kernel_func_call[kernel];
-                            //lu_main_init << function_call;
-                            lu_main_init << func_call_codegen(ins, true, function_call)->get_code();
-                        }
-                        else
-                        {
-                            thread_kernels_entry[thread->get_name()].push_back(ins);
-                        }
+                        thread_kernels_entry[thread->get_name()].push_back(ins);
                     }
                 }
             }

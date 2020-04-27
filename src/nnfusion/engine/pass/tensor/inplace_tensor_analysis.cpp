@@ -225,11 +225,6 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 // move the allocation of concat output tensor to the first input node
                                 if (i == first_candidate)
                                 {
-                                    // NNFUSION_CHECK(input_gnode->liveness_new_list.count(output) ==
-                                    //                0);
-                                    // NNFUSION_CHECK(gnode->liveness_new_list.count(output) > 0);
-                                    // input_gnode->liveness_new_list.insert(output);
-                                    // gnode->liveness_new_list.erase(output);
                                     NNFUSION_CHECK(input_ins->liveness_new_list.count(output) == 0);
                                     NNFUSION_CHECK(ins->liveness_new_list.count(output) > 0);
                                     input_ins->liveness_new_list.insert(output);

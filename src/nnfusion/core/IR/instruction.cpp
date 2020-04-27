@@ -32,7 +32,8 @@ KernelEmitter::Pointer Instruction::get_kernel_from_gnode(std::shared_ptr<graph:
     auto emitted_kernel =
         (*gnode)["Kernel_Selection_Result"].as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
 
-    if (emitted_kernel.second->get_or_emit_source() == nullptr)
+    // constant kernel emitter will write file to save weights, skip to do it when codegen.
+    if (!gnode->is_constant() && emitted_kernel.second->get_or_emit_source() == nullptr)
         NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before translating:"
                                        << gnode->get_name();
     kernel = emitted_kernel.second;
@@ -41,9 +42,9 @@ KernelEmitter::Pointer Instruction::get_kernel_from_gnode(std::shared_ptr<graph:
 
 void Instruction::setGNode(std::shared_ptr<graph::GNode> gnode)
 {
-    if (this->gnode)
-        NNFUSION_LOG(NNFUSION_WARNING) << "Instruction's gnode should be set only once.";
+    NNFUSION_CHECK(this->gnode == nullptr) << "Instruction's gnode should be set only once.";
     this->gnode = gnode;
+    NNFUSION_CHECK(this->kernel == nullptr) << "Instruction's kernel should be set only once.";
     this->kernel = this->get_kernel_from_gnode(gnode);
     if (!this->kernel && this->gnode)
         this->extract_gnode_tensor(this->gnode);
@@ -51,8 +52,7 @@ void Instruction::setGNode(std::shared_ptr<graph::GNode> gnode)
 
 void Instruction::setKernel(std::shared_ptr<KernelEmitter> kernel)
 {
-    if (this->kernel && this->gnode && !this->gnode->is_constant())
-        NNFUSION_LOG(NNFUSION_WARNING) << "Instruction's kernel should be set only once.";
+    NNFUSION_CHECK(this->kernel == nullptr) << "Instruction's kernel should be set only once.";
     this->kernel = kernel;
 }
 

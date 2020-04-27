@@ -158,7 +158,6 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
         KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
     shared_ptr<KernelContext> ctx(new KernelContext(gnode));
-    // NNFUSION_LOG(INFO) << gnode->get_op_type() << " " << devtype << " " << kernel_regs.size();
     for (auto kernel_reg : kernel_regs)
     {
         auto kernel = kernel_reg->m_factory(ctx);

@@ -86,6 +86,7 @@ public:
         {
             std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> fuse_groups =
                 ExtractFusionGroups();
+
             if (fuse_groups != nullptr && fuse_groups->size() > 0)
             {
                 if (fusion_level > 1)
@@ -101,7 +102,6 @@ public:
                 return true;
             }
         }
-
         return true;
     }
 
@@ -185,6 +185,7 @@ private:
 
     std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> ExtractFusionGroups()
     {
+        NNFUSION_LOG(INFO) << "~~~~~~~~~~~~~~~~~~~~~~~~1";
         std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups =
             std::make_shared<std::vector<std::shared_ptr<FuseGroup>>>();
         std::queue<size_t> ready;
@@ -202,7 +203,6 @@ private:
         std::shared_ptr<FuseGroup> cur_group = nullptr;
         std::shared_ptr<FuseGroup> cur_elemgroup = nullptr;
         std::unordered_map<string, std::shared_ptr<FuseGroup>> dev_group;
-
         for (auto node : m_graph->get_ordered_ops())
         {
             auto n_device_type = (*node)["DeviceType"].as<NNFusion_DeviceType>();
@@ -216,12 +216,10 @@ private:
                 ready.push(id);
             }
         }
-
         while (state != WORK_DONE)
         {
             size_t node_id = 0;
             std::shared_ptr<TaggedNode> tn = nullptr;
-
             switch (state)
             {
             // Process the nodes in ready queue
@@ -310,29 +308,24 @@ private:
                         cur_elemgroup = nullptr;
                     }
                 };
-
                 if (elem_ready.empty())
                 {
                     AppendElementGroup();
                     state = PROCESS_FUSIABLE_NODE;
                     break;
                 }
-
                 node_id = elem_ready.front();
                 elem_ready.pop_front();
                 tn = m_nodes[node_id];
-
                 size_t tensor_size = nnfusion::shape_size(tn->node->get_output_shape(0));
                 auto n_device_type = (*(tn->node))["DeviceType"].as<NNFusion_DeviceType>();
                 auto n_device_id = (*(tn->node))["DeviceID"].as<int>();
-
                 if (cur_elemgroup && (cur_elemgroup->output_size != tensor_size ||
                                       cur_elemgroup->device_type != n_device_type ||
                                       cur_elemgroup->device_id != n_device_id))
                 {
                     AppendElementGroup();
                 }
-
                 if (!cur_elemgroup)
                 {
                     cur_elemgroup = std::make_shared<FuseGroup>();
@@ -348,19 +341,15 @@ private:
             case WORK_DONE: { break;
             }
             } // switch
-
             if (tn)
             {
                 tn->visited = true;
-                auto n_device_type = (*(tn->node))["DeviceType"].as<NNFusion_DeviceType>();
-                auto n_device_id = (*(tn->node))["DeviceID"].as<int>();
                 for (auto edge : tn->node->get_out_edges())
                 {
                     auto dst = m_nodes[edge->get_dst()->get_id()];
-                    auto dst_device_type = (*(dst->node))["DeviceType"].as<NNFusion_DeviceType>();
-                    auto dst_device_id = (*(dst->node))["DeviceID"].as<int>();
+                    if (!dst)
+                        continue;
                     dst->ready_inputs++;
-
                     if (!(dst->visited) && (dst->ready_inputs >= dst->node->get_in_edges().size()))
                     {
                         AddNodeToReadyQueues(dst->node, ready, fuse_ready, elem_ready);
@@ -368,7 +357,6 @@ private:
                 }
             }
         } // while
-
         return groups;
     }
 

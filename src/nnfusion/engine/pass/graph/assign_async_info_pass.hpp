@@ -20,15 +20,13 @@ namespace nnfusion
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
 
             private:
-                void assign_thread_info(nnfusion::async::AsyncManager* CPU_async_manager,
-                                        std::shared_ptr<Graph>& graph);
-                void naive_assign_stream_info(nnfusion::async::AsyncManager* async_manager,
-                                              std::shared_ptr<Graph>& graph);
-                void assign_event_info(nnfusion::async::AsyncManager* CUDA_async_manager,
-                                       nnfusion::async::AsyncManager* CPU_async_manager,
-                                       std::shared_ptr<Graph>& graph);
+                void gpu_assign_thread_info(std::shared_ptr<Graph>& graph);
+                void naive_assign_stream_info(std::shared_ptr<Graph>& graph);
+                void naive_assign_thread_info(std::shared_ptr<Graph>& graph);
+                void assign_event_info(std::shared_ptr<Graph>& graph);
+                void assign_default_info_for_const(std::shared_ptr<Graph>& graph,
+                                                   bool assign_gpu_stream);
                 KernelEmitter::Pointer get_kernel(std::shared_ptr<nnfusion::graph::GNode> gnode);
-                NNFusion_DeviceType m_device;
             };
         }
     }

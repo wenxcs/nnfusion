@@ -27,6 +27,7 @@ DEFINE_int32(fnuma_node_num, 1, "");
 DEFINE_int32(fthread_num_per_node, 0, "");
 DECLARE_bool(fkernels_as_files);
 DECLARE_int64(fkernels_files_number);
+DECLARE_bool(frt_const_folding);
 
 namespace
 {
@@ -117,63 +118,32 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     bool rc = true;
     bool need_intra_node_threadpool = false;
 
-    std::vector<shared_ptr<KernelEmitter>> kernels;
+    //std::vector<shared_ptr<KernelEmitter>> kernels;
     auto& prog = tu->program;
     for (auto iterator : prog)
     {
         for (auto ins : *iterator)
         {
-            string op_name = ins->getGNode()->get_op_type();
-            if (!(*ins)["Async_info"].is_valid())
+            if (ins->name() == "Memcpy" || (ins->getGNode() && ins->getGNode()->is_parameter()))
             {
-                NNFUSION_CHECK_FAIL() << "Async info should be be assigned before this pass:"
-                                      << ins->getGNode()->get_name();
+                continue;
             }
-            shared_ptr<const KernelRegistration> kernel_reg = nullptr;
-
-            std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
-                KernelRegistry::Global()->FindKernelRegistrations(op_name, GENERIC_CPU, DT_FLOAT);
-
-            shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
-            bool has_valid_kernel = false;
-            if (kernel_regs.size() > 0)
+            auto kernel = ins->getKernel();
+            if (kernel && kernel->get_or_emit_source())
             {
-                for (auto kernel_reg : kernel_regs)
-                {
-                    auto kernel = kernel_reg->m_factory(ctx);
-                    if (kernel->get_or_emit_source(true))
-                    {
-                        kernels.push_back(kernel);
-                        need_intra_node_threadpool |= kernel->is_parallelism();
-                        has_valid_kernel = true;
-                        break;
-                    }
-                }
+                need_intra_node_threadpool |= kernel->is_parallelism();
             }
-
-            if (!has_valid_kernel)
+            else
             {
-                if ((*ins)["Kernel_Selection_Result"].is_valid())
-                {
-                    auto res = (*ins)["Kernel_Selection_Result"]
-                                   .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-                    if (res.second->get_or_emit_source() != nullptr)
-                    {
-                        if (!(res.second->is_eliminative()))
-                            kernels.push_back(res.second);
-                        has_valid_kernel = true;
-                    }
-                }
-            }
-
-            if (!has_valid_kernel)
-            {
-                kernel_reg = KernelRegistry::Global()->FindKernelRegistration(
-                    "AnyOP", GENERIC_CPU, DT_FLOAT);
-                NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op=" << op_name;
+                shared_ptr<const KernelRegistration> kernel_reg =
+                    KernelRegistry::Global()->FindKernelRegistration(
+                        "AnyOP", GENERIC_CPU, DT_FLOAT);
+                NNFUSION_CHECK(kernel_reg != nullptr) << "AnyOp Kernel not found, op="
+                                                      << ins->getGNode()->get_op_type();
+                shared_ptr<KernelContext> ctx(new KernelContext(ins->getGNode()));
                 auto kernel = kernel_reg->m_factory(ctx);
-                kernel->get_or_emit_source(true);
-                kernels.push_back(kernel);
+                kernel->get_or_emit_source();
+                ins->setKernel(kernel);
             }
         }
     }
@@ -204,17 +174,22 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             re.require(header::barrier);
         //re.require(declaration::typedef_int);
 
-        for (auto kernel : kernels)
+        for (auto iterator : prog)
         {
-            if (!(kernel->is_emitted()))
+            for (auto ins : *iterator)
             {
-                return false;
-            }
-
-            for (auto& it : kernel->get_or_emit_source(true)->dep_unit->local_symbol)
-            {
-                re.require(it.second);
-                global_required.insert(it.second->symbol);
+                if (ins->name() == "Memcpy" || (ins->getGNode() && ins->getGNode()->is_parameter()))
+                {
+                    continue;
+                }
+                auto kernel = ins->getKernel();
+                if (!kernel->is_emitted())
+                    return false;
+                for (auto& it : kernel->get_or_emit_source()->dep_unit->local_symbol)
+                {
+                    re.require(it.second);
+                    global_required.insert(it.second->symbol);
+                }
             }
         }
     }
@@ -229,58 +204,49 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         int cpu_kernel_n = 0;
         unordered_set<string> declared;
         LanguageUnit def("FUNCTIONS");
-        for (auto kernel : kernels)
+        for (auto iterator : prog)
         {
-            FunctionUnit_p fu = kernel->get_or_emit_source(true);
-            for (auto& it : fu->body_unit->local_symbol)
+            for (auto ins : *iterator)
             {
-                if (it.second != fu->dep_unit)
+                auto kernel = ins->getKernel();
+                auto gnode = ins->getGNode();
+                if (!kernel || (kernel && kernel->is_eliminative()))
+                    continue;
+                FunctionUnit_p fu = kernel->get_or_emit_source(true);
+                for (auto& it : fu->body_unit->local_symbol)
                 {
-                    re.require(it.second);
-                    global_required.insert(it.second->symbol);
+                    if (it.second != fu->dep_unit)
+                    {
+                        re.require(it.second);
+                        global_required.insert(it.second->symbol);
+                    }
                 }
-            }
-            // def << fu->comment_unit->get_code();
-            if (declared.count(fu->body_unit->symbol) == 0)
-            {
-                // string sig = fu->get_specialized_signature();
-
-                // if (kernel->is_parallelism())
-                // {
-                //     int pos = sig.find("(");
-                //     if (pos >= 0)
-                //     {
-                //         sig.insert(pos + 1, "concurrency::ThreadPool* thread_pool, ");
-                //     }
-                // }
-
-                // def << sig << "\n";
-                // def.block_begin();
-                // def << fu->body_unit->get_code() << "\n";
-                // def.block_end();
-                auto functionfile = codegenerator::CPUFunctionFile::convert_from(kernel);
-                if (FLAGS_fkernels_as_files)
+                if (declared.count(fu->body_unit->symbol) == 0)
                 {
-                    def << functionfile->get_extern_declare();
-                    if (FLAGS_fkernels_files_number > 0)
-                        cpu_kernel_files[cpu_kernel_n].merge_from(functionfile);
+                    auto functionfile = codegenerator::CPUFunctionFile::convert_from(kernel);
+                    if (FLAGS_fkernels_as_files)
+                    {
+                        def << functionfile->get_extern_declare();
+                        if (FLAGS_fkernels_files_number > 0)
+                            cpu_kernel_files[cpu_kernel_n].merge_from(functionfile);
+                        else
+                            functionfile->save_file();
+                    }
                     else
-                        functionfile->save_file();
+                    {
+                        def << functionfile->get_code();
+                    }
+                    declared.insert(fu->body_unit->symbol);
                 }
                 else
                 {
-                    def << functionfile->get_code();
+                    def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
                 }
-                declared.insert(fu->body_unit->symbol);
-            }
-            else
-            {
-                def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
-            }
-            if (FLAGS_fkernels_files_number > 0)
-            {
-                cpu_kernel_n++;
-                cpu_kernel_n %= FLAGS_fkernels_files_number;
+                if (FLAGS_fkernels_files_number > 0)
+                {
+                    cpu_kernel_n++;
+                    cpu_kernel_n %= FLAGS_fkernels_files_number;
+                }
             }
         }
         if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
@@ -435,45 +401,60 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
 
             std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels_entry;
-            for (auto kernel : kernels)
+            for (auto iterator : prog)
             {
-                auto gnode = kernel->m_context->gnode;
-                auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                auto stream = async_info.execution_thread;
-
-                FunctionUnit_p fu = kernel->get_or_emit_source(true);
-                //std::string read_const = fu->call_unit->get_code();
-                std::string func_name = fu->name_unit->get_code();
-                // emit function calls in cpu_init()
-                //if (read_const.compare(0, 10, "read_const") == 0)
-                if (func_name.compare(0, 9, "Constant_") == 0 ||
-                    func_name.compare(0, 9, "Variable_") == 0)
+                for (auto ins : *iterator)
                 {
-                    NNFUSION_CHECK(stream->is_default_stream())
-                        << "Kernel function calls in cpu_init() "
-                           "should use default/main stream/thread.";
+                    auto kernel = ins->getKernel();
+                    auto gnode = ins->getGNode();
+                    auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+                    auto stream = async_info.execution_thread;
 
-                    // if (!async_info.wait_barriers.empty())
-                    // {
-                    //     for (auto event : async_info.wait_barriers)
-                    //     {
-                    //         lu_main_init << async_manager->emit_event_wait(async_info.execution_thread, event)->get_code();
-                    //     }
-                    // }
-                    lu_main_init << fu->name_unit->get_code();
-                    lu_main_init << fu->call_unit->get_code();
+                    if (!kernel || (kernel && kernel->is_eliminative()))
+                        continue;
+                    FunctionUnit_p fu = kernel->get_or_emit_source(true);
+                    std::string func_name = fu->name_unit->get_code();
 
-                    // if (async_info.notify_barrier != nullptr)
-                    // {
-                    //     lu_main_init << async_manager->emit_event_record(async_info.notify_barrier)->get_code();
-                    // }
-                }
-                // organize kernels according to their streams/threads
-                else
-                {
-                    std::string stream_name =
-                        stream->is_default_stream() ? "default" : stream->get_name();
-                    stream_kernels_entry[stream_name].push_back(kernel);
+                    if (gnode->is_constant() || gnode->is_variable() ||
+                        (FLAGS_frt_const_folding && (*ins)["rt_const_folding"].is_valid_as<bool>()))
+                    {
+                        NNFUSION_CHECK(stream->is_default_stream())
+                            << "Kernel function calls in cpu_init() "
+                               "should use default/main stream/thread.";
+
+                        // if (!async_info.wait_barriers.empty())
+                        // {
+                        //     for (auto event : async_info.wait_barriers)
+                        //     {
+                        //         lu_main_init << async_manager->emit_event_wait(async_info.execution_thread, event)->get_code();
+                        //     }
+                        // }
+                        lu_main_init << fu->name_unit->get_code();
+                        string call_str = fu->call_unit->get_code();
+                        if (kernel->is_parallelism())
+                        {
+                            std::string threadpool_param =
+                                "worker_thread_pool->GetRawThreadPool(), ";
+                            call_str.insert(1, threadpool_param);
+                            lu_main_init << call_str;
+                        }
+                        else
+                        {
+                            lu_main_init << fu->call_unit->get_code();
+                        }
+
+                        // if (async_info.notify_barrier != nullptr)
+                        // {
+                        //     lu_main_init << async_manager->emit_event_record(async_info.notify_barrier)->get_code();
+                        // }
+                    }
+                    // organize kernels according to their streams/threads
+                    else
+                    {
+                        std::string stream_name =
+                            stream->is_default_stream() ? "default" : stream->get_name();
+                        stream_kernels_entry[stream_name].push_back(kernel);
+                    }
                 }
             }
             // emit function calls in kernel_entry()

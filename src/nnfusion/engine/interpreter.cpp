@@ -216,7 +216,15 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                     if (gnode->is_constant() || gnode->is_variable())
                     {
                         (*memcpy_ir)["Memcpy_Constant_or_Variable"] = true;
-                        // constant ops are in xxx_init(),
+                    }
+                    if ((*gnode)["rt_const_folding"].is_valid_as<bool>())
+                    {
+                        (*memcpy_ir)["rt_const_folding"] = true;
+                    }
+                    if (gnode->is_constant() || gnode->is_variable() ||
+                        (*gnode)["rt_const_folding"].is_valid_as<bool>())
+                    {
+                        // constant, variable and rt_const_folding ops are in xxx_init(),
                         // so thre is no need to add event or barrier.
                         NNFUSION_CHECK(thread->is_default_stream());
                         NNFUSION_CHECK(stream->is_default_stream());
@@ -237,17 +245,25 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                         memcpy_async_info.execution_stream =
                             CUDA_async_manager->set_stream(n_device_id, "memcpy_" + new_name);
                     }
-                    if (memcpy_async_info.execution_thread != thread &&
-                        async_info.notify_barrier != nullptr)
+                    if (gnode->is_constant() || gnode->is_variable() ||
+                        (*gnode)["rt_const_folding"].is_valid_as<bool>())
                     {
-                        memcpy_async_info.wait_barriers.push_back(async_info.notify_barrier);
+                        // constant, variable and rt_const_folding ops are in xxx_init(),
+                        // so thre is no need to add event or barrier.
                     }
-                    if (memcpy_async_info.execution_stream != stream &&
-                        async_info.record_event != nullptr)
+                    else
                     {
-                        memcpy_async_info.wait_events.push_back(async_info.record_event);
+                        if (memcpy_async_info.execution_thread != thread &&
+                            async_info.notify_barrier != nullptr)
+                        {
+                            memcpy_async_info.wait_barriers.push_back(async_info.notify_barrier);
+                        }
+                        if (memcpy_async_info.execution_stream != stream &&
+                            async_info.record_event != nullptr)
+                        {
+                            memcpy_async_info.wait_events.push_back(async_info.record_event);
+                        }
                     }
-                    // gnode->liveness_new_list.insert(new_tensor);
                     bb_main->push_back(memcpy_ir);
                     dev_ir[out_device_id] = memcpy_ir;
                 }
@@ -290,10 +306,10 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                 }
 
                 // add waiting event and barrier to the out gnodes
-                // constant or parameter memcpy ir are in xxx_init(),
+                // constant, variable, and rt_const_folding ops memcpy ir are in xxx_init(),
                 // so there is no need to add event or barrier.
-                if ((*memcpy_ir)["Memcpy_Constant_or_Variable"].is_valid() &&
-                    (*memcpy_ir)["Memcpy_Constant_or_Variable"].as<bool>())
+                if ((*memcpy_ir)["Memcpy_Constant_or_Variable"].is_valid_as<bool>() ||
+                    (*memcpy_ir)["rt_const_folding"].is_valid_as<bool>())
                     continue;
                 auto& memcpy_async_info =
                     (*memcpy_ir)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();

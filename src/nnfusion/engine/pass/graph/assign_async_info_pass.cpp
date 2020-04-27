@@ -18,25 +18,22 @@ DEFINE_bool(fuse_default_stream, true, "Use default stream.");
 
 AssignAsyncInfoPass::AssignAsyncInfoPass()
 {
-    auto dev_name = FLAGS_fdefault_device.c_str();
-    m_device = nnfusion::get_device_type(dev_name);
 }
 
 bool AssignAsyncInfoPass::run_on_graph(std::shared_ptr<Graph>& graph)
 {
-    if (m_device == CUDA_GPU || m_device == ROCM_GPU)
+    auto dev_name = FLAGS_fdefault_device.c_str();
+    auto default_device = nnfusion::get_device_type(dev_name);
+    if (default_device == CUDA_GPU || default_device == ROCM_GPU)
     {
-        auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
-        auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
-        assign_thread_info(CPU_async_manager, graph);
-        naive_assign_stream_info(CUDA_async_manager, graph);
-        assign_event_info(CUDA_async_manager, CPU_async_manager, graph);
+        gpu_assign_thread_info(graph);
+        naive_assign_stream_info(graph);
+        assign_event_info(graph);
     }
-    else if (m_device == GENERIC_CPU)
+    else if (default_device == GENERIC_CPU)
     {
-        auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
-        naive_assign_stream_info(CPU_async_manager, graph);
-        assign_event_info(nullptr, CPU_async_manager, graph);
+        naive_assign_thread_info(graph);
+        assign_event_info(graph);
     }
     else
     {
@@ -48,11 +45,12 @@ bool AssignAsyncInfoPass::run_on_graph(std::shared_ptr<Graph>& graph)
 }
 
 // assign thread for cuda
-void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_async_manager,
-                                             shared_ptr<Graph>& graph)
+void AssignAsyncInfoPass::gpu_assign_thread_info(shared_ptr<Graph>& graph)
 {
-    bool enable_rt_const_folding = FLAGS_frt_const_folding;
+    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
     int num_device = FLAGS_fnum_device;
+    if (num_device < 1)
+        num_device = 1;
 
     size_t num_async_node = 0;
     static const std::unordered_set<std::string> async_node = {"AllReduce"};
@@ -66,27 +64,14 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
         }
     }
 
-    if (num_async_node == 0)
+    if (num_async_node == 0 && num_device == 1)
     {
         for (auto gnode : graph->get_ordered_ops())
         {
             (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             int device_id = (*gnode)["DeviceID"].as<int>();
-            // constant and parameter ops are in cuda_init(), and use default/main thread
-            if (gnode->get_op_type() == "Constant" || gnode->get_op_ptr()->is_parameter())
-            {
-                async_info.execution_thread = CPU_async_manager->set_stream(device_id, "default");
-            }
-            else
-            {
-                if (num_device > 1)
-                    async_info.execution_thread =
-                        CPU_async_manager->set_stream(device_id, "dev" + to_string(device_id));
-                else
-                    async_info.execution_thread =
-                        CPU_async_manager->set_stream(device_id, "default");
-            }
+            async_info.execution_thread = CPU_async_manager->set_stream(device_id, "default");
         }
     }
     else
@@ -110,15 +95,6 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                 {
                     async_info.execution_thread =
                         CPU_async_manager->set_stream(device_id, "default");
-
-                    if (enable_rt_const_folding)
-                    {
-                        for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                        {
-                            auto tensor = gnode->get_output_tensor_ptr(i);
-                            constant_vals.insert(tensor->get_name());
-                        }
-                    }
                 }
                 else if ((*gnode)["is_async_node"].is_valid() &&
                          (*gnode)["is_async_node"].as<bool>())
@@ -202,73 +178,112 @@ void AssignAsyncInfoPass::assign_thread_info(nnfusion::async::AsyncManager* CPU_
                 }
             }
         }
+    }
 
-        // If enable runtime constant folding, for cuda codegen, ops whose inputs are all constants are taken as constant ops.
-        // And will be called in init() instead of kernel_entry(). So these ops use default thread as well.
+    NNFUSION_LOG(INFO) << "assign thread info-------------------------------";
+}
 
-        if (enable_rt_const_folding)
+// assign thread of cpu
+void AssignAsyncInfoPass::naive_assign_thread_info(shared_ptr<Graph>& graph)
+{
+    auto async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
+    int n_stream = FLAGS_fnum_stream;
+    if (n_stream < 0)
+        n_stream = 1;
+    if (n_stream == 1)
+    {
+        for (auto gnode : graph->get_ordered_ops())
         {
-            for (auto gnode : graph->get_ordered_ops())
+            if (!(*gnode)["Async_info"].is_valid())
+                (*gnode)["Async_info"] = AsyncExecutionInfo();
+            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            int device_id = (*gnode)["DeviceID"].as<int>();
+            async_info.execution_thread = async_manager->set_stream(device_id, "default");
+        }
+    }
+    else
+    {
+        //const
+        set<string> constant_vals;
+
+        int count = 1;
+        const GNodeVector& start = graph->get_outputs();
+        // Stack of work to do.
+        std::vector<std::shared_ptr<GNode>> stack(start.size());
+
+        for (int i = 0; i < start.size(); ++i)
+        {
+            stack[i] = start[i];
+        }
+
+        std::vector<bool> visited(graph->get_max_node_id(), false);
+        while (!stack.empty())
+        {
+            std::shared_ptr<GNode> gnode = stack.back();
+            stack.pop_back();
+            if (visited[gnode->get_id()])
             {
-                auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                int device_id = (*gnode)["DeviceID"].as<int>();
-                bool const_inputs = true;
-                if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
+                continue;
+            }
+            visited[gnode->get_id()] = true;
+            if (!(*gnode)["Async_info"].is_valid())
+                (*gnode)["Async_info"] = AsyncExecutionInfo();
+            auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+            int device_id = (*gnode)["DeviceID"].as<int>();
+            // all constant ops use default stream
+            if (gnode->get_op_ptr()->is_tensor_op())
+            {
+                async_info.execution_thread = async_manager->set_stream(device_id, "default");
+            }
+            else
+            {
+                if (async_info.execution_thread == nullptr)
                 {
-                    auto kernel = get_kernel(gnode);
-                    for (auto& in : kernel->m_context->input_names)
-                    {
-                        if (constant_vals.find(in) == constant_vals.end())
-                        {
-                            const_inputs = false;
-                            break;
-                        }
-                    }
-                    if (const_inputs)
-                    {
-                        for (auto& out : kernel->m_context->output_names)
-                        {
-                            constant_vals.insert(out);
-                        }
-                        async_info.execution_thread =
-                            CPU_async_manager->set_stream(device_id, "default");
-                    }
-                }
-                else
-                {
-                    for (size_t i = 0; i < gnode->get_input_size(); ++i)
-                    {
-                        auto in = gnode->get_input_tensor_ptr(i)->get_name();
-                        if (constant_vals.find(in) == constant_vals.end())
-                        {
-                            const_inputs = false;
-                            break;
-                        }
-                    }
-                    if (const_inputs)
-                    {
-                        for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                        {
-                            auto out = gnode->get_output_tensor_ptr(i)->get_name();
-                            constant_vals.insert(out);
-                        }
-                        async_info.execution_thread =
-                            CPU_async_manager->set_stream(device_id, "default");
-                    }
+                    async_info.execution_thread =
+                        async_manager->set_stream(device_id, "base" + std::to_string(count));
                 }
             }
+            auto add_gnode = [&visited, &stack](std::shared_ptr<GNode> in_node) {
+                if (!visited[in_node->get_id()])
+                {
+                    // Note; we must not mark as visited until we actually process it.
+                    stack.push_back(in_node);
+                }
+            };
+
+            size_t pre = stack.size();
+
+            for (auto in_edge : gnode->get_in_edges())
+            {
+                add_gnode(in_edge->get_src());
+            }
+
+            if (stack.size() == pre)
+            {
+                if (n_stream == 0 || count < n_stream)
+                    count += 1;
+                else
+                    count = 1;
+            }
         }
+    }
+
+    // If enable runtime constant folding, ops whose inputs are all constants are taken as constant ops.
+    // And will be called in init() instead of kernel_entry(). So these ops use default stream as well.
+
+    if (FLAGS_frt_const_folding)
+    {
+        assign_default_info_for_const(graph, false);
     }
 
     NNFUSION_LOG(INFO) << "assign thread info-------------------------------";
 }
 
 // assign stream of gpu or thread of cpu
-void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
-                                                   shared_ptr<Graph>& graph)
+void AssignAsyncInfoPass::naive_assign_stream_info(shared_ptr<Graph>& graph)
 {
+    auto async_manager = AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
     bool allreduce_enable = FLAGS_fadd_allreduce;
-    bool enable_rt_const_folding = FLAGS_frt_const_folding;
     int n_stream = FLAGS_fnum_stream;
     if (n_stream < 0)
         n_stream = 1;
@@ -280,24 +295,17 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 (*gnode)["Async_info"] = AsyncExecutionInfo();
             auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
             int device_id = (*gnode)["DeviceID"].as<int>();
-            if (m_device == GENERIC_CPU)
+            auto thread = async_info.execution_thread;
+            NNFUSION_CHECK(thread != nullptr);
+            if (thread->is_default_stream())
             {
-                async_info.execution_thread = async_manager->set_stream(device_id, "default");
+                async_info.execution_stream = async_manager->set_stream(device_id, "default");
             }
-            else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
+            else
             {
-                auto thread = async_info.execution_thread;
-                NNFUSION_CHECK(thread != nullptr);
-                if (thread->is_default_stream())
-                {
-                    async_info.execution_stream = async_manager->set_stream(device_id, "default");
-                }
-                else
-                {
-                    std::string thread_symbol = thread->get_symbol() + "_thread_";
-                    async_info.execution_stream =
-                        async_manager->set_stream(device_id, thread_symbol + "base");
-                }
+                std::string thread_symbol = thread->get_symbol() + "_thread_";
+                async_info.execution_stream =
+                    async_manager->set_stream(device_id, thread_symbol + "base");
             }
         }
     }
@@ -333,42 +341,20 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
             // all constant ops use default stream
             if (gnode->get_op_ptr()->is_tensor_op())
             {
-                if (m_device == GENERIC_CPU)
-                    async_info.execution_thread = async_manager->set_stream(device_id, "default");
-                else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
-                {
-                    auto thread = async_info.execution_thread;
-                    NNFUSION_CHECK(thread != nullptr);
-                    NNFUSION_CHECK(thread->is_default_stream());
-                    async_info.execution_stream = async_manager->set_stream(device_id, "default");
-                }
-
-                if (enable_rt_const_folding)
-                {
-                    for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                    {
-                        auto tensor = gnode->get_output_tensor_ptr(i);
-                        constant_vals.insert(tensor->get_name());
-                    }
-                }
+                auto thread = async_info.execution_thread;
+                NNFUSION_CHECK(thread != nullptr);
+                NNFUSION_CHECK(thread->is_default_stream());
+                async_info.execution_stream = async_manager->set_stream(device_id, "default");
             }
             else
             {
                 if (async_info.execution_stream == nullptr)
                 {
-                    if (m_device == GENERIC_CPU)
-                    {
-                        async_info.execution_thread =
-                            async_manager->set_stream(device_id, "base" + std::to_string(count));
-                    }
-                    else if (m_device == CUDA_GPU || m_device == ROCM_GPU)
-                    {
-                        auto thread = async_info.execution_thread;
-                        NNFUSION_CHECK(thread != nullptr);
-                        std::string thread_symbol = thread->get_symbol() + "_thread_";
-                        async_info.execution_stream = async_manager->set_stream(
-                            device_id, thread_symbol + "base" + std::to_string(count));
-                    }
+                    auto thread = async_info.execution_thread;
+                    NNFUSION_CHECK(thread != nullptr);
+                    std::string thread_symbol = thread->get_symbol() + "_thread_";
+                    async_info.execution_stream = async_manager->set_stream(
+                        device_id, thread_symbol + "base" + std::to_string(count));
                 }
             }
             auto add_gnode = [&visited, &stack](std::shared_ptr<GNode> in_node) {
@@ -394,68 +380,14 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                     count = 1;
             }
         }
+    }
 
-        // If enable runtime constant folding, for cuda codegen, ops whose inputs are all constants are taken as constant ops.
-        // And will be called in init() instead of kernel_entry(). So these ops use default stream as well.
-        auto dt = async_manager->get_device_type();
-        if (enable_rt_const_folding && (dt == CUDA_GPU || dt == ROCM_GPU))
-        {
-            for (auto gnode : graph->get_ordered_ops())
-            {
-                auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-                int device_id = (*gnode)["DeviceID"].as<int>();
-                bool const_inputs = true;
-                if (!gnode->get_op_ptr()->is_tensor_op() && !gnode->get_op_ptr()->is_output())
-                {
-                    auto kernel = get_kernel(gnode);
-                    for (auto& in : kernel->m_context->input_names)
-                    {
-                        if (constant_vals.find(in) == constant_vals.end())
-                        {
-                            const_inputs = false;
-                            break;
-                        }
-                    }
-                    if (const_inputs)
-                    {
-                        for (auto& out : kernel->m_context->output_names)
-                        {
-                            constant_vals.insert(out);
-                        }
-                        auto thread = async_info.execution_thread;
-                        NNFUSION_CHECK(thread != nullptr);
-                        NNFUSION_CHECK(thread->is_default_stream());
-                        async_info.execution_stream =
-                            async_manager->set_stream(device_id, "default");
-                    }
-                }
-                else
-                {
-                    for (size_t i = 0; i < gnode->get_input_size(); ++i)
-                    {
-                        auto in = gnode->get_input_tensor_ptr(i)->get_name();
-                        if (constant_vals.find(in) == constant_vals.end())
-                        {
-                            const_inputs = false;
-                            break;
-                        }
-                    }
-                    if (const_inputs)
-                    {
-                        for (size_t i = 0; i < gnode->get_output_size(); ++i)
-                        {
-                            auto out = gnode->get_output_tensor_ptr(i)->get_name();
-                            constant_vals.insert(out);
-                        }
-                        auto thread = async_info.execution_thread;
-                        NNFUSION_CHECK(thread != nullptr);
-                        NNFUSION_CHECK(thread->is_default_stream());
-                        async_info.execution_stream =
-                            async_manager->set_stream(device_id, "default");
-                    }
-                }
-            }
-        }
+    // If enable runtime constant folding, ops whose inputs are all constants are taken as constant ops.
+    // And will be called in init() instead of kernel_entry(). So these ops use default stream as well.
+
+    if (FLAGS_frt_const_folding)
+    {
+        assign_default_info_for_const(graph, true);
     }
     // add binding info
     for (auto gnode : graph->get_ordered_ops())
@@ -471,14 +403,14 @@ void AssignAsyncInfoPass::naive_assign_stream_info(AsyncManager* async_manager,
                 stream->add_binding_symbol("cublas_handle");
         }
     }
-    NNFUSION_LOG(INFO) << "assign thread or stream info-------------------------------";
+    NNFUSION_LOG(INFO) << "assign stream info-------------------------------";
 }
 
 // assign event of gpu or barrier of cpu
-void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_async_manager,
-                                            nnfusion::async::AsyncManager* CPU_async_manager,
-                                            std::shared_ptr<Graph>& graph)
+void AssignAsyncInfoPass::assign_event_info(std::shared_ptr<Graph>& graph)
 {
+    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
+    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
     for (auto gnode : graph->get_ordered_ops())
     {
         NNFUSION_CHECK((*gnode)["Async_info"].is_valid());
@@ -489,9 +421,10 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
         for (auto& edge : gnode->get_in_edges())
         {
             auto input_gnode = edge->get_src();
-            // constant ops are in xxx_init() of generated code,
+            // constant and rt_const_folding ops are in xxx_init() of generated code,
             // so there is no need to add event.
-            if (input_gnode->get_op_ptr()->is_tensor_op())
+            if (input_gnode->get_op_ptr()->is_tensor_op() ||
+                (*input_gnode)["rt_const_folding"].is_valid_as<bool>())
             {
                 continue;
             }
@@ -499,25 +432,17 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
             auto input_stream = input_async_info.execution_stream;
             auto input_thread = input_async_info.execution_thread;
 
-            // if (input_thread->get_device_name() == thread->get_device_name())
+            if (input_thread->get_stream_id() != thread->get_stream_id())
             {
-                if (input_thread->get_stream_id() != thread->get_stream_id())
+                if (input_async_info.notify_barrier == nullptr)
                 {
-                    if (input_async_info.notify_barrier == nullptr)
-                    {
-                        input_async_info.notify_barrier =
-                            CPU_async_manager->set_event(input_thread, input_gnode->get_op_ptr());
-                    }
-                    async_info.wait_barriers.push_back(input_async_info.notify_barrier);
+                    input_async_info.notify_barrier =
+                        CPU_async_manager->set_event(input_thread, input_gnode->get_op_ptr());
                 }
+                async_info.wait_barriers.push_back(input_async_info.notify_barrier);
             }
-            // todo: support cross-device event
-            // else
-            // {
-            //     throw nnfusion::errors::NotSupported("Cross-device barrier is not supported.");
-            // }
 
-            if (m_device == CUDA_GPU || m_device == ROCM_GPU)
+            if (stream != nullptr && input_stream != nullptr)
             {
                 if (input_stream->get_stream_id() != stream->get_stream_id())
                 {
@@ -540,16 +465,71 @@ void AssignAsyncInfoPass::assign_event_info(nnfusion::async::AsyncManager* CUDA_
     NNFUSION_LOG(INFO) << "assign event info-------------------------------";
 }
 
+void AssignAsyncInfoPass::assign_default_info_for_const(std::shared_ptr<Graph>& graph,
+                                                        bool assign_gpu_stream)
+{
+    NNFUSION_CHECK(FLAGS_frt_const_folding);
+    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
+    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
+    set<string> constant_vals;
+    for (auto gnode : graph->get_ordered_ops())
+    {
+        if (gnode->is_constant())
+        {
+            auto kernel = get_kernel(gnode);
+            NNFUSION_CHECK_NOT_NULLPTR(kernel);
+            (*gnode)["rt_const_folding"] = true;
+            for (auto& out : kernel->m_context->output_names)
+                constant_vals.insert(out);
+        }
+    }
+    for (auto gnode : graph->get_ordered_ops())
+    {
+        auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
+        int device_id = (*gnode)["DeviceID"].as<int>();
+        bool const_inputs = true;
+        if (auto kernel = get_kernel(gnode))
+        {
+            for (auto& in : kernel->m_context->input_names)
+            {
+                if (constant_vals.find(in) == constant_vals.end())
+                {
+                    const_inputs = false;
+                    break;
+                }
+            }
+
+            if (const_inputs)
+            {
+                (*gnode)["rt_const_folding"] = true;
+                for (auto& out : kernel->m_context->output_names)
+                {
+                    constant_vals.insert(out);
+                }
+                async_info.execution_thread = CPU_async_manager->set_stream(device_id, "default");
+                if (assign_gpu_stream)
+                {
+                    async_info.execution_stream =
+                        CUDA_async_manager->set_stream(device_id, "default");
+                }
+            }
+        }
+    }
+}
+
 KernelEmitter::Pointer
     AssignAsyncInfoPass::get_kernel(std::shared_ptr<nnfusion::graph::GNode> gnode)
 {
     KernelEmitter::Pointer kernel = nullptr;
+    if (!gnode->is_parameter())
+        NNFUSION_CHECK((*gnode)["Kernel_Selection_Result"].is_valid())
+            << "Kernel should be selected before this pass:" << gnode->get_op_type();
     if ((*gnode)["Kernel_Selection_Result"].is_valid())
     {
         auto emitted_kernel = (*gnode)["Kernel_Selection_Result"]
                                   .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
 
-        if (!emitted_kernel.second->is_emitted())
+        if (!gnode->is_constant() && !emitted_kernel.second->is_emitted())
             NNFUSION_LOG(NNFUSION_WARNING) << "Kernel should be emitted before this pass:"
                                            << gnode->get_op_type();
         kernel = emitted_kernel.second;

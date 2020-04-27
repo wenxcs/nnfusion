@@ -130,46 +130,41 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
         {
             for (auto ins : *block_iter)
             {
-                if (ins->has_name() && ins->name() == "Memcpy")
-                    continue;
                 auto gnode = ins->getGNode();
-                if (gnode->get_op_ptr()->is_tensor_op() || gnode->get_op_ptr()->is_output())
+                if ((*ins)["rt_const_folding"].is_valid_as<bool>())
                 {
-                    continue;
+                    auto& outputs = ins->get_outputs();
+                    for (size_t i = 0; i < outputs.size(); i++)
+                    {
+                        auto tensor = outputs[i];
+                        persist_candidate.insert(tensor);
+                    }
                 }
                 else
                 {
-                    bool is_all_const = true;
+                    bool has_const = false;
+                    bool has_non_const = false;
                     std::unordered_set<shared_ptr<descriptor::Tensor>> tmp;
                     auto& inputs = ins->get_inputs();
-
                     for (size_t i = 0; i < inputs.size(); i++)
                     {
                         auto tensor = inputs[i];
                         if (persist_candidate.find(tensor) != persist_candidate.end())
                         {
                             tmp.insert(tensor);
+                            has_const = true;
                         }
                         else
                         {
-                            is_all_const = false;
+                            has_non_const = true;
                         }
                     }
-
-                    if (is_all_const)
-                    {
-                        auto& outputs = ins->get_outputs();
-                        for (size_t i = 0; i < outputs.size(); i++)
-                        {
-                            auto tensor = outputs[i];
-                            persist_candidate.insert(tensor);
-                        }
-                    }
-                    else
+                    if (has_const && has_non_const)
                     {
                         for (auto tensor : tmp)
                         {
                             tensor->set_persistent();
+                            tensor->set_group("persist");
                         }
                     }
                 }
