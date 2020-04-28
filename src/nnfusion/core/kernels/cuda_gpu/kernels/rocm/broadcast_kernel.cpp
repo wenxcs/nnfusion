@@ -19,6 +19,50 @@ namespace nnfusion
                 {
                 }
 
+                LanguageUnit_p put_source(const std::string& src, bool update_config = false)
+                {
+                    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+                    auto& lu = *_lu;
+                    lu << src;
+                    if (update_config)
+                    {
+                        int at_bx = src.find("// [thread_extent] blockIdx.x = "),
+                            blockX = (at_bx >= 0)
+                                         ? atoi(src.c_str() + at_bx +
+                                                sizeof("// [thread_extent] blockIdx.x = ") - 1)
+                                         : 1;
+                        int at_by = src.find("// [thread_extent] blockIdx.y = "),
+                            blockY = (at_by >= 0)
+                                         ? atoi(src.c_str() + at_by +
+                                                sizeof("// [thread_extent] blockIdx.y = ") - 1)
+                                         : 1;
+                        int at_bz = src.find("// [thread_extent] blockIdx.z = "),
+                            blockZ = (at_bz >= 0)
+                                         ? atoi(src.c_str() + at_bz +
+                                                sizeof("// [thread_extent] blockIdx.z = ") - 1)
+                                         : 1;
+                        int at_tx = src.find("// [thread_extent] threadIdx.x = "),
+                            threadX = (at_tx >= 0)
+                                          ? atoi(src.c_str() + at_tx +
+                                                 sizeof("// [thread_extent] threadIdx.x = ") - 1)
+                                          : 1;
+                        int at_ty = src.find("// [thread_extent] threadIdx.y = "),
+                            threadY = (at_ty >= 0)
+                                          ? atoi(src.c_str() + at_ty +
+                                                 sizeof("// [thread_extent] threadIdx.y = ") - 1)
+                                          : 1;
+                        int at_tz = src.find("// [thread_extent] threadIdx.z = "),
+                            threadZ = (at_tz >= 0)
+                                          ? atoi(src.c_str() + at_tz +
+                                                 sizeof("// [thread_extent] threadIdx.z = ") - 1)
+                                          : 1;
+
+                        m_gridDim = dim3(blockX, blockY, blockZ);
+                        m_blockDim = dim3(threadX, threadY, threadZ);
+                    }
+                    return _lu;
+                }
+
                 LanguageUnit_p emit_function_body() override
                 {
                     bool using_fixed = FLAGS_frocm_candidate_kernels;
@@ -39,6 +83,31 @@ namespace nnfusion
                     for (auto &it: axes) printf("%d, ", (int)it); puts("");
                     puts("====================");
 #endif
+                    if (input_shape == nnfusion::Shape({6, 512, 512}) &&
+                        output_shape == nnfusion::Shape({6, 16, 512, 512}))
+                    {
+                        std::string src = R"(
+  for (int i_inner_inner_inner = 0; i_inner_inner_inner < 6; ++i_inner_inner_inner) {
+  // [thread_extent] blockIdx.y = 1
+  // [thread_extent] threadIdx.y = 1
+    for (int j_inner_inner_inner = 0; j_inner_inner_inner < 8; ++j_inner_inner_inner) {
+  // [thread_extent] blockIdx.z = 1024
+  // [thread_extent] threadIdx.z = 32
+      for (int k_inner_inner_inner = 0; k_inner_inner_inner < 2; ++k_inner_inner_inner) {
+        output0[(((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner)] = input0[((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 2097152)] = input0[((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 64)] = input0[(((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 64)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 2097216)] = input0[(((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 64)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 128)] = input0[(((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 128)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 2097280)] = input0[(((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 128)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 192)] = input0[(((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 192)];
+        output0[((((((i_inner_inner_inner * 4194304) + (j_inner_inner_inner * 262144)) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 2097344)] = input0[(((((i_inner_inner_inner * 262144) + (((int)blockIdx.z) * 256)) + (((int)threadIdx.z) * 2)) + k_inner_inner_inner) + 192)];
+      }
+    }
+  }
+)";
+                        return put_source(src, true);
+                    }
 
                     // (1, ..) -> (1, ..) to (..) -> (..)
                     if (input_shape.size() > 1 && output_shape.size() > 1 && input_shape[0] == 1 &&
@@ -93,33 +162,7 @@ namespace nnfusion
                     if (in_size == out_size)
                     {
                         // DtoD_copy
-                        std::string vec_type = "float4";
-                        int threads, stride = 4;
-                        if (out_size % 4096 == 0)
-                            threads = 1024;
-                        else if (out_size % 2048 == 0)
-                            threads = 512;
-                        else if (out_size % 1024 == 0)
-                            threads = 256;
-                        else if (out_size % 512 == 0)
-                            threads = 128;
-                        else if (out_size % 256 == 0)
-                            threads = 64;
-                        else if (out_size >= 1000 && out_size <= 1024)
-                            threads = out_size, vec_type = "float", stride = 1;
-                        else
-                            return nullptr;
-
-                        m_gridDim = dim3(out_size / threads / stride, 1, 1);
-                        m_blockDim = dim3(threads, 1, 1);
-
-                        code = nnfusion::op::create_code_from_template(
-                            R"(
-		((@vec_type@*)output0)[blockIdx.x * @blockDim_x@ + threadIdx.x] = ((@vec_type@*)input0)[blockIdx.x * @blockDim_x@ + threadIdx.x];
-	)",
-                            {
-                                {"blockDim_x", threads}, {"vec_type", vec_type},
-                            });
+                        return nullptr;
                     }
                     else if (in_size == 1)
                     {

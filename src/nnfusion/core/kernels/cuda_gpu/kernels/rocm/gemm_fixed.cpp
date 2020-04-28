@@ -55,6 +55,7 @@ namespace nnfusion
                         return nullptr;
                     if (dtype != "float")
                         return nullptr;
+                    return nullptr;
 
                     std::string templ;
                     if (arg0_shape[0] == 1)
