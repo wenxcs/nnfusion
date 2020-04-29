@@ -1,25 +1,37 @@
 #pragma once
 
 #include "d3dx12_helper.h"
+#include <map>
+
+#define ASSERT(x)  ((x) ? (printf("Error-line: (%s) %d\n", __FILE__, __LINE__), _exit(1), 0): 1)
 
 namespace nnfusion_dml
 {
+    template <class T, class P>
+    std::string read_file(P& printer, const T& name)
+    {
+        std::ifstream t(name, ios_base::binary);
+        if (t.fail())
+        {
+            printer << "[Error] Cannot find file from: `" << name
+                << "`, please copy the full codegen folder!" << std::endl;
+            ASSERT(0);
+        }
+        std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+        return std::move(str);
+    }
+
     template <class T>
     std::vector<T> load_data(const std::string& name, size_t num_elements)
     {
         std::vector<T> ret(num_elements);
-
-        std::ifstream t("Constant\\" + name, ios_base::binary);
-        if (t.fail())
+        if (name == "")
         {
-            if (name != "")
-                std::cout << "[Warn] Cannot find constant data from: `Constant\\" << name
-                          << "`, going to fill with pre-defined values." << std::endl;
             std::fill(ret.begin(), ret.end(), 1);
         }
         else
         {
-            std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+            auto str = read_file(std::cout, "Constant\\" + name);
             assert(str.size() == num_elements * sizeof(T));
             memcpy(ret.data(), str.data(), str.size());
         }
@@ -52,20 +64,23 @@ namespace nnfusion_dml
         std::vector<size_t> Shape() const { return shape; }
     };
 
+    static std::vector<ID3D12CommandList*> cmdQueue, kernelOnlyQueue;
+    static std::map<std::wstring, ComPtr<ID3DBlob>> computeShaderDict;
+    static std::map<std::wstring, std::pair<double, int>> profCostDict;
+
     class NNfusionMemcpy
     {
         ComPtr<ID3D12Resource> deviceGPUSrcX;
         ComPtr<ID3D12Resource> deviceCPUSrcX;
-        ComPtr<ID3D12CommandAllocator> pCommandAllocator;
         ComPtr<ID3D12GraphicsCommandList> m_computeCommandList;
-        size_t bufferSize;
+        size_t bufferSize, elements;
 
     public:
         NNfusionMemcpy(D3DDevice& device,
-                       std::vector<ID3D12CommandList*>& cmdQueue,
-                       NNfusionTensor& dst,
-                       void* src)
+            NNfusionTensor& dst,
+            void* src)
         {
+            elements = dst.NumElements();
             bufferSize = dst.TypeSize() * dst.NumElements();
             bufferSize = ((bufferSize - 1) | 1023) + 1;
 
@@ -73,13 +88,11 @@ namespace nnfusion_dml
             device.CreateUploadBuffer(bufferSize, &deviceCPUSrcX);
             device.MapAndCopyToResource(deviceCPUSrcX.Get(), src, bufferSize);
 
-            IFE(device.pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE,
-                                                       IID_PPV_ARGS(&pCommandAllocator)));
             IFE(device.pDevice->CreateCommandList(0,
-                                                  D3D12_COMMAND_LIST_TYPE_COMPUTE,
-                                                  pCommandAllocator.Get(),
-                                                  nullptr,
-                                                  IID_PPV_ARGS(&m_computeCommandList)));
+                D3D12_COMMAND_LIST_TYPE_COMPUTE,
+                device.pCommandAllocator.Get(),
+                nullptr,
+                IID_PPV_ARGS(&m_computeCommandList)));
             m_computeCommandList->CopyResource(deviceGPUSrcX.Get(), deviceCPUSrcX.Get());
             m_computeCommandList->Close();
 
@@ -87,26 +100,23 @@ namespace nnfusion_dml
         }
 
         NNfusionMemcpy(D3DDevice& device,
-                       std::vector<ID3D12CommandList*>& cmdQueue,
-                       void* dst,
-                       NNfusionTensor& src)
+            void* dst,
+            NNfusionTensor& src)
         {
+            elements = src.NumElements();
             bufferSize = src.TypeSize() * src.NumElements();
             bufferSize = ((bufferSize - 1) | 1023) + 1;
 
             deviceGPUSrcX = src.Data();
             device.CreateReadbackBuffer(bufferSize, &deviceCPUSrcX);
 
-            IFE(device.pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE,
-                                                       IID_PPV_ARGS(&pCommandAllocator)));
             IFE(device.pDevice->CreateCommandList(0,
-                                                  D3D12_COMMAND_LIST_TYPE_COMPUTE,
-                                                  pCommandAllocator.Get(),
-                                                  nullptr,
-                                                  IID_PPV_ARGS(&m_computeCommandList)));
+                D3D12_COMMAND_LIST_TYPE_COMPUTE,
+                device.pCommandAllocator.Get(),
+                nullptr,
+                IID_PPV_ARGS(&m_computeCommandList)));
             m_computeCommandList->CopyResource(deviceCPUSrcX.Get(), deviceGPUSrcX.Get());
             m_computeCommandList->Close();
-
             cmdQueue.push_back(Launch());
         }
 
@@ -120,16 +130,16 @@ namespace nnfusion_dml
             T* buffer = (T*)dst.data();
             std::cout << "Result(" << name << ") = {";
 
-            for (int i = 0; i < dst.size(); ++i)
+            constexpr size_t most_display = 6L;
+            for (int i = 0; i < min(elements, most_display); ++i)
             {
                 if (i)
                     std::cout << ", ";
                 std::cout << dst[i];
-                if (i >= 10 && i + 1 < dst.size())
-                {
-                    std::cout << " .. ";
-                    i = dst.size() - 2;
-                }
+            }
+            if (elements > most_display)
+            {
+                std::cout << " .., " << dst[elements - 1];
             }
             std::cout << "}\n" << std::endl;
         }
@@ -142,23 +152,20 @@ namespace nnfusion_dml
         ComPtr<ID3D12RootSignature> m_computeRootSignature;
         ComPtr<ID3DBlob> computeShader;
         ComPtr<ID3D12PipelineState> m_computeState;
-        ComPtr<ID3D12CommandAllocator> computeCommandAllocator;
         D3D12_COMPUTE_PIPELINE_STATE_DESC computePsoDesc;
 
         LPCWSTR hlsl_source;
 
     public:
         NNfusionOperator(D3DDevice& device,
-                         std::vector<ID3D12CommandList*>& cmdQueue,
-                         const std::vector<NNfusionTensor>& inputs,
-                         const std::vector<NNfusionTensor>& outputs,
-                         const std::vector<UINT>& threads,
-                         LPCWSTR hlsl_source)
+            const std::vector<NNfusionTensor>& inputs,
+            const std::vector<NNfusionTensor>& outputs,
+            LPCWSTR hlsl_source)
             : hlsl_source(hlsl_source)
         {
             // Prepare Root
             std::vector<CD3DX12_ROOT_PARAMETER1> computeRootParameters(inputs.size() +
-                                                                       outputs.size());
+                outputs.size());
             for (int i = 0; i < inputs.size(); ++i)
                 computeRootParameters[i].InitAsShaderResourceView(i);
             for (int i = 0; i < outputs.size(); ++i)
@@ -166,7 +173,7 @@ namespace nnfusion_dml
 
             CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC computeRootSignatureDesc;
             computeRootSignatureDesc.Init_1_1(computeRootParameters.size(),
-                                              computeRootParameters.data());
+                computeRootParameters.data());
 
             ComPtr<ID3DBlob> signature;
             ComPtr<ID3DBlob> error;
@@ -174,35 +181,38 @@ namespace nnfusion_dml
             IFE(D3DX12SerializeVersionedRootSignature(
                 &computeRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_1, &signature, &error));
             IFE(device.pDevice->CreateRootSignature(0,
-                                                    signature->GetBufferPointer(),
-                                                    signature->GetBufferSize(),
-                                                    IID_PPV_ARGS(&m_computeRootSignature)));
+                signature->GetBufferPointer(),
+                signature->GetBufferSize(),
+                IID_PPV_ARGS(&m_computeRootSignature)));
 
             auto path = std::wstring(L"HLSL\\") + hlsl_source;
-            std::ifstream fin(path);
-            if (fin.fail())
-            {
-                std::wcout << L"[Error] Cannot find HLSL data from: `" << path
-                           << L"`, please copy the full codegen folder!" << std::endl;
-                _exit(1);
-            }
             std::wcout << L"[Info] Loading HLSL data from: `" << path << L"` .." << std::endl;
-            fin.close();
-            IFE(D3DCompileFromFile(
-                path.c_str(), NULL, NULL, "CSMain", "cs_5_0", 0, 0, &computeShader, NULL));
+            auto str = read_file(std::wcout, path);
+            int at_bx = str.find("// [thread_extent] blockIdx.x = "), blockX = (at_bx >= 0) ? std::atoi(str.data() + at_bx + sizeof("// [thread_extent] blockIdx.x = ") - 1) : 1;
+            int at_by = str.find("// [thread_extent] blockIdx.y = "), blockY = (at_by >= 0) ? std::atoi(str.data() + at_by + sizeof("// [thread_extent] blockIdx.y = ") - 1) : 1;
+            int at_bz = str.find("// [thread_extent] blockIdx.z = "), blockZ = (at_bz >= 0) ? std::atoi(str.data() + at_bz + sizeof("// [thread_extent] blockIdx.z = ") - 1) : 1;
+            std::vector<UINT> threads = { (UINT)blockX, (UINT)blockY, (UINT)blockZ };
+
+            auto it = computeShaderDict.find(hlsl_source);
+            if (it == computeShaderDict.end())
+            {
+                IFE(D3DCompileFromFile(
+                    path.c_str(), NULL, NULL, "CSMain", "cs_5_0", 0, 0, &computeShader, NULL));
+                computeShaderDict[hlsl_source] = computeShader;
+            }
+            else
+                computeShader = it->second;
 
             computePsoDesc.pRootSignature = m_computeRootSignature.Get();
             computePsoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
 
             IFE(device.pDevice->CreateComputePipelineState(&computePsoDesc,
-                                                           IID_PPV_ARGS(&m_computeState)));
-            IFE(device.pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE,
-                                                       IID_PPV_ARGS(&computeCommandAllocator)));
+                IID_PPV_ARGS(&m_computeState)));
             IFE(device.pDevice->CreateCommandList(0,
-                                                  D3D12_COMMAND_LIST_TYPE_COMPUTE,
-                                                  computeCommandAllocator.Get(),
-                                                  m_computeState.Get(),
-                                                  IID_PPV_ARGS(&m_computeCommandList)));
+                D3D12_COMMAND_LIST_TYPE_COMPUTE,
+                device.pCommandAllocator.Get(),
+                m_computeState.Get(),
+                IID_PPV_ARGS(&m_computeCommandList)));
 
             m_computeCommandList->SetComputeRootSignature(m_computeRootSignature.Get());
             for (int i = 0; i < inputs.size(); ++i)
@@ -215,8 +225,26 @@ namespace nnfusion_dml
             IFE(m_computeCommandList->Close());
 
             cmdQueue.push_back(Launch());
+            kernelOnlyQueue.push_back(Launch());
+
+            if (!profCostDict.count(hlsl_source)) {
+                std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+                constexpr int NUM_STEPS = 10;
+                for (int i = 0; i < NUM_STEPS; i++)
+                {
+                    device.pCommandQueue->ExecuteCommandLists(1, cmdQueue.data() + cmdQueue.size() - 1);
+                    device.AwaitExecution();
+                }
+                std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+                double sec = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() /
+                    NUM_STEPS;
+                profCostDict[hlsl_source] = { sec, 1 };
+            }
+            else
+                profCostDict[hlsl_source].second++;
         }
 
         ID3D12GraphicsCommandList* Launch() { return m_computeCommandList.Get(); }
     };
 }
+

@@ -192,18 +192,6 @@ namespace nnfusion
 
                     auto print_standard_codegen = [&](
                         std::shared_ptr<GNode>& curr, std::ofstream& fout, std::string code) {
-                        int at_x = code.find("blockIdx.x ="),
-                            blockX = (at_x >= 0)
-                                         ? atoi(code.c_str() + at_x + sizeof("blockIdx.x ="))
-                                         : 1;
-                        int at_y = code.find("blockIdx.y ="),
-                            blockY = (at_y >= 0)
-                                         ? atoi(code.c_str() + at_y + sizeof("blockIdx.y ="))
-                                         : 1;
-                        int at_z = code.find("blockIdx.z ="),
-                            blockZ = (at_z >= 0)
-                                         ? atoi(code.c_str() + at_z + sizeof("blockIdx.z ="))
-                                         : 1;
 
                         static std::unordered_map<std::string, std::string> dedupe_kernels;
                         auto kernel = dedupe_kernels.find(code);
@@ -230,16 +218,15 @@ namespace nnfusion
                              << "}, sizeof(" << curr->get_output_element_type(0).c_type_string()
                              << "));\n";
 
-                        fout << "  NNfusionOperator op_" << arg_names[curr]
-                             << "(device, cmdQueue, {";
+                        fout << "  NNfusionOperator op_" << arg_names[curr] << "(device, {";
                         for (int i = 0; i < curr->get_input_size(); ++i)
                         {
                             if (i)
                                 fout << ", ";
                             fout << arg_names[curr->get_in_edge(i)->get_src()];
                         }
-                        fout << "}, { " << arg_names[curr] << " }, {" << blockX << ", " << blockY
-                             << ", " << blockZ << "}, L\"" << kernel->second << ".hlsl\");";
+                        fout << "}, { " << arg_names[curr] << " }, L\"" << kernel->second
+                             << ".hlsl\");";
                     };
 
                     auto codegen_for_elementwise = [&](std::shared_ptr<GNode>& curr,
@@ -350,7 +337,7 @@ namespace nnfusion
                              << "}, sizeof(" << curr->get_output_element_type(0).c_type_string()
                              << "));\n";
 
-                        fout << "  NNfusionMemcpy op_" << arg_names[curr] << "(device, cmdQueue, "
+                        fout << "  NNfusionMemcpy op_" << arg_names[curr] << "(device, "
                              << arg_names[curr] << ", load_data<"
                              << curr->get_output_element_type(0).c_type_string() << ">(\""
                              << arg_names[curr] << "\", " << arg_names[curr]
@@ -366,15 +353,14 @@ namespace nnfusion
                              << "}, sizeof(" << curr->get_output_element_type(0).c_type_string()
                              << "));\n";
 
-                        fout << "  NNfusionMemcpy op_" << arg_names[curr] << "(device, cmdQueue, "
+                        fout << "  NNfusionMemcpy op_" << arg_names[curr] << "(device, "
                              << arg_names[curr] << ", load_data<"
                              << curr->get_output_element_type(0).c_type_string() << ">(\"\", "
                              << arg_names[curr] << ".NumElements()).data());\n";
                     };
 
                     kernel_dict["Result"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        fout << "NNfusionMemcpy " << arg_names[curr]
-                             << "(device, cmdQueue, nullptr, "
+                        fout << "NNfusionMemcpy " << arg_names[curr] << "(device, nullptr, "
                              << arg_names[curr->get_in_edge(0)->get_src()] << ");\n";
                     };
 
@@ -446,18 +432,6 @@ namespace nnfusion
                              << curr->get_output_element_type(0).c_type_string() << ">(device, \""
                              << arg_names[curr] << "\");\n";
                     }
-
-                    fout << R"(
-  std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
-  constexpr int NUM_STEPS = 10;
-  for (int i = 0; i < NUM_STEPS; i++) {
-    device.pCommandQueue->ExecuteCommandLists(cmdQueue.size(), cmdQueue.data());
-    device.AwaitExecution();
-  }
-  std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-  std::cout << "DxCompute Time per Run = " << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() / NUM_STEPS << " sec.\n";
-
-)";
 
                     fout << std::endl;
 
