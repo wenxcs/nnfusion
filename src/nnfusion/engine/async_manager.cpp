@@ -1,6 +1,7 @@
 #include "nnfusion/engine/async_manager.hpp"
 
 DECLARE_string(fdefault_device);
+DECLARE_int32(fnum_non_cpu);
 
 using namespace nnfusion::async;
 
@@ -25,7 +26,10 @@ Stream::Stream(size_t stream_id,
         }
         else
         {
-            m_name = symbol + "_stream";
+            std::string dev_name = "";
+            if (FLAGS_fnum_non_cpu > 1)
+                dev_name = "_dev" + to_string(device_id);
+            m_name = symbol + dev_name + "_stream";
         }
     }
 
@@ -43,24 +47,6 @@ void Stream::add_binding_symbol(const std::string& binding_symbol)
     }
 }
 
-Event::Event(size_t event_id,
-             const shared_ptr<Stream>& stream,
-             const shared_ptr<nnfusion::op::Op>& op,
-             const string& symbol)
-    : m_event_id(event_id)
-    , m_stream(stream)
-    , m_op(op)
-    , m_symbol(symbol)
-{
-    if (get_device_type() == GENERIC_CPU)
-    {
-        m_name = symbol + "_" + op->get_unique_name() + "_barrier";
-    }
-    else
-    {
-        m_name = symbol + "_" + op->get_unique_name() + "_event";
-    }
-}
 Event::Event(size_t event_id, const shared_ptr<Stream>& stream, const string& symbol)
     : m_event_id(event_id)
     , m_stream(stream)
@@ -77,13 +63,6 @@ Event::Event(size_t event_id, const shared_ptr<Stream>& stream, const string& sy
     }
 }
 
-AsyncManager::AsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph,
-                           NNFusion_DeviceType device_type)
-    : m_device_type(device_type)
-    , m_num_non_default_stream{0}
-{
-}
-
 // create a new thread/stream if not exists, return one if exists.
 shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symbol)
 {
@@ -96,7 +75,7 @@ shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symb
     else
     {
         size_t stream_id = m_stream_list.size();
-        shared_ptr<Stream> stream(new Stream(stream_id, m_device_type, device_id, symbol));
+        shared_ptr<Stream> stream(new Stream(stream_id, get_device_type(), device_id, symbol));
         m_stream_list[search_name] = stream;
         m_dev_stream[device_id].push_back(stream);
 
@@ -106,26 +85,8 @@ shared_ptr<Stream> AsyncManager::set_stream(size_t device_id, const string& symb
         return stream;
     }
 }
-// create a new barrier/event if not exists, return one if exists.
-shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream,
-                                          const shared_ptr<nnfusion::op::Op>& op,
-                                          const string& symbol)
-{
-    std::string search_name = stream->get_name() + symbol + "_" + op->get_unique_name();
-    if (m_event_list.find(search_name) != m_event_list.end())
-    {
-        return m_event_list[search_name];
-    }
-    else
-    {
-        size_t event_id = m_event_list.size();
-        shared_ptr<Event> event(new Event(event_id, stream, op, symbol));
-        m_event_list[search_name] = event;
-        m_dev_event[event->get_device_id()].push_back(event);
-        return event;
-    }
-}
 
+// create a new barrier/event if not exists, return one if exists.
 shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream, const string& symbol)
 {
     std::string search_name = stream->get_name() + symbol + "_event";
@@ -143,49 +104,8 @@ shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream, cons
     }
 }
 
-LanguageUnit_p AsyncManager::emit_stream_decl()
-{
-    LanguageUnit_p _lu(new LanguageUnit("stream_decl"));
-    return _lu;
-}
-
-LanguageUnit_p AsyncManager::emit_event_decl()
-{
-    LanguageUnit_p _lu(new LanguageUnit("event_decl"));
-    return _lu;
-}
-
-LanguageUnit_p AsyncManager::emit_stream_init()
-{
-    LanguageUnit_p _lu(new LanguageUnit("stream_init"));
-    return _lu;
-}
-
-LanguageUnit_p AsyncManager::emit_event_init()
-{
-    LanguageUnit_p _lu(new LanguageUnit("event_init"));
-    return _lu;
-}
-
-LanguageUnit_p AsyncManager::emit_event_reset()
-{
-    LanguageUnit_p _lu(new LanguageUnit("event_reset"));
-    return _lu;
-}
-
-LanguageUnit_p AsyncManager::emit_stream_destroy()
-{
-    LanguageUnit_p _lu(new LanguageUnit("stream_destroy"));
-    return _lu;
-}
-LanguageUnit_p AsyncManager::emit_event_destroy()
-{
-    LanguageUnit_p _lu(new LanguageUnit("event_destroy"));
-    return _lu;
-}
-
-// emit code for declaring all cuda streams.
-LanguageUnit_p CUDAAsyncManager::emit_stream_decl()
+// emit code for declaring all device streams.
+LanguageUnit_p DeviceStreamAsyncManager::emit_stream_decl()
 {
     LanguageUnit_p _lu(new LanguageUnit("stream_decl"));
     auto& lu = *_lu;
@@ -209,8 +129,8 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_decl()
     return _lu;
 }
 
-// emit code for declaring all cuda events.
-LanguageUnit_p CUDAAsyncManager::emit_event_decl()
+// emit code for declaring all device events.
+LanguageUnit_p DeviceStreamAsyncManager::emit_event_decl()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_decl"));
     auto& lu = *_lu;
@@ -221,8 +141,8 @@ LanguageUnit_p CUDAAsyncManager::emit_event_decl()
     return _lu;
 }
 
-// emit code for initializing all cuda streams.
-LanguageUnit_p CUDAAsyncManager::emit_stream_init()
+// emit code for initializing all device streams.
+LanguageUnit_p DeviceStreamAsyncManager::emit_stream_init()
 {
     LanguageUnit_p _lu(new LanguageUnit("stream_init"));
     auto& lu = *_lu;
@@ -263,8 +183,8 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_init()
     return _lu;
 }
 
-// emit code for initializing all cuda events.
-LanguageUnit_p CUDAAsyncManager::emit_event_init()
+// emit code for initializing all device events.
+LanguageUnit_p DeviceStreamAsyncManager::emit_event_init()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_init"));
     auto& lu = *_lu;
@@ -280,8 +200,9 @@ LanguageUnit_p CUDAAsyncManager::emit_event_init()
     return _lu;
 }
 
-// emit code for waiting cuda event. The stream is blocked until the event complete.
-LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
+// emit code for waiting device event. The stream is blocked until the event complete.
+LanguageUnit_p DeviceStreamAsyncManager::emit_event_wait(shared_ptr<Stream> stream,
+                                                         shared_ptr<Event> event)
 {
     LanguageUnit_p _lu(new LanguageUnit("event_wait"));
     auto& lu = *_lu;
@@ -293,32 +214,8 @@ LanguageUnit_p CUDAAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shar
     return _lu;
 }
 
-// emit code for declaring all cpu events/notifications.
-LanguageUnit_p CPUAsyncManager::emit_event_decl()
-{
-    LanguageUnit_p _lu(new LanguageUnit("event_decl"));
-    auto& lu = *_lu;
-    for (auto event_pair : m_event_list)
-    {
-        lu << "nnfusion::cpu::Notification " << event_pair.second->get_name() << ";\n";
-    }
-    return _lu;
-}
-
-// emit code for waiting cpu event/notifications. The stream/thread is blocked until the event complete.
-LanguageUnit_p CPUAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
-{
-    // // \todo: we only support stream synchronization on the same device.
-    // NNFUSION_CHECK(stream->get_device_name() == event->get_device_name())
-    //     << "Unsupported event wait operation: synchronize streams on two different devices";
-    LanguageUnit_p _lu(new LanguageUnit("event_wait"));
-    auto& lu = *_lu;
-
-    lu << event->get_name() << ".Wait();\n";
-    return _lu;
-}
-// emit code for recording cuda event.
-LanguageUnit_p CUDAAsyncManager::emit_event_record(shared_ptr<Event> event)
+// emit code for recording device event.
+LanguageUnit_p DeviceStreamAsyncManager::emit_event_record(shared_ptr<Event> event)
 {
     LanguageUnit_p _lu(new LanguageUnit("event_record"));
     auto& lu = *_lu;
@@ -333,8 +230,8 @@ LanguageUnit_p CUDAAsyncManager::emit_event_record(shared_ptr<Event> event)
     return _lu;
 }
 
-// emit code for destroying cuda stream.
-LanguageUnit_p CUDAAsyncManager::emit_stream_destroy()
+// emit code for destroying device stream.
+LanguageUnit_p DeviceStreamAsyncManager::emit_stream_destroy()
 {
     LanguageUnit_p _lu(new LanguageUnit("stream_del"));
     auto& lu = *_lu;
@@ -368,8 +265,8 @@ LanguageUnit_p CUDAAsyncManager::emit_stream_destroy()
     }
     return _lu;
 }
-// emit code for destroying cuda event.
-LanguageUnit_p CUDAAsyncManager::emit_event_destroy()
+// emit code for destroying device event.
+LanguageUnit_p DeviceStreamAsyncManager::emit_event_destroy()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_del"));
     auto& lu = *_lu;
@@ -384,8 +281,38 @@ LanguageUnit_p CUDAAsyncManager::emit_event_destroy()
     return _lu;
 }
 
+// emit code for declaring all host streams.
+LanguageUnit_p HostAsyncManager::emit_stream_decl()
+{
+    LanguageUnit_p _lu(new LanguageUnit("stream_decl"));
+    auto& lu = *_lu;
+    return _lu;
+}
+
+// emit code for declaring all cpu events/notifications.
+LanguageUnit_p HostAsyncManager::emit_event_decl()
+{
+    LanguageUnit_p _lu(new LanguageUnit("event_decl"));
+    auto& lu = *_lu;
+    for (auto event_pair : m_event_list)
+    {
+        lu << "nnfusion::cpu::Notification " << event_pair.second->get_name() << ";\n";
+    }
+    return _lu;
+}
+
+// emit code for waiting cpu event/notifications. The stream/thread is blocked until the event complete.
+LanguageUnit_p HostAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
+{
+    LanguageUnit_p _lu(new LanguageUnit("event_wait"));
+    auto& lu = *_lu;
+
+    lu << event->get_name() << ".Wait();\n";
+    return _lu;
+}
+
 // emit code for recording cpu event/notification.
-LanguageUnit_p CPUAsyncManager::emit_event_record(shared_ptr<Event> event)
+LanguageUnit_p HostAsyncManager::emit_event_record(shared_ptr<Event> event)
 {
     LanguageUnit_p _lu(new LanguageUnit("event_record"));
     auto& lu = *_lu;
@@ -395,7 +322,7 @@ LanguageUnit_p CPUAsyncManager::emit_event_record(shared_ptr<Event> event)
     return _lu;
 }
 // emit code for reseting all CPU notifications.
-LanguageUnit_p CPUAsyncManager::emit_event_reset()
+LanguageUnit_p HostAsyncManager::emit_event_reset()
 {
     LanguageUnit_p _lu(new LanguageUnit("event_reset"));
     auto& lu = *_lu;
@@ -406,42 +333,61 @@ LanguageUnit_p CPUAsyncManager::emit_event_reset()
     return _lu;
 }
 
-std::unordered_map<std::string, AsyncManager*> AsyncManagerFactory::m_async_manager;
-AsyncManager* AsyncManagerFactory::get_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
-                                                     NNFusion_DeviceType device_type)
+std::unordered_map<std::string, HostAsyncManager*> AsyncManagerFactory::m_host_async_manager;
+std::unordered_map<std::string, DeviceStreamAsyncManager*>
+    AsyncManagerFactory::m_device_stream_async_manager;
+HostAsyncManager*
+    AsyncManagerFactory::get_host_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
+                                                NNFusion_DeviceType device_type)
+{
+    NNFUSION_CHECK(device_type == GENERIC_CPU) << "Unsupported device type";
+    std::string search_name = get_device_str(device_type);
+    if (graph)
+        search_name += graph->get_name();
+    if (m_host_async_manager.find(search_name) != m_host_async_manager.end())
+    {
+        return m_host_async_manager[search_name];
+    }
+    else
+    {
+        HostAsyncManager* host_async_manager = nullptr;
+        host_async_manager = new HostAsyncManager(graph);
+        if (host_async_manager != nullptr)
+            m_host_async_manager[search_name] = host_async_manager;
+        return host_async_manager;
+    }
+}
+
+DeviceStreamAsyncManager* AsyncManagerFactory::get_device_stream_async_manager(
+    std::shared_ptr<nnfusion::graph::Graph> graph, NNFusion_DeviceType device_type)
 {
     std::string search_name = get_device_str(device_type);
     if (graph)
         search_name += graph->get_name();
-    if (m_async_manager.find(search_name) != m_async_manager.end())
+    if (m_device_stream_async_manager.find(search_name) != m_device_stream_async_manager.end())
     {
-        return m_async_manager[search_name];
+        return m_device_stream_async_manager[search_name];
     }
     else
     {
-        AsyncManager* async_manager = nullptr;
+        DeviceStreamAsyncManager* device_stream_async_manager = nullptr;
         switch (device_type)
         {
         case CUDA_GPU:
         {
-            async_manager = new CUDAAsyncManager(graph);
+            device_stream_async_manager = new CUDAAsyncManager(graph);
             break;
         }
         //\ todo: temporirly rocm use cuda's async manager.
         case ROCM_GPU:
         {
-            async_manager = new CUDAAsyncManager(graph);
+            device_stream_async_manager = new CUDAAsyncManager(graph);
             break;
         }
-        case GENERIC_CPU:
-        {
-            async_manager = new CPUAsyncManager(graph);
-            break;
+        default: nnfusion::errors::NotSupported("Unsupported device stream async manager.");
         }
-        default: nnfusion::errors::NotSupported("The device is not supported.");
-        }
-        if (async_manager != nullptr)
-            m_async_manager[search_name] = async_manager;
-        return async_manager;
+        if (device_stream_async_manager != nullptr)
+            m_device_stream_async_manager[search_name] = device_stream_async_manager;
+        return device_stream_async_manager;
     }
 }

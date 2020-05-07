@@ -61,7 +61,7 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
     {
         for (auto ins : *iterator)
         {
-            if (ins->has_name() && ins->name() == "Memcpy")
+            if (ins->name() == "Memcpy")
                 continue;
             auto gnode = ins->getGNode();
             orders[gnode] = node_order++;

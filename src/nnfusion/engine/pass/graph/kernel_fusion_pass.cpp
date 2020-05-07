@@ -185,7 +185,6 @@ private:
 
     std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> ExtractFusionGroups()
     {
-        NNFUSION_LOG(INFO) << "~~~~~~~~~~~~~~~~~~~~~~~~1";
         std::shared_ptr<std::vector<std::shared_ptr<FuseGroup>>> groups =
             std::make_shared<std::vector<std::shared_ptr<FuseGroup>>>();
         std::queue<size_t> ready;
@@ -373,6 +372,7 @@ private:
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
+                    // NNFUSION_LOG(INFO) << DebugStringFuseGroup(tn->elem_group);
                     // prune un-connected Reshape node, as these reshape node can be emlimated in codegen
                     std::unordered_set<size_t> kept_nodes;
                     for (auto elem_id : tn->elem_group->nodes)
@@ -418,12 +418,21 @@ private:
                         NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto elem_tn = m_nodes[elem_id];
                         NNFUSION_CHECK_NOT_NULLPTR(elem_tn->node);
-
+                        auto n_node = elem_tn->node;
+                        auto n_device_type = (*n_node)["DeviceType"].as<NNFusion_DeviceType>();
+                        auto n_device_id = (*n_node)["DeviceID"].as<int>();
                         for (auto in_edge : elem_tn->node->get_in_edges())
                         {
                             if (in_edge->is_control_edge())
                                 continue;
                             auto input_node = in_edge->get_src();
+                            auto input_device_type =
+                                (*input_node)["DeviceType"].as<NNFusion_DeviceType>();
+                            auto input_device_id = (*input_node)["DeviceID"].as<int>();
+                            // only fuse nodes on the same device
+                            if (input_device_type != n_device_type ||
+                                input_device_id != n_device_id)
+                                continue;
                             // A conservative way to avoid loop on DAG: only fuse node with single output
                             if (input_node->get_out_edges().size() > 1)
                                 continue;
@@ -490,6 +499,7 @@ private:
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group)
                 {
+                    // NNFUSION_LOG(INFO) << DebugStringFuseGroup(tn->elem_group);
                     std::unordered_map<size_t, std::shared_ptr<FuseGroup>> cur_groups;
                     for (auto elem_id : tn->elem_group->nodes)
                     {
@@ -560,7 +570,7 @@ private:
                 auto tn = m_nodes[id];
                 if (id >= ELEM_GROUP_NODEID && tn->elem_group && tn->elem_group->nodes.size() > 1)
                 {
-                    //LOG(INFO) << DebugStringFuseGroup(tn->elem_group);
+                    // NNFUSION_LOG(INFO) << DebugStringFuseGroup(tn->elem_group);
                     std::vector<std::shared_ptr<KernelEmitter>> block_kernels;
                     bool all_kernel_emitted = true;
                     NNFusion_DeviceType k_device_type;

@@ -24,7 +24,6 @@ bool TensorDeviceDispatcher::run(std::shared_ptr<InterpreterContext> ctx,
             auto n_device_type = (*ins)["DeviceType"].as<NNFusion_DeviceType>();
             auto n_device_id = (*ins)["DeviceID"].as<int>();
             std::vector<std::shared_ptr<descriptor::Tensor>> all_tensors;
-
             auto& inputs = ins->get_inputs();
             for (size_t i = 0; i < inputs.size(); i++)
             {

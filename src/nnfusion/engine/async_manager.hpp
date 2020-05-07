@@ -9,8 +9,9 @@ namespace nnfusion
     namespace async
     {
         class AsyncManager;
+        class DeviceStreamAsyncManager;
+        class HostAsyncManager;
         class CUDAAsyncManager;
-        class CPUAsyncManager;
         class Stream;
         class Event;
         struct AsyncExecutionInfo;
@@ -84,26 +85,21 @@ class nnfusion::async::AsyncManager
 public:
     friend class AsyncManagerFactory;
     shared_ptr<Stream> set_stream(size_t device_id = 0, const string& symbol = "default");
-    shared_ptr<Event> set_event(const shared_ptr<Stream>& stream,
-                                const shared_ptr<nnfusion::op::Op>& op,
-                                const string& symbol = "");
     shared_ptr<Event> set_event(const shared_ptr<Stream>& stream, const string& symbol = "");
     int num_stream() const { return m_stream_list.size(); }
     int num_non_default_stream() const { return m_num_non_default_stream; }
     int num_event() const { return m_event_list.size(); }
     NNFusion_DeviceType get_device_type() const { return m_device_type; }
-    virtual LanguageUnit_p emit_stream_decl();
-    virtual LanguageUnit_p emit_event_decl();
-    virtual LanguageUnit_p emit_stream_init();
-    virtual LanguageUnit_p emit_event_init();
+    virtual LanguageUnit_p emit_stream_decl() = 0;
+    virtual LanguageUnit_p emit_event_decl() = 0;
     virtual LanguageUnit_p emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event) = 0;
     virtual LanguageUnit_p emit_event_record(shared_ptr<Event> event) = 0;
-    virtual LanguageUnit_p emit_event_reset();
-    virtual LanguageUnit_p emit_stream_destroy();
-    virtual LanguageUnit_p emit_event_destroy();
 
 protected:
-    AsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph, NNFusion_DeviceType device_type);
+    AsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
+        : m_num_non_default_stream{0}
+    {
+    }
     std::unordered_map<std::string, shared_ptr<Stream>> m_stream_list;
     std::unordered_map<int, std::vector<shared_ptr<Stream>>> m_dev_stream;
     std::unordered_map<std::string, shared_ptr<Event>> m_event_list;
@@ -112,39 +108,55 @@ protected:
     int m_num_non_default_stream;
 };
 
-class nnfusion::async::CUDAAsyncManager : nnfusion::async::AsyncManager
+class nnfusion::async::DeviceStreamAsyncManager : public nnfusion::async::AsyncManager
 {
 public:
     friend class AsyncManagerFactory;
     LanguageUnit_p emit_stream_decl() override;
     LanguageUnit_p emit_event_decl() override;
-    LanguageUnit_p emit_stream_init() override;
-    LanguageUnit_p emit_event_init() override;
+    virtual LanguageUnit_p emit_stream_init();
+    virtual LanguageUnit_p emit_event_init();
     LanguageUnit_p emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event) override;
     LanguageUnit_p emit_event_record(shared_ptr<Event> event) override;
-    LanguageUnit_p emit_stream_destroy() override;
-    LanguageUnit_p emit_event_destroy() override;
+    virtual LanguageUnit_p emit_stream_destroy();
+    virtual LanguageUnit_p emit_event_destroy();
 
-private:
-    CUDAAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
-        : AsyncManager(graph, CUDA_GPU)
+protected:
+    DeviceStreamAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
+        : AsyncManager(graph)
     {
+        m_device_type = CUDA_GPU;
     }
 };
 
-class nnfusion::async::CPUAsyncManager : nnfusion::async::AsyncManager
+class nnfusion::async::HostAsyncManager : public nnfusion::async::AsyncManager
 {
 public:
     friend class AsyncManagerFactory;
+    LanguageUnit_p emit_stream_decl() override;
     LanguageUnit_p emit_event_decl() override;
     LanguageUnit_p emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event) override;
     LanguageUnit_p emit_event_record(shared_ptr<Event> event) override;
-    LanguageUnit_p emit_event_reset() override;
+    virtual LanguageUnit_p emit_event_reset();
 
-private:
-    CPUAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
-        : AsyncManager(graph, GENERIC_CPU)
+protected:
+    HostAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
+        : AsyncManager(graph)
     {
+        m_device_type = GENERIC_CPU;
+    }
+};
+
+class nnfusion::async::CUDAAsyncManager : public nnfusion::async::DeviceStreamAsyncManager
+{
+public:
+    friend class AsyncManagerFactory;
+
+protected:
+    CUDAAsyncManager(std::shared_ptr<nnfusion::graph::Graph> graph)
+        : DeviceStreamAsyncManager(graph)
+    {
+        m_device_type = CUDA_GPU;
     }
 };
 
@@ -152,15 +164,24 @@ class nnfusion::async::AsyncManagerFactory
 {
 public:
     AsyncManagerFactory() {}
-    static AsyncManager* get_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
-                                           NNFusion_DeviceType device_type);
-    static const std::unordered_map<std::string, AsyncManager*>& get_async_manager_list()
+    static HostAsyncManager* get_host_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
+                                                    NNFusion_DeviceType device_type = GENERIC_CPU);
+    static DeviceStreamAsyncManager*
+        get_device_stream_async_manager(std::shared_ptr<nnfusion::graph::Graph> graph,
+                                        NNFusion_DeviceType device_type = CUDA_GPU);
+    static const std::unordered_map<std::string, HostAsyncManager*>& get_host_async_manager_list()
     {
-        return m_async_manager;
+        return m_host_async_manager;
+    }
+    static const std::unordered_map<std::string, DeviceStreamAsyncManager*>&
+        get_device_stream_async_manager_list()
+    {
+        return m_device_stream_async_manager;
     }
 
 private:
-    static std::unordered_map<std::string, AsyncManager*> m_async_manager;
+    static std::unordered_map<std::string, HostAsyncManager*> m_host_async_manager;
+    static std::unordered_map<std::string, DeviceStreamAsyncManager*> m_device_stream_async_manager;
 };
 
 struct nnfusion::async::AsyncExecutionInfo
@@ -210,4 +231,6 @@ struct nnfusion::async::AsyncExecutionInfo
     shared_ptr<Stream> execution_stream;
     shared_ptr<Event> record_event;
     vector<shared_ptr<Event>> wait_events;
+
+    bool sync_stream = false; // for cross-device sync
 };

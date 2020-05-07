@@ -11,12 +11,12 @@ DEFINE_string(fdefault_device,
               "CUDA",
               "Choose defualt device from [CUDA, CPU, ROCm] in the codegen.");
 DECLARE_bool(frt_const_folding);
-DEFINE_int32(fnum_device, 1, "Number of devices.");
+DEFINE_int32(fnum_non_cpu, 1, "Number of gpus.");
 bool DefaultGNodeDeviceDispatcher::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
     auto dev_name = FLAGS_fdefault_device.c_str();
     NNFusion_DeviceType dt = nnfusion::get_device_type(dev_name);
-    int num_device = FLAGS_fnum_device;
+    int num_device = FLAGS_fnum_non_cpu;
     /* for debug purpose
     switch(default_device)
     {

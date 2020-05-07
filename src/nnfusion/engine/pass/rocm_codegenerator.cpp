@@ -63,9 +63,9 @@ add_custom_command(
 )
 endif()
 )";
-            auto CPU_async_manager =
-                nnfusion::async::AsyncManagerFactory::get_async_manager(m_graph, GENERIC_CPU);
-            if (CPU_async_manager->num_non_default_stream() > 0)
+            auto host_async_manager =
+                nnfusion::async::AsyncManagerFactory::get_host_async_manager(m_graph, GENERIC_CPU);
+            if (host_async_manager->num_non_default_stream() > 0)
             {
                 lu << "# need to specify the correct path of eigen\n"
                    << "set(EIGEN_DIR \"/usr/include/eigen3\" CACHE STRING \"EIGEN libraries folder "

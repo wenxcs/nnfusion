@@ -22,6 +22,7 @@ DEFINE_int64(fcuda_kernels_files_number,
 
 DEFINE_bool(fkernels_as_files, false, "Saving kernels as standalone source code files.");
 DEFINE_int64(fkernels_files_number, -1, "Saving kernels into how many source code files.");
+DECLARE_string(fcuda_init_stream);
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
@@ -145,10 +146,10 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                                 nnfusion::ir::BasicBlock::Pointer bb_main)
 {
     auto CUDA_async_manager =
-        nnfusion::async::AsyncManagerFactory::get_async_manager(graph, CUDA_GPU);
+        nnfusion::async::AsyncManagerFactory::get_device_stream_async_manager(graph, CUDA_GPU);
     auto CPU_async_manager =
-        nnfusion::async::AsyncManagerFactory::get_async_manager(graph, GENERIC_CPU);
-    std::unordered_map<int, nnfusion::ir::Instruction::Pointer> dev_ir;
+        nnfusion::async::AsyncManagerFactory::get_host_async_manager(graph, GENERIC_CPU);
+    std::unordered_map<string, nnfusion::ir::Instruction::Pointer> dev_ir;
     auto n_device_type = (*gnode)["DeviceType"].as<NNFusion_DeviceType>();
     auto n_device_id = (*gnode)["DeviceID"].as<int>();
     for (auto& out_edge : gnode->get_out_edges())
@@ -159,17 +160,12 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
 
             auto out_device_type = (*out_gnode)["DeviceType"].as<NNFusion_DeviceType>();
             auto out_device_id = (*out_gnode)["DeviceID"].as<int>();
-
-            if (n_device_type != out_device_type ||
-                (n_device_id != out_device_id && n_device_type == GENERIC_CPU))
-            {
-                throw nnfusion::errors::NotSupported("Cross-DeviceType ir is not supported.");
-            }
-            else if (n_device_id != out_device_id)
+            std::string out_dev_name =
+                get_device_str(out_device_type) + "_" + to_string(out_device_id);
+            if (n_device_type != out_device_type || n_device_id != out_device_id)
             {
                 nnfusion::ir::Instruction::Pointer memcpy_ir;
-                auto idx = out_edge->get_dst_input();
-                if (dev_ir.find(out_device_id) == dev_ir.end())
+                if (dev_ir.find(out_dev_name) == dev_ir.end())
                 {
                     auto& async_info =
                         (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
@@ -177,11 +173,25 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                     auto stream = async_info.execution_stream;
                     memcpy_ir = std::make_shared<nnfusion::ir::Instruction>();
                     memcpy_ir->setName("Memcpy");
-
-                    // set device id and device type
-                    (*memcpy_ir)["DeviceType"] = n_device_type;
-                    (*memcpy_ir)["DeviceID"] = n_device_id;
-
+                    if (n_device_type == out_device_type)
+                    {
+                        // set device id and device type
+                        (*memcpy_ir)["DeviceType"] = n_device_type;
+                        (*memcpy_ir)["DeviceID"] = n_device_id;
+                    }
+                    else if (n_device_type == GENERIC_CPU)
+                    {
+                        // set device id and device type
+                        (*memcpy_ir)["DeviceType"] = out_device_type;
+                        (*memcpy_ir)["DeviceID"] = out_device_id;
+                    }
+                    else if (out_device_type == GENERIC_CPU)
+                    {
+                        // set device id and device type
+                        (*memcpy_ir)["DeviceType"] = n_device_type;
+                        (*memcpy_ir)["DeviceID"] = n_device_id;
+                    }
+                    auto idx = out_edge->get_dst_input();
                     auto tensor = out_gnode->get_input_tensor_ptr(idx);
                     auto element_type = tensor->get_element_type();
                     auto pshape = tensor->get_partial_shape();
@@ -204,7 +214,6 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                     NNFUSION_CHECK(outputs.empty());
                     outputs.push_back(new_tensor);
 
-                    // add async info
                     (*memcpy_ir)["Async_info"] = nnfusion::async::AsyncExecutionInfo();
                     auto& memcpy_async_info =
                         (*memcpy_ir)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
@@ -224,26 +233,25 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                     if (gnode->is_constant() || gnode->is_variable() ||
                         (*gnode)["rt_const_folding"].is_valid_as<bool>())
                     {
-                        // constant, variable and rt_const_folding ops are in xxx_init(),
-                        // so thre is no need to add event or barrier.
                         NNFUSION_CHECK(thread->is_default_stream());
-                        NNFUSION_CHECK(stream->is_default_stream());
-                        // use default thread
+                        //NNFUSION_CHECK(stream->is_default_stream());
                         memcpy_async_info.execution_thread = thread;
-                        // use default stream
-                        memcpy_async_info.execution_stream = stream;
+                        if (stream)
+                            memcpy_async_info.execution_stream = stream;
+                        else
+                            memcpy_async_info.execution_stream = CUDA_async_manager->set_stream(
+                                (*memcpy_ir)["DeviceID"].as<int>(), FLAGS_fcuda_init_stream);
                     }
                     else
                     {
-                        // currently use the same thread, could use a new different thread as well.
                         if (gnode->is_parameter())
                             memcpy_async_info.execution_thread =
-                                CPU_async_manager->set_stream(n_device_id, "memcpy");
+                                CPU_async_manager->set_stream(0, "memcpy");
                         else
                             memcpy_async_info.execution_thread = thread;
                         // use a new different stream.
-                        memcpy_async_info.execution_stream =
-                            CUDA_async_manager->set_stream(n_device_id, "memcpy_" + new_name);
+                        memcpy_async_info.execution_stream = CUDA_async_manager->set_stream(
+                            (*memcpy_ir)["DeviceID"].as<int>(), "memcpy_" + new_name);
                     }
                     if (gnode->is_constant() || gnode->is_variable() ||
                         (*gnode)["rt_const_folding"].is_valid_as<bool>())
@@ -258,49 +266,54 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                         {
                             memcpy_async_info.wait_barriers.push_back(async_info.notify_barrier);
                         }
-                        if (memcpy_async_info.execution_stream != stream &&
+                        if (stream && memcpy_async_info.execution_stream != stream &&
                             async_info.record_event != nullptr)
                         {
                             memcpy_async_info.wait_events.push_back(async_info.record_event);
                         }
                     }
                     bb_main->push_back(memcpy_ir);
-                    dev_ir[out_device_id] = memcpy_ir;
+                    dev_ir[out_dev_name] = memcpy_ir;
                 }
                 else
                 {
-                    memcpy_ir = dev_ir[out_device_id];
+                    memcpy_ir = dev_ir[out_dev_name];
                 }
+
+                auto& inputs = memcpy_ir->get_inputs();
+                NNFUSION_CHECK(inputs.size() == 1);
+                auto tensor = inputs[0];
+                auto name = tensor->get_name();
+
                 auto& outputs = memcpy_ir->get_outputs();
                 NNFUSION_CHECK(outputs.size() == 1);
                 auto new_tensor = outputs[0];
                 auto new_name = new_tensor->get_name();
 
-                // assumption: tensor's index in gnode is the same as in kernel
-                if (!out_gnode->get_op_ptr()->is_parameter() &&
-                    !out_gnode->get_op_ptr()->is_output() &&
-                    !out_gnode->get_op_ptr()->is_constant())
+                if (!out_gnode->get_op_ptr()->is_tensor_op())
                 {
-                    auto emitted_kernel =
-                        (*out_gnode)["Kernel_Selection_Result"]
-                            .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-                    if (emitted_kernel.second->get_or_emit_source() == nullptr)
-                    {
-                        NNFUSION_CHECK_FAIL() << "Kernel should be emitted before this pass:"
-                                              << out_gnode->get_name();
-                    }
-                    auto out_kernel = emitted_kernel.second;
+                    auto out_kernel = (*out_gnode)["Kernel_Selection_Result"]
+                                          .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>()
+                                          .second;
+                    NNFUSION_CHECK_NOT_NULLPTR(out_kernel);
                     auto& out_kernel_inputs = out_kernel->m_context->inputs;
                     auto& out_kernel_input_names = out_kernel->m_context->input_names;
-
-                    out_kernel_inputs.erase(out_kernel_inputs.begin() + idx);
-                    out_kernel_inputs.insert(out_kernel_inputs.begin() + idx, new_tensor);
-                    out_kernel_input_names.erase(out_kernel_input_names.begin() + idx);
-                    out_kernel_input_names.insert(out_kernel_input_names.begin() + idx, new_name);
+                    for (size_t i = 0; i < out_kernel_input_names.size(); ++i)
+                    {
+                        if (out_kernel_input_names[i] == name)
+                        {
+                            out_kernel_inputs.erase(out_kernel_inputs.begin() + i);
+                            out_kernel_inputs.insert(out_kernel_inputs.begin() + i, new_tensor);
+                            out_kernel_input_names.erase(out_kernel_input_names.begin() + i);
+                            out_kernel_input_names.insert(out_kernel_input_names.begin() + i,
+                                                          new_name);
+                            break;
+                        }
+                    }
                 }
                 else
                 {
-                    // parameter and constant nodes have no inputs,
+                    // tensor op nodes have no inputs,
                     // and output nodes kernel is simply a reference operation,
                     // so there should be no memcpy between these nodes and their input nodes.
                 }
@@ -324,7 +337,16 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
                     }
                     out_async_info.wait_barriers.push_back(memcpy_async_info.notify_barrier);
                 }
-                if (memcpy_async_info.execution_stream != out_async_info.execution_stream)
+                else
+                {
+                    auto memcpy_dev = (*memcpy_ir)["DeviceType"].as<NNFusion_DeviceType>();
+                    auto out_dev = (*out_gnode)["DeviceType"].as<NNFusion_DeviceType>();
+                    if (memcpy_dev != out_dev)
+                        memcpy_async_info.sync_stream = true;
+                }
+
+                if (out_async_info.execution_stream &&
+                    memcpy_async_info.execution_stream != out_async_info.execution_stream)
                 {
                     if (!memcpy_async_info.record_event)
                     {

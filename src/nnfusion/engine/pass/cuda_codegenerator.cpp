@@ -11,9 +11,12 @@
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
 #include "nnfusion/core/kernels/cpu/barrier.hpp"
+#include "nnfusion/core/kernels/cpu/cpu_kernel_emitter.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
+#include "nnfusion/core/kernels/cpu/reference/reference_common.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/engine/async_manager.hpp"
 #include "nnfusion/engine/memory_allocator.hpp"
 
 using namespace nnfusion;
@@ -25,8 +28,10 @@ DEFINE_bool(fcodegen_timing, false, "Add timing functions in Codegen-ed project.
 DECLARE_bool(frt_const_folding);
 DECLARE_bool(fkernels_as_files);
 DECLARE_int64(fkernels_files_number);
-//DECLARE_int32(fnuma_node_num);
-//DECLARE_int32(fthread_num_per_node);
+DECLARE_string(fcuda_init_stream);
+
+DECLARE_int32(fnuma_node_num);
+DECLARE_int32(fthread_num_per_node);
 
 namespace
 {
@@ -75,7 +80,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11 -march=native")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
@@ -104,7 +109,7 @@ find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
                              "${CMAKE_CURRENT_SOURCE_DIR})"
                            : "")
        << (FLAGS_fkernels_as_files
-               ? "file(GLOB kernels kernels/*.cu)\ncuda_add_library(nnfusion_naive_rt "
+               ? "file(GLOB kernels kernels/*.{cu, cpp})\ncuda_add_library(nnfusion_naive_rt "
                  "nnfusion_rt.cu ${kernels})\n"
                : "cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)\n")
        << R"(
@@ -230,8 +235,9 @@ std::vector<shared_ptr<const KernelRegistration>>
 nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
     nnfusion::ir::Instruction::Pointer ins, bool func_call_only, const std::string& func_call)
 {
-    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(m_graph, CUDA_GPU);
-    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(m_graph, GENERIC_CPU);
+    auto CUDA_async_manager =
+        AsyncManagerFactory::get_device_stream_async_manager(m_graph, CUDA_GPU);
+    auto host_async_manager = AsyncManagerFactory::get_host_async_manager(m_graph, GENERIC_CPU);
     auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
     LanguageUnit_p _lu(new LanguageUnit("func_call"));
     auto& lu = *_lu;
@@ -241,11 +247,10 @@ nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
         {
             for (auto barrier : async_info.wait_barriers)
             {
-                lu << CPU_async_manager->emit_event_wait(async_info.execution_thread, barrier)
+                lu << host_async_manager->emit_event_wait(async_info.execution_thread, barrier)
                           ->get_code();
             }
         }
-
         if (!async_info.wait_events.empty())
         {
             for (auto event : async_info.wait_events)
@@ -255,23 +260,41 @@ nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
             }
         }
     }
+
     if (ins->name() == "Memcpy")
     {
-        string stream_name = async_info.execution_stream->get_name();
+        //string stream_name = async_info.execution_stream->get_name();
         auto& inputs = ins->get_inputs();
         NNFUSION_CHECK(inputs.size() == 1);
         auto src_tensor = inputs[0];
-
         auto& outputs = ins->get_outputs();
         NNFUSION_CHECK(outputs.size() == 1);
         auto dst_tensor = outputs[0];
-        NNFUSION_CHECK(src_tensor->get_device_type() == CUDA_GPU ||
-                       src_tensor->get_device_type() == ROCM_GPU);
-        NNFUSION_CHECK(dst_tensor->get_device_type() == CUDA_GPU ||
-                       dst_tensor->get_device_type() == ROCM_GPU);
-
+        std::string memcpykind;
+        auto dst_dev = dst_tensor->get_device_type();
+        auto src_dev = src_tensor->get_device_type();
+        if (dst_dev == src_dev)
+        {
+            NNFUSION_CHECK(dst_dev == CUDA_GPU || dst_dev == ROCM_GPU);
+            memcpykind = ", cudaMemcpyDeviceToDevice, ";
+        }
+        else if (dst_dev == GENERIC_CPU)
+        {
+            NNFUSION_CHECK(src_dev == CUDA_GPU || src_dev == ROCM_GPU);
+            memcpykind = ", cudaMemcpyDeviceToHost, ";
+        }
+        else if (src_dev == GENERIC_CPU)
+        {
+            NNFUSION_CHECK(dst_dev == CUDA_GPU || dst_dev == ROCM_GPU);
+            memcpykind = ", cudaMemcpyHostToDevice, ";
+        }
+        else
+        {
+            nnfusion::errors::NotSupported("Unsupported memcpy kind.");
+        }
+        string stream_name = async_info.execution_stream->get_name();
         lu << "cudaMemcpyAsync(" << dst_tensor->get_name() << ", " << src_tensor->get_name() << ", "
-           << dst_tensor->size() << ", cudaMemcpyDeviceToDevice, " << stream_name << ");\n";
+           << dst_tensor->size() << memcpykind << stream_name << ");\n";
     }
     else
     {
@@ -284,6 +307,7 @@ nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
             lu << func_call;
         }
     }
+
     if (!func_call_only)
     {
         if (async_info.record_event != nullptr)
@@ -292,8 +316,14 @@ nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
         }
         if (async_info.notify_barrier != nullptr)
         {
-            lu << CPU_async_manager->emit_event_record(async_info.notify_barrier)->get_code();
+            lu << host_async_manager->emit_event_record(async_info.notify_barrier)->get_code();
         }
+    }
+
+    if (ins->name() == "Memcpy" && async_info.sync_stream == true)
+    {
+        lu << "CUDA_SAFE_CALL(cudaStreamSynchronize(" << async_info.execution_stream->get_name()
+           << "));\n";
     }
 
     return _lu;
@@ -306,8 +336,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     m_graph = tu->m_graph;
     NNFUSION_CHECK_NOT_NULLPTR(tu->memory_allocator_factory);
     auto& allocator_list = tu->memory_allocator_factory->get_allocator_list();
-    auto CUDA_async_manager = AsyncManagerFactory::get_async_manager(m_graph, CUDA_GPU);
-    auto CPU_async_manager = AsyncManagerFactory::get_async_manager(m_graph, GENERIC_CPU);
+    auto CUDA_async_manager =
+        AsyncManagerFactory::get_device_stream_async_manager(m_graph, CUDA_GPU);
+    auto host_async_manager = AsyncManagerFactory::get_host_async_manager(m_graph, GENERIC_CPU);
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cu"));
@@ -324,7 +355,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit lu_thread_func_call("THREAD_FUNCTION_CALL");
 
     bool rc = true;
+    bool need_intra_node_threadpool = false;
     auto& prog = tu->program;
+    std::unordered_map<std::string, int> cpu_kernel_thread_idx;
+    size_t num_cpu_kernel_thread = 0;
     for (auto iterator : prog)
     {
         for (auto ins : *iterator)
@@ -333,16 +367,29 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 continue;
             }
-            // emit constant kernel
-            if (ins->getGNode() && ins->getGNode()->is_constant())
+            auto kernel = ins->getKernel();
+
+            if (std::dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
             {
-                auto kernel = (*ins)["Kernel_Selection_Result"]
-                                  .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>()
-                                  .second;
-                kernel->get_or_emit_source();
-                continue;
+                NNFUSION_CHECK((*ins)["Async_info"].is_valid());
+                auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
+                auto thread = async_info.execution_thread;
+                if (!thread->is_default_stream())
+                {
+                    if (cpu_kernel_thread_idx.find(thread->get_name()) ==
+                        cpu_kernel_thread_idx.end())
+                    {
+                        num_cpu_kernel_thread = cpu_kernel_thread_idx.size();
+                        cpu_kernel_thread_idx[thread->get_name()] = num_cpu_kernel_thread;
+                    }
+                }
             }
-            if (!ins->getKernel())
+
+            if (kernel && kernel->get_or_emit_source())
+            {
+                need_intra_node_threadpool |= kernel->is_parallelism();
+            }
+            else
             {
                 auto kernel_reg =
                     KernelRegistry::Global()->FindKernelRegistration("AnyOP", CUDA_GPU, DT_FLOAT);
@@ -370,14 +417,18 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         re.require(macro::CUDA_SAFE_CALL);
         re.require(header::fstream);
         re.require(header::thread);
-        // Both intra_node parallelism and multi-stream need worker_thread_pool.
-        if (CPU_async_manager->num_non_default_stream() > 0)
+        // Both intra_node parallelism and multi-thread need worker_thread_pool.
+        if (need_intra_node_threadpool || num_cpu_kernel_thread > 0)
         {
             re.require(header::threadpool);
+            re.require(declaration::worker_thread_pool);
         }
-        if (CPU_async_manager->num_non_default_stream() > 0)
+        if (host_async_manager->num_non_default_stream() > 0)
+        {
+            re.require(header::threadpool);
             re.require(declaration::schedule_thread_pool);
-        if (CPU_async_manager->num_event() > 0 || CPU_async_manager->num_non_default_stream() > 0)
+        }
+        if (host_async_manager->num_event() > 0 || host_async_manager->num_non_default_stream() > 0)
             re.require(header::barrier);
         //re.require(declaration::typedef_int);
 
@@ -407,9 +458,14 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     // Collect Function Definition
     {
         vector<codegenerator::FunctionFile> cuda_kernel_files;
+        vector<codegenerator::CPUFunctionFile> cpu_kernel_files;
         if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
+        {
             cuda_kernel_files.resize(FLAGS_fkernels_files_number);
+            cpu_kernel_files.resize(FLAGS_fkernels_files_number);
+        }
         int cuda_kernel_n = 0;
+        int cpu_kernel_n = 0;
         LanguageUnit def("FUNCTIONS");
         int count_k = 0;
         for (auto iterator : prog)
@@ -418,14 +474,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto kernel = ins->getKernel();
                 auto gnode = ins->getGNode();
-                if (ins->name() == "Memcpy" || (gnode && gnode->is_parameter()) ||
-                    (kernel && kernel->is_eliminative()))
+                if (!kernel || (kernel && kernel->is_eliminative()))
                     continue;
-                //get kernel's stream name
                 auto& async_info = (*ins)["Async_info"].as<AsyncExecutionInfo>();
                 int device_id = (*ins)["DeviceID"].as<int>();
-                string stream_name = async_info.execution_stream->get_name();
-
                 FunctionUnit_p fu = kernel->get_or_emit_source();
                 for (auto& it : fu->body_unit->local_symbol)
                 {
@@ -438,7 +490,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 string body_unit = fu->body_unit->get_code();
 
                 // conv kernels in the the stream shares the same workspace_ptr
-                if (gnode->get_op_type() == "Convolution")
+                if (gnode->get_op_type() == "Convolution" && async_info.execution_stream)
                 {
                     std::string s_workspace =
                         "workspace_ptr_" + to_string(async_info.execution_stream->get_stream_id());
@@ -453,18 +505,37 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 if (kernel->is_static_function() ||
                     decleard_function_LU.find(func_key) == decleard_function_LU.end())
                 {
-                    auto functionfile = codegenerator::FunctionFile::convert_from(kernel);
+                    nnfusion::codegenerator::CPUFunctionFile_p cpu_functionfile;
+                    nnfusion::codegenerator::FunctionFile_p functionfile;
+                    if (dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
+                        cpu_functionfile = codegenerator::CPUFunctionFile::convert_from(kernel);
+                    else
+                        functionfile = codegenerator::FunctionFile::convert_from(kernel);
                     if (FLAGS_fkernels_as_files)
                     {
-                        def << functionfile->get_extern_declare();
-                        if (FLAGS_fkernels_files_number > 0)
-                            cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
-                        else
-                            functionfile->save_file();
+                        if (functionfile)
+                        {
+                            def << functionfile->get_extern_declare();
+                            if (FLAGS_fkernels_files_number > 0)
+                                cuda_kernel_files[cuda_kernel_n].merge_from(functionfile);
+                            else
+                                functionfile->save_file();
+                        }
+                        else if (cpu_functionfile)
+                        {
+                            def << cpu_functionfile->get_extern_declare();
+                            if (FLAGS_fkernels_files_number > 0)
+                                cpu_kernel_files[cpu_kernel_n].merge_from(cpu_functionfile);
+                            else
+                                cpu_functionfile->save_file();
+                        }
                     }
                     else
                     {
-                        def << functionfile->get_code();
+                        if (functionfile)
+                            def << functionfile->get_code();
+                        else if (cpu_functionfile)
+                            def << cpu_functionfile->get_code();
                     }
                     if (!kernel->is_static_function())
                     {
@@ -477,15 +548,26 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 if (FLAGS_fkernels_files_number > 0)
                 {
-                    cuda_kernel_n++;
-                    cuda_kernel_n %= FLAGS_fkernels_files_number;
+                    if (dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
+                    {
+                        cpu_kernel_n++;
+                        cpu_kernel_n %= FLAGS_fkernels_files_number;
+                    }
+                    else
+                    {
+                        cuda_kernel_n++;
+                        cuda_kernel_n %= FLAGS_fkernels_files_number;
+                    }
                 }
             }
         }
         if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
         {
             for (int i = 0; i < FLAGS_fkernels_files_number; i++)
+            {
                 cuda_kernel_files[i].save_file();
+                cpu_kernel_files[i].save_file();
+            }
         }
 
         //Write Dependency
@@ -493,7 +575,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("header::") != string::npos)
                 lu << it.second->get_code();
         lu << "#include <cstring>\n";
-        // lu << "using namespace std;\n";
+        lu << "using namespace std;\n";
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("macro::") != string::npos)
@@ -516,17 +598,30 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         if (CUDA_async_manager->num_event() > 0)
             lu << CUDA_async_manager->emit_event_decl()->get_code();
         // thread and barrier declaration
-        if (CPU_async_manager->num_stream() > 0)
-            lu << CPU_async_manager->emit_stream_decl()->get_code();
-        if (CPU_async_manager->num_event() > 0)
-            lu << CPU_async_manager->emit_event_decl()->get_code();
+        if (host_async_manager->num_stream() > 0)
+            lu << host_async_manager->emit_stream_decl()->get_code();
+        if (host_async_manager->num_event() > 0)
+            lu << host_async_manager->emit_event_decl()->get_code();
         // default barrier declaration
-        if (CPU_async_manager->num_non_default_stream() > 0)
+        if (host_async_manager->num_non_default_stream() > 0)
             lu << "nnfusion::cpu::Barrier default_barrier("
-               << CPU_async_manager->num_non_default_stream() << ");\n";
+               << host_async_manager->num_non_default_stream() << ");\n";
+        if (num_cpu_kernel_thread > 0)
+            lu << "nnfusion::cpu::Notification init_barrier;\n";
+
+        for (auto& it : re.local_symbol)
+            if (it.second->symbol.find("cpu_reference_") != string::npos)
+                lu << it.second->get_code();
+        lu << "\n";
+
         //Write Code
         lu << def.collect_code() << "\n";
-        if (CPU_async_manager->num_event() > 0 || CPU_async_manager->num_non_default_stream() > 0)
+
+        if (re.local_symbol.find("header::reference_common") != re.local_symbol.end())
+        {
+            save_file(reference_common_header);
+        }
+        if (host_async_manager->num_event() > 0 || host_async_manager->num_non_default_stream() > 0)
             save_file(barrier_header);
     }
 
@@ -550,9 +645,22 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
         //Function Call
         {
-            if (CPU_async_manager->num_non_default_stream() > 0)
+            // Both intra_node parallelism and multi-thread need worker_thread_pool.
+            // If multi-thread is not enabled for cpu kernels, numa-aware can be ignored.
+            // todo:
+            int numa_node_num = FLAGS_fnuma_node_num;
+            if (host_async_manager->num_non_default_stream() > 0)
             {
                 lu_main_init << "schedule_thread_pool = new concurrency::NumaAwareThreadPool();\n";
+            }
+            if (num_cpu_kernel_thread == 0)
+            {
+                numa_node_num = 1;
+            }
+            if (need_intra_node_threadpool || num_cpu_kernel_thread > 0)
+            {
+                lu_main_init << "worker_thread_pool = new concurrency::NumaAwareThreadPool("
+                             << numa_node_num << ", " << FLAGS_fthread_num_per_node << ");\n";
             }
 
             if (CUDA_async_manager->num_stream() > 0)
@@ -570,11 +678,25 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                 "cudaDevAttrMultiProcessorCount, 0));\n";
             }
+            // for cpu kernel
+            if (global_required.count("declaration::eigen_global_thread_pool") > 0)
+            {
+                lu_main_init << "int thread_count = std::thread::hardware_concurrency() >> 1;\n"
+                             << "global_thread_pool = new Eigen::ThreadPool(thread_count? "
+                                "thread_count : 1);\n";
+            }
+            if (global_required.count("declaration::eigen_global_thread_pool_device") > 0)
+            {
+                lu_main_init << "global_thread_pool_device = new "
+                                "Eigen::ThreadPoolDevice(global_thread_pool, "
+                                "global_thread_pool->NumThreads());";
+            }
             //const
             set<string> constant_vals;
             std::unordered_map<string, vector<nnfusion::ir::Instruction::Pointer>>
                 thread_kernels_entry;
             std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_func_call;
+            size_t cpu_func_count = 0;
             int pre_dev_id = 0;
             lu_main_init << " // func call\n";
             lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << pre_dev_id << "));\n";
@@ -588,7 +710,6 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     int device_id = (*ins)["DeviceID"].as<int>();
                     auto thread = async_info.execution_thread;
                     auto thread_name = thread->get_name();
-
                     if (!kernel)
                     {
                         if (ins->name() == "Memcpy")
@@ -620,7 +741,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         {
                             std::string body_unit = fu->body_unit->get_code();
                             // conv kernels in the the stream shares the same workspace_ptr
-                            if (gnode->get_op_type() == "Convolution")
+                            if (gnode->get_op_type() == "Convolution" &&
+                                async_info.execution_stream)
                             {
                                 std::string s_workspace =
                                     "workspace_ptr_" +
@@ -637,33 +759,86 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                            decleard_function_LU.end());
                             func_name = decleard_function_LU[func_key]->get_code();
                         }
-                    }
-                    // get kernel func call
-                    std::string function_call = fu->get_specialized_funciton_call(func_name);
-                    int pos_right = function_call.find(">>>(");
-                    if (pos_right >= 0)
-                    {
+                        // get kernel func call
+                        std::string function_call;
+                        if (dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
+                        {
+                            if (thread->is_default_stream())
+                            {
+                                function_call = func_name;
+                                string call_str = fu->call_unit->get_code();
+                                if (kernel->is_parallelism())
+                                {
+                                    std::string threadpool_param =
+                                        "worker_thread_pool->GetRawThreadPool(), ";
+                                    call_str.insert(1, threadpool_param);
+                                }
+                                function_call += call_str;
+                            }
+                            else
+                            {
+                                NNFUSION_CHECK(cpu_kernel_thread_idx.find(thread->get_name()) !=
+                                               cpu_kernel_thread_idx.end());
+                                int numa_node =
+                                    cpu_kernel_thread_idx[thread->get_name()] % numa_node_num;
+                                string call_str = fu->call_unit->get_code();
+                                if (kernel->is_parallelism())
+                                {
+                                    std::string threadpool_param =
+                                        "worker_thread_pool->GetRawThreadPool(";
+                                    threadpool_param +=
+                                        (std::to_string(numa_node) + std::string("), "));
+                                    call_str.insert(1, threadpool_param);
+                                    function_call = func_name;
+                                    function_call += call_str;
+                                }
+                                else
+                                {
+                                    call_str.insert(1, func_name + std::string(", "));
+                                    std::string std_func_name =
+                                        std::string("func") + std::to_string(cpu_func_count);
+                                    std::string std_func_call =
+                                        std::string("auto ") + std_func_name +
+                                        std::string(" = std::bind") + call_str;
+                                    function_call = std_func_call + "\n";
+                                    std::string threadpool_call =
+                                        std::string("worker_thread_pool->ScheduleSync(");
+                                    threadpool_call += (std_func_name + std::string(", ") +
+                                                        std::to_string(numa_node) + ");\n");
+                                    function_call += threadpool_call;
+                                    ++cpu_func_count;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            function_call = fu->get_specialized_funciton_call(func_name);
+                            int pos_right = function_call.find(">>>(");
+                            if (pos_right >= 0)
+                            {
 #ifdef __USING_HOST_CALL_FORMAT___
-                        // Turn to Host Call Format in kernel_entry()
-                        int pos_left = function_call.find("<<<");
-                        NNFUSION_CHECK(pos_left >= 0);
-                        function_call = function_call.substr(0, pos_left) + "_Call(" +
-                                        function_call.substr(pos_left + sizeof("<<<") - 1);
+                                // Turn to Host Call Format in kernel_entry()
+                                int pos_left = function_call.find("<<<");
+                                NNFUSION_CHECK(pos_left >= 0);
+                                function_call = function_call.substr(0, pos_left) + "_Call(" +
+                                                function_call.substr(pos_left + sizeof("<<<") - 1);
 
-                        pos_right = function_call.find(">>>(");
-                        NNFUSION_CHECK(pos_right >= 0);
-                        function_call = function_call.substr(0, pos_right) + ", " +
-                                        function_call.substr(pos_right + sizeof(">>>(") - 1);
+                                pos_right = function_call.find(">>>(");
+                                NNFUSION_CHECK(pos_right >= 0);
+                                function_call =
+                                    function_call.substr(0, pos_right) + ", " +
+                                    function_call.substr(pos_right + sizeof(">>>(") - 1);
 #endif
+                            }
+                        }
+                        kernel_func_call[kernel] = function_call;
                     }
-                    kernel_func_call[kernel] = function_call;
 
                     if (gnode->is_constant() || gnode->is_variable() ||
                         (enable_rt_const_folding && (*ins)["rt_const_folding"].is_valid_as<bool>()))
                     {
-                        NNFUSION_CHECK(async_info.execution_stream->is_default_stream())
-                            << "Kernel function calls in cuda_init() should use default stream.";
-                        if (device_id != pre_dev_id)
+                        if (!std::dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel) &&
+                            device_id != pre_dev_id)
                         {
                             lu_main_init << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
                             pre_dev_id = device_id;
@@ -677,6 +852,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     }
                 }
             }
+            if (FLAGS_fcuda_init_stream != "default")
+                lu_main_init << "CUDA_SAFE_CALL(cudaDeviceSynchronize());\n";
+            if (num_cpu_kernel_thread > 0)
+                lu_main_init << "init_barrier.Notify();\n";
 
             // Generate graph configs
             {
@@ -756,9 +935,12 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_kernel_entry << "\n";
             lu_kernel_entry.block_begin();
 
+            if (num_cpu_kernel_thread > 0)
+                lu_kernel_entry << "init_barrier.Wait();\n";
+
             // reset event/notification
-            lu_kernel_entry << CPU_async_manager->emit_event_reset()->get_code();
-            if (CPU_async_manager->num_non_default_stream() > 0)
+            lu_kernel_entry << host_async_manager->emit_event_reset()->get_code();
+            if (host_async_manager->num_non_default_stream() > 0)
                 lu_kernel_entry << "default_barrier.Reset();\n";
 
             int thread_index = 0;
@@ -768,7 +950,16 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 size_t kernel_order = 0;
                 auto& thread_name = tk.first;
                 NNFUSION_CHECK(tk.second.size() > 0);
-                int device_id = (*tk.second[0])["DeviceID"].as<int>();
+                size_t num_cpu_kernel = 0;
+                int device_id;
+                for (auto ins : tk.second)
+                {
+                    auto kernel = ins->getKernel();
+                    if (kernel && std::dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
+                        num_cpu_kernel += 1;
+                    else
+                        device_id = (*ins)["DeviceID"].as<int>();
+                }
                 if (thread_name != "default_thread")
                 {
                     // add thread_calls definition
@@ -778,8 +969,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     lu_thread_func_call << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
                     if (enable_timing)
                     {
-                        lu_thread_func_call << "static cudaEvent_t hEvents[" << tk.second.size() + 1
-                                            << "];\n";
+                        lu_thread_func_call << "static cudaEvent_t hEvents["
+                                            << tk.second.size() + 1 - num_cpu_kernel << "];\n";
                         lu_thread_func_call << "size_t eventCnt = 0;\n";
                         lu_thread_func_call
                             << "if (!hEvents[eventCnt]) "
@@ -820,7 +1011,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         lu_thread_func_call
                             << func_call_codegen(ins, false, function_call)->get_code();
 
-                        if (enable_debug && !gnode->get_op_ptr()->is_output())
+                        if (enable_debug && !gnode->get_op_ptr()->is_output() &&
+                            !dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
                         {
                             for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                             {
@@ -836,7 +1028,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                     << ");\n";
                             }
                         }
-                        if (enable_timing)
+                        if (enable_timing &&
+                            !dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
                         {
                             lu_thread_func_call
                                 << "if (!hEvents[eventCnt]) "
@@ -879,18 +1072,26 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 }
                 ++thread_index;
             }
-
             if (thread_kernels_entry.find("default_thread") != thread_kernels_entry.end())
             {
                 size_t kernel_order = 0;
                 auto& ins_vec = thread_kernels_entry["default_thread"];
+                size_t num_cpu_kernel = 0;
+                int device_id;
                 NNFUSION_CHECK(ins_vec.size() > 0);
-                int device_id = (*ins_vec[0])["DeviceID"].as<int>();
+                for (auto ins : ins_vec)
+                {
+                    auto kernel = ins->getKernel();
+                    if (kernel && std::dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
+                        num_cpu_kernel += 1;
+                    else
+                        device_id = (*ins)["DeviceID"].as<int>();
+                }
                 lu_kernel_entry << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
                 if (enable_timing)
                 {
-                    lu_kernel_entry << "static cudaEvent_t hEvents[" << ins_vec.size() + 1
-                                    << "];\n";
+                    lu_kernel_entry << "static cudaEvent_t hEvents["
+                                    << ins_vec.size() + 1 - num_cpu_kernel << "];\n";
                     lu_kernel_entry << "size_t eventCnt = 0;\n";
                     lu_kernel_entry << "if (!hEvents[eventCnt]) "
                                        "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
@@ -922,8 +1123,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                     << "\n";
                     auto func_call = kernel_func_call[kernel];
                     lu_kernel_entry << func_call_codegen(ins, false, func_call)->get_code();
-
-                    if (enable_debug && !gnode->get_op_ptr()->is_output())
+                    if (enable_debug && gnode && !gnode->get_op_ptr()->is_output() &&
+                        !dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
                     {
                         for (size_t i = 0; i < kernel->m_context->outputs.size(); i++)
                         {
@@ -937,7 +1138,9 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                             << kernel->m_context->outputs[i]->size(false) << ");\n";
                         }
                     }
-                    if (enable_timing)
+
+                    if (enable_timing &&
+                        !dynamic_pointer_cast<kernels::cpu::CpuKernelEmitter>(kernel))
                     {
                         lu_kernel_entry << "if (!hEvents[eventCnt]) "
                                            "CUDA_SAFE_CALL(cudaEventCreate(&hEvents[eventCnt]));\n";
@@ -959,47 +1162,42 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                        "memcpy) = %g ms.\\n\", total_ms);\n";
                 }
             }
-
             // destroy cuda stream and event
             if (CUDA_async_manager->num_stream() > 0)
                 lu_main_free << CUDA_async_manager->emit_stream_destroy()->get_code();
             if (CUDA_async_manager->num_event() > 0)
                 lu_main_free << CUDA_async_manager->emit_event_destroy()->get_code();
 
-            if (CPU_async_manager->num_non_default_stream() > 0)
+            if (host_async_manager->num_non_default_stream() > 0)
             {
                 lu_main_free << "delete schedule_thread_pool;\n";
             }
-            // // destroy handle
-            // for (auto& info : dev_cudnn_handle)
-            // {
-            //     int device_id = info.first;
-            //     lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
-            //     for (auto& cudnn_handle : info.second)
-            //     {
-            //         lu_main_free << "CUDNN_SAFE_CALL(cudnnDestroy(" << cudnn_handle << "));\n";
-            //     }
-            // }
-            // for (auto& info : dev_cublas_handle)
-            // {
-            //     int device_id = info.first;
-            //     lu_main_free << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
-            //     for (auto& cublas_handle : info.second)
-            //     {
-            //         lu_main_free << "CUBLAS_SAFE_CALL(cublasDestroy(" << cublas_handle << "));\n";
-            //     }
-            // }
+
+            if (need_intra_node_threadpool || num_cpu_kernel_thread > 0)
+            {
+                lu_main_free << "delete worker_thread_pool;\n";
+            }
+
             if (global_required.count("header::super_scaler"))
             {
                 lu_kernel_entry << "super_scaler_sync();\n";
                 lu_main_free << "super_scaler_finalization();\n";
+            }
+
+            if (global_required.count("declaration::eigen_global_thread_pool") > 0)
+            {
+                lu_main_free << "free(global_thread_pool);\n";
+            }
+            if (global_required.count("declaration::eigen_global_thread_pool_device") > 0)
+            {
+                lu_main_free << "free(global_thread_pool_device);\n";
             }
         }
         for (const auto& allocator : allocator_list)
         {
             lu_main_free << allocator.second->emit_memory_free()->get_code();
         }
-        if (CPU_async_manager->num_non_default_stream() > 0)
+        if (host_async_manager->num_non_default_stream() > 0)
             lu_kernel_entry << "default_barrier.Wait();\n";
         lu_kernel_entry << "return 0;\n";
         lu_kernel_entry.block_end();
@@ -1361,25 +1559,54 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit& lu_cmake = *this->lu_cmakefile;
     super_scaler_enable = global_required.count("header::super_scaler") > 0;
     lu_cmake << get_generate_cmakelists();
-    if (CPU_async_manager->num_non_default_stream() > 0)
+    char exe_path[PATH_MAX];
+    size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
+    const char* path;
+    if (count != -1)
+    {
+        path = dirname(exe_path);
+    }
+    else
+    {
+        throw std::runtime_error("Failed to get the directory of executable file.\n");
+    }
+
+    if (global_required.count("declaration::eigen_global_thread_pool_device") > 0 ||
+        global_required.count("header::eigen_utils") > 0 ||
+        global_required.count("header::eigen_tensor") > 0 ||
+        global_required.count("header::mlas") > 0 || need_intra_node_threadpool ||
+        host_async_manager->num_non_default_stream() > 0)
     {
         lu_cmake << "# need to specify the correct path of eigen\n"
                  << "set(EIGEN_DIR \"/usr/include/eigen3\" CACHE STRING \"EIGEN libraries folder "
                     "location\")\n"
                  << "include_directories(${EIGEN_DIR})\n\n";
+    }
 
-        char exe_path[PATH_MAX];
-        size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
-        const char* path;
-        if (count != -1)
-        {
-            path = dirname(exe_path);
-        }
-        else
-        {
-            throw std::runtime_error("Failed to get the directory of executable file.\n");
-        }
+    if (global_required.count("header::cblas") > 0)
+    {
+        lu_cmake << R"(
+set(NNFUSION_THIRDPARTY_FOLDER "~/repo/Thirdparty" CACHE STRING "NNFusion Thirdpary libraries folder location")
+if(EXISTS "${NNFUSION_THIRDPARTY_FOLDER}")
+else()
+message(SEND_ERROR "NNFUSION_THIRDPARTY_FOLDER not exists." )
+endif()
+# include(mkldnn.cmake)
+set(MKL_LIBS libiomp5.so libmklml_intel.so)
+set(MKL_ROOT ${NNFUSION_THIRDPARTY_FOLDER}/mkl/mkl_lnx)
+add_library(libmkl INTERFACE)
+foreach(LIB ${MKL_LIBS})
+    target_link_libraries(libmkl INTERFACE ${MKL_ROOT}/lib/${LIB})
+endforeach()
+        )"
+                 << "\n";
+        lu_cmake << "target_link_libraries(nnfusion_naive_rt pthread libmkl)\n\n";
+    }
 
+    if (need_intra_node_threadpool || host_async_manager->num_non_default_stream() > 0)
+    {
+        lu_cmake << "find_package(Threads REQUIRED)\n";
+        lu_cmake << "target_link_libraries(nnfusion_naive_rt Threads::Threads)\n\n";
         std::string threadpool_path = std::string(path) + std::string("/threadpool");
         std::string cmd = std::string("cp -R ") + threadpool_path + std::string(" .");
         if (0 != system(cmd.c_str()))
@@ -1388,6 +1615,19 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         }
         lu_cmake << "include(threadpool/threadpool.cmake)\n";
         lu_cmake << "target_link_libraries(nnfusion_naive_rt threadpool)\n\n";
+    }
+
+    if (global_required.count("header::mlas") > 0)
+    {
+        lu_cmake << "include(mlas/mlas.cmake)\n";
+        lu_cmake << "target_link_libraries(nnfusion_naive_rt mlas)\n\n";
+
+        std::string mlas_path = std::string(path) + std::string("/mlas");
+        std::string cmd = std::string("cp -R ") + mlas_path + std::string(" .");
+        if (0 != system(cmd.c_str()))
+        {
+            throw std::runtime_error("Failed to copy mlas source files.\n");
+        }
     }
 
     post_projgen();

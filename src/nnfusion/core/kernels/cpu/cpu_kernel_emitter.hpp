@@ -19,6 +19,7 @@ namespace nnfusion
                     : KernelEmitter(ctx, "cpu")
                 {
                 }
+                LanguageUnit_p emit_function_signature() override;
             };
 
             class MklKernelEmitter : public CpuKernelEmitter

@@ -99,7 +99,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     NNFUSION_CHECK_NOT_NULLPTR(tu->memory_allocator_factory);
     auto& allocator_list = tu->memory_allocator_factory->get_allocator_list();
-    auto async_manager = AsyncManagerFactory::get_async_manager(tu->m_graph, GENERIC_CPU);
+    auto async_manager = AsyncManagerFactory::get_host_async_manager(tu->m_graph, GENERIC_CPU);
 
     this->lu_cmakefile = LanguageUnit_p(new LanguageUnit("CMakeLists.txt"));
     this->lu_nnfusion_rt = LanguageUnit_p(new LanguageUnit("nnfusion_rt.cpp"));
@@ -195,14 +195,14 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     }
 
     lu << "#include \"nnfusion_rt.h\"\n";
-    // std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels;
+    unordered_map<string, LanguageUnit_p> decleard_function_LU;
+
     // Collect Function Definition
     {
         vector<codegenerator::CPUFunctionFile> cpu_kernel_files;
         if (FLAGS_fkernels_as_files && FLAGS_fkernels_files_number > 0)
             cpu_kernel_files.resize(FLAGS_fkernels_files_number);
         int cpu_kernel_n = 0;
-        unordered_set<string> declared;
         LanguageUnit def("FUNCTIONS");
         for (auto iterator : prog)
         {
@@ -212,7 +212,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto gnode = ins->getGNode();
                 if (!kernel || (kernel && kernel->is_eliminative()))
                     continue;
-                FunctionUnit_p fu = kernel->get_or_emit_source(true);
+                FunctionUnit_p fu = kernel->get_or_emit_source();
                 for (auto& it : fu->body_unit->local_symbol)
                 {
                     if (it.second != fu->dep_unit)
@@ -221,7 +221,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         global_required.insert(it.second->symbol);
                     }
                 }
-                if (declared.count(fu->body_unit->symbol) == 0)
+                string body_unit = fu->body_unit->get_code();
+                string func_key = fu->signature_unit->get_code() + body_unit;
+                if (kernel->is_static_function() ||
+                    decleard_function_LU.find(func_key) == decleard_function_LU.end())
                 {
                     auto functionfile = codegenerator::CPUFunctionFile::convert_from(kernel);
                     if (FLAGS_fkernels_as_files)
@@ -236,11 +239,14 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         def << functionfile->get_code();
                     }
-                    declared.insert(fu->body_unit->symbol);
+                    if (!kernel->is_static_function())
+                    {
+                        decleard_function_LU[func_key] = fu->name_unit;
+                    }
                 }
                 else
                 {
-                    def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
+                    // def << "// Function declared:" << fu->body_unit->symbol << "\n\n";
                 }
                 if (FLAGS_fkernels_files_number > 0)
                 {
@@ -277,8 +283,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu << async_manager->emit_event_decl()->get_code();
         // default barrier declaration
         if (async_manager->num_non_default_stream() > 0)
+        {
+            lu << "nnfusion::cpu::Notification init_barrier;\n";
             lu << "nnfusion::cpu::Barrier default_barrier("
                << async_manager->num_non_default_stream() << ");\n";
+        }
         /*
         {
             //hard coded order
@@ -382,8 +391,8 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                 "global_thread_pool->NumThreads());";
             }
 
-            // Both intra_node parallelism and multi-stream need worker_thread_pool.
-            // If multi-stream is not enabled, numa-aware can be ignored.
+            // Both intra_node parallelism and multi-thread need worker_thread_pool.
+            // If multi-thread is not enabled, numa-aware can be ignored.
             int numa_node_num = FLAGS_fnuma_node_num;
             if (async_manager->num_non_default_stream() > 0)
             {
@@ -401,6 +410,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             }
 
             std::unordered_map<string, vector<shared_ptr<KernelEmitter>>> stream_kernels_entry;
+            std::unordered_map<shared_ptr<KernelEmitter>, string> kernel_func_name;
             for (auto iterator : prog)
             {
                 for (auto ins : *iterator)
@@ -413,8 +423,21 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     if (!kernel || (kernel && kernel->is_eliminative()))
                         continue;
                     FunctionUnit_p fu = kernel->get_or_emit_source(true);
-                    std::string func_name = fu->name_unit->get_code();
+                    std::string func_name;
+                    if (kernel->is_static_function())
+                    {
+                        func_name = fu->name_unit->get_code();
+                    }
+                    else
+                    {
+                        std::string body_unit = fu->body_unit->get_code();
+                        string func_key = fu->signature_unit->get_code() + body_unit;
+                        NNFUSION_CHECK(decleard_function_LU.find(func_key) !=
+                                       decleard_function_LU.end());
+                        func_name = decleard_function_LU[func_key]->get_code();
+                    }
 
+                    kernel_func_name[kernel] = func_name;
                     if (gnode->is_constant() || gnode->is_variable() ||
                         (FLAGS_frt_const_folding && (*ins)["rt_const_folding"].is_valid_as<bool>()))
                     {
@@ -429,7 +452,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         //         lu_main_init << async_manager->emit_event_wait(async_info.execution_thread, event)->get_code();
                         //     }
                         // }
-                        lu_main_init << fu->name_unit->get_code();
+                        lu_main_init << kernel_func_name[kernel];
                         string call_str = fu->call_unit->get_code();
                         if (kernel->is_parallelism())
                         {
@@ -456,6 +479,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                         stream_kernels_entry[stream_name].push_back(kernel);
                     }
                 }
+            }
+            if (async_manager->num_non_default_stream() > 0)
+            {
+                lu_main_init << "init_barrier.Notify();\n";
+                lu_kernel_entry << "init_barrier.Wait();\n";
             }
             // emit function calls in kernel_entry()
             int stream_index = 0;
@@ -499,12 +527,12 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::string threadpool_param = "worker_thread_pool->GetRawThreadPool(";
                             threadpool_param += (std::to_string(numa_node) + std::string("), "));
                             call_str.insert(1, threadpool_param);
-                            lu_thread_func_call << fu->name_unit->get_code();
+                            lu_thread_func_call << kernel_func_name[kernel];
                             lu_thread_func_call << call_str;
                         }
                         else
                         {
-                            call_str.insert(1, fu->name_unit->get_code() + std::string(", "));
+                            call_str.insert(1, kernel_func_name[kernel] + std::string(", "));
                             std::string std_func_name =
                                 std::string("func") + std::to_string(func_call_count);
                             std::string std_func_call = std::string("auto ") + std_func_name +
@@ -565,7 +593,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             }
                         }
 
-                        lu_kernel_entry << fu->name_unit->get_code();
+                        lu_kernel_entry << kernel_func_name[kernel];
 
                         string call_str = fu->call_unit->get_code();
                         if (kernel->is_parallelism())
@@ -612,9 +640,6 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main_free << "delete schedule_thread_pool;\n";
         }
 
-        // emit cpu stream/threads joining
-        // if (async_manager->num_stream() > 0)
-        //     lu_kernel_entry << async_manager->emit_stream_join()->get_code();
         if (async_manager->num_non_default_stream() > 0)
             lu_kernel_entry << "default_barrier.Wait();\n";
         lu_kernel_entry << "\nreturn 0;\n";
@@ -791,7 +816,11 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     if (global_required.count("header::cblas") > 0)
     {
         lu_cmake << R"(
-set(NNFUSION_THIRDPARTY_FOLDER ~/repo/Thirdparty)
+set(NNFUSION_THIRDPARTY_FOLDER "~/repo/Thirdparty" CACHE STRING "NNFusion Thirdpary libraries folder location")
+if(EXISTS "${NNFUSION_THIRDPARTY_FOLDER}")
+else()
+message(SEND_ERROR "NNFUSION_THIRDPARTY_FOLDER not exists." )
+endif()
 # include(mkldnn.cmake)
 set(MKL_LIBS libiomp5.so libmklml_intel.so)
 set(MKL_ROOT ${NNFUSION_THIRDPARTY_FOLDER}/mkl/mkl_lnx)

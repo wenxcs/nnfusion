@@ -116,7 +116,7 @@ FunctionFile_p FunctionFile::convert_from(std::shared_ptr<nnfusion::kernels::Ker
     auto gnode = kernel->m_context->gnode;
     auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
 
-    // conv kernels in the the stream shares the same workspace_ptr
+    // conv kernels in the same stream shares the same workspace_ptr
     if (gnode->get_op_type() == "Convolution")
     {
         std::string s_workspace =
@@ -219,15 +219,6 @@ CPUFunctionFile_p
 
     def << fu->comment_unit->get_code();
     string sig = fu->get_specialized_signature();
-
-    if (kernel->is_parallelism())
-    {
-        int pos = sig.find("(");
-        if (pos >= 0)
-        {
-            sig.insert(pos + 1, "concurrency::ThreadPool* thread_pool, ");
-        }
-    }
 
     def << sig << "\n";
     def.block_begin();

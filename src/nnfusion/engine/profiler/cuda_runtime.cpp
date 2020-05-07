@@ -19,7 +19,8 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         return true;
 
     // assign async info
-    auto async_manager = nnfusion::async::AsyncManagerFactory::get_async_manager(nullptr, CUDA_GPU);
+    auto async_manager =
+        nnfusion::async::AsyncManagerFactory::get_device_stream_async_manager(nullptr, CUDA_GPU);
     auto gnode = ke->kernel->m_context->gnode;
     (*gnode)["Async_info"] = nnfusion::async::AsyncExecutionInfo();
     auto& async_info = (*gnode)["Async_info"].as<nnfusion::async::AsyncExecutionInfo>();
