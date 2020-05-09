@@ -78,7 +78,7 @@ namespace nnfusion_dml
     public:
         NNfusionMemcpy(D3DDevice& device,
             NNfusionTensor& dst,
-            void* src)
+            void* src, bool preload = false)
         {
             elements = dst.NumElements();
             bufferSize = dst.TypeSize() * dst.NumElements();
@@ -96,6 +96,14 @@ namespace nnfusion_dml
             m_computeCommandList->CopyResource(deviceGPUSrcX.Get(), deviceCPUSrcX.Get());
             m_computeCommandList->Close();
 
+            if (preload)
+            {
+                cmdQueue.push_back(Launch());
+                device.pCommandQueue->ExecuteCommandLists(1, cmdQueue.data() + cmdQueue.size() - 1);
+                device.AwaitExecution();
+                cmdQueue.pop_back();
+                return;
+            }
             cmdQueue.push_back(Launch());
         }
 

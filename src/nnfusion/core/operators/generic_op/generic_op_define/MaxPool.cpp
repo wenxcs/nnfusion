@@ -16,7 +16,7 @@ REGISTER_OP(MaxPool)
             padding_below[1], padding_below[0], padding_above[1], padding_above[0]};
 
         return op::create_code_from_template(
-            R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.nn.pool(args("input0"), kernel=@kernel@, stride=@stride@, padding=@padding@, pool_type='max')); )",
+            R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.nn.pool(args("input0"), kernel=@kernel@, stride=@stride@, padding=@padding@, pool_type="max")); )",
             {{"input_shape", vector_to_string(curr->get_input_shape(0))},
              {"output_shape", vector_to_string(curr->get_output_shape(0))},
              {"kernel", vector_to_string(kernel)},

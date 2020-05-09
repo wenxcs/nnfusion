@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     }
 
     evaluateQueue(kernelOnlyQueue, "Kernel Queue");
-    evaluateQueue(cmdQueue, "Full Queue");
+    evaluateQueue(cmdQueue, "Standard Queue");
     system("pause");
     return 0;
 }

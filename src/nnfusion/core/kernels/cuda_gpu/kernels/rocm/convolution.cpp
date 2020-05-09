@@ -127,9 +127,10 @@ namespace nnfusion
 		for (int i = 1; i < returnedAlgoCount; ++i)
 			if (perfResults[i].time < perfResults[fastest].time)
 				fastest = i;
+		fprintf(stderr, "[MIOpen] Using algorithim: %s\n", (perfResults[fastest].fwd_algo == miopenConvolutionFwdAlgoDirect ? "Direct" : (perfResults[fastest].fwd_algo == miopenConvolutionFwdAlgoWinograd ? "Winograd" : std::to_string((int)perfResults[fastest].fwd_algo).c_str())));
 		workspace_size_in_bytes = perfResults[fastest].memory;
 		CUDA_SAFE_CALL(cudaMalloc(&workspace_ptr, workspace_size_in_bytes));
-        } catch (...) { fprintf(stderr, "No any MIOpen algorithms support this Conv2D: (@N@, @CI@, @H@, @W@) -> (@N@, @CO@, @HO@, @WO@), pad = (@P0@, @P1@), srd = (@S0@, @S1@).\n"); abort(); }
+        } catch (...) { fprintf(stderr, "[MIOpen] No any algorithm supports this Conv2D: (@N@, @CI@, @H@, @W@) -> (@N@, @CO@, @HO@, @WO@), pad = (@P0@, @P1@), srd = (@S0@, @S1@).\n"); abort(); }
 	}
 	CUDNN_SAFE_CALL(miopenConvolutionForward(cudnn_handle,
 		&alpha, tensor_desc_0, input0, filter_desc, input1, conv_desc, perfResults[fastest].fwd_algo,

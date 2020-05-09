@@ -341,7 +341,7 @@ namespace nnfusion
                              << arg_names[curr] << ", load_data<"
                              << curr->get_output_element_type(0).c_type_string() << ">(\""
                              << arg_names[curr] << "\", " << arg_names[curr]
-                             << ".NumElements()).data());\n";
+                             << ".NumElements()).data(), true);\n";
                     };
 
                     kernel_dict["Parameter"] = [&](std::shared_ptr<GNode>& curr,
