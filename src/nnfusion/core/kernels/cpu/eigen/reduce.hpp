@@ -22,7 +22,7 @@ namespace nnfusion
 
                     reduce_axis = op->get_reduction_axes();
                     input_shape = ctx->inputs[0]->get_shape();
-                    output_size = m_context->outputs.front()->size(false);
+                    output_shape = ctx->outputs[0]->get_shape();
                     data_type = ctx->outputs[0]->get_element_type().c_type_string();
                 }
 
@@ -32,7 +32,7 @@ namespace nnfusion
                     auto& lu = *_lu;
 
                     // Handle the cases that input tensor is matrix.
-                    if (CpuOpMap<T>::eigen_op != nullptr && input_shape.size() == 2)
+                    if (CpuOpMap<T>::eigen_op != nullptr)
                     {
                         for (auto axis : reduce_axis)
                         {
@@ -43,15 +43,23 @@ namespace nnfusion
                         std::string op = CpuOpMap<T>::eigen_op;
                         auto code = nnfusion::op::create_code_from_template(
                             R"(
-Eigen::Map<Eigen::Matrix<@data_type@,@row@,@col@>> in(&input0[0]);
-Eigen::Map<Eigen::Array<@data_type@,@output_size@,1> > out(&output0[0]);
-out = in.@axis@().@op@();
+Eigen::array<Eigen::Index, @in_rank@> in_dims({@in_dims@});
+Eigen::array<Eigen::Index, @out_rank@> out_dims({@out_dims@});
+Eigen::array<Eigen::Index, @axis_count@> axes({@axes@});
+
+Eigen::TensorMap<Eigen::Tensor<@ElementType@, @out_rank@, Eigen::RowMajor>> out(
+    static_cast<@ElementType@ *>(output0), out_dims);
+Eigen::TensorMap<Eigen::Tensor<@ElementType@, @in_rank@, Eigen::RowMajor>> in(
+    static_cast<@ElementType@ *>(input0), in_dims);
+out.device(*global_thread_pool_device) = in.@op@(axes);
 )",
-                            {{"data_type", data_type},
-                             {"row", input_shape[0]},
-                             {"col", input_shape[1]},
-                             {"output_size", output_size},
-                             {"axis", *(reduce_axis.begin()) == 1 ? "rowwise" : "colwise"},
+                            {{"in_rank", input_shape.size()},
+                             {"out_rank", output_shape.size()},
+                             {"in_dims", join(input_shape)},
+                             {"out_dims", join(output_shape)},
+                             {"axis_count", reduce_axis.size()},
+                             {"axes", join(reduce_axis)},
+                             {"ElementType", data_type},
                              {"op", op}});
                         lu << code;
                     }
@@ -67,14 +75,14 @@ out = in.@axis@().@op@();
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::eigen_tensor);
-
+                    _lu->require(declaration::eigen_global_thread_pool);
+                    _lu->require(declaration::eigen_global_thread_pool_device);
                     return _lu;
                 }
 
             private:
-                size_t output_size;
                 string data_type;
-                nnfusion::Shape input_shape;
+                nnfusion::Shape input_shape, output_shape;
                 nnfusion::AxisSet reduce_axis;
             };
         } // namespace cpu

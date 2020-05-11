@@ -31,16 +31,14 @@ namespace nnfusion
                     output_shape = ctx->outputs[0]->get_shape();
                     size_t output_size = shape_size(output_shape);
 
-                    // Result OP
                     // for a zero-size tensor, or change from 1^m shape to 1^n shape, just do a copy
-                    if (!reshape->get_is_transpose() || output_size < 2)
+                    if (!reshape->get_is_layout_change() || output_size < 2)
                     {
                         is_memcpy = true;
                         // add inplace tag
                         if (!ctx->annotations)
                             ctx->annotations = std::make_shared<Annotations>();
                         ctx->annotations->add_in_place_oi_pair({0, 0, false});
-                        return;
                     }
                 }
 
@@ -74,6 +72,14 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     return _lu;
+                }
+
+                bool is_eliminative()
+                {
+                    if (is_memcpy && m_context->inputs[0]->is_same_address(m_context->outputs[0]))
+                        return true;
+                    else
+                        return false;
                 }
 
             private:

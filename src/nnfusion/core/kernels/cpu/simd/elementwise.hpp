@@ -117,7 +117,6 @@ namespace nnfusion
                 LanguageUnit_p emit_dependency() override
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
-                    _lu->require(header::eigen_tensor);
 
                     return _lu;
                 }

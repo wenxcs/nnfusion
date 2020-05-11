@@ -28,7 +28,7 @@ cuda::Reshape::Reshape(shared_ptr<KernelContext> ctx)
 
     //Result OP
     //for a zero-size tensor, or change from 1^m shape to 1^n shape, just do a copy
-    if (!reshape->get_is_transpose() || result_shape_product < 2)
+    if (!reshape->get_is_layout_change() || result_shape_product < 2)
     {
         is_memcpy = true;
         // NNFUSION_LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";
@@ -459,7 +459,7 @@ cuda::ReshapeMemcpy::ReshapeMemcpy(shared_ptr<KernelContext> ctx)
 
     //Result OP
     //for a zero-size tensor, or change from 1^m shape to 1^n shape, just do a copy
-    if (!reshape->get_is_transpose() || result_shape_product < 2)
+    if (!reshape->get_is_layout_change() || result_shape_product < 2)
     {
         is_memcpy = true;
         // NNFUSION_LOG(INFO) << "No need for zero-size or 1-d tensor reshape.";

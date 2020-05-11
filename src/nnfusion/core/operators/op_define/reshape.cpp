@@ -65,5 +65,48 @@ void Reshape::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     {
         m_is_transpose = true;
     }
+
+    if (m_is_transpose)
+    {
+        // Data layout will change if:
+        //   1. m_is_transpose == true, and
+        //   2. rank order changed except for the rank whose dim == 1.
+        // For example:
+        //   1. [1024, 200, 1, 50] => [1024, 1, 200, 50], m_input_order = [0, 2, 1, 3]
+        //      ignore the rank whose dim == 1, the order = [2], layout needn't change.
+        //
+        //   2. [1024, 200, 1, 50] => [1024, 50, 1, 200], m_input_order = [0, 3, 2, 1]
+        //      ignore the rank whose dim == 1, the order = [3, 1], layout need change.
+        size_t output_size = shape_size(m_output_shape);
+        size_t begin = 0, end = 0;
+        bool find_begin = false;
+        for (size_t i = 0; i < m_input_order.size(); ++i)
+        {
+            if (m_input_order[i] != i)
+            {
+                if (find_begin == false)
+                {
+                    begin = i;
+                    find_begin = true;
+                }
+                else
+                {
+                    end = i;
+                }
+            }
+        }
+        nnfusion::AxisVector order;
+        for (size_t i = begin; i <= end; ++i)
+        {
+            if (size_t(input_shape[m_input_order[i]]) != 1)
+            {
+                order.push_back(m_input_order[i]);
+            }
+        }
+        if (!std::is_sorted(order.begin(), order.end()))
+        {
+            m_is_layout_change = true;
+        }
+    }
     gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), m_output_shape);
 }

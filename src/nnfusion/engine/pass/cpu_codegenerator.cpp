@@ -276,6 +276,10 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("declaration::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
+        for (auto& it : re.local_symbol)
+            if (it.second->symbol.find("declaration_func::") != string::npos)
+                lu << it.second->get_code();
+        lu << "\n";
         // stream and event declaration
         if (async_manager->num_stream() > 0)
             lu << async_manager->emit_stream_decl()->get_code();
@@ -380,8 +384,16 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             if (global_required.count("declaration::eigen_global_thread_pool") > 0)
             {
-                lu_main_init << "int thread_count = std::thread::hardware_concurrency() >> 1;\n"
-                             << "global_thread_pool = new Eigen::ThreadPool(thread_count? "
+                if (FLAGS_fthread_num_per_node == 0)
+                {
+                    lu_main_init
+                        << "int thread_count = std::thread::hardware_concurrency() >> 1;\n";
+                }
+                else
+                {
+                    lu_main_init << "int thread_count = " << FLAGS_fthread_num_per_node << ";\n";
+                }
+                lu_main_init << "global_thread_pool = new Eigen::ThreadPool(thread_count? "
                                 "thread_count : 1);\n";
             }
             if (global_required.count("declaration::eigen_global_thread_pool_device") > 0)
@@ -790,7 +802,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     //generate include header file
     lu_include << "// Microsoft (c) 2019\n";
     lu_include << "#pragma once\n";
-    //lu_include << declaration::typedef_int->get_code() << "\n";
+    lu_include << declaration::typedef_int->get_code() << "\n";
     lu_include << lu_kernel_entry_header.get_code() << ";\n";
     lu_include << "extern \"C\" void cpu_init();\n";
     lu_include << "extern \"C\" void cpu_free();\n";

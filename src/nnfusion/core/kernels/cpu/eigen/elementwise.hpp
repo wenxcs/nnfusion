@@ -63,6 +63,8 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::eigen_tensor);
+                    _lu->require(declaration::eigen_global_thread_pool);
+                    _lu->require(declaration::eigen_global_thread_pool_device);
 
                     return _lu;
                 }
