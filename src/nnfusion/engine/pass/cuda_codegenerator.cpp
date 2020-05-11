@@ -109,7 +109,7 @@ find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
                              "${CMAKE_CURRENT_SOURCE_DIR})"
                            : "")
        << (FLAGS_fkernels_as_files
-               ? "file(GLOB kernels kernels/*.{cu, cpp})\ncuda_add_library(nnfusion_naive_rt "
+               ? "file(GLOB kernels kernels/*.c*?)\ncuda_add_library(nnfusion_naive_rt "
                  "nnfusion_rt.cu ${kernels})\n"
                : "cuda_add_library(nnfusion_naive_rt nnfusion_rt.cu)\n")
        << R"(
@@ -575,7 +575,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             if (it.second->symbol.find("header::") != string::npos)
                 lu << it.second->get_code();
         lu << "#include <cstring>\n";
-        lu << "using namespace std;\n";
+        //lu << "using namespace std;\n";
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("macro::") != string::npos)
