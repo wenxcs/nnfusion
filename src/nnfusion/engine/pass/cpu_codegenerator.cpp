@@ -400,7 +400,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 lu_main_init << "global_thread_pool_device = new "
                                 "Eigen::ThreadPoolDevice(global_thread_pool, "
-                                "global_thread_pool->NumThreads());";
+                                "global_thread_pool->NumThreads());\n";
             }
 
             // Both intra_node parallelism and multi-thread need worker_thread_pool.

@@ -34,12 +34,6 @@ namespace nnfusion
                     // Handle the cases that input tensor is matrix.
                     if (CpuOpMap<T>::eigen_op != nullptr)
                     {
-                        for (auto axis : reduce_axis)
-                        {
-                            NNFUSION_CHECK(axis == 0 || axis == 1)
-                                << "Reduce axis is not expected for matrix.";
-                        }
-
                         std::string op = CpuOpMap<T>::eigen_op;
                         auto code = nnfusion::op::create_code_from_template(
                             R"(
