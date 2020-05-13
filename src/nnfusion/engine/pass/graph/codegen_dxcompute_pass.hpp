@@ -190,8 +190,25 @@ namespace nnfusion
                             ++step, offset = 0;
                     };
 
-                    auto print_standard_codegen = [&](
-                        std::shared_ptr<GNode>& curr, std::ofstream& fout, std::string code) {
+                    auto print_standard_codegen = [&](std::shared_ptr<GNode>& curr,
+                                                      std::ofstream& fout,
+                                                      std::string code,
+                                                      std::string options) {
+                        if (options.size() > 0)
+                        {
+                            if (options[0] != '|')
+                                options = "|" + options;
+                            if (options.back() != '|')
+                                options += "|";
+                        }
+
+                        if (int(options.find("|memcpy|")) >= 0)
+                        {
+                            NNFUSION_CHECK(curr->get_input_size() == 1);
+                            fout << "NNfusionTensor &" << arg_names[curr] << " = "
+                                 << arg_names[curr->get_in_edge(0)->get_src()] << ";\n";
+                            return;
+                        }
 
                         static std::unordered_map<std::string, std::string> dedupe_kernels;
                         auto kernel = dedupe_kernels.find(code);
@@ -231,7 +248,8 @@ namespace nnfusion
 
                     auto codegen_for_elementwise = [&](std::shared_ptr<GNode>& curr,
                                                        std::ofstream& fout,
-                                                       const std::string& topi) {
+                                                       const std::string& topi,
+                                                       const std::string& options = "") {
                         std::string expr = " -";
                         for (int i = 0; i < curr->get_input_size(); ++i)
                             expr += " input(\"input" + std::to_string(i) + "\", @common_shape@);";
@@ -243,7 +261,7 @@ namespace nnfusion
 
                         auto code = autogen(op::create_code_from_template(
                             expr, {{"common_shape", "[ " + std::to_string(num_elements) + " ]"}}));
-                        print_standard_codegen(curr, fout, code);
+                        print_standard_codegen(curr, fout, code, options);
                     };
 
                     std::unordered_map<std::string,
@@ -341,7 +359,7 @@ namespace nnfusion
                              << arg_names[curr] << ", load_data<"
                              << curr->get_output_element_type(0).c_type_string() << ">(\""
                              << arg_names[curr] << "\", " << arg_names[curr]
-                             << ".NumElements()).data(), true);\n";
+                             << ".NumElements()), true);\n";
                     };
 
                     kernel_dict["Parameter"] = [&](std::shared_ptr<GNode>& curr,
@@ -356,7 +374,7 @@ namespace nnfusion
                         fout << "  NNfusionMemcpy op_" << arg_names[curr] << "(device, "
                              << arg_names[curr] << ", load_data<"
                              << curr->get_output_element_type(0).c_type_string() << ">(\"\", "
-                             << arg_names[curr] << ".NumElements()).data());\n";
+                             << arg_names[curr] << ".NumElements()));\n";
                     };
 
                     kernel_dict["Result"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
@@ -379,9 +397,19 @@ namespace nnfusion
                             entry->second(curr, fout);
                         else
                         {
-                            auto code = nnfusion::op::get_translation(curr);
-                            if (code != "")
-                                print_standard_codegen(curr, fout, autogen(code));
+                            auto ir = nnfusion::op::get_translation(curr);
+                            if (ir != "")
+                            {
+                                const char annotation[] = "## @annotation: ";
+                                int pos = ir.find(annotation);
+                                std::string options;
+                                if (pos >= 0)
+                                {
+                                    pos += sizeof(annotation) - 1;
+                                    options = ir.substr(pos);
+                                }
+                                print_standard_codegen(curr, fout, autogen(ir), options);
+                            }
                             else
                                 UNHANDLED_CASE(curr);
                         }

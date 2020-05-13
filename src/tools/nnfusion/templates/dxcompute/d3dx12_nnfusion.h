@@ -22,12 +22,13 @@ namespace nnfusion_dml
     }
 
     template <class T>
-    std::vector<T> load_data(const std::string& name, size_t num_elements)
+    std::vector<char> load_data(const std::string& name, size_t num_elements, const T defval = 1)
     {
-        std::vector<T> ret(num_elements);
+        std::vector<char> ret(num_elements * sizeof(T));
         if (name == "")
         {
-            std::fill(ret.begin(), ret.end(), 1);
+            auto hptr = (T*)ret.data();
+            std::fill(hptr, hptr + num_elements, defval);
         }
         else
         {
@@ -78,7 +79,7 @@ namespace nnfusion_dml
     public:
         NNfusionMemcpy(D3DDevice& device,
             NNfusionTensor& dst,
-            void* src, bool preload = false)
+            const std::vector<char> &src, bool preload = false)
         {
             elements = dst.NumElements();
             bufferSize = dst.TypeSize() * dst.NumElements();
@@ -86,7 +87,7 @@ namespace nnfusion_dml
 
             deviceGPUSrcX = dst.Data();
             device.CreateUploadBuffer(bufferSize, &deviceCPUSrcX);
-            device.MapAndCopyToResource(deviceCPUSrcX.Get(), src, bufferSize);
+            device.MapAndCopyToResource(deviceCPUSrcX.Get(), src.data(), src.size());
 
             IFE(device.pDevice->CreateCommandList(0,
                 D3D12_COMMAND_LIST_TYPE_COMPUTE,

@@ -979,12 +979,25 @@ namespace nnfusion
                                                << "\" requires at least 3 inputs, got " << input_cnt
                                                << " instead";
 
+                int max_inputs = INT_MAX - 1;
+                if (FLAGS_fdefault_device == "ROCm")
+                    max_inputs = 60;
+
+                std::vector<GNodeVector> group_gnodes;
                 GNodeVector arg_gnodes;
                 for (int i = 0; i < input_cnt - 1; i++)
                 {
                     auto arg_gnode = GetInputNode(all_ng_nodes, node, i);
                     arg_gnodes.push_back(arg_gnode);
+                    if (arg_gnodes.size() == max_inputs)
+                    {
+                        group_gnodes.emplace_back(arg_gnodes);
+                        arg_gnodes.clear();
+                    }
                 }
+                if (arg_gnodes.size() > 0)
+                    group_gnodes.emplace_back(std::move(arg_gnodes));
+                NNFUSION_CHECK(group_gnodes.size() <= max_inputs);
 
                 auto concat_axis_gnode = GetInputNode(all_ng_nodes, node, input_cnt - 1);
                 std::vector<int> tf_concat_axis_vec;
@@ -998,11 +1011,25 @@ namespace nnfusion
                 {
                     concat_axis += int64(arg_gnodes[0]->get_shape().size());
                 }
-                auto concat_op = std::make_shared<nnfusion::op::Concat>(size_t(concat_axis));
-                concat_op->set_name(node.name());
-                auto concat_gnode = m_graph->add_node_and_edge(concat_op, arg_gnodes);
 
-                NamedNodeVector ret{{node.name(), concat_gnode}};
+                GNodeVector merged_gnodes;
+                for (int i = 0; i < group_gnodes.size(); ++i)
+                {
+                    auto concat_op = std::make_shared<nnfusion::op::Concat>(size_t(concat_axis));
+                    concat_op->set_name(node.name() + "_" + std::to_string(i));
+                    merged_gnodes.emplace_back(
+                        m_graph->add_node_and_edge(concat_op, group_gnodes[i]));
+                }
+                if (merged_gnodes.size() > 1)
+                {
+                    auto concat_op = std::make_shared<nnfusion::op::Concat>(size_t(concat_axis));
+                    concat_op->set_name(node.name() + "_merged");
+                    auto next_gnode = m_graph->add_node_and_edge(concat_op, merged_gnodes);
+                    merged_gnodes.clear();
+                    merged_gnodes.emplace_back(next_gnode);
+                }
+
+                NamedNodeVector ret{{node.name(), merged_gnodes.front()}};
                 return ret;
             }
 
