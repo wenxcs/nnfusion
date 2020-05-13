@@ -27,5 +27,21 @@ namespace nnfusion
 
             void set_dt(NNFusion_DeviceType dt) { _dt = dt; }
         };
+
+        class CUPTIRuntime : public IProfilingRuntime
+        {
+        public:
+            using Pointer = shared_ptr<CUPTIRuntime>;
+            static Pointer Runtime();
+            CUPTIRuntime() { _dt = CUDA_GPU; }
+        protected:
+            // Tiny codegen function for runtime
+            virtual bool codegen(const ProfilingContext::Pointer& ke);
+            virtual bool compile(const ProfilingContext::Pointer& ke);
+            double
+                invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
+
+            void set_dt(NNFusion_DeviceType dt) { _dt = dt; }
+        };
     }
 }

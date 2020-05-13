@@ -12,6 +12,7 @@ namespace nnfusion
             LU_DECLARE(cublas);
             LU_DECLARE(cudnn);
             LU_DECLARE(super_scaler);
+            LU_DECLARE(cupti);
         } // namespace header
 
         namespace macro
@@ -23,6 +24,7 @@ namespace nnfusion
             LU_DECLARE(CUBLAS_SAFE_CALL_NO_THROW);
             LU_DECLARE(CUBLAS_SAFE_CALL);
             LU_DECLARE(CUDA_SAFE_LAUNCH);
+            LU_DECLARE(CUPTI_CALL);
         } // namespace macro
 
         namespace declaration

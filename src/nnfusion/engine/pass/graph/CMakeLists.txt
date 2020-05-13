@@ -14,6 +14,7 @@ set(SRC
     kernel_selection.cpp
     blockfusion_pass.cpp
     assign_async_info_pass.cpp
+    kernel_profiling_pass.cpp
 )
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})

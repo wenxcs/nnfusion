@@ -13,6 +13,7 @@
 #include "gnode_device_dispatcher.hpp"
 #include "gradient_weight_mapping_pass.hpp"
 #include "kernel_fusion_pass.hpp"
+#include "kernel_profiling_pass.hpp"
 #include "kernel_selection.hpp"
 #include "multi_reshape_folding_pass.hpp"
 #include "op_inplace_pass.hpp"
@@ -49,6 +50,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
 
     // GPU specific graph passes
     pass_manager.register_pass<KernelFusionPass>();
+    pass_manager.register_pass<KernelProfilingPass>();
     pass_manager.register_pass<BlockFusionPass>();
 
     // assign stream

@@ -10,6 +10,7 @@ LU_DEFINE(header::cuda, "#include <cuda.h>\n#include <cuda_runtime.h>\n");
 LU_DEFINE(header::cublas, "#include <cublas_v2.h>\n");
 LU_DEFINE(header::cudnn, "#include <cudnn.h>\n");
 LU_DEFINE(header::super_scaler, "#include \"super_scaler.h\"\n");
+LU_DEFINE(header::cupti, "#include <cupti.h>\n");
 
 // Macro
 LU_DEFINE(
@@ -127,6 +128,20 @@ LU_DEFINE(
                          << "\nfile: " << __FILE__ << "\nline: " << __LINE__ << "\nmsg: " << msg;  \
             throw std::runtime_error(safe_call_ss.str());                                          \
         }                                                                                          \
+    } while (0)
+)");
+
+LU_DEFINE(macro::CUPTI_CALL,
+          R"(#define CUPTI_CALL(call)                                                \
+    do {                                                                  \
+      CUptiResult _status = call;                                         \
+      if (_status != CUPTI_SUCCESS) {                                     \
+        const char *errstr;                                               \
+        cuptiGetResultString(_status, &errstr);                           \
+        fprintf(stderr, "%s:%d: error: function %s failed with error %s.\n", \
+                __FILE__, __LINE__, #call, errstr);                       \
+        exit(-1);                                                         \
+      }                                                                   \
     } while (0)
 )");
 
