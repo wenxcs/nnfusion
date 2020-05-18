@@ -29,6 +29,9 @@ namespace nnfusion
                                                            bool func_call_only = false,
                                                            const std::string& func_call = "");
         virtual NNFusion_DeviceType device_type() { return NNFusion_DeviceType::CUDA_GPU; }
+        virtual std::pair<std::string, std::string>
+            get_paras_and_args(std::vector<nnfusion::ir::Instruction::Pointer>& ir_vec);
+
     private:
         virtual bool projgen();
         virtual bool setpwd(std::shared_ptr<InterpreterContext> ctx,

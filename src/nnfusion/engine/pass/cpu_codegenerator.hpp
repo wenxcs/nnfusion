@@ -12,6 +12,8 @@ namespace nnfusion
     public:
         bool run(std::shared_ptr<InterpreterContext> ctx,
                  std::shared_ptr<TranslationUnit> tu) override;
+        virtual std::pair<std::string, std::string>
+            get_paras_and_args(std::vector<nnfusion::kernels::KernelEmitter::Pointer>& kernel_vec);
 
     private:
         virtual bool projgen();

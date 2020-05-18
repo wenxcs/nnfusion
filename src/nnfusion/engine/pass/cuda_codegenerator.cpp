@@ -329,6 +329,55 @@ nnfusion::LanguageUnit_p CudaCodeGenerator::func_call_codegen(
     return _lu;
 }
 
+std::pair<std::string, std::string>
+    CudaCodeGenerator::get_paras_and_args(std::vector<nnfusion::ir::Instruction::Pointer>& ir_vec)
+{
+    std::pair<std::string, std::string> paras_and_args;
+    vector<string> params;
+    vector<string> args;
+    unordered_set<string> allocated;
+    for (auto ins : ir_vec)
+    {
+        auto kernel = ins->getKernel();
+        if (kernel && kernel->m_context)
+        {
+            for (auto input : kernel->m_context->inputs)
+            {
+                auto name = input->get_name();
+                if (allocated.find(name) == allocated.end() &&
+                    name.compare(0, 10, "Parameter_") == 0)
+                {
+                    string type = input->get_element_type().c_type_string();
+                    stringstream ss;
+                    ss << type << "* " << name;
+                    allocated.insert(name);
+                    params.push_back(ss.str());
+                    args.push_back(name);
+                }
+            }
+            if (kernel->m_context->gnode && kernel->m_context->gnode->get_op_ptr()->is_output())
+            {
+                for (auto output : kernel->m_context->outputs)
+                {
+                    auto name = output->get_name();
+                    if (allocated.find(name) == allocated.end())
+                    {
+                        string type = output->get_element_type().c_type_string();
+                        stringstream ss;
+                        ss << type << "** " << name;
+                        allocated.insert(name);
+                        params.push_back(ss.str());
+                        args.push_back(name);
+                    }
+                }
+            }
+        }
+    }
+    paras_and_args.first = join(params, ", ");
+    paras_and_args.second = join(args, ", ");
+    return paras_and_args;
+}
+
 bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                             std::shared_ptr<TranslationUnit> tu)
 {
@@ -950,6 +999,10 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 size_t kernel_order = 0;
                 auto& thread_name = tk.first;
                 NNFUSION_CHECK(tk.second.size() > 0);
+                auto thread_call_paras = get_paras_and_args(tk.second).first;
+                auto thread_call_args = get_paras_and_args(tk.second).second;
+                if (!thread_call_args.empty())
+                    thread_call_args = ", " + thread_call_args;
                 size_t num_cpu_kernel = 0;
                 int device_id;
                 for (auto ins : tk.second)
@@ -964,7 +1017,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 {
                     // add thread_calls definition
                     lu_thread_func_call << "extern \"C\" void " << thread_name << "(";
-                    lu_thread_func_call << kernel_entry_params << ")\n";
+                    lu_thread_func_call << thread_call_paras << ")\n";
                     lu_thread_func_call.block_begin();
                     lu_thread_func_call << "CUDA_SAFE_CALL(cudaSetDevice(" << device_id << "));\n";
                     if (enable_timing)
@@ -1058,9 +1111,8 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     // add function call to kernel entry
                     std::string std_thread_func_name =
                         std::string("thread_func") + std::to_string(thread_func_call_count);
-                    std::string thread_call_str = std::string("(") + thread_name +
-                                                  std::string(", ") + kernel_entry_args +
-                                                  std::string(");\n");
+                    std::string thread_call_str =
+                        std::string("(") + thread_name + thread_call_args + std::string(");\n");
                     std::string std_thread_func_call = std::string("auto ") + std_thread_func_name +
                                                        std::string(" = std::bind") +
                                                        thread_call_str;

@@ -92,6 +92,54 @@ bool CpuCodeGenerator::projgen()
     return true;
 }
 
+std::pair<std::string, std::string> CpuCodeGenerator::get_paras_and_args(
+    std::vector<nnfusion::kernels::KernelEmitter::Pointer>& kernel_vec)
+{
+    std::pair<std::string, std::string> paras_and_args;
+    vector<string> params;
+    vector<string> args;
+    unordered_set<string> allocated;
+    for (auto kernel : kernel_vec)
+    {
+        if (kernel && kernel->m_context)
+        {
+            for (auto input : kernel->m_context->inputs)
+            {
+                auto name = input->get_name();
+                if (allocated.find(name) == allocated.end() &&
+                    name.compare(0, 10, "Parameter_") == 0)
+                {
+                    string type = input->get_element_type().c_type_string();
+                    stringstream ss;
+                    ss << type << "* " << name;
+                    allocated.insert(name);
+                    params.push_back(ss.str());
+                    args.push_back(name);
+                }
+            }
+            if (kernel->m_context->gnode && kernel->m_context->gnode->get_op_ptr()->is_output())
+            {
+                for (auto output : kernel->m_context->outputs)
+                {
+                    auto name = output->get_name();
+                    if (allocated.find(name) == allocated.end())
+                    {
+                        string type = output->get_element_type().c_type_string();
+                        stringstream ss;
+                        ss << type << "* " << name;
+                        allocated.insert(name);
+                        params.push_back(ss.str());
+                        args.push_back(name);
+                    }
+                }
+            }
+        }
+    }
+    paras_and_args.first = join(params, ", ");
+    paras_and_args.second = join(args, ", ");
+    return paras_and_args;
+}
+
 bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                            std::shared_ptr<TranslationUnit> tu)
 {
@@ -505,9 +553,13 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto& stream_name = sk.first;
                 if (stream_name != "default")
                 {
+                    auto thread_call_paras = get_paras_and_args(sk.second).first;
+                    auto thread_call_args = get_paras_and_args(sk.second).second;
+                    if (!thread_call_args.empty())
+                        thread_call_args = ", " + thread_call_args;
                     // add thread_calls definition
                     lu_thread_func_call << "extern \"C\" void " << stream_name << "_Call(";
-                    lu_thread_func_call << kernel_entry_params << ")\n";
+                    lu_thread_func_call << thread_call_paras << ")\n";
                     lu_thread_func_call.block_begin();
                     int func_call_count = 1;
                     for (auto kernel : sk.second)
@@ -571,7 +623,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     std::string std_thread_func_name =
                         std::string("thread_func") + std::to_string(thread_func_call_count);
                     std::string thread_call_str = std::string("(") + stream_name +
-                                                  std::string("_Call, ") + kernel_entry_args +
+                                                  std::string("_Call") + thread_call_args +
                                                   std::string(");\n");
                     std::string std_thread_func_call = std::string("auto ") + std_thread_func_name +
                                                        std::string(" = std::bind") +
