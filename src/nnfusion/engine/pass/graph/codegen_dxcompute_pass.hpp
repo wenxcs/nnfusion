@@ -287,6 +287,13 @@ namespace nnfusion
                         codegen_for_elementwise(
                             curr, fout, "topi=topi.divide(args(\"input0\"), args(\"input1\"))");
                     };
+                    kernel_dict["DivNoNan"] = [&](std::shared_ptr<GNode>& curr,
+                                                  std::ofstream& fout) {
+                        codegen_for_elementwise(curr,
+                                                fout,
+                                                "lambda x: tvm.if_then_else(args(\"input1\")[x] != "
+                                                "0, args(\"input0\")[x] / args(\"input1\")[x], 0)");
+                    };
                     kernel_dict["Power"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(
                             curr, fout, "topi=topi.power(args(\"input0\"), args(\"input1\"))");
@@ -330,6 +337,13 @@ namespace nnfusion
                     };
                     kernel_dict["Log"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.log(args(\"input0\"))");
+                    };
+                    kernel_dict["ReluBackprop"] = [&](std::shared_ptr<GNode>& curr,
+                                                      std::ofstream& fout) {
+                        codegen_for_elementwise(curr,
+                                                fout,
+                                                "lambda x: tvm.if_then_else(args(\"input0\")[x] > "
+                                                "0, args(\"input1\")[x], 0)");
                     };
 
                     // Non-standard Ops

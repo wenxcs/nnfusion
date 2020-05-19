@@ -145,7 +145,7 @@ namespace nnfusion
 
             std::shared_ptr<nnfusion::graph::GNode>
                 TranslateSoftmaxToBasicOp(const std::shared_ptr<nnfusion::graph::GNode> input_gnode,
-                                          const nnfusion::AxisSet& softmax_axes,
+                                          const nnfusion::AxisSet& reduction_axes,
                                           const std::string& node_name,
                                           std::shared_ptr<nnfusion::graph::Graph> m_graph)
             {
@@ -155,11 +155,6 @@ namespace nnfusion
                 auto exp_gnode = m_graph->add_node_and_edge(exp_op, {input_gnode});
 
                 // Sum op with keepdims=true.
-                std::vector<size_t> reduction_axes;
-                for (auto axis : softmax_axes)
-                {
-                    reduction_axes.push_back(axis);
-                }
                 auto sum_op = std::make_shared<op::Sum>(reduction_axes);
                 auto sum_gnode = m_graph->add_node_and_edge(sum_op, {exp_gnode});
 
@@ -169,7 +164,7 @@ namespace nnfusion
 
                 for (size_t i = 0; i < input_rank; i++)
                 {
-                    result_shape_with_keep[i] = softmax_axes.count(i) == 0 ? input_shape[i] : 1;
+                    result_shape_with_keep[i] = reduction_axes.count(i) == 0 ? input_shape[i] : 1;
                 }
                 nnfusion::AxisVector axis_order(sum_gnode->get_shape().size());
                 std::iota(axis_order.begin(), axis_order.end(), 0);
@@ -257,8 +252,8 @@ namespace nnfusion
                     auto neg_gnode = m_graph->add_node_and_edge(neg_op, {multiply_gnode});
 
                     // Sum op.
-                    std::vector<size_t> reduction_axes;
-                    reduction_axes.push_back(neg_gnode->get_shape().size() - 1);
+                    nnfusion::AxisSet reduction_axes;
+                    reduction_axes.insert(neg_gnode->get_shape().size() - 1);
                     auto sum_op = std::make_shared<op::Sum>(reduction_axes);
                     sum_op->set_name(node.name());
                     auto loss_gnode = m_graph->add_node_and_edge(sum_op, {neg_gnode});
