@@ -328,6 +328,9 @@ namespace nnfusion
                     kernel_dict["Rsqrt"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.rsqrt(args(\"input0\"))");
                     };
+                    kernel_dict["Log"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(curr, fout, "topi=topi.log(args(\"input0\"))");
+                    };
 
                     // Non-standard Ops
                     kernel_dict["Constant"] = [&](std::shared_ptr<GNode>& curr,

@@ -29,8 +29,12 @@ REGISTER_OP(Sum)
         }
         else
         {
-            // unimplemented case
-            return "";
+            return op::create_code_from_template(
+                "- input(\"input0\", @input_shape@); output(@output_shape@, "
+                "topi=topi.sum(args(\"input0\"), axis=@axis@, keepdims=True));",
+                {{"input_shape", vector_to_string(input_shape)},
+                 {"output_shape", vector_to_string(curr->get_output_shape(0))},
+                 {"axis", vector_to_string(axes)}});
         }
 
     });

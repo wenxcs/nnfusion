@@ -15,6 +15,7 @@
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 DECLARE_string(fdefault_device);
+DEFINE_bool(fantares_mode, false, "Enable antares mode.");
 
 // todo: add control edge ?
 namespace nnfusion
@@ -142,6 +143,50 @@ namespace nnfusion
                 return ret;
             }
 
+            std::shared_ptr<nnfusion::graph::GNode>
+                TranslateSoftmaxToBasicOp(const std::shared_ptr<nnfusion::graph::GNode> input_gnode,
+                                          const nnfusion::AxisSet& softmax_axes,
+                                          const std::string& node_name,
+                                          std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                // softmax = exp(logits) / reduce_sum(exp(logits), axis).
+                // Exp op.
+                auto exp_op = std::make_shared<op::Exp>();
+                auto exp_gnode = m_graph->add_node_and_edge(exp_op, {input_gnode});
+
+                // Sum op with keepdims=true.
+                std::vector<size_t> reduction_axes;
+                for (auto axis : softmax_axes)
+                {
+                    reduction_axes.push_back(axis);
+                }
+                auto sum_op = std::make_shared<op::Sum>(reduction_axes);
+                auto sum_gnode = m_graph->add_node_and_edge(sum_op, {exp_gnode});
+
+                nnfusion::Shape input_shape = input_gnode->get_shape();
+                size_t input_rank = input_shape.size();
+                nnfusion::Shape result_shape_with_keep(input_rank);
+
+                for (size_t i = 0; i < input_rank; i++)
+                {
+                    result_shape_with_keep[i] = softmax_axes.count(i) == 0 ? input_shape[i] : 1;
+                }
+                nnfusion::AxisVector axis_order(sum_gnode->get_shape().size());
+                std::iota(axis_order.begin(), axis_order.end(), 0);
+                auto reshape_op = std::make_shared<op::Reshape>(axis_order, result_shape_with_keep);
+                auto reshape_gnode = m_graph->add_node_and_edge(reshape_op, {sum_gnode});
+
+                // Divide op.
+                std::tie(exp_gnode, reshape_gnode) =
+                    graph::numpy_broadcast(std::make_pair(exp_gnode, reshape_gnode), m_graph);
+
+                auto div_op = std::make_shared<op::Divide>();
+                div_op->set_name(node_name);
+                auto div_gnode = m_graph->add_node_and_edge(div_op, {exp_gnode, reshape_gnode});
+
+                return div_gnode;
+            }
+
             NamedNodeVector TranslateSparseSoftmaxCrossEntropyWithLogitsOp(
                 const tensorflow::NodeDef& node,
                 const NodeMap& all_ng_nodes,
@@ -151,23 +196,76 @@ namespace nnfusion
                 auto rhs_gnode = GetInputNode(all_ng_nodes, node, 1);
 
                 nnfusion::AxisSet ng_axes_softmax{lhs_gnode->get_shape().size() - 1};
-                auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
-                auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {lhs_gnode});
 
-                auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
-                    node.name(),
-                    "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
-                    nnfusion::op::OpConfig::any{});
-                auto loss_gnode = m_graph->add_node_and_edge(loss_op, {softmax_gnode, rhs_gnode});
+                if (!FLAGS_fantares_mode)
+                {
+                    auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                    auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {lhs_gnode});
 
-                auto bwd_op = std::make_shared<nnfusion::op::GenericOp>(
-                    node.name(),
-                    "CrossEntropyFwdBwdWithSoftmaxBwd", // select which existing kernels to use;
-                    nnfusion::op::OpConfig::any{});
-                auto bwd_gnode = m_graph->add_node_and_edge(bwd_op, {softmax_gnode, rhs_gnode});
+                    auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
+                        node.name(),
+                        "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
+                        nnfusion::op::OpConfig::any{});
+                    auto loss_gnode =
+                        m_graph->add_node_and_edge(loss_op, {softmax_gnode, rhs_gnode});
 
-                NamedNodeVector ret{{node.name(), loss_gnode}, {node.name(), bwd_gnode}};
-                return ret;
+                    auto bwd_op = std::make_shared<nnfusion::op::GenericOp>(
+                        node.name(),
+                        "CrossEntropyFwdBwdWithSoftmaxBwd", // select which existing kernels to use;
+                        nnfusion::op::OpConfig::any{});
+                    auto bwd_gnode = m_graph->add_node_and_edge(bwd_op, {softmax_gnode, rhs_gnode});
+
+                    NamedNodeVector ret{{node.name(), loss_gnode}, {node.name(), bwd_gnode}};
+                    return ret;
+                }
+                else
+                {
+                    auto softmax_gnode =
+                        TranslateSoftmaxToBasicOp(lhs_gnode, ng_axes_softmax, node.name(), m_graph);
+                    NNFUSION_CHECK(softmax_gnode->get_shape().size() == 2);
+
+                    // OneHot op.
+                    nnfusion::op::OpConfig::any onehot_config;
+                    onehot_config["axis"] = -1;
+                    onehot_config["depth"] = softmax_gnode->get_shape()[1];
+                    onehot_config["off_value"] = 0;
+                    onehot_config["on_value"] = 1;
+                    onehot_config["T"] = "float";
+
+                    auto onehot_op = std::make_shared<nnfusion::op::GenericOp>(
+                        node.name(), "OneHot", onehot_config);
+
+                    auto onehot_gnode = m_graph->add_node_and_edge(onehot_op, {rhs_gnode});
+
+                    // Subtract op.
+                    auto subtract_op = std::make_shared<op::Subtract>();
+                    subtract_op->set_name(node.name());
+                    auto bwd_gnode =
+                        m_graph->add_node_and_edge(subtract_op, {softmax_gnode, onehot_gnode});
+
+                    // Log op.
+                    auto log_op = std::make_shared<op::Log>();
+                    auto log_gnode = m_graph->add_node_and_edge(log_op, {softmax_gnode});
+
+                    // Multiply op.
+                    auto multiply_op = std::make_shared<op::Multiply>();
+                    auto multiply_gnode =
+                        m_graph->add_node_and_edge(multiply_op, {log_gnode, onehot_gnode});
+
+                    // Negative op.
+                    auto neg_op = std::make_shared<op::Negative>();
+                    auto neg_gnode = m_graph->add_node_and_edge(neg_op, {multiply_gnode});
+
+                    // Sum op.
+                    std::vector<size_t> reduction_axes;
+                    reduction_axes.push_back(neg_gnode->get_shape().size() - 1);
+                    auto sum_op = std::make_shared<op::Sum>(reduction_axes);
+                    sum_op->set_name(node.name());
+                    auto loss_gnode = m_graph->add_node_and_edge(sum_op, {neg_gnode});
+
+                    NamedNodeVector ret{{node.name(), loss_gnode}, {node.name(), bwd_gnode}};
+                    return ret;
+                }
             }
 
             NamedNodeVector TranslateMatMulOp(const tensorflow::NodeDef& node,
@@ -2501,14 +2599,23 @@ namespace nnfusion
                 nnfusion::AxisSet ng_axes_softmax;
                 auto rank = input_shape.size();
                 NNFUSION_CHECK(rank >= 1) << "TF Softmax logits must be >=1 dimension";
-
                 ng_axes_softmax.insert(rank - 1);
 
-                auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
-                softmax_op->set_name(node.name());
-                auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {input_gnode});
-                NamedNodeVector ret{{node.name(), softmax_gnode}};
-                return ret;
+                if (!FLAGS_fantares_mode)
+                {
+                    auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                    softmax_op->set_name(node.name());
+                    auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {input_gnode});
+                    NamedNodeVector ret{{node.name(), softmax_gnode}};
+                    return ret;
+                }
+                else
+                {
+                    auto softmax_gnode = TranslateSoftmaxToBasicOp(
+                        input_gnode, ng_axes_softmax, node.name(), m_graph);
+                    NamedNodeVector ret{{node.name(), softmax_gnode}};
+                    return ret;
+                }
             }
 
             NamedNodeVector TranslateAssertOp(const tensorflow::NodeDef& node,
