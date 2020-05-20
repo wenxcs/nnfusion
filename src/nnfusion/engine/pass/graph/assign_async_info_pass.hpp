@@ -25,7 +25,10 @@ namespace nnfusion
                 void naive_assign_thread_info(std::shared_ptr<Graph>& graph);
                 void assign_event_info(std::shared_ptr<Graph>& graph);
                 void init_assign_async_info(std::shared_ptr<Graph>& graph);
+                void kernel_prof_based_assign_stream_info(std::shared_ptr<Graph>& graph);
+                void kernel_prof_based_assign_thread_info(std::shared_ptr<Graph>& graph);
                 KernelEmitter::Pointer get_kernel(std::shared_ptr<nnfusion::graph::GNode> gnode);
+                uint64_t get_time_cost(std::shared_ptr<nnfusion::graph::GNode> gnode);
             };
         }
     }

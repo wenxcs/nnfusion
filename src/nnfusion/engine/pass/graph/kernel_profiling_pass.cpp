@@ -7,10 +7,11 @@ using namespace nnfusion;
 using namespace nnfusion::pass::graph;
 using namespace nnfusion::profiler;
 DEFINE_bool(fenable_kernel_profiling, false, "profile kernel time.");
+DECLARE_string(fstream_assign_policy);
 
 bool KernelProfilingPass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
-    if (!FLAGS_fenable_kernel_profiling)
+    if (!FLAGS_fenable_kernel_profiling && FLAGS_fstream_assign_policy != "kernel_prof_based")
         return true;
 
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();

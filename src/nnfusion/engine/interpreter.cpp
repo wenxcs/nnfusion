@@ -23,6 +23,7 @@ DEFINE_int64(fcuda_kernels_files_number,
 DEFINE_bool(fkernels_as_files, false, "Saving kernels as standalone source code files.");
 DEFINE_int64(fkernels_files_number, -1, "Saving kernels into how many source code files.");
 DECLARE_string(fcuda_init_stream);
+DECLARE_string(fstream_assign_policy);
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())
@@ -106,7 +107,12 @@ TranslationUnitMap& Interpreter::translate(shared_ptr<graph::Graph> graph)
             << "Error when extract global graph info.";
 
         // Translate the Node
-        for (auto gnode : cur_graph->get_ordered_ops())
+        nnfusion::graph::GNodeVector node_vec;
+        if (FLAGS_fstream_assign_policy == "kernel_prof_based")
+            node_vec = cur_graph->get_bfs_ordered_ops();
+        else
+            node_vec = cur_graph->get_ordered_ops();
+        for (auto gnode : node_vec)
         {
             // Generate Translated OP
             // <todo> not sure translated

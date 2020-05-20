@@ -229,18 +229,18 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         auto tensor_cpy_h2d = [](const shared_ptr<nnfusion::descriptor::Tensor>& tensor,
                                  string from) {
             stringstream s;
-            s << "cudaMemcpy(" << tensor->get_name() << ", " << from << ", " << tensor->size(false)
-              << " * " << tensor->get_element_type().size() << ", "
-              << "cudaMemcpyHostToDevice);\n";
+            s << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor->get_name() << ", " << from << ", "
+              << tensor->size(false) << " * " << tensor->get_element_type().size() << ", "
+              << "cudaMemcpyHostToDevice));\n";
             return s.str();
         };
 
         auto tensor_cpy_d2h = [](string to,
                                  const shared_ptr<nnfusion::descriptor::Tensor>& tensor) {
             stringstream s;
-            s << "cudaMemcpy(" << to << ", " << tensor->get_name() << ", " << tensor->size(false)
-              << " * " << tensor->get_element_type().size() << ", "
-              << "cudaMemcpyDeviceToHost);\n";
+            s << "CUDA_SAFE_CALL(cudaMemcpy(" << to << ", " << tensor->get_name() << ", "
+              << tensor->size(false) << " * " << tensor->get_element_type().size() << ", "
+              << "cudaMemcpyDeviceToHost));\n";
             return s.str();
         };
 
@@ -299,23 +299,24 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         }
 
         writer << "cudaEvent_t start, stop;\n";
-        writer << "cudaEventCreate(&start);\n";
-        writer << "cudaEventCreate(&stop);\n";
+        writer << "CUDA_SAFE_CALL(cudaEventCreate(&start));\n";
+        writer << "CUDA_SAFE_CALL(cudaEventCreate(&stop));\n";
 
         fu = ke->kernel->get_or_emit_source(true);
 
         writer << "for(int i=0; i < " << ke->warmup_times + ke->runtime_times << "; i++)\n";
         writer.block_begin();
         {
-            writer << "if(i == " << ke->warmup_times << ") cudaEventRecord(start);\n";
+            writer << "if(i == " << ke->warmup_times
+                   << ") CUDA_SAFE_CALL(cudaEventRecord(start));\n";
             writer << fu->name_unit->get_code() << fu->call_unit->get_code();
         }
         writer.block_end();
 
-        writer << "cudaEventRecord(stop);\n";
-        writer << "cudaEventSynchronize(stop);\n";
+        writer << "CUDA_SAFE_CALL(cudaEventRecord(stop));\n";
+        writer << "CUDA_SAFE_CALL(cudaEventSynchronize(stop));\n";
         writer << "float milliseconds = 0;\n";
-        writer << "cudaEventElapsedTime(&milliseconds, start, stop);\n";
+        writer << "CUDA_SAFE_CALL(cudaEventElapsedTime(&milliseconds, start, stop));\n";
 
         for (size_t i = 0; i < out.size(); i++)
         {

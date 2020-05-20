@@ -67,6 +67,8 @@ namespace nnfusion
 
             GNodeVector get_nodes();
             GNodeVector get_ordered_ops(bool include_control_deps = true);
+            GNodeVector get_bfs_ordered_ops();
+
             GNodeVector get_const_nodes();
 
             std::shared_ptr<GNode> find_node_id(size_t id) const { return m_nodes[id]; }
@@ -121,6 +123,10 @@ namespace nnfusion
             // Map from node ids to allocated nodes.  nodes_[id] may be nullptr if
             // the node with that id was removed from the graph.
             GNodeVector m_nodes;
+
+            //ordered ops from bfs
+            GNodeVector m_bfs_ordered_ops;
+            bool m_bfs_ordered_ops_is_valid = false;
 
             // Number of nodes alive.
             size_t m_node_size = 0;

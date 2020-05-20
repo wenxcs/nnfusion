@@ -35,5 +35,10 @@ namespace nnfusion
                         const std::function<void(std::shared_ptr<GNode>)>& enter,
                         const std::function<void(std::shared_ptr<GNode>)>& leave,
                         const NodeComparator& stable_comparator);
+        void BFS(const Graph* graph,
+                 const GNodeVector& start,
+                 const std::function<void(std::shared_ptr<GNode>)>& enter,
+                 const std::function<void(std::shared_ptr<GNode>)>& leave,
+                 const NodeComparator& stable_comparator);
     }
 }

@@ -48,7 +48,6 @@ namespace nnfusion
 
                     // Here are two ways to generate your code
                     // First: using string stream
-
                     lu << "uint32_t tid = blockIdx.x * blockDim.x + threadIdx.x;\n";
                     lu << "if(tid < " << threads << ")\n";
                     lu.block_begin();

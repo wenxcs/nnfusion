@@ -258,7 +258,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto kernel = ins->getKernel();
                 auto gnode = ins->getGNode();
-                if (!kernel || (kernel && kernel->is_eliminative()))
+                if (!kernel)
                     continue;
                 FunctionUnit_p fu = kernel->get_or_emit_source();
                 for (auto& it : fu->body_unit->local_symbol)
@@ -480,7 +480,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
                     auto stream = async_info.execution_thread;
 
-                    if (!kernel || (kernel && kernel->is_eliminative()))
+                    if (!kernel)
                         continue;
                     FunctionUnit_p fu = kernel->get_or_emit_source(true);
                     std::string func_name;
@@ -501,35 +501,29 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     if (gnode->is_constant() || gnode->is_variable() ||
                         (FLAGS_frt_const_folding && (*ins)["rt_const_folding"].is_valid_as<bool>()))
                     {
-                        NNFUSION_CHECK(stream->is_default_stream())
-                            << "Kernel function calls in cpu_init() "
-                               "should use default/main stream/thread.";
-
-                        // if (!async_info.wait_barriers.empty())
-                        // {
-                        //     for (auto event : async_info.wait_barriers)
-                        //     {
-                        //         lu_main_init << async_manager->emit_event_wait(async_info.execution_thread, event)->get_code();
-                        //     }
-                        // }
-                        lu_main_init << kernel_func_name[kernel];
-                        string call_str = fu->call_unit->get_code();
-                        if (kernel->is_parallelism())
+                        if (!kernel->is_eliminative())
                         {
-                            std::string threadpool_param =
-                                "worker_thread_pool->GetRawThreadPool(), ";
-                            call_str.insert(1, threadpool_param);
-                            lu_main_init << call_str;
+                            NNFUSION_CHECK(stream->is_default_stream())
+                                << "Kernel function calls in cpu_init() "
+                                   "should use default/main stream/thread.";
+                            lu_main_init << kernel_func_name[kernel];
+                            string call_str = fu->call_unit->get_code();
+                            if (kernel->is_parallelism())
+                            {
+                                std::string threadpool_param =
+                                    "worker_thread_pool->GetRawThreadPool(), ";
+                                call_str.insert(1, threadpool_param);
+                                lu_main_init << call_str;
+                            }
+                            else
+                            {
+                                lu_main_init << fu->call_unit->get_code();
+                            }
                         }
                         else
                         {
-                            lu_main_init << fu->call_unit->get_code();
+                            lu_main_init << " // eliminated\n";
                         }
-
-                        // if (async_info.notify_barrier != nullptr)
-                        // {
-                        //     lu_main_init << async_manager->emit_event_record(async_info.notify_barrier)->get_code();
-                        // }
                     }
                     // organize kernels according to their streams/threads
                     else
@@ -566,7 +560,6 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                     {
                         auto gnode = kernel->m_context->gnode;
                         auto& async_info = (*gnode)["Async_info"].as<AsyncExecutionInfo>();
-
                         if (!async_info.wait_barriers.empty())
                         {
                             for (auto event : async_info.wait_barriers)
@@ -577,39 +570,46 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                            ->get_code();
                             }
                         }
-
-                        // For mlas kernels, the function call is:
-                        //   kernel_func_name(worker_thread_pool->GetRawThreadPool(numa_node_id), param1, param2, ...);
-                        // For other kernels, the function call is:
-                        //   auto func1 = std::bind(kernel_func_name, param1, param2, ...);
-                        //   worker_thread_pool->ScheduleSync(func1, numa_node_id);
-                        int numa_node = stream_index % numa_node_num;
-                        FunctionUnit_p fu = kernel->get_or_emit_source(true);
-                        string call_str = fu->call_unit->get_code();
-                        if (kernel->is_parallelism())
+                        if (!kernel->is_eliminative())
                         {
-                            std::string threadpool_param = "worker_thread_pool->GetRawThreadPool(";
-                            threadpool_param += (std::to_string(numa_node) + std::string("), "));
-                            call_str.insert(1, threadpool_param);
-                            lu_thread_func_call << kernel_func_name[kernel];
-                            lu_thread_func_call << call_str;
+                            // For mlas kernels, the function call is:
+                            //   kernel_func_name(worker_thread_pool->GetRawThreadPool(numa_node_id), param1, param2, ...);
+                            // For other kernels, the function call is:
+                            //   auto func1 = std::bind(kernel_func_name, param1, param2, ...);
+                            //   worker_thread_pool->ScheduleSync(func1, numa_node_id);
+                            int numa_node = stream_index % numa_node_num;
+                            FunctionUnit_p fu = kernel->get_or_emit_source(true);
+                            string call_str = fu->call_unit->get_code();
+                            if (kernel->is_parallelism())
+                            {
+                                std::string threadpool_param =
+                                    "worker_thread_pool->GetRawThreadPool(";
+                                threadpool_param +=
+                                    (std::to_string(numa_node) + std::string("), "));
+                                call_str.insert(1, threadpool_param);
+                                lu_thread_func_call << kernel_func_name[kernel];
+                                lu_thread_func_call << call_str;
+                            }
+                            else
+                            {
+                                call_str.insert(1, kernel_func_name[kernel] + std::string(", "));
+                                std::string std_func_name =
+                                    std::string("func") + std::to_string(func_call_count);
+                                std::string std_func_call = std::string("auto ") + std_func_name +
+                                                            std::string(" = std::bind") + call_str;
+                                lu_thread_func_call << std_func_call;
+                                std::string threadpool_call =
+                                    std::string("worker_thread_pool->ScheduleSync(");
+                                threadpool_call += (std_func_name + std::string(", ") +
+                                                    std::to_string(numa_node) + ");\n");
+                                lu_thread_func_call << threadpool_call;
+                                ++func_call_count;
+                            }
                         }
                         else
                         {
-                            call_str.insert(1, kernel_func_name[kernel] + std::string(", "));
-                            std::string std_func_name =
-                                std::string("func") + std::to_string(func_call_count);
-                            std::string std_func_call = std::string("auto ") + std_func_name +
-                                                        std::string(" = std::bind") + call_str;
-                            lu_thread_func_call << std_func_call;
-                            std::string threadpool_call =
-                                std::string("worker_thread_pool->ScheduleSync(");
-                            threadpool_call += (std_func_name + std::string(", ") +
-                                                std::to_string(numa_node) + ");\n");
-                            lu_thread_func_call << threadpool_call;
-                            ++func_call_count;
+                            lu_thread_func_call << " // eliminated\n";
                         }
-
                         if (async_info.notify_barrier != nullptr)
                         {
                             lu_thread_func_call
@@ -656,22 +656,35 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                            ->get_code();
                             }
                         }
-
-                        lu_kernel_entry << kernel_func_name[kernel];
-
-                        string call_str = fu->call_unit->get_code();
-                        if (kernel->is_parallelism())
+                        if (!kernel->is_eliminative())
                         {
-                            std::string threadpool_param =
-                                "worker_thread_pool->GetRawThreadPool(), ";
-                            call_str.insert(1, threadpool_param);
-                            lu_kernel_entry << call_str;
+                            // lu_kernel_entry << "t_start= Clock::now();\n";
+                            // lu_kernel_entry << "for (int i = 0; i < test_time; ++i){\n";
+
+                            lu_kernel_entry << kernel_func_name[kernel];
+
+                            string call_str = fu->call_unit->get_code();
+                            if (kernel->is_parallelism())
+                            {
+                                std::string threadpool_param =
+                                    "worker_thread_pool->GetRawThreadPool(), ";
+                                call_str.insert(1, threadpool_param);
+                                lu_kernel_entry << call_str;
+                            }
+                            else
+                            {
+                                lu_kernel_entry << fu->call_unit->get_code();
+                            }
+
+                            // lu_kernel_entry << "}\n";
+                            // lu_kernel_entry << "t_end= Clock::now();\n";
+                            // lu_kernel_entry << "fp_ms= (t_end- t_start)/test_time;\n";
+                            // lu_kernel_entry << "printf(\"{\\\"" << gnode->get_name() <<"\\\",%f},\", fp_ms.count());\n";
                         }
                         else
                         {
-                            lu_kernel_entry << fu->call_unit->get_code();
+                            lu_kernel_entry << " // eliminated;\n";
                         }
-
                         if (async_info.notify_barrier != nullptr)
                         {
                             lu_kernel_entry

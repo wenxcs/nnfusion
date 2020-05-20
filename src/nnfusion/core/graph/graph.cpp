@@ -181,6 +181,33 @@ GNodeVector Graph::get_ordered_ops(bool include_control_deps)
     return nodes;
 }
 
+GNodeVector Graph::get_bfs_ordered_ops()
+{
+    if (!m_bfs_ordered_ops_is_valid)
+    {
+        m_bfs_ordered_ops.clear();
+        GNodeVector start;
+        std::unordered_set<size_t> codegen_ops;
+        for (auto node : get_ordered_ops())
+        {
+            codegen_ops.insert(node->get_id());
+            if (node->get_input_size() == 0)
+                start.push_back(node);
+        }
+
+        BFS(this,
+            start,
+            [&](std::shared_ptr<GNode> node) {
+                if (codegen_ops.find(node->get_id()) != codegen_ops.end())
+                    m_bfs_ordered_ops.push_back(node);
+            },
+            nullptr,
+            NodeComparatorName());
+        m_bfs_ordered_ops_is_valid = true;
+    }
+    return m_bfs_ordered_ops;
+}
+
 GNodeVector Graph::get_const_nodes()
 {
     GNodeVector const_nodes;
