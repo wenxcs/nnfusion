@@ -27,6 +27,9 @@
 
 #include <popops/Cast.hpp>
 #include <popops/ElementWise.hpp>
+#include <popops/Encoding.hpp>
+#include <popops/Expr.hpp>
+#include <popops/ExprOp.hpp>
 #include <popops/Gather.hpp>
 #include <popops/Pad.hpp>
 #include <popops/Reduce.hpp>
@@ -101,7 +104,8 @@ poplar::Tensor load_constant(poplar::Graph& g,
                              std::vector<std::pair<std::string, void*>>& data_ptrs,
                              poplar::Type dtype,
                              std::vector<std::size_t> shapes,
-                             const std::string& name)
+                             const std::string& name,
+                             bool ones_flag = false)
 {
     if (shapes.size() == 0)
         shapes = {1};
@@ -111,7 +115,7 @@ poplar::Tensor load_constant(poplar::Graph& g,
         tensor_size *= shape;
 
     T* hptr = (T*)malloc(tensor_size * sizeof(T));
-    if (name == "")
+    if (ones_flag)
     {
         for (int i = 0; i < tensor_size; ++i)
             hptr[i] = 1;

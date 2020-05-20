@@ -299,6 +299,10 @@ namespace nnfusion
                         codegen_for_elementwise(
                             curr, fout, "topi=topi.less_equal(args(\"input0\"), args(\"input1\"))");
                     };
+                    kernel_dict["Equal"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(
+                            curr, fout, "topi=topi.equal(args(\"input0\"), args(\"input1\"))");
+                    };
                     kernel_dict["Exp"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.exp(args(\"input0\"))");
                     };
@@ -310,7 +314,7 @@ namespace nnfusion
                         codegen_for_elementwise(curr, fout, "topi=topi.tanh(args(\"input0\"))");
                     };
                     kernel_dict["Relu"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        codegen_for_elementwise(curr, fout, "topi=topi.relu(args(\"input0\"))");
+                        codegen_for_elementwise(curr, fout, "topi=topi.nn.relu(args(\"input0\"))");
                     };
                     kernel_dict["Relu6"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(
@@ -319,6 +323,9 @@ namespace nnfusion
                     kernel_dict["Sigmoid"] = [&](std::shared_ptr<GNode>& curr,
                                                  std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.sigmoid(args(\"input0\"))");
+                    };
+                    kernel_dict["Log"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(curr, fout, "topi=topi.log(args(\"input0\"))");
                     };
 
                     // Other Ops
@@ -334,8 +341,42 @@ namespace nnfusion
                             types = {"float", "FLOAT"};
                         else if (curr->get_output_element_type(0).c_type_string() == "int")
                             types = {"unsigned int", "UNSIGNED_INT"};
+                        else if (curr->get_output_element_type(0).c_type_string() == "int32_t")
+                            types = {"int", "INT"};
                         else if (curr->get_output_element_type(0).c_type_string() == "char")
                             types = {"char", "CHAR"};
+                        /*
+                        else if (curr->get_output_element_type(0).c_type_string() == "bool")
+                        {
+                            types = {"int", "INT"};
+                            size_t cnt = size / sizeof(bool);
+                            int32_t* new_dptr = new int32_t[cnt];
+                            bool* dptr_int64 = (bool*)dptr;
+                            for (size_t i = 0; i < cnt; i++)
+                                new_dptr[i] = dptr_int64[i] ? 1 : 0;
+                            dptr = new_dptr;
+                            size = cnt * sizeof(int32_t);
+                        }
+                        */
+                        else if (curr->get_output_element_type(0).c_type_string() == "int64_t")
+                        {
+                            types = {"int", "INT"};
+                            // Convert INT64 to INT32
+                            // GraphCore only support INT32
+                            size_t cnt = size / sizeof(int64_t);
+                            int32_t* new_dptr = new int32_t[cnt];
+                            int64_t* dptr_int64 = (int64_t*)dptr;
+                            for (size_t i = 0; i < cnt; i++)
+                            {
+                                new_dptr[i] = (int32_t)dptr_int64[i];
+                                NNFUSION_CHECK(((uint64_t)new_dptr[i]) <= (uint64_t)dptr_int64[i])
+                                    << "Value becomes invalid if converted to int32_t from "
+                                       "int64_t.";
+                            }
+
+                            dptr = new_dptr;
+                            size = cnt * sizeof(int32_t);
+                        }
                         else
                         {
                             NNFUSION_LOG(ERROR) << "Unsupported Type: "
@@ -354,13 +395,18 @@ namespace nnfusion
                         NNFUSION_CHECK(size == fwrite(dptr, 1, size, fp));
                         fclose(fp);
 
+                        if (dptr != p_const->get_data_ptr())
+                        {
+                            auto buf = (const char*)dptr;
+                            delete buf;
+                        }
+
                         fout << "Tensor " << arg_names[curr] << " = load_constant<" << types[0]
                              << ">(g, data_ptrs, " << types[1] << ", {"
                              << join_collections(
                                     curr->get_output_shape(0),
                                     [](int idx, ssize_t it) { return std::to_string(it); })
                              << "}, \"" << arg_names[curr] << "\");";
-
                     };
 
                     kernel_dict["Parameter"] = [&](std::shared_ptr<GNode>& curr,
@@ -378,7 +424,7 @@ namespace nnfusion
                              << join_collections(
                                     curr->get_output_shape(0),
                                     [](int idx, ssize_t it) { return std::to_string(it); })
-                             << "}, \"\");";
+                             << "}, \"" << arg_names[curr] << "\", true);";
                     };
 
                     kernel_dict["Result"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
@@ -472,14 +518,14 @@ namespace nnfusion
                     kernel_dict["Dot"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         auto _op = get_op_object<nnfusion::op::Dot>(curr);
 
-                        NNFUSION_CHECK(_op->get_transpose_A() == false);
-
                         auto shape_0 = curr->get_input_shape(0);
                         auto shape_1 = curr->get_input_shape(1);
                         int N = shape_0[0], K = shape_0[1], M = shape_1[1];
 
                         if (getenv("GC_POPDOT") == nullptr && N == 1 && M <= max_tiles)
                         {
+                            NNFUSION_CHECK(_op->get_transpose_A() == false);
+
                             std::vector<std::string> convert_input(curr->get_input_size());
                             if (_op->get_transpose_B() == false)
                                 convert_input[1] = ".transpose()";
@@ -503,7 +549,9 @@ namespace nnfusion
                                 "FLOAT);\n",
                                 {
                                     {"out_name", arg_names[curr]},
-                                    {"A", arg_names[curr->get_in_edge(0)->get_src()]},
+                                    {"A",
+                                     arg_names[curr->get_in_edge(0)->get_src()] +
+                                         (_op->get_transpose_A() ? ".transpose()" : "")},
                                     {"B",
                                      arg_names[curr->get_in_edge(1)->get_src()] +
                                          (_op->get_transpose_B() ? ".transpose()" : "")},
@@ -572,6 +620,44 @@ namespace nnfusion
                         fout << "Tensor " << arg_names[curr] << " = popops::cast(g, "
                              << arg_names[curr->get_in_edge(0)->get_src()] << ", " << output_type
                              << ", prog);\n";
+                    };
+
+                    kernel_dict["OneHot"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        auto generic_op = get_op_object<nnfusion::op::GenericOp>(curr);
+                        int depth = generic_op->localOpConfig.getRoot()["depth"];
+                        float on_value = generic_op->localOpConfig.getRoot()["on_value"];
+                        float off_value = generic_op->localOpConfig.getRoot()["off_value"];
+                        int axis = generic_op->localOpConfig.getRoot()["axis"];
+                        auto encoded = arg_names[curr];
+                        auto indices = arg_names[curr->get_in_edge(0)->get_src()];
+                        auto output_shape = curr->get_output_shape(0);
+                        auto dtype = curr->get_output_element_type(0).c_type_string();
+                        if (dtype == "float")
+                            dtype = "FLOAT";
+
+                        new_super_step();
+
+                        fout << op::create_code_from_template(
+                            "Tensor @encoded@ = g.addVariable(@dtype@, "
+                            "poplar::ArrayRef<std::size_t>({@output_shape@}), \"@encoded@\");\n"
+                            "Tensor @encoded@_on_val = g.addConstant<float>(FLOAT, {}, "
+                            "{@on_val@});\n"
+                            "Tensor @encoded@_off_val = g.addConstant<float>(FLOAT, {}, "
+                            "{@off_val@});\n"
+                            "place_tensor(g, @encoded@);\n"
+                            "place_tensor(g, @encoded@_on_val);\n"
+                            "place_tensor(g, @encoded@_off_val);\n"
+                            "popops::encodeOneHot(g, @indices@, @encoded@, prog, "
+                            "{@encoded@_on_val}, "
+                            "{@encoded@_off_val});\n",
+                            {
+                                {"encoded", encoded},
+                                {"dtype", dtype},
+                                {"output_shape", join(output_shape)},
+                                {"indices", indices},
+                                {"on_val", on_value},
+                                {"off_val", off_value},
+                            });
                     };
 
                     kernel_dict["GatherV2"] = [&](std::shared_ptr<GNode>& curr,
@@ -774,11 +860,13 @@ namespace nnfusion
                         auto axes = _op->get_reduction_axes();
 
                         auto input_shape = curr->get_input_shape(0);
-                        NNFUSION_CHECK(axes.size() >= 1);
                         int min_axis = INT_MAX;
-                        for (auto& axis : axes)
-                            min_axis = min(min_axis, (int)axis);
-                        if (input_shape.size() - axes.size() == min_axis)
+                        if (axes.size() == 0)
+                            min_axis = 0;
+                        else
+                            for (auto& axis : axes)
+                                min_axis = min(min_axis, (int)axis);
+                        if (input_shape.size() - axes.size() == min_axis || axes.size() == 0)
                         {
                             int batch = 1, sample = 1;
                             for (int i = 0; i < min_axis; ++i)
@@ -817,7 +905,6 @@ namespace nnfusion
 
                     kernel_dict["Softmax"] = [&](std::shared_ptr<GNode>& curr,
                                                  std::ofstream& fout) {
-
                         new_super_step();
 
                         assert(curr->get_output_element_type(0) == nnfusion::element::f32);
@@ -921,6 +1008,93 @@ namespace nnfusion
                                 {"stride_w", cfg["strides"][1]},
                             });
                     };
+
+                    kernel_dict["ApplyGradient"] = [&](std::shared_ptr<GNode>& curr,
+                                                       std::ofstream& fout) {
+                        auto _op = get_op_object<nnfusion::op::GenericOp>(curr);
+                        auto& cfg = _op->localOpConfig.getRoot();
+                        float lr =
+                            cfg["learning_rate"].is_null() ? 0.001 : (float)cfg["learning_rate"];
+                        codegen_for_elementwise(
+                            curr,
+                            fout,
+                            "lambda x: args(\"input0\")[x] - args(\"input1\")[x] * " +
+                                std::to_string(lr));
+                    };
+
+                    kernel_dict["DivNoNan"] = [&](std::shared_ptr<GNode>& curr,
+                                                  std::ofstream& fout) {
+                        codegen_for_elementwise(curr,
+                                                fout,
+                                                "lambda x: tvm.if_then_else(args(\"input1\")[x] != "
+                                                "0, args(\"input0\")[x] / args(\"input1\")[x], 0)");
+                    };
+
+                    kernel_dict["ReluBackprop"] = [&](std::shared_ptr<GNode>& curr,
+                                                      std::ofstream& fout) {
+                        codegen_for_elementwise(curr,
+                                                fout,
+                                                "lambda x: tvm.if_then_else(args(\"input0\")[x] > "
+                                                "0, args(\"input1\")[x], 0)");
+                    };
+
+                    kernel_dict["Select"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        auto output = arg_names[curr];
+                        auto input_a = arg_names[curr->get_in_edge(0)->get_src()];
+                        auto input_b = arg_names[curr->get_in_edge(1)->get_src()];
+                        auto input_c = arg_names[curr->get_in_edge(2)->get_src()];
+                        auto dtype = curr->get_output_element_type(0).c_type_string();
+                        auto output_shape = curr->get_output_shape(0);
+                        new_super_step();
+
+                        fout << op::create_code_from_template(
+                            "Tensor @output@ = popops::map(g, "
+                            "popops::expr::TernaryOp(popops::expr::TernaryOpType::SELECT, "
+                            "popops::expr::_1, popops::expr::_2, popops::expr::_3), {@input_a@, "
+                            "@input_b@, @input_c@}, prog);\n",
+                            {
+                                {"output", output},
+                                {"input_a", input_a},
+                                {"input_b", input_b},
+                                {"input_c", input_c},
+                            });
+                    };
+
+                    /*
+                    kernel_dict["Tile"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        nnfusion::Shape input_shape = curr->get_input_shape(0);
+                        nnfusion::Shape output_shape = curr->get_output_shape(0);
+
+                        auto ng_op = curr->get_in_edge(1)->get_src();
+                        NNFUSION_CHECK(ng_op->is_constant())
+                            << "We only accept the Tile input \"multiples\" as Constant.";
+                        ///\todo multiples must be int32 or int64, we use int32 in this case, currently we ignore int64
+                        auto multiples =
+                            std::dynamic_pointer_cast<nnfusion::op::Constant>(ng_op->get_op_ptr())
+                                ->get_vector<int64_t>();
+
+                        auto expression = op::create_code_from_template(
+                            R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.tile(args("input0"), @multiples@)); )",
+                            {{"input_shape", vector_to_string(input_shape)},
+                             {"output_shape", vector_to_string(output_shape)},
+                             {"multiples", vector_to_string(multiples)}});
+
+                        auto code = autogen(expression);
+
+                        int num_elements = 1, y;
+                        for (auto& it : curr->get_output_shape(0))
+                            num_elements *= it;
+                        for (int i = max_tiles; i >= 1; --i)
+                            if (num_elements % i == 0)
+                            {
+                                y = i;
+                                break;
+                            }
+
+                        print_standard_kernel_code(
+                            curr, fout, code, std::vector<int>(1 + curr->get_input_size(), y), {});
+                    };
+                    */
 
                     kernel_dict["MaxPool"] = [&](std::shared_ptr<GNode>& curr,
                                                  std::ofstream& fout) {
@@ -1061,6 +1235,6 @@ namespace nnfusion
                     return true;
                 }
             };
-        } // namespace pass
-    }     // namespace graph
+        } // namespace graph
+    }     // namespace pass
 } // namespace nnfusion
