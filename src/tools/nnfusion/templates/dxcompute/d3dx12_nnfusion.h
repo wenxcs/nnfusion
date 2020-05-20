@@ -65,7 +65,7 @@ namespace nnfusion_dml
         std::vector<size_t> Shape() const { return shape; }
     };
 
-    static std::vector<ID3D12CommandList*> cmdQueue, kernelOnlyQueue;
+    static std::vector<ID3D12CommandList*> cmdQueue, preloadQueue;
     static std::map<std::wstring, ComPtr<ID3DBlob>> computeShaderDict;
     static std::map<std::wstring, std::pair<double, int>> profCostDict;
 
@@ -99,10 +99,7 @@ namespace nnfusion_dml
 
             if (preload)
             {
-                cmdQueue.push_back(Launch());
-                device.pCommandQueue->ExecuteCommandLists(1, cmdQueue.data() + cmdQueue.size() - 1);
-                device.AwaitExecution();
-                cmdQueue.pop_back();
+                preloadQueue.push_back(Launch());
                 return;
             }
             cmdQueue.push_back(Launch());
@@ -234,7 +231,6 @@ namespace nnfusion_dml
             IFE(m_computeCommandList->Close());
 
             cmdQueue.push_back(Launch());
-            kernelOnlyQueue.push_back(Launch());
 
             if (!profCostDict.count(hlsl_source)) {
                 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();

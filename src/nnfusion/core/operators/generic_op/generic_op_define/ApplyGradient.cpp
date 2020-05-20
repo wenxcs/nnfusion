@@ -53,7 +53,9 @@ REGISTER_OP(ApplyGradient)
             data_size *= dim;
         }
 
-        return op::create_code_from_template(
+        auto expression = op::create_code_from_template(
             R"( - input("input0", [@data_size@]); input("input1", [@data_size@]); output([@data_size@], lambda x: args("input0")[x] - args("input1")[x] * @lr@); )",
             {{"data_size", data_size}, {"lr", lr}});
+        expression += " ## @annotation: inplace_wg";
+        return expression;
     });

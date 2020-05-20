@@ -228,22 +228,39 @@ namespace nnfusion
                             kernel = dedupe_kernels.find(code);
                         }
 
-                        fout << "NNfusionTensor " << arg_names[curr] << "(device, {"
-                             << join_collections(
-                                    curr->get_output_shape(0),
-                                    [](int idx, ssize_t it) { return std::to_string(it); })
-                             << "}, sizeof(" << curr->get_output_element_type(0).c_type_string()
-                             << "));\n";
-
-                        fout << "  NNfusionOperator op_" << arg_names[curr] << "(device, {";
-                        for (int i = 0; i < curr->get_input_size(); ++i)
+                        if (int(options.find("|inplace_wg|")) < 0)
                         {
-                            if (i)
-                                fout << ", ";
-                            fout << arg_names[curr->get_in_edge(i)->get_src()];
+                            fout << "NNfusionTensor " << arg_names[curr] << "(device, {"
+                                 << join_collections(
+                                        curr->get_output_shape(0),
+                                        [](int idx, ssize_t it) { return std::to_string(it); })
+                                 << "}, sizeof(" << curr->get_output_element_type(0).c_type_string()
+                                 << "));\n";
+
+                            fout << "  NNfusionOperator op_" << arg_names[curr] << "(device, {";
+                            for (int i = 0; i < curr->get_input_size(); ++i)
+                            {
+                                if (i)
+                                    fout << ", ";
+                                fout << arg_names[curr->get_in_edge(i)->get_src()];
+                            }
+                            fout << "}, { " << arg_names[curr] << " }, L\"" << kernel->second
+                                 << ".hlsl\");";
                         }
-                        fout << "}, { " << arg_names[curr] << " }, L\"" << kernel->second
-                             << ".hlsl\");";
+                        else
+                        {
+                            fout << "  NNfusionOperator op_" << arg_names[curr] << "(device, {";
+                            for (int i = 0; i < curr->get_input_size(); ++i)
+                            {
+                                if (i)
+                                    fout << ", ";
+                                fout << arg_names[curr->get_in_edge(i)->get_src()];
+                            }
+                            fout << "}, { " << arg_names[curr->get_in_edge(0)->get_src()]
+                                 << " }, L\"" << kernel->second << ".hlsl\");\n";
+                            fout << "auto& " << arg_names[curr] << " = "
+                                 << arg_names[curr->get_in_edge(0)->get_src()] << ";";
+                        }
                     };
 
                     auto codegen_for_elementwise = [&](std::shared_ptr<GNode>& curr,
@@ -302,6 +319,10 @@ namespace nnfusion
                         codegen_for_elementwise(
                             curr, fout, "topi=topi.less_equal(args(\"input0\"), args(\"input1\"))");
                     };
+                    kernel_dict["Equal"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(
+                            curr, fout, "topi=topi.equal(args(\"input0\"), args(\"input1\"))");
+                    };
                     kernel_dict["Maximum"] = [&](std::shared_ptr<GNode>& curr,
                                                  std::ofstream& fout) {
                         codegen_for_elementwise(
@@ -344,6 +365,12 @@ namespace nnfusion
                                                 fout,
                                                 "lambda x: tvm.if_then_else(args(\"input0\")[x] > "
                                                 "0, args(\"input1\")[x], 0)");
+                    };
+                    kernel_dict["Select"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
+                        codegen_for_elementwise(curr,
+                                                fout,
+                                                "lambda x: tvm.if_then_else(args(\"input0\")[x] == "
+                                                "0, args(\"input2\")[x], args(\"input1\")[x])");
                     };
 
                     // Non-standard Ops
@@ -465,6 +492,7 @@ namespace nnfusion
 
                     fout << "#endif\n\n";
                     fout << R"(
+  device.pCommandQueue->ExecuteCommandLists(preloadQueue.size(), preloadQueue.data());
   device.pCommandQueue->ExecuteCommandLists(cmdQueue.size(), cmdQueue.data());
   device.AwaitExecution();
 )";

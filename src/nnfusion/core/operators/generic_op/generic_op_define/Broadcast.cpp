@@ -13,14 +13,23 @@ REGISTER_OP(Broadcast)
         //   1. input shape has the same value with output shape, or
         //   2. input shape has the value "1" at the broadcast axes.
         nnfusion::Shape input_shape = gnode->get_output_shape(0);
+        nnfusion::Shape output_shape = gnode->get_output_shape(0);
         const auto& axes = op->get_broadcast_axes();
         for (auto axis : axes)
         {
             input_shape[axis] = 1;
         }
 
-        return op::create_code_from_template(
+        bool memcpy_annotation = (shape_size(input_shape) == shape_size(output_shape));
+        if (output_shape.size() == 0)
+        {
+            output_shape.push_back(1);
+        }
+
+        auto expression = op::create_code_from_template(
             R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.broadcast_to(args("input0"), @output_shape@)); )",
             {{"input_shape", vector_to_string(input_shape)},
-             {"output_shape", vector_to_string(gnode->get_output_shape(0))}});
+             {"output_shape", vector_to_string(output_shape)}});
+
+        return expression + (memcpy_annotation ? " ## @annotation: memcpy" : "");
     });

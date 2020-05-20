@@ -50,7 +50,6 @@ int main(int argc, char** argv)
         printf("DxCompute Time per Run for [Profile Sum] = %g sec.\n", evalutate_sum);
     }
 
-    evaluateQueue(kernelOnlyQueue, "Kernel Queue");
     evaluateQueue(cmdQueue, "Standard Queue");
     system("pause");
     return 0;
