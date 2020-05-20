@@ -205,10 +205,10 @@ endif()
         {
             auto kernel_regs =
                 KernelRegistry::Global()->FindKernelRegistrations(op_name, ROCM_GPU, DT_FLOAT);
-            if (!kernel_regs.size())
-                kernel_regs =
-                    KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT);
-            else
+            for (auto it :
+                 KernelRegistry::Global()->FindKernelRegistrations(op_name, CUDA_GPU, DT_FLOAT))
+                kernel_regs.push_back(it);
+
             {
                 auto priority = [](const std::string& tag) -> int {
                     static char sym_prio[] = "PRIORITY_";

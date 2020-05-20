@@ -131,8 +131,8 @@ namespace nnfusion
                     {
                         std::stringstream ss;
                         ss.flags(std::ios_base::scientific);
-                        ss << std::setprecision(std::numeric_limits<double>::digits)
-                           << (double)it.value();
+                        ss << std::setprecision(std::numeric_limits<float>::digits)
+                           << (float)it.value();
                         value = ss.str();
                     }
                     else

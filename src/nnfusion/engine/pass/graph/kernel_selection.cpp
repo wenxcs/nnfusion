@@ -180,10 +180,10 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     shared_ptr<KernelContext> ctx(new KernelContext(gnode));
     auto kernel_regs =
         KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), ROCM_GPU, DT_FLOAT);
-    if (!kernel_regs.size())
-        kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
-            gnode->get_op_type(), CUDA_GPU, DT_FLOAT);
-    else
+    for (auto it : KernelRegistry::Global()->FindKernelRegistrations(
+             gnode->get_op_type(), CUDA_GPU, DT_FLOAT))
+        kernel_regs.push_back(it);
+
     {
         auto priority = [](const std::string& tag) -> int {
             static char sym_prio[] = "PRIORITY_";

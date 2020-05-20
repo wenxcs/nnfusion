@@ -44,8 +44,10 @@ REGISTER_OP(DepthwiseConv2dNative)
         const int64_t out_rows = (input_rows + strides[0] - 1) / strides[0];
         const int64_t out_cols = (input_cols + strides[1] - 1) / strides[1];
 
-        Shape output_shape(is_nhwc ? Shape({batch, out_rows, out_cols, out_depth})
-                                   : Shape({batch, out_depth, out_rows, out_cols}));
+        Shape output_shape(
+            is_nhwc
+                ? Shape({(size_t)batch, (size_t)out_rows, (size_t)out_cols, (size_t)out_depth})
+                : Shape({(size_t)batch, (size_t)out_depth, (size_t)out_rows, (size_t)out_cols}));
 
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape);
     });
