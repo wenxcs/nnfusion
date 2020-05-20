@@ -30,14 +30,14 @@ REGISTER_OP(Sum)
                 sample *= input_shape[i];
 
             return op::create_code_from_template(
-                "- input(\"input0\", [@batch@, @sample@]); output([@batch@], "
+                " - input(\"input0\", [@batch@, @sample@]); output([@batch@], "
                 "topi=topi.sum(args(\"input0\"), axis=@axis@, keepdims=True));",
                 {{"batch", batch}, {"sample", sample}, {"axis", axes.size() != 0 ? "1" : "None"}});
         }
         else
         {
             return op::create_code_from_template(
-                "- input(\"input0\", @input_shape@); output(@output_shape@, "
+                " - input(\"input0\", @input_shape@); output(@output_shape@, "
                 "topi=topi.sum(args(\"input0\"), axis=@axis@, keepdims=True));",
                 {{"input_shape", vector_to_string(input_shape)},
                  {"output_shape", vector_to_string(curr->get_output_shape(0))},
