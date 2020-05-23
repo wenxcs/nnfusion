@@ -190,7 +190,7 @@ namespace nnfusion
                             ++step, offset = 0;
                     };
 
-                    const int max_tiles = 1216;
+                    const int max_threads = 1216 * 6;
 
                     auto print_standard_kernel_code = [&](
                         std::shared_ptr<GNode>& curr,
@@ -203,22 +203,22 @@ namespace nnfusion
                         if (!convert_input.size())
                             convert_input = std::vector<std::string>(curr->get_input_size());
 
-                        int tiles = 1, pos = 0, next;
+                        int thread_uses = 1, pos = 0, next;
                         while (next = code.find("// [thread_extent] threadIdx_", pos), next >= 0)
                         {
                             int eq = code.find(" = ", next);
                             NNFUSION_CHECK(eq >= 0);
-                            tiles *= atoi(code.c_str() + eq + 3);
+                            thread_uses *= atoi(code.c_str() + eq + 3);
                             pos = eq;
                         }
-                        NNFUSION_CHECK(tiles == 1);
-                        tiles *= shards.back();
+                        NNFUSION_CHECK(thread_uses == 1);
+                        thread_uses *= shards.back();
 
-                        // if no enough tiles, then new_super_step()
-                        if (offset + tiles > max_tiles)
+                        // if no enough thread_uses, then new_super_step()
+                        if (offset + thread_uses > max_threads)
                         {
                             new_super_step();
-                            NNFUSION_CHECK(offset + tiles <= max_tiles);
+                            NNFUSION_CHECK(offset + thread_uses <= max_threads);
                         }
 
                         fout << "Tensor " << arg_names[curr] << " = compute_task(g, {";
@@ -230,7 +230,7 @@ namespace nnfusion
                                                convert_input[idx];
                                     })
                              << "}, R\"(" << code << ")\", ";
-                        fout << step << ", " << offset << ", " << offset + tiles << ", {"
+                        fout << step << ", " << offset << ", " << offset + thread_uses << ", {"
                              << join_collections(
                                     shards, [](int idx, int val) { return std::to_string(val); })
                              << "}).reshape({" << join_collections(curr->get_output_shape(0),
@@ -239,7 +239,7 @@ namespace nnfusion
                                                                    })
                              << "})"
                              << ";\n";
-                        offset += tiles;
+                        offset += thread_uses;
                     };
 
                     auto codegen_for_elementwise = [&](std::shared_ptr<GNode>& curr,
@@ -253,7 +253,7 @@ namespace nnfusion
                         int num_elements = 1, y;
                         for (auto& it : curr->get_input_shape(0))
                             num_elements *= it;
-                        for (int i = max_tiles; i >= 1; --i)
+                        for (int i = max_threads; i >= 1; --i)
                             if (num_elements % i == 0)
                             {
                                 y = i;
@@ -522,7 +522,7 @@ namespace nnfusion
                         auto shape_1 = curr->get_input_shape(1);
                         int N = shape_0[0], K = shape_0[1], M = shape_1[1];
 
-                        if (getenv("GC_POPDOT") == nullptr && N == 1 && M <= max_tiles)
+                        if (getenv("GC_POPDOT") == nullptr && N == 1 && M <= max_threads)
                         {
                             NNFUSION_CHECK(_op->get_transpose_A() == false);
 
@@ -1084,7 +1084,7 @@ namespace nnfusion
                         int num_elements = 1, y;
                         for (auto& it : curr->get_output_shape(0))
                             num_elements *= it;
-                        for (int i = max_tiles; i >= 1; --i)
+                        for (int i = max_threads; i >= 1; --i)
                             if (num_elements % i == 0)
                             {
                                 y = i;

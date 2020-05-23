@@ -193,7 +193,7 @@ poplar::Tensor compute_task(poplar::Graph& g,
     assert(offset + tot_threads_per_shard * shards.back() == tails);
 
     // Update BSP step
-    assert(offset + tot_threads_per_shard * shards.back() <= NUM_TILES);
+    assert(offset + tot_threads_per_shard * shards.back() <= NUM_TILES * 6);
 
     std::string cs_name = "compset-" + std::to_string(step);
 
@@ -351,9 +351,9 @@ public:)";
                           inputs[i].reshape({(size_t)shards[i],
                                              inputs[i].numElements() / shards[i]})[sh % shards[i]]);
             g.connect(v[get_name(output_arg.first)], tiled_result[sh][curr_thread]);
-            g.setTileMapping(v, offset + (sh * tot_threads_per_shard + curr_thread));
-            g.setTileMapping(tiled_result[sh][curr_thread],
-                             offset + (sh * tot_threads_per_shard + curr_thread));
+            int tile_mapped = (offset + (sh * tot_threads_per_shard + curr_thread)) % NUM_TILES;
+            g.setTileMapping(v, tile_mapped);
+            g.setTileMapping(tiled_result[sh][curr_thread], tile_mapped);
 
             if (int(device.getId()) < 0)
                 g.setCycleEstimate(v, 20);
@@ -399,9 +399,9 @@ int main(int argc, char** argv)
     };
 
     run(1);
-    run(1000);
+    run(100);
     if (getenv("PROF"))
-        engine.printProfileSummary(std::cout, {{"showExecutionSteps", "false"}});
+        engine.printProfileSummary(std::cout, {{"showExecutionSteps", "true"}});
     run(1);
     return EXIT_SUCCESS;
 }

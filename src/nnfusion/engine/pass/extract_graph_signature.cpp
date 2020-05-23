@@ -29,7 +29,7 @@ bool ExtractGraphSignature::extract_constants(std::shared_ptr<InterpreterContext
             NNFUSION_CHECK_NOT_NULLPTR(tv);
             tu->constants->insert(tv);
 
-            NNFUSION_LOG(INFO) << "Constant Tensor: " << tv->get_name();
+            // NNFUSION_LOG(INFO) << "Constant Tensor: " << tv->get_name();
         }
     }
     return true;
