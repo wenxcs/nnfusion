@@ -19,7 +19,7 @@ namespace nnfusion
                 static constexpr const char* eigen_math_kernel = "in0.abs()";
                 static constexpr const char* simd_op = "_mm256_abs_ps";
                 static constexpr const char* simd_math_kernel =
-                    "_mm256_max_ps(_mm256_sub_ps(_mm256_setzero_ps(), x0), x0)";
+                    "_mm256_max_ps(_mm256_sub_ps(_mm256_setzero_ps(), in0), in0)";
             };
 
             template <>

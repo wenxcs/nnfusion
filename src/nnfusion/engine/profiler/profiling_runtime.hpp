@@ -421,6 +421,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             }
             ///\todo source code and function pointer need moved into cache;
             LanguageUnit_p source_code = nullptr;
+            LanguageUnit_p cmake_code = nullptr;
             double (*entry_point)(void**, void**) = nullptr;
             ///\todo To be deprecated in future;
             // ProfilingContext(shared_ptr<ngraph::Node> node) { ; }

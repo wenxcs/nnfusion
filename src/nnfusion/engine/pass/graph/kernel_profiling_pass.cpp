@@ -59,6 +59,10 @@ bool KernelProfilingPass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& 
                 {
                     result = profiling_kernel(kernel, CUPTIRuntime::Runtime());
                 }
+                else if (n_device_type == GENERIC_CPU)
+                {
+                    result = profiling_kernel(kernel, CPUDefaultRuntime::Runtime());
+                }
                 else
                 {
                     result = profiling_kernel(kernel, get_default_runtime(n_device_type));

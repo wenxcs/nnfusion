@@ -12,7 +12,6 @@ namespace nnfusion
 {
     namespace profiler
     {
-        /*
         class CPUDefaultRuntime : public IProfilingRuntime
         {
         public:
@@ -20,18 +19,22 @@ namespace nnfusion
 
         public:
             static Pointer Runtime();
-            double execute(const ProfilingContext::Pointer& ke,
-                           void** input,
-                           size_t input_size,
-                           void** output,
-                           size_t output_size) override;
+            CPUDefaultRuntime() { _dt = GENERIC_CPU; }
+            // double execute(const ProfilingContext::Pointer& ke,
+            //                void** input,
+            //                size_t input_size,
+            //                void** output,
+            //                size_t output_size) override;
 
         private:
             // Tiny codegen function for runtime
             bool codegen(const ProfilingContext::Pointer& ke);
+            bool cmake_codegen(const ProfilingContext::Pointer& ke);
             bool compile(const ProfilingContext::Pointer& ke);
+            double
+                invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
+            unordered_set<string> global_required;
         };
-        */
 
         ///\brief Use this class to have a Interpreter runtime.
         // We treated this runtime as golden truth for evaluating operator's
