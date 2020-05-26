@@ -167,6 +167,10 @@ namespace nnfusion
                 }
                 auto ng_constant_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
                 auto ng_element_type = gnode->get_output_element_type(0);
+
+                if (sizeof(T) != ng_element_type.size())
+                    NNFUSION_LOG(NNFUSION_WARNING) << "Datatypes byte size are not same.";
+
                 if (ng_element_type == nnfusion::element::f32)
                 {
                     *values = GetValueFromConstOp<float, T>(ng_constant_op);
@@ -189,7 +193,10 @@ namespace nnfusion
                 }
                 else if (ng_element_type == nnfusion::element::i64)
                 {
-                    *values = GetValueFromConstOp<int64, T>(ng_constant_op);
+                    if (ng_element_type.size() == sizeof(int32_t))
+                        *values = GetValueFromConstOp<int32_t, T>(ng_constant_op);
+                    else
+                        *values = GetValueFromConstOp<int64, T>(ng_constant_op);
                 }
                 else if (ng_element_type == nnfusion::element::u8)
                 {

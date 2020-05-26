@@ -2501,42 +2501,50 @@ namespace nnfusion
                 auto x_const_op = std::make_shared<op::Constant>(element::i32, x_shape, x_value);
                 auto x_const_gnode = m_graph->add_node_and_edge(x_const_op, GNodeVector({}));
 
-                int tf_shrink_axis_mask;
-                bool status = GetNodeAttr(node.attr(), "shrink_axis_mask", tf_shrink_axis_mask);
-                NNFUSION_CHECK(status);
-
-                int tf_end_mask;
-                status = GetNodeAttr(node.attr(), "end_mask", tf_end_mask);
-                NNFUSION_CHECK(status);
-
-                int tf_begin_mask;
-                status = GetNodeAttr(node.attr(), "begin_mask", tf_begin_mask);
-                NNFUSION_CHECK(status);
-
-                int tf_new_axis_mask;
-                status = GetNodeAttr(node.attr(), "new_axis_mask", tf_new_axis_mask);
-                NNFUSION_CHECK(status);
-
-                int tf_ellipsis_mask;
-                status = GetNodeAttr(node.attr(), "ellipsis_mask", tf_ellipsis_mask);
-                NNFUSION_CHECK(status);
-
-                nnfusion::op::OpConfig::any myConfig;
-                myConfig["begin_mask"] = tf_begin_mask;
-                myConfig["end_mask"] = tf_end_mask;
-                myConfig["ellipsis_mask"] = tf_ellipsis_mask;
-                myConfig["new_axis_mask"] = tf_new_axis_mask;
-                myConfig["shrink_axis_mask"] = tf_shrink_axis_mask;
-                // TODO: change shape with mask
-
                 auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
-                    node.name(), // Node name, looks like "tf_model/add_n";
-                    node.op(),   // Operator name, looks like "AddN";
-                    myConfig);   // The configuration we generated above;
+                    node.name(),                    // Node name, looks like "tf_model/add_n";
+                    node.op(),                      // Operator name, looks like "AddN";
+                    nnfusion::op::OpConfig::any{}); // The configuration we generated above;
+
+                int32_t dims = x_shape[0];
+                // Check and replace Constant
+                if (begin_gnode->get_output_shape(0)[0] < dims)
+                {
+                    vector<int32_t> vec;
+                    NNFUSION_CHECK(GetValueFromNGraphOp<int32_t>(begin_gnode, &vec));
+                    for (size_t i = vec.size(); i < dims; i++)
+                        vec.push_back(0);
+                    std::cout << dims << "\t" << begin_gnode->get_output_shape(0)[0] << "\t"
+                              << vec.size() << std::endl;
+                    auto new_begin = std::make_shared<op::Constant>(element::i32, x_shape, vec);
+                    begin_gnode = m_graph->add_node_and_edge(new_begin, GNodeVector{});
+                }
+
+                if (end_gnode->get_output_shape(0)[0] < dims)
+                {
+                    vector<int32_t> vec;
+                    NNFUSION_CHECK(GetValueFromNGraphOp<int32_t>(end_gnode, &vec));
+                    for (size_t i = vec.size(); i < dims; i++)
+                        vec.push_back(1);
+                    auto new_end_gnode = std::make_shared<op::Constant>(element::i32, x_shape, vec);
+                    end_gnode = m_graph->add_node_and_edge(new_end_gnode, GNodeVector{});
+                }
+
+                if (strides_gnode->get_output_shape(0)[0] < dims)
+                {
+                    vector<int32_t> vec;
+                    NNFUSION_CHECK(GetValueFromNGraphOp<int32_t>(strides_gnode, &vec));
+                    for (size_t i = vec.size(); i < dims; i++)
+                        vec.push_back(1);
+                    auto new_strides_gnode =
+                        std::make_shared<op::Constant>(element::i32, x_shape, vec);
+                    strides_gnode = m_graph->add_node_and_edge(new_strides_gnode, GNodeVector{});
+                }
 
                 auto generic_gnode = m_graph->add_node_and_edge(
                     generic_op, {x_const_gnode, begin_gnode, end_gnode, strides_gnode, grad_gnode});
                 NamedNodeVector ret{{node.name(), generic_gnode}};
+
                 return ret;
             }
 
@@ -3107,6 +3115,7 @@ namespace nnfusion
                 {"DivNoNan", TranslateBinaryOp<op::DivNoNan>},
                 {"DynamicStitch", TranslateDynamicStitchOp},
                 {"Equal", TranslateBinaryOp<op::Equal>},
+                {"Erf", TranslateUnaryOp<op::Erf>},
                 {"NotEqual", TranslateBinaryOp<op::NotEqual>},
                 {"Exp", TranslateUnaryOp<op::Exp>},
                 {"ExpandDims", TranslateExpandDimsOp},
@@ -3144,6 +3153,7 @@ namespace nnfusion
                 {"Relu6Grad", TranslateRelu6GradOp},
                 {"Reshape", TranslateReshapeOp},
                 {"Rsqrt", TranslateUnaryOp<op::Rsqrt>},
+                {"Sqrt", TranslateUnaryOp<op::Sqrt>},
                 {"RsqrtGrad", TranslateRsqrtGradOp},
                 {"RealDiv", TranslateBinaryOp<op::Divide>},
                 {"ReverseSequence", TranslateReverseSequenceOp},
@@ -3164,7 +3174,7 @@ namespace nnfusion
                 {"StridedSlice", TranslateStridedSliceOp},
                 {"SparseSoftmaxCrossEntropyWithLogits",
                  TranslateSparseSoftmaxCrossEntropyWithLogitsOp},
-                //{"", TranslateStridedSliceGradOp}
+                {"StridedSliceGrad", TranslateStridedSliceGradOp},
                 //{"", TranslateStopGradientOp},
                 {"Sub", TranslateBinaryOp<op::Subtract>},
                 {"Sum", TranslateSumOp},
