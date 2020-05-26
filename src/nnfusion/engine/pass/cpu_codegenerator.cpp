@@ -244,7 +244,6 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
     lu << "#include \"nnfusion_rt.h\"\n";
     unordered_map<string, LanguageUnit_p> decleard_function_LU;
-
     // Collect Function Definition
     {
         vector<codegenerator::CPUFunctionFile> cpu_kernel_files;
@@ -322,10 +321,6 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         lu << "\n";
         for (auto& it : re.local_symbol)
             if (it.second->symbol.find("declaration::") != string::npos)
-                lu << it.second->get_code();
-        lu << "\n";
-        for (auto& it : re.local_symbol)
-            if (it.second->symbol.find("declaration_func::") != string::npos)
                 lu << it.second->get_code();
         lu << "\n";
         // stream and event declaration
@@ -430,6 +425,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
 
         //Function Call
         {
+            /*
             if (global_required.count("declaration::eigen_global_thread_pool") > 0)
             {
                 if (FLAGS_fthread_num_per_node == 0)
@@ -449,6 +445,12 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 lu_main_init << "global_thread_pool_device = new "
                                 "Eigen::ThreadPoolDevice(global_thread_pool, "
                                 "global_thread_pool->NumThreads());\n";
+            }
+	    */
+
+            if (global_required.count("header::eigen_spatial_convolution") > 0)
+            {
+                lu_main_init << "setenv(\"OMP_NUM_THREADS\", \"1\", true);\n";
             }
 
             // Both intra_node parallelism and multi-thread need worker_thread_pool.
@@ -700,6 +702,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             lu_main_free << allocator.second->emit_memory_free()->get_code();
         }
+        /*
         if (global_required.count("declaration::eigen_global_thread_pool") > 0)
         {
             lu_main_free << "free(global_thread_pool);\n";
@@ -708,6 +711,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
         {
             lu_main_free << "free(global_thread_pool_device);\n";
         }
+	*/
         if (need_intra_node_threadpool || async_manager->num_non_default_stream() > 0)
         {
             lu_main_free << "delete worker_thread_pool;\n";
@@ -878,18 +882,6 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     lu_cmake << "project(main_test)\n"
              << "cmake_minimum_required(VERSION 3.5)\n\n";
 
-    if (global_required.count("declaration::eigen_global_thread_pool_device") > 0 ||
-        global_required.count("header::eigen_utils") > 0 ||
-        global_required.count("header::eigen_tensor") > 0 ||
-        global_required.count("header::mlas") > 0 || need_intra_node_threadpool ||
-        async_manager->num_non_default_stream() > 0)
-    {
-        lu_cmake << "# need to specify the correct path of eigen\n"
-                 << "set(EIGEN_DIR \"/usr/include/eigen3\" CACHE STRING \"EIGEN libraries folder "
-                    "location\")\n"
-                 << "include_directories(${EIGEN_DIR})\n\n";
-    }
-
     if (global_required.count("header::cblas") > 0)
     {
         lu_cmake << R"(
@@ -909,11 +901,12 @@ endforeach()
                  << "\n";
     }
 
-    lu_cmake << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -march=native\")\n"
-             << (FLAGS_fkernels_as_files ? "file(GLOB kernels "
-                                           "kernels/*.cpp)\nadd_library(nnfusion_cpu_rt "
-                                           "nnfusion_rt.cpp ${kernels})\n"
-                                         : "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n");
+    lu_cmake
+        << "set (CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=gnu++11 -O3 -march=native -pthread\")\n"
+        << (FLAGS_fkernels_as_files ? "file(GLOB kernels "
+                                      "kernels/*.cpp)\nadd_library(nnfusion_cpu_rt "
+                                      "nnfusion_rt.cpp ${kernels})\n"
+                                    : "add_library(nnfusion_cpu_rt nnfusion_rt.cpp)\n");
     if (global_required.count("header::cblas") > 0)
     {
         lu_cmake << "target_link_libraries(nnfusion_cpu_rt pthread libmkl)\n\n";
@@ -936,8 +929,19 @@ endforeach()
 
     if (need_intra_node_threadpool || async_manager->num_non_default_stream() > 0)
     {
+        // Prepare eigen submodule.
+        std::string eigen_path = std::string(path) + std::string("/eigen");
+        std::string cmd = std::string("cp -R ") + eigen_path + std::string(" .");
+        if (0 != system(cmd.c_str()))
+        {
+            throw std::runtime_error("Failed to copy eigen source files.\n");
+        }
+        lu_cmake << "include(eigen/eigen.cmake)\n";
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt eigen)\n\n";
+
+        // Prepare threadpool submodule.
         std::string threadpool_path = std::string(path) + std::string("/threadpool");
-        std::string cmd = std::string("cp -R ") + threadpool_path + std::string(" .");
+        cmd = std::string("cp -R ") + threadpool_path + std::string(" .");
         if (0 != system(cmd.c_str()))
         {
             throw std::runtime_error("Failed to copy threadpool source files.\n");
@@ -948,29 +952,20 @@ endforeach()
 
     if (global_required.count("header::mlas") > 0)
     {
-        lu_cmake << "include(mlas/mlas.cmake)\n";
-        lu_cmake << "target_link_libraries(nnfusion_cpu_rt mlas)\n\n";
-
+        // Prepare mlas submodule.
         std::string mlas_path = std::string(path) + std::string("/mlas");
         std::string cmd = std::string("cp -R ") + mlas_path + std::string(" .");
         if (0 != system(cmd.c_str()))
         {
             throw std::runtime_error("Failed to copy mlas source files.\n");
         }
+        lu_cmake << "include(mlas/mlas.cmake)\n";
+        lu_cmake << "target_link_libraries(nnfusion_cpu_rt mlas)\n\n";
     }
 
     lu_cmake << "target_compile_options(nnfusion_cpu_rt PRIVATE \"-fPIC\")\n"
              << "add_executable(main_test main_test.cpp)\n"
              << "target_link_libraries(main_test nnfusion_cpu_rt)\n";
-    if (need_intra_node_threadpool || async_manager->num_non_default_stream() > 0)
-    {
-        lu_cmake << "target_link_libraries(main_test threadpool)\n";
-    }
-
-    if (global_required.count("header::mlas") > 0)
-    {
-        lu_cmake << "target_link_libraries(main_test mlas)\n";
-    }
 
     lu_cmake << R"(
 if(EXISTS "${CMAKE_BINARY_DIR}/Constant")

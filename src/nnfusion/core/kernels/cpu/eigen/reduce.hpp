@@ -45,7 +45,7 @@ Eigen::TensorMap<Eigen::Tensor<@ElementType@, @out_rank@, Eigen::RowMajor>> out(
     static_cast<@ElementType@ *>(output0), out_dims);
 Eigen::TensorMap<Eigen::Tensor<@ElementType@, @in_rank@, Eigen::RowMajor>> in(
     static_cast<@ElementType@ *>(input0), in_dims);
-out.device(*global_thread_pool_device) = in.@op@(axes);
+out.device(*(thread_pool->GetDevice())) = in.@op@(axes);
 )",
                             {{"in_rank", input_shape.size()},
                              {"out_rank", output_shape.size()},
@@ -69,8 +69,6 @@ out.device(*global_thread_pool_device) = in.@op@(axes);
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::eigen_tensor);
-                    _lu->require(declaration::eigen_global_thread_pool);
-                    _lu->require(declaration::eigen_global_thread_pool_device);
                     return _lu;
                 }
 

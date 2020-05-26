@@ -261,6 +261,6 @@ endif()
 
 add_library(mlas STATIC ${mlas_common_srcs} ${mlas_platform_srcs})
 target_link_libraries(mlas threadpool)
-target_include_directories(mlas PRIVATE ${CMAKE_CURRENT_LIST_DIR}/inc ${CMAKE_CURRENT_LIST_DIR}/lib ${CMAKE_CURRENT_LIST_DIR}/lib/amd64 ${EIGEN_DIR})
+target_include_directories(mlas PRIVATE ${CMAKE_CURRENT_LIST_DIR}/inc ${CMAKE_CURRENT_LIST_DIR}/lib ${CMAKE_CURRENT_LIST_DIR}/lib/amd64)
 target_include_directories(mlas SYSTEM INTERFACE ${CMAKE_CURRENT_LIST_DIR}/inc)
 set_target_properties(mlas PROPERTIES FOLDER "mlas")

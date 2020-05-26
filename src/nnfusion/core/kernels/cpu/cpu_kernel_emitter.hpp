@@ -37,6 +37,7 @@ namespace nnfusion
                 EigenKernelEmitter(shared_ptr<KernelContext> ctx)
                     : CpuKernelEmitter(ctx)
                 {
+                    m_intra_op_parallelism = true;
                 }
 
                 LanguageUnit_p emit_eigen_utils();

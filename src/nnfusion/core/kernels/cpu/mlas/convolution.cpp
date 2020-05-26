@@ -20,6 +20,7 @@ cpu::ConvolutionMlas::ConvolutionMlas(shared_ptr<KernelContext> ctx)
     data_dilation_strides = conv->get_data_dilation_strides();
     padding_below_diff = conv->get_padding_below();
     padding_above_diff = conv->get_padding_above();
+    data_format = conv->get_data_format();
     dtype = ctx->outputs[0]->get_element_type().c_type_string();
 
     std::stringstream tag;
@@ -32,6 +33,11 @@ cpu::ConvolutionMlas::ConvolutionMlas(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cpu::ConvolutionMlas::emit_function_body()
 {
+    if (data_format == "NHWC")
+    {
+        return nullptr;
+    }
+
     bool is_deconvolution = false;
     for (auto a : data_dilation_strides)
     {

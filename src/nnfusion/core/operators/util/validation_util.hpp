@@ -30,7 +30,8 @@ namespace nnfusion
                                       const nnfusion::CoordinateDiff& data_padding_above,
                                       const nnfusion::PartialShape& filters_shape,
                                       const nnfusion::Strides& filter_strides,
-                                      const nnfusion::Strides& filter_dilation);
+                                      const nnfusion::Strides& filter_dilation,
+                                      std::string data_format = "NCHW");
         nnfusion::PartialShape
             infer_batched_pooling_forward(const Op* op,
                                           const nnfusion::PartialShape& data_batch_shape,

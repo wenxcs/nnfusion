@@ -119,7 +119,8 @@ std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
                                             const nnfusion::CoordinateDiff& data_padding_above,
                                             const nnfusion::PartialShape& filters_shape,
                                             const nnfusion::Strides& filter_strides,
-                                            const nnfusion::Strides& filter_dilation)
+                                            const nnfusion::Strides& filter_dilation,
+                                            std::string data_format)
 {
     nnfusion::element::Type et_result;
 
@@ -159,18 +160,26 @@ std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
         << "), padding above (" << data_padding_above << "), filter strides (" << filter_strides
         << "), and filter dilation (" << filter_dilation << ") do not match.";
 
+    OP_VALIDATION(op, data_format == "NCHW" || data_format == "NHWC")
+        << "data format must be NCHW or NHWC.";
+
     nnfusion::Dimension batch_size =
         (data_batch_shape.rank().is_static() ? data_batch_shape[0]
                                              : nnfusion::Dimension::dynamic());
     nnfusion::Dimension data_channel_count =
-        (data_batch_shape.rank().is_static() ? data_batch_shape[1]
-                                             : nnfusion::Dimension::dynamic());
+        (data_batch_shape.rank().is_static()
+             ? data_format == "NCHW" ? data_batch_shape[1] : data_batch_shape[3]
+             : nnfusion::Dimension::dynamic());
     nnfusion::PartialShape data_spatial_shape(nnfusion::PartialShape::dynamic(spatial_rank));
 
     nnfusion::Dimension filter_output_channel_count =
-        (filters_shape.rank().is_static() ? filters_shape[0] : nnfusion::Dimension::dynamic());
+        (filters_shape.rank().is_static()
+             ? data_format == "NCHW" ? filters_shape[0] : filters_shape[3]
+             : nnfusion::Dimension::dynamic());
     nnfusion::Dimension filter_input_channel_count =
-        (filters_shape.rank().is_static() ? filters_shape[1] : nnfusion::Dimension::dynamic());
+        (filters_shape.rank().is_static()
+             ? data_format == "NCHW" ? filters_shape[1] : filters_shape[2]
+             : nnfusion::Dimension::dynamic());
     nnfusion::PartialShape filter_spatial_shape(nnfusion::PartialShape::dynamic(spatial_rank));
 
     //
@@ -181,12 +190,14 @@ std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
     {
         if (data_batch_shape.rank().is_static())
         {
-            data_spatial_shape[i] = data_batch_shape[i + 2];
+            data_spatial_shape[i] =
+                data_format == "NCHW" ? data_batch_shape[i + 2] : data_batch_shape[i + 1];
         }
 
         if (filters_shape.rank().is_static())
         {
-            filter_spatial_shape[i] = filters_shape[i + 2];
+            filter_spatial_shape[i] =
+                data_format == "NCHW" ? filters_shape[i + 2] : filters_shape[i];
         }
     }
 
@@ -222,12 +233,26 @@ std::tuple<nnfusion::element::Type, nnfusion::PartialShape>
                                               true);
 
     nnfusion::PartialShape batch_output_shape(nnfusion::PartialShape::dynamic(spatial_rank + 2));
-    batch_output_shape[0] = batch_size;
-    batch_output_shape[1] = filter_output_channel_count;
 
-    for (size_t i = 0; i < static_cast<size_t>(spatial_rank); i++)
+    if (data_format == "NCHW")
     {
-        batch_output_shape[i + 2] = data_output_shape[i];
+        batch_output_shape[0] = batch_size;
+        batch_output_shape[1] = filter_output_channel_count;
+
+        for (size_t i = 0; i < static_cast<size_t>(spatial_rank); i++)
+        {
+            batch_output_shape[i + 2] = data_output_shape[i];
+        }
+    }
+    else
+    {
+        batch_output_shape[0] = batch_size;
+        batch_output_shape[3] = filter_output_channel_count;
+
+        for (size_t i = 0; i < static_cast<size_t>(spatial_rank); i++)
+        {
+            batch_output_shape[i + 1] = data_output_shape[i];
+        }
     }
 
     return std::make_tuple(et_result, batch_output_shape);

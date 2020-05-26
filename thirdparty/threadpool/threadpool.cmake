@@ -49,5 +49,4 @@ set(threadpool_srcs
 
 add_library(threadpool STATIC ${threadpool_srcs})
 target_include_directories(threadpool SYSTEM INTERFACE ${CMAKE_CURRENT_LIST_DIR})
-target_include_directories(threadpool PRIVATE ${EIGEN_DIR})
-target_link_libraries(threadpool libhwloc)
+target_link_libraries(threadpool libhwloc eigen)

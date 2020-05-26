@@ -66,9 +66,9 @@ Eigen::TensorMap<Eigen::Tensor<@ElementType@, @Rank@, Eigen::RowMajor>> out(
     static_cast<@ElementType@ *>(output0), in_dims),
     in(static_cast<@ElementType@ *>(input0), in_dims);
 
-out.device(*global_thread_pool_device) =
+out.device(*(thread_pool->GetDevice())) =
     (in - in.maximum(axes).eval().reshape(rdims).broadcast(bcast)).exp();
-out.device(*global_thread_pool_device) =
+out.device(*(thread_pool->GetDevice())) =
     out * out.sum(axes).inverse().eval().reshape(rdims).broadcast(bcast);
 )",
                             {{"Rank", rank},
@@ -93,8 +93,6 @@ out.device(*global_thread_pool_device) =
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::thread);
                     _lu->require(header::eigen_tensor);
-                    _lu->require(declaration::eigen_global_thread_pool);
-                    _lu->require(declaration::eigen_global_thread_pool_device);
 
                     return _lu;
                 }

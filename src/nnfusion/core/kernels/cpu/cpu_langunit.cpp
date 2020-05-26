@@ -8,10 +8,12 @@ LU_DEFINE(header::thread, "#include <thread>\n");
 LU_DEFINE(header::eigen_tensor,
           "#define EIGEN_USE_THREADS\n#include <unsupported/Eigen/CXX11/Tensor>\n");
 LU_DEFINE(header::eigen_utils, "#include \"eigen_utils.hpp\"\n");
+LU_DEFINE(header::eigen_spatial_convolution, "#include \"eigen_spatial_convolutions.h\"\n");
 LU_DEFINE(header::cblas, "#include \"cblas.h\"\n");
 LU_DEFINE(header::mlas, "#include \"mlas.h\"\n");
 LU_DEFINE(header::threadpool, "#include \"numa_aware_threadpool.h\"\n");
 LU_DEFINE(header::barrier, "#include \"barrier.h\"\n");
+LU_DEFINE(header::simd, "#include <immintrin.h>\n");
 
 // Macro
 

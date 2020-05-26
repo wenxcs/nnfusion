@@ -687,8 +687,9 @@ namespace nnfusion
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_dilations, ng_dilations);
+
                 auto reshape_input_gnode = BatchToNGraph(is_nhwc, input_gnode);
-                if (reshape_input_gnode != nullptr)
+                if (reshape_input_gnode != nullptr && FLAGS_fdefault_device != "CPU")
                 {
                     m_graph->add_node(reshape_input_gnode);
                     m_graph->add_edge(input_gnode, 0, reshape_input_gnode, 0);
@@ -702,8 +703,15 @@ namespace nnfusion
                 ng_kernel_shape[0] = filter_shape[0];
                 ng_kernel_shape[1] = filter_shape[1];
                 auto reshape_filter_gnode = Reshape<3, 2, 0, 1>(filter_gnode);
-                m_graph->add_node(reshape_filter_gnode);
-                m_graph->add_edge(filter_gnode, 0, reshape_filter_gnode, 0);
+                if (!is_nhwc || FLAGS_fdefault_device != "CPU")
+                {
+                    m_graph->add_node(reshape_filter_gnode);
+                    m_graph->add_edge(filter_gnode, 0, reshape_filter_gnode, 0);
+                }
+                else
+                {
+                    reshape_filter_gnode = filter_gnode;
+                }
 
                 // Padding
                 nnfusion::CoordinateDiff ng_padding_below{0, 0};
@@ -719,12 +727,12 @@ namespace nnfusion
 
                 // Generate new op
                 auto conv_op = std::make_shared<op::Convolution>(
-                    ng_strides, ng_dilations, ng_padding_below, ng_padding_above);
+                    ng_strides, ng_dilations, ng_padding_below, ng_padding_above, tf_data_format);
                 auto conv_gnode = m_graph->add_node_and_edge(
                     conv_op, {reshape_input_gnode, reshape_filter_gnode});
 
                 auto reshape_conv_gnode = BatchToTensorflow(is_nhwc, conv_gnode);
-                if (reshape_conv_gnode != nullptr)
+                if (reshape_conv_gnode != nullptr && FLAGS_fdefault_device != "CPU")
                 {
                     m_graph->add_node(reshape_conv_gnode);
                     m_graph->add_edge(conv_gnode, 0, reshape_conv_gnode, 0);

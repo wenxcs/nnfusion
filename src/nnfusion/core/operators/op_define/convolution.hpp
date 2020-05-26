@@ -33,7 +33,8 @@ namespace nnfusion
                         const nnfusion::Strides& window_dilation_strides,
                         const nnfusion::CoordinateDiff& padding_below,
                         const nnfusion::CoordinateDiff& padding_above,
-                        const nnfusion::Strides& data_dilation_strides);
+                        const nnfusion::Strides& data_dilation_strides,
+                        std::string data_format = "NCHW");
 
             /// \brief Constructs a batched convolution operation with no data dilation (i.e., all data dilation strides are 1).
             ///
@@ -51,7 +52,8 @@ namespace nnfusion
             Convolution(const nnfusion::Strides& window_movement_strides,
                         const nnfusion::Strides& window_dilation_strides,
                         const nnfusion::CoordinateDiff& padding_below,
-                        const nnfusion::CoordinateDiff& padding_above);
+                        const nnfusion::CoordinateDiff& padding_above,
+                        std::string data_format = "NCHW");
 
             /// \brief Constructs a batched convolution operation with no padding or data dilation (i.e., padding above and below are 0 everywhere, and all data dilation strides are 1).
             ///
@@ -101,6 +103,7 @@ namespace nnfusion
             {
                 return m_data_dilation_strides;
             }
+            const std::string& get_data_format() const { return m_data_format; }
             /// \return The default value for Convolution.
 
         protected:
@@ -109,6 +112,7 @@ namespace nnfusion
             nnfusion::CoordinateDiff m_padding_below;
             nnfusion::CoordinateDiff m_padding_above;
             nnfusion::Strides m_data_dilation_strides;
+            std::string m_data_format;
 
         private:
             static nnfusion::Strides default_strides(const Op* op,

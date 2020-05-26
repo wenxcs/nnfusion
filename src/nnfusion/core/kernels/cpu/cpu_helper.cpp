@@ -10,7 +10,7 @@ LanguageUnit_p cpu::get_eigen_math_kernel(const std::string& name,
                                           const std::vector<std::string>& data_types)
 {
     NNFUSION_CHECK(std::count(name.begin(), name.end(), '-') == 0);
-    std::string mangled_name = "declaration_func::function_def_inline_" + name;
+    std::string mangled_name = "declaration::function_def_inline_" + name;
     // TODO: handle data_types containing underline, like long_long
     // Output type should be ignore
     for (size_t i = 0; i < data_types.size() - 1; i++)
@@ -23,7 +23,8 @@ LanguageUnit_p cpu::get_eigen_math_kernel(const std::string& name,
     if (math_kernel.size())
     {
         auto num_inputs = data_types.size() - 1;
-        writer << "inline void " << name << "_" << data_size << "(";
+        writer << "inline void " << name << "_" << data_size
+               << "(concurrency::ThreadPool* thread_pool, ";
         for (size_t i = 0; i < num_inputs; ++i)
         {
             writer << data_types[i] << "* x" << i << ", ";
@@ -42,7 +43,7 @@ LanguageUnit_p cpu::get_eigen_math_kernel(const std::string& name,
             writer << "Eigen::TensorMap<Eigen::Tensor<" << data_types[num_inputs]
                    << ", 1, Eigen::RowMajor>>"
                    << " out(y0, {" << data_size << "});\n";
-            writer << "out.device(*global_thread_pool_device) = " << math_kernel << ";\n";
+            writer << "out.device(*(thread_pool->GetDevice())) = " << math_kernel << ";\n";
         }
         writer.indent--;
         writer << "}\n";
@@ -56,7 +57,7 @@ LanguageUnit_p cpu::get_simd_math_kernel(const std::string& name,
                                          const std::vector<std::string>& data_types)
 {
     NNFUSION_CHECK(std::count(name.begin(), name.end(), '-') == 0);
-    std::string mangled_name = "declaration_func::function_def_inline_" + name;
+    std::string mangled_name = "declaration::function_def_inline_" + name;
     // TODO: handle data_types containing underline, like long_long
     // Output type should be ignore
     for (size_t i = 0; i < data_types.size() - 1; i++)

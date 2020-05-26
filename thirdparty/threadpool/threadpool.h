@@ -15,6 +15,8 @@
 #pragma warning(push)
 #pragma warning(disable : 4267)
 #endif
+#define EIGEN_USE_THREADS
+#include <unsupported/Eigen/CXX11/Tensor>
 #include <unsupported/Eigen/CXX11/ThreadPool>
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
@@ -121,8 +123,11 @@ class ThreadPool {
 
   //Eigen::ThreadPool& GetHandler() { return impl_; }
 
+  Eigen::ThreadPoolDevice* GetDevice() { return device_.get(); }
+
  private:
   std::unique_ptr<Eigen::ThreadPoolTempl<NumaEnvironment>> impl_;
+  std::shared_ptr<Eigen::ThreadPoolDevice> device_;
   int numa_node_;
 };
 

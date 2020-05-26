@@ -28,6 +28,7 @@ namespace concurrency {
 ThreadPool::ThreadPool(int num_threads, int numa_node)
     : numa_node_(numa_node) {
   impl_.reset(new Eigen::ThreadPoolTempl<NumaEnvironment>(num_threads, NumaEnvironment(numa_node)));
+  device_.reset(new Eigen::ThreadPoolDevice(impl_.get(), impl_->NumThreads()));
 }
 
 void ThreadPool::Schedule(std::function<void()> fn) { 

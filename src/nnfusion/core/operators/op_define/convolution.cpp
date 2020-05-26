@@ -13,13 +13,15 @@ Convolution::Convolution(const nnfusion::Strides& window_movement_strides,
                          const nnfusion::Strides& window_dilation_strides,
                          const nnfusion::CoordinateDiff& padding_below,
                          const nnfusion::CoordinateDiff& padding_above,
-                         const nnfusion::Strides& data_dilation_strides)
+                         const nnfusion::Strides& data_dilation_strides,
+                         std::string data_format)
     : Op("Convolution")
     , m_window_movement_strides(window_movement_strides)
     , m_window_dilation_strides(window_dilation_strides)
     , m_padding_below(padding_below)
     , m_padding_above(padding_above)
     , m_data_dilation_strides(data_dilation_strides)
+    , m_data_format(data_format)
 {
 }
 
@@ -67,7 +69,8 @@ void Convolution::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                                                   m_padding_above,
                                                                   filters_shape,
                                                                   m_window_movement_strides,
-                                                                  m_window_dilation_strides);
+                                                                  m_window_dilation_strides,
+                                                                  m_data_format);
 
     gnode->set_output_type_and_shape(0, result_et, result_shape);
 }
@@ -97,12 +100,14 @@ nnfusion::Strides Convolution::default_strides(const Op* op,
 Convolution::Convolution(const nnfusion::Strides& window_movement_strides,
                          const nnfusion::Strides& window_dilation_strides,
                          const nnfusion::CoordinateDiff& padding_below,
-                         const nnfusion::CoordinateDiff& padding_above)
+                         const nnfusion::CoordinateDiff& padding_above,
+                         std::string data_format)
     : Convolution(window_movement_strides,
                   window_dilation_strides,
                   padding_below,
                   padding_above,
-                  nnfusion::Strides())
+                  nnfusion::Strides(),
+                  data_format)
 {
 }
 

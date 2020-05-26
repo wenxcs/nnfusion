@@ -313,6 +313,7 @@ void ElementwiseFused::FuseFunctionBody(LanguageUnit& lu)
 LanguageUnit_p ElementwiseFused::emit_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+    _lu->require(header::simd);
 
     return _lu;
 }

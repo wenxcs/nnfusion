@@ -49,7 +49,7 @@ namespace nnfusion
                     NNFUSION_CHECK(num_inputs > 0)
                         << "At least one input and one output tesnor for elementwise-op.";
 
-                    lu << op << "_" << data_size << "(";
+                    lu << op << "_" << data_size << "(thread_pool, ";
                     for (size_t i = 0; i < num_inputs; ++i)
                     {
                         lu << "input" << i << ", ";
@@ -63,8 +63,6 @@ namespace nnfusion
                 {
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
                     _lu->require(header::eigen_tensor);
-                    _lu->require(declaration::eigen_global_thread_pool);
-                    _lu->require(declaration::eigen_global_thread_pool_device);
 
                     return _lu;
                 }
