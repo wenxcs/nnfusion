@@ -432,6 +432,20 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateSigmoidGradOp(const tensorflow::NodeDef& node,
+                                                   const NodeMap& all_ng_nodes,
+                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto x0 = GetInputNode(all_ng_nodes, node, 0);
+                auto x1 = GetInputNode(all_ng_nodes, node, 1);
+                auto sigmoid_grad_op = std::make_shared<op::SigmoidBackprop>();
+                sigmoid_grad_op->set_name(node.name());
+
+                auto sigmoid_grad_gnode = m_graph->add_node_and_edge(sigmoid_grad_op, {x0, x1});
+                NamedNodeVector ret{{node.name(), sigmoid_grad_gnode}};
+                return ret;
+            }
+
             NamedNodeVector TranslateBiasAddGradOp(const tensorflow::NodeDef& node,
                                                    const NodeMap& all_ng_nodes,
                                                    std::shared_ptr<nnfusion::graph::Graph> m_graph)
@@ -3091,6 +3105,57 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateZerosLikeOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
+                shared_ptr<op::Constant> zeros;
+                if (input_gnode->get_element_type() == nnfusion::element::i32)
+                {
+                    std::vector<int32_t> vec(1, 0);
+                    zeros = std::make_shared<op::Constant>(
+                        input_gnode->get_element_type(), input_gnode->get_output_shape(0), vec);
+                }
+                else if (input_gnode->get_element_type() == nnfusion::element::i64)
+                {
+                    std::vector<int64_t> vec(1, 0);
+                    zeros = std::make_shared<op::Constant>(
+                        input_gnode->get_element_type(), input_gnode->get_output_shape(0), vec);
+                }
+                if (input_gnode->get_element_type() == nnfusion::element::f32)
+                {
+                    std::vector<float> vec(1, 0.0);
+                    zeros = std::make_shared<op::Constant>(
+                        input_gnode->get_element_type(), input_gnode->get_output_shape(0), vec);
+                }
+                else
+                    NNFUSION_CHECK_FAIL() << "Unsupported datatype.";
+                auto zeros_gnode = m_graph->add_node_and_edge(zeros, GNodeVector{});
+                NamedNodeVector ret{{node.name(), zeros_gnode}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateConcatOffsetOp(const tensorflow::NodeDef& node,
+                                                    const NodeMap& all_ng_nodes,
+                                                    std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto concat_dim = GetInputNode(all_ng_nodes, node, 0);
+                auto shape0 = GetInputNode(all_ng_nodes, node, 1);
+                auto shape1 = GetInputNode(all_ng_nodes, node, 2);
+                auto allinput = GetAllInputNode(all_ng_nodes, node);
+                NNFUSION_CHECK(allinput.size() == 3) << "ConcatOffsetOp only support two shapes.";
+
+                nnfusion::op::OpConfig::any config;
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), config);
+
+                auto _gnode =
+                    m_graph->add_node_and_edge(generic_op, GNodeVector{concat_dim, shape0, shape1});
+                NamedNodeVector ret{{node.name(), _gnode}};
+                return ret;
+            }
+
             const static std::map<const std::string, ConvertFunc> TRANSLATE_OP_MAP{
                 {"Abs", TranslateUnaryOp<op::Abs>},
                 {"Add", TranslateBinaryOp<op::Add>},
@@ -3188,6 +3253,9 @@ namespace nnfusion
                 {"Transpose", TranslateTransposeToReshapeOp},
                 {"Square", TranslateUnaryOp<op::Square>},
                 {"Shape", TranslateShapeOp},
+                {"ConcatOffset", TranslateConcatOffsetOp},
+                {"ZerosLike", TranslateZerosLikeOp},
+                {"SigmoidGrad", TranslateSigmoidGradOp},
                 {"Unpack", TranslateUnpackOp}};
 
             struct InputInfo
