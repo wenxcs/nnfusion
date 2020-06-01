@@ -1816,6 +1816,79 @@ namespace nnfusion
                 return ret;
             }
 
+            NamedNodeVector TranslateAssignOp(const tensorflow::NodeDef& node,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto ref_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto val_gnode = GetInputNode(all_ng_nodes, node, 1);
+
+                nnfusion::op::OpConfig::any myConfig;
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {ref_gnode, val_gnode});
+
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateAssignSubOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto ref_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto val_gnode = GetInputNode(all_ng_nodes, node, 1);
+
+                nnfusion::op::OpConfig::any myConfig;
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto generic_gnode = m_graph->add_node_and_edge(generic_op, {ref_gnode, val_gnode});
+
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
+            NamedNodeVector TranslateApplyAdamOp(const tensorflow::NodeDef& node,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph)
+            {
+                auto var_gnode = GetInputNode(all_ng_nodes, node, 0);
+                auto m_gnode = GetInputNode(all_ng_nodes, node, 1);
+                auto v_gnode = GetInputNode(all_ng_nodes, node, 2);
+                // { const
+                auto beta1_pow_gnode = GetInputNode(all_ng_nodes, node, 3);
+                auto beta2_pow_gnode = GetInputNode(all_ng_nodes, node, 4);
+                // }
+                auto lr_gnode = GetInputNode(all_ng_nodes, node, 5);
+                // { const
+                auto beta1_gnode = GetInputNode(all_ng_nodes, node, 6);
+                auto beta2_gnode = GetInputNode(all_ng_nodes, node, 7);
+                auto epsilon_gnode = GetInputNode(all_ng_nodes, node, 8);
+                // }
+                auto grad_gnode = GetInputNode(all_ng_nodes, node, 9);
+
+                nnfusion::op::OpConfig::any myConfig;
+                vector<float> t;
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(epsilon_gnode, &t));
+                myConfig["epsilon"] = t[0];
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(beta1_gnode, &t));
+                myConfig["beta1"] = t[0];
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(beta2_gnode, &t));
+                myConfig["beta2"] = t[0];
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(beta1_pow_gnode, &t));
+                myConfig["beta1_pow"] = t[0];
+                NNFUSION_CHECK(GetValueFromNGraphOp<float>(beta1_pow_gnode, &t));
+                myConfig["beta2_pow"] = t[0];
+
+                auto generic_op =
+                    std::make_shared<nnfusion::op::GenericOp>(node.name(), node.op(), myConfig);
+                auto generic_gnode = m_graph->add_node_and_edge(
+                    generic_op, {var_gnode, m_gnode, v_gnode, lr_gnode, grad_gnode});
+
+                NamedNodeVector ret{{node.name(), generic_gnode}};
+                return ret;
+            }
+
             NamedNodeVector
                 TranslateApplyMomentumOp(const tensorflow::NodeDef& node,
                                          const NodeMap& all_ng_nodes,
@@ -2395,9 +2468,11 @@ namespace nnfusion
                 auto dim_vec = input_gnode->get_shape();
                 auto in_rank = dim_vec.size();
 
+                /*
                 NNFUSION_CHECK(begin_vec.size() <= in_rank)
                     << "Index out of range using input dim " << begin_vec.size()
                     << "; input has only " << in_rank << " dims";
+                */
 
                 // TODO/Note/Question: Are begin, end and stride vectors are of equal length
 
@@ -2409,7 +2484,8 @@ namespace nnfusion
                                                               // vector<bool>, but it is
                                                               // optimized, so tie won't
                                                               // work. Hence using size_t
-                for (int dim_idx = 0; dim_idx < begin_vec.size(); dim_idx++)
+                auto min_rank = std::min(in_rank, begin_vec.size());
+                for (int dim_idx = 0; dim_idx < min_rank; dim_idx++)
                 {
                     std::tie(ng_begin_vec[dim_idx],
                              ng_end_vec[dim_idx],
@@ -2426,13 +2502,14 @@ namespace nnfusion
 
                 // filter out negative stride dimensions
                 vector<size_t> neg_strides;
-                for (int dim_idx = 0; dim_idx < in_rank; dim_idx++)
+                for (int dim_idx = 0; dim_idx < min_rank; dim_idx++)
                 {
                     if (ng_needs_reversal[dim_idx])
                     {
                         neg_strides.push_back(dim_idx);
                     }
                 }
+                std::cout << join(ng_stride_vec) << std::endl;
 
                 // atleast one stride was negative, in which case reverse the input
                 if (neg_strides.size() > 0)
@@ -2440,6 +2517,8 @@ namespace nnfusion
                     auto reverse_input_op = std::make_shared<op::Reverse>(neg_strides);
                     input_gnode = m_graph->add_node_and_edge(reverse_input_op, {input_gnode});
                 }
+
+                std::cout << join(ng_stride_vec) << std::endl;
 
                 auto strided_slice_op =
                     std::make_shared<op::Slice>(ng_begin_vec, ng_end_vec, ng_stride_vec);
@@ -3256,6 +3335,9 @@ namespace nnfusion
                 {"ConcatOffset", TranslateConcatOffsetOp},
                 {"ZerosLike", TranslateZerosLikeOp},
                 {"SigmoidGrad", TranslateSigmoidGradOp},
+                {"Assign", TranslateAssignOp},
+                {"AssignSub", TranslateAssignSubOp},
+                {"ApplyAdam", TranslateApplyAdamOp},
                 {"Unpack", TranslateUnpackOp}};
 
             struct InputInfo
