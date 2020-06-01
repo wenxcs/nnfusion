@@ -21,7 +21,8 @@ namespace nnfusion
             MaxPool(const nnfusion::Shape& window_shape,
                     const nnfusion::Strides& window_movement_strides,
                     const nnfusion::Shape& padding_below,
-                    const nnfusion::Shape& padding_above);
+                    const nnfusion::Shape& padding_above,
+                    std::string data_format = "NCHW");
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
@@ -30,12 +31,13 @@ namespace nnfusion
             /// \param window_shape The window shape.
             /// \param window_movement_strides The window movement strides.
             MaxPool(const nnfusion::Shape& window_shape,
-                    const nnfusion::Strides& window_movement_strides);
+                    const nnfusion::Strides& window_movement_strides,
+                    std::string data_format = "NCHW");
 
             /// \brief Constructs an unstrided batched max pooling operation (i.e., all window movement strides are 1 and all padding shapes are set to 0).
             ///
             /// \param window_shape The window shape.
-            MaxPool(const nnfusion::Shape& window_shape);
+            MaxPool(const nnfusion::Shape& window_shape, std::string data_format = "NCHW");
 
             /// \return The window shape.
             const nnfusion::Shape& get_window_shape() const { return m_window_shape; }
@@ -48,11 +50,14 @@ namespace nnfusion
             const nnfusion::Shape& get_padding_below() const { return m_padding_below; }
             /// \return The above-padding shape.
             const nnfusion::Shape& get_padding_above() const { return m_padding_above; }
+            /// \return The data format.
+            const std::string& get_data_format() const { return m_data_format; }
         protected:
             nnfusion::Shape m_window_shape;
             nnfusion::Strides m_window_movement_strides;
             nnfusion::Shape m_padding_below;
             nnfusion::Shape m_padding_above;
+            std::string m_data_format;
         };
 
         class MaxPoolBackprop : public Op

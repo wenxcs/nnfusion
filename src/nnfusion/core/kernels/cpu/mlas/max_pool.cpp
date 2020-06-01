@@ -17,6 +17,7 @@ cpu::MaxPoolMlas::MaxPoolMlas(shared_ptr<KernelContext> ctx)
     padding_below = max_pool->get_padding_below();
     padding_above = max_pool->get_padding_above();
     window_stride = max_pool->get_window_movement_strides();
+    data_format = max_pool->get_data_format();
     dtype = ctx->outputs[0]->get_element_type().c_type_string();
 
     std::stringstream tag;
@@ -29,6 +30,11 @@ cpu::MaxPoolMlas::MaxPoolMlas(shared_ptr<KernelContext> ctx)
 
 LanguageUnit_p cpu::MaxPoolMlas::emit_function_body()
 {
+    if (data_format == "NHWC")
+    {
+        return nullptr;
+    }
+
     // emit code
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;

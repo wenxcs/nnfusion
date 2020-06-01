@@ -5,6 +5,8 @@
 #include "../cpu_kernelops.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
+DECLARE_int32(fthread_num_per_node);
+
 namespace nnfusion
 {
     namespace kernels
@@ -35,6 +37,7 @@ namespace nnfusion
 
                     size_t remainder_count = m_data_size % m_simd_block_size;
                     size_t loop_count = m_data_size - remainder_count;
+                    size_t shard_data_count = m_data_size / m_simd_block_size;
 
                     auto op = CpuOpMap<T>::simd_op;
 
@@ -52,15 +55,35 @@ namespace nnfusion
                     NNFUSION_CHECK(num_inputs > 0)
                         << "At least one input and one output tesnor for elementwise-op.";
 
-                    if (m_data_types[num_inputs] == "bool")
-                    {
-                        lu << "float tmp_buffer[" << m_simd_block_size << "];";
-                    }
                     if (loop_count > 0)
                     {
-                        lu << "for (size_t i = 0; i < " << loop_count
-                           << "; i+=" << m_simd_block_size << ")\n";
+                        lu << "const int64_t min_cost_per_shard = 10000;\n";
+                        lu << "int num_shards = "
+                           << "std::max(std::min(static_cast<int64_t>("
+                           << "thread_pool->NumThreads()), " << loop_count
+                           << "/ min_cost_per_shard), static_cast<int64_t>(1));\n";
+                        lu << "const int64_t block_size = (" << shard_data_count
+                           << " + num_shards - 1) / num_shards;\n";
+                        lu << "if (block_size > " << shard_data_count << ")\n";
+                        lu.block_begin();
+                        lu << "num_shards = 1;\n";
+                        lu.block_end();
+
+                        lu << "auto func = [&](int __rank__)\n";
                         lu << "{\n";
+                        lu << "int64_t start = block_size * __rank__ * " << m_simd_block_size
+                           << ";\n";
+                        lu << "int64_t end = std::min(block_size * (__rank__ + 1), "
+                              "static_cast<int64_t>("
+                           << shard_data_count << ")) * " << m_simd_block_size << ";\n";
+
+                        if (m_data_types[num_inputs] == "bool")
+                        {
+                            lu << "float tmp_buffer[" << m_simd_block_size << "];\n";
+                        }
+
+                        lu << "for (size_t i = start; i < end; i+=" << m_simd_block_size << ")\n";
+                        lu.block_begin();
                         for (size_t i = 0; i < num_inputs; ++i)
                         {
                             lu << "__m256 in" << i << " = _mm256_loadu_ps(input" << i << " + i);\n";
@@ -82,7 +105,9 @@ namespace nnfusion
                         {
                             lu << "_mm256_storeu_ps(output0 + i, out);\n";
                         }
-                        lu << "}\n";
+                        lu.block_end();
+                        lu << "};\n";
+                        lu << "thread_pool->ParallelFor(num_shards, func);\n";
                     }
 
                     if (remainder_count > 0)

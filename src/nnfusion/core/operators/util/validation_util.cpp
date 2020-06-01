@@ -267,7 +267,8 @@ nnfusion::PartialShape
                                                 const nnfusion::CoordinateDiff& data_padding_above,
                                                 const nnfusion::PartialShape& window_shape,
                                                 const nnfusion::Strides& window_strides,
-                                                bool is_window_all_in_padding_allowed)
+                                                bool is_window_all_in_padding_allowed,
+                                                std::string data_format)
 {
     OP_VALIDATION(op,
                   data_batch_shape.rank().is_dynamic() ||
@@ -289,6 +290,9 @@ nnfusion::PartialShape
         << data_padding_below << "), padding above (" << data_padding_above << "), window shape ("
         << window_shape << "), and window strides (" << window_strides << ") do not match.";
 
+    OP_VALIDATION(op, data_format == "NCHW" || data_format == "NHWC")
+        << "data format must be NCHW or NHWC.";
+
     nnfusion::Dimension batch_size{nnfusion::Dimension::dynamic()};
     nnfusion::Dimension channel_count{nnfusion::Dimension::dynamic()};
     nnfusion::PartialShape data_output_spatial_shape{
@@ -297,11 +301,12 @@ nnfusion::PartialShape
     if (data_batch_shape.rank().is_static())
     {
         batch_size = data_batch_shape[0];
-        channel_count = data_batch_shape[1];
+        channel_count = data_format == "NCHW" ? data_batch_shape[1] : data_batch_shape[3];
 
         for (size_t i = 0; i < static_cast<size_t>(data_spatial_shape.rank()); i++)
         {
-            data_spatial_shape[i] = data_batch_shape[i + 2];
+            data_spatial_shape[i] =
+                data_format == "NCHW" ? data_batch_shape[i + 2] : data_batch_shape[i + 1];
         }
 
         OP_VALIDATION(op, batch_size.is_dynamic() || static_cast<size_t>(batch_size) > 0)
@@ -328,12 +333,26 @@ nnfusion::PartialShape
 
     nnfusion::PartialShape data_batch_output_shape{
         nnfusion::PartialShape::dynamic(data_output_spatial_shape.rank() + 2)};
-    data_batch_output_shape[0] = batch_size;
-    data_batch_output_shape[1] = channel_count;
 
-    for (size_t i = 0; i < static_cast<size_t>(data_spatial_shape.rank()); i++)
+    if (data_format == "NCHW")
     {
-        data_batch_output_shape[i + 2] = data_output_spatial_shape[i];
+        data_batch_output_shape[0] = batch_size;
+        data_batch_output_shape[1] = channel_count;
+
+        for (size_t i = 0; i < static_cast<size_t>(data_spatial_shape.rank()); i++)
+        {
+            data_batch_output_shape[i + 2] = data_output_spatial_shape[i];
+        }
+    }
+    else
+    {
+        data_batch_output_shape[0] = batch_size;
+        data_batch_output_shape[3] = channel_count;
+
+        for (size_t i = 0; i < static_cast<size_t>(data_spatial_shape.rank()); i++)
+        {
+            data_batch_output_shape[i + 1] = data_output_spatial_shape[i];
+        }
     }
 
     return data_batch_output_shape;

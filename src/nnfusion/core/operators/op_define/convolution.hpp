@@ -103,9 +103,8 @@ namespace nnfusion
             {
                 return m_data_dilation_strides;
             }
+            /// \return The data format.
             const std::string& get_data_format() const { return m_data_format; }
-            /// \return The default value for Convolution.
-
         protected:
             nnfusion::Strides m_window_movement_strides;
             nnfusion::Strides m_window_dilation_strides;

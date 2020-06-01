@@ -85,6 +85,7 @@ namespace nnfusion
                 SimdKernelEmitter(shared_ptr<KernelContext> ctx)
                     : CpuKernelEmitter(ctx)
                 {
+                    m_intra_op_parallelism = true;
                 }
 
                 virtual std::pair<std::string, shared_ptr<LanguageUnit>> get_op_kernel()

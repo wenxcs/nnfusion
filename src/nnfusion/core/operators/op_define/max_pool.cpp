@@ -10,23 +10,27 @@ using namespace nnfusion::op;
 MaxPool::MaxPool(const nnfusion::Shape& window_shape,
                  const nnfusion::Strides& window_movement_strides,
                  const nnfusion::Shape& padding_below,
-                 const nnfusion::Shape& padding_above)
+                 const nnfusion::Shape& padding_above,
+                 std::string data_format)
     : Op("MaxPool")
     , m_window_shape(window_shape)
     , m_window_movement_strides(window_movement_strides)
     , m_padding_below(padding_below)
     , m_padding_above(padding_above)
+    , m_data_format(data_format)
 {
 }
 
 MaxPool::MaxPool(const nnfusion::Shape& window_shape,
-                 const nnfusion::Strides& window_movement_strides)
-    : MaxPool(window_shape, window_movement_strides, nnfusion::Shape(), nnfusion::Shape())
+                 const nnfusion::Strides& window_movement_strides,
+                 std::string data_format)
+    : MaxPool(
+          window_shape, window_movement_strides, nnfusion::Shape(), nnfusion::Shape(), data_format)
 {
 }
 
-MaxPool::MaxPool(const nnfusion::Shape& window_shape)
-    : MaxPool(window_shape, nnfusion::Strides(), nnfusion::Shape(), nnfusion::Shape())
+MaxPool::MaxPool(const nnfusion::Shape& window_shape, std::string data_format)
+    : MaxPool(window_shape, nnfusion::Strides(), nnfusion::Shape(), nnfusion::Shape(), data_format)
 {
 }
 
@@ -62,7 +66,8 @@ void MaxPool::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
                                                                    padding_above,
                                                                    m_window_shape,
                                                                    m_window_movement_strides,
-                                                                   true));
+                                                                   true,
+                                                                   m_data_format));
 }
 
 MaxPoolBackprop::MaxPoolBackprop(const nnfusion::Shape& window_shape,

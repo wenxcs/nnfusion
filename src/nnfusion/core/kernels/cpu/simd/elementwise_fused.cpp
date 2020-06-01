@@ -5,6 +5,7 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 using namespace nnfusion::kernels::cpu;
 
+DECLARE_int32(fthread_num_per_node);
 int ElementwiseFused::unique_func_id = 0;
 
 ElementwiseFused::ElementwiseFused(shared_ptr<KernelContext> ctx)
@@ -188,12 +189,30 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
     }
     size_t remainder_count = data_size % m_simd_block_size;
     size_t loop_count = data_size - remainder_count;
-    //lu << "auto start = std::chrono::high_resolution_clock::now();\n";
+    size_t shard_data_count = data_size / m_simd_block_size;
 
     if (loop_count > 0)
     {
-        lu << "for (size_t i = 0; i < " << loop_count << "; i+=" << m_simd_block_size << ")\n";
+        lu << "const int64_t min_cost_per_shard = 10000;\n";
+        lu << "int num_shards = "
+           << "std::max(std::min(static_cast<int64_t>("
+           << "thread_pool->NumThreads()), " << loop_count
+           << " / min_cost_per_shard), static_cast<int64_t>(1));\n";
+        lu << "const int64_t block_size = (" << shard_data_count
+           << " + num_shards - 1) / num_shards;\n";
+        lu << "if (block_size > " << shard_data_count << ")\n";
+        lu.block_begin();
+        lu << "num_shards = 1;\n";
+        lu.block_end();
+
+        lu << "auto func = [&](int __rank__)\n";
         lu << "{\n";
+        lu << "int64_t start = block_size * __rank__ * " << m_simd_block_size << ";\n";
+        lu << "int64_t end = std::min(block_size * (__rank__ + 1), static_cast<int64_t>("
+           << shard_data_count << ")) * " << m_simd_block_size << ";\n";
+
+        lu << "for (size_t i = start; i < end; i+=" << m_simd_block_size << ")\n";
+        lu.block_begin();
         for (const auto& simd_init : in_multi_data)
         {
             lu << simd_init.second << "\n";
@@ -213,7 +232,9 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
                 lu << "simd_" << in_args[pair.first] << ");\n";
             }
         }
-        lu << "}\n";
+        lu.block_end();
+        lu << "};\n";
+        lu << "thread_pool->ParallelFor(num_shards, func);\n";
     }
 
     if (remainder_count > 0)
@@ -242,9 +263,6 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
         }
         lu << "}\n";
     }
-    //lu << "auto end = std::chrono::high_resolution_clock::now();\n";
-    //lu << "auto duration = std::chrono::duration_cast<std::chrono::microseconds>( end - start ).count();\n";
-    //lu << "std::cout << \"" << get_function_name() << "\\t\" << duration << std::endl;";
 
     return lu_;
 }

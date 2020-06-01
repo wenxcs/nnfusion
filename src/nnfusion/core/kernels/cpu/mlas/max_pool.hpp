@@ -20,7 +20,7 @@ namespace nnfusion
                 nnfusion::Shape input_shape, output_shape, window_shape, padding;
                 nnfusion::Shape padding_below, padding_above;
                 nnfusion::Strides window_stride;
-                string dtype;
+                string dtype, data_format;
             };
         } // namespace cpu
     }     // namespace kernels

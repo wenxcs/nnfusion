@@ -621,8 +621,9 @@ namespace nnfusion
                 BatchedOpParamToNGraph(is_nhwc, tf_strides, ng_strides);
                 BatchedOpParamToNGraph(is_nhwc, input_gnode->get_shape(), ng_image_shape);
                 BatchedOpParamToNGraph(is_nhwc, tf_ksize, ng_kernel_shape);
+
                 auto reshape_gnode = BatchToNGraph(is_nhwc, input_gnode);
-                if (reshape_gnode != nullptr)
+                if (reshape_gnode != nullptr && FLAGS_fdefault_device != "CPU")
                 {
                     m_graph->add_node(reshape_gnode);
                     m_graph->add_edge(input_gnode, 0, reshape_gnode, 0);
@@ -646,12 +647,15 @@ namespace nnfusion
                             ng_padding_below,
                             ng_padding_above);
 
-                auto maxpool_op = std::make_shared<nnfusion::op::MaxPool>(
-                    ng_kernel_shape, ng_strides, ng_padding_below, ng_padding_above);
+                auto maxpool_op = std::make_shared<nnfusion::op::MaxPool>(ng_kernel_shape,
+                                                                          ng_strides,
+                                                                          ng_padding_below,
+                                                                          ng_padding_above,
+                                                                          tf_data_format);
                 auto maxpool_gnode = m_graph->add_node_and_edge(maxpool_op, {reshape_gnode});
 
                 auto reshape_maxpool_gnode = BatchToTensorflow(is_nhwc, maxpool_gnode);
-                if (reshape_maxpool_gnode != nullptr)
+                if (reshape_maxpool_gnode != nullptr && FLAGS_fdefault_device != "CPU")
                 {
                     m_graph->add_node(reshape_maxpool_gnode);
                     m_graph->add_edge(maxpool_gnode, 0, reshape_maxpool_gnode, 0);

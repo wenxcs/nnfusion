@@ -39,7 +39,8 @@ namespace nnfusion
                                           const nnfusion::CoordinateDiff& data_padding_above,
                                           const nnfusion::PartialShape& window_shape,
                                           const nnfusion::Strides& window_strides,
-                                          bool is_window_all_in_padding_allowed);
+                                          bool is_window_all_in_padding_allowed,
+                                          std::string data_format = "NCHW");
 
         std::tuple<nnfusion::element::Type, nnfusion::PartialShape, nnfusion::PartialShape>
             infer_batch_norm_forward(const Op* op,
