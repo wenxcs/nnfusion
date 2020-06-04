@@ -625,6 +625,8 @@ namespace nnfusion
                 auto reshape_gnode = BatchToNGraph(is_nhwc, input_gnode);
                 if (reshape_gnode != nullptr && FLAGS_fdefault_device != "CPU")
                 {
+                    // Set data format as "NCHW", since have transposed the data from "NHWC" to "NCHW".
+                    tf_data_format = "NCHW";
                     m_graph->add_node(reshape_gnode);
                     m_graph->add_edge(input_gnode, 0, reshape_gnode, 0);
                 }
@@ -723,6 +725,8 @@ namespace nnfusion
                 auto reshape_filter_gnode = Reshape<3, 2, 0, 1>(filter_gnode);
                 if (!is_nhwc || FLAGS_fdefault_device != "CPU")
                 {
+                    // Set data format as "NCHW", since have transposed the data from "NHWC" to "NCHW".
+                    tf_data_format = "NCHW";
                     m_graph->add_node(reshape_filter_gnode);
                     m_graph->add_edge(filter_gnode, 0, reshape_filter_gnode, 0);
                 }
