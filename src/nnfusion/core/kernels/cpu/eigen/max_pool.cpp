@@ -2,8 +2,6 @@
 #include "../cpu_kernel_emitter.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
-DECLARE_int32(fthread_num_per_node);
-
 namespace nnfusion
 {
     namespace kernels
@@ -45,20 +43,20 @@ namespace nnfusion
                     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
                     auto& lu = *_lu;
 
-                    static const int64_t min_cost_per_rank = 10000;
-                    int num_shards =
-                        std::max(std::min(static_cast<uint64_t>(FLAGS_fthread_num_per_node),
-                                          shape_size(input_shape) / min_cost_per_rank),
-                                 static_cast<uint64_t>(1));
-                    const int64_t block_size = (input_shape[0] + num_shards - 1) / num_shards;
-                    if (block_size > input_shape[0])
-                    {
-                        num_shards = 1;
-                    }
-
                     auto code = nnfusion::op::create_code_from_template(
                         R"(
+const int64_t min_cost_per_rank = 10000;
+int num_shards =
+    std::max(std::min(static_cast<int64_t>(thread_pool->NumThreads()),
+                      @input_size@ / min_cost_per_rank),
+             static_cast<int64_t>(1));
 const int32_t batch = @batch@;
+const int64_t block_size = (batch + num_shards - 1) / num_shards;
+if (block_size > batch)
+{
+    num_shards = 1;
+}
+
 const int32_t in_rows = @in_rows@;
 const int32_t in_cols = @in_cols@;
 const int32_t channel = @channel@;
@@ -79,8 +77,6 @@ typedef Eigen::Map<Eigen::Matrix<@ElementType@, Eigen::Dynamic, Eigen::Dynamic>>
 ConstEigenMatrixMap in_mat(input0, channel, in_cols * in_rows * batch);
 EigenMatrixMap out_mat(output0, channel, out_width * out_height * batch);
 
-int32_t rank = @num_shards@;
-const int64_t block_size = @block_size@;
 const int64_t output_image_size = out_height * out_width * channel;
 
 auto func = [&](int __rank__)
@@ -127,12 +123,13 @@ auto func = [&](int __rank__)
     }
 };
 
-thread_pool->ParallelFor(rank, func);
+thread_pool->ParallelFor(num_shards, func);
 )",
                         {{"batch", input_shape[0]},
                          {"in_rows", input_shape[1]},
                          {"in_cols", input_shape[2]},
                          {"channel", input_shape[3]},
+                         {"input_size", shape_size(input_shape)},
                          {"pad_rows", padding_below[1]},
                          {"pad_cols", padding_below[0]},
                          {"window_rows", window_shape[0]},
@@ -141,8 +138,6 @@ thread_pool->ParallelFor(rank, func);
                          {"col_stride", window_stride[1]},
                          {"out_height", output_shape[1]},
                          {"out_width", output_shape[2]},
-                         {"num_shards", num_shards},
-                         {"block_size", block_size},
                          {"ElementType", dtype}});
                     lu << code;
 
