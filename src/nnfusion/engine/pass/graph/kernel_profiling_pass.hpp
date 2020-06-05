@@ -24,6 +24,10 @@ namespace nnfusion
             {
             public:
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
+
+            private:
+                bool default_profiling_pass(std::shared_ptr<nnfusion::graph::Graph>& graph);
+                bool merged_profiling_pass(std::shared_ptr<nnfusion::graph::Graph>& graph);
             };
         }
     }

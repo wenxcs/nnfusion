@@ -17,6 +17,8 @@ using namespace nnfusion;
 using namespace nnfusion::profiler;
 using namespace std::chrono;
 
+DECLARE_bool(fmerge_prof_compiling);
+
 Profiler::Profiler(IProfilingRuntime::Pointer rt, ProfilingContext::Pointer context)
 {
     this->rt = rt;
@@ -32,7 +34,14 @@ double Profiler::execute(void** input, void** output)
     for (int i = 0; i < pctx->host_times; i++)
     {
         high_resolution_clock::time_point t1 = high_resolution_clock::now();
-        double device_time_span = rt->execute(this->pctx, input, output);
+        double device_time_span;
+        if (FLAGS_fmerge_prof_compiling)
+        {
+            if (auto cpu_rt = dynamic_pointer_cast<CPUDefaultRuntime>(rt))
+                device_time_span = cpu_rt->sep_invoke(this->pctx, input, output);
+        }
+        else
+            device_time_span = rt->execute(this->pctx, input, output);
         high_resolution_clock::time_point t2 = high_resolution_clock::now();
         duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
         if (device_time_span < 0)

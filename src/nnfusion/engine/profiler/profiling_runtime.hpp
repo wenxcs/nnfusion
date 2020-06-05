@@ -408,7 +408,7 @@ INSERT INTO KernelCache(key_code, key_op, device_type, cost) VALUES(?, ?, ?, ?);
             string working_dir = "profile/";
             size_t warmup_times = 5;
             size_t host_times = 1;
-            size_t runtime_times = 10000;
+            size_t runtime_times = 100;
             // This emitter includes the kernel context;
             ProfilingResult result;
             kernels::KernelEmitter::Pointer kernel;

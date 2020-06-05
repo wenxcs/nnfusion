@@ -254,6 +254,13 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 {
     if (ke->source_code != nullptr)
         return true;
+
+    // setpwd
+    std::string working_dir = "./cpu_profiler/";
+    nnfusion::codegen::create_folder(working_dir);
+    int status = chdir(working_dir.c_str());
+    NNFUSION_CHECK(status == 0);
+
     FunctionUnit_p fu = ke->kernel->get_or_emit_source();
     LanguageUnit writer(fu->name_unit->get_code());
     writer << "// Microsoft (c) 2019, NNFusion\n";
@@ -268,7 +275,6 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     if (ke->kernel->is_parallelism())
     {
         re->require(header::threadpool);
-        re->require(declaration::worker_thread_pool);
     }
     for (auto& it : re->local_symbol)
         global_required.insert(it.second->symbol);
@@ -417,6 +423,7 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
         if (ke->kernel->is_parallelism())
         {
+            writer << declaration::worker_thread_pool->get_code() << "\n";
             writer << "worker_thread_pool = new concurrency::NumaAwareThreadPool(1, 1);\n";
         }
 
@@ -507,6 +514,21 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     writer.block_end();
 
     ke->source_code = make_shared<LanguageUnit>(move(writer));
+    // save src file
+    string filename = ke->source_code->get_symbol();
+    if (filename.length() > 128)
+    {
+        size_t hashcode = std::hash<std::string>{}(filename);
+        filename = "compressed_src_" + std::to_string(hashcode);
+    }
+
+    string srcname = filename + ".cpp";
+    ofstream source_file(srcname);
+    source_file << ke->source_code->get_code();
+    source_file.close();
+
+    status = chdir("../");
+    NNFUSION_CHECK(status == 0);
     return true;
 }
 
@@ -514,6 +536,13 @@ bool CPUDefaultRuntime::cmake_codegen(const ProfilingContext::Pointer& ke)
 {
     if (ke->cmake_code != nullptr)
         return true;
+
+    // setpwd
+    std::string working_dir = "./cpu_profiler/";
+    nnfusion::codegen::create_folder(working_dir);
+    int status = chdir(working_dir.c_str());
+    NNFUSION_CHECK(status == 0);
+
     FunctionUnit_p fu = ke->kernel->get_or_emit_source();
     LanguageUnit lu_cmake("CMakeLists.txt");
     auto re = fu->dep_unit;
@@ -626,6 +655,118 @@ target_link_libraries(${TARGET_NAME} pthread libmkl)
     }
 
     ke->cmake_code = make_shared<LanguageUnit>(move(lu_cmake));
+
+    // save cmake file
+    string cmakename = "CMakeLists.txt";
+    ofstream cmake_file(cmakename);
+    cmake_file << ke->cmake_code->get_code();
+    cmake_file.close();
+
+    status = chdir("../");
+    NNFUSION_CHECK(status == 0);
+    return true;
+}
+
+bool CPUDefaultRuntime::general_cmake_codegen()
+{
+    // setpwd
+    std::string working_dir = "./cpu_profiler/";
+    nnfusion::codegen::create_folder(working_dir);
+    int status = chdir(working_dir.c_str());
+    NNFUSION_CHECK(status == 0);
+
+    LanguageUnit lu_cmake("CMakeLists.txt");
+
+    lu_cmake << R"(
+project(cpu_profiler)
+cmake_minimum_required(VERSION 3.5)
+
+SET(TARGET_NAME "" CACHE STRING "cpu kernel profiler target name")
+
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=gnu++11 -O3 -march=native -pthread")
+
+file(GLOB SOURCE_FILE *.cpp)
+
+add_library(${TARGET_NAME} SHARED ${SOURCE_FILE})
+    )"
+             << "\n";
+
+    char exe_path[PATH_MAX];
+    size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
+    const char* path;
+    if (count != -1)
+    {
+        path = dirname(exe_path);
+    }
+    else
+    {
+        throw std::runtime_error("Failed to get the directory of executable file.\n");
+    }
+
+    struct stat s;
+
+    lu_cmake << "find_package(Threads REQUIRED)\n";
+    lu_cmake << "target_link_libraries(${TARGET_NAME} Threads::Threads)\n\n";
+
+    // if (ke->kernel->is_parallelism())
+    {
+        // Prepare eigen submodule.
+        if (stat("./eigen", &s) != 0)
+        {
+            std::string eigen_path = std::string(path) + std::string("/eigen");
+            std::string cmd = std::string("cp -R ") + eigen_path + std::string(" .");
+            if (0 != system(cmd.c_str()))
+            {
+                throw std::runtime_error("Failed to copy eigen source files.\n");
+            }
+        }
+        lu_cmake << "if (NOT TARGET eigen)\n";
+        lu_cmake << "include(eigen/eigen.cmake)\n";
+        lu_cmake << "endif()\n";
+        lu_cmake << "target_link_libraries(${TARGET_NAME} eigen)\n\n";
+
+        // Prepare threadpool submodule.
+        if (stat("./threadpool", &s) != 0)
+        {
+            std::string threadpool_path = std::string(path) + std::string("/threadpool");
+            std::string cmd = std::string("cp -R ") + threadpool_path + std::string(" .");
+            if (0 != system(cmd.c_str()))
+            {
+                throw std::runtime_error("Failed to copy threadpool source files.\n");
+            }
+        }
+        lu_cmake << "if (NOT TARGET threadpool)\n";
+        lu_cmake << "include(threadpool/threadpool.cmake)\n";
+        lu_cmake << "endif()\n";
+        lu_cmake << "target_link_libraries(${TARGET_NAME} threadpool)\n\n";
+    }
+
+    // if (global_required.count("header::mlas") > 0)
+    {
+        // Prepare mlas submodule.
+        if (stat("./mlas", &s) != 0)
+        {
+            std::string mlas_path = std::string(path) + std::string("/mlas");
+            std::string cmd = std::string("cp -R ") + mlas_path + std::string(" .");
+            if (0 != system(cmd.c_str()))
+            {
+                throw std::runtime_error("Failed to copy mlas source files.\n");
+            }
+        }
+        lu_cmake << "if (NOT TARGET mlas)\n";
+        lu_cmake << "include(mlas/mlas.cmake)\n";
+        lu_cmake << "endif()\n";
+        lu_cmake << "target_link_libraries(${TARGET_NAME} mlas)\n\n";
+    }
+
+    // save cmake file
+    string cmakename = "CMakeLists.txt";
+    ofstream cmake_file(cmakename);
+    cmake_file << lu_cmake.get_code();
+    cmake_file.close();
+
+    status = chdir("../");
+    NNFUSION_CHECK(status == 0);
     return true;
 }
 
@@ -633,21 +774,22 @@ bool CPUDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
 {
     if (ke->entry_point != nullptr)
         return true;
+    // setpwd
+    std::string working_dir = "./cpu_profiler/";
+    nnfusion::codegen::create_folder(working_dir);
+    int status = chdir(working_dir.c_str());
+    NNFUSION_CHECK(status == 0);
+
     // src file
     string filename = ke->source_code->get_symbol();
+    if (filename.length() > 128)
+    {
+        size_t hashcode = std::hash<std::string>{}(filename);
+        filename = "compressed_src_" + std::to_string(hashcode);
+    }
 
     string objname = std::string("lib") + filename + DLIB_SUFFIX;
     string srcname = filename + ".cpp";
-    ofstream source_file(srcname);
-    source_file << ke->source_code->get_code();
-    source_file.close();
-
-    // cmake file
-    string cmakename = "CMakeLists.txt";
-    ofstream cmake_file(cmakename);
-    // todo
-    cmake_file << ke->cmake_code->get_code();
-    cmake_file.close();
 
     std::string cmd = std::string("cmake . -DSOURCE_FILE=") + srcname +
                       std::string(" -DTARGET_NAME=") + filename + string("&& make -j");
@@ -663,49 +805,92 @@ bool CPUDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
         return false;
     ke->entry_point = (double (*)(void**, void**))entry;
 
+    status = chdir("../");
+    NNFUSION_CHECK(status == 0);
     return true;
 }
 
-double CPUDefaultRuntime::invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
+bool CPUDefaultRuntime::general_compile()
 {
+    // generate cmake file
+    if (!general_cmake_codegen())
+        return false;
+
     // setpwd
     std::string working_dir = "./cpu_profiler/";
     nnfusion::codegen::create_folder(working_dir);
     int status = chdir(working_dir.c_str());
     NNFUSION_CHECK(status == 0);
 
+    string objname = std::string("libcpu_kernel_prof") + DLIB_SUFFIX;
+
+    std::string cmd = std::string("cmake . -DTARGET_NAME=cpu_kernel_prof && make -j");
+    int ret = system((cmd.c_str()));
+    if (ret != 0)
+        return false;
+    if (!file_exsits(objname))
+        return false;
+
+    status = chdir("../");
+    NNFUSION_CHECK(status == 0);
+    return true;
+}
+
+double CPUDefaultRuntime::invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
+{
     global_required.clear();
 
     if (codegen(ke) == false)
     {
-        status = chdir("../");
-        NNFUSION_CHECK(status == 0);
         NNFUSION_LOG(INFO) << "cpu kernel source file codegen fail.";
         return -1.0;
     }
     if (cmake_codegen(ke) == false)
     {
-        status = chdir("../");
-        NNFUSION_CHECK(status == 0);
         NNFUSION_LOG(INFO) << "cpu kernel cmake file codegen fail.";
         return -1.0;
     }
     if (compile(ke) == false)
     {
-        status = chdir("../");
-        NNFUSION_CHECK(status == 0);
         NNFUSION_LOG(INFO) << "cpu kernel compilation fail.";
         return -1.0;
     }
     if (ke->entry_point == nullptr)
     {
-        status = chdir("../");
-        NNFUSION_CHECK(status == 0);
         NNFUSION_LOG(INFO) << "cpu kernel entry point fail.";
         return -1.0;
     }
-    status = chdir("../");
-    NNFUSION_CHECK(status == 0);
+    return ke->entry_point(input, output);
+}
+
+double
+    CPUDefaultRuntime::sep_invoke(const ProfilingContext::Pointer& ke, void** input, void** output)
+{
+    // setpwd
+    std::string working_dir = "./cpu_profiler/";
+    // nnfusion::codegen::create_folder(working_dir);
+    // int status = chdir(working_dir.c_str());
+    // NNFUSION_CHECK(status == 0);
+
+    std::string objname = working_dir + std::string("libcpu_kernel_prof") + DLIB_SUFFIX;
+    auto obj = get_library_handle(objname);
+    auto entry = get_funcion_pointer(
+        ke->kernel->get_or_emit_source()->name_unit->get_code() + "_entry", obj);
+    if (entry == nullptr)
+    {
+        NNFUSION_LOG(INFO) << "cpu kernel entry not found.";
+        return -1.0;
+    }
+    ke->entry_point = (double (*)(void**, void**))entry;
+
+    // status = chdir("../");
+    // NNFUSION_CHECK(status == 0);
+
+    if (ke->entry_point == nullptr)
+    {
+        NNFUSION_LOG(INFO) << "cpu kernel entry point fail.";
+        return -1.0;
+    }
     return ke->entry_point(input, output);
 }
 

@@ -20,17 +20,16 @@ namespace nnfusion
         public:
             static Pointer Runtime();
             CPUDefaultRuntime() { _dt = GENERIC_CPU; }
-            // double execute(const ProfilingContext::Pointer& ke,
-            //                void** input,
-            //                size_t input_size,
-            //                void** output,
-            //                size_t output_size) override;
+            bool codegen(const ProfilingContext::Pointer& ke);
+            bool general_compile();
+            double sep_invoke(const ProfilingContext::Pointer& ke, void** input, void** output);
 
         private:
             // Tiny codegen function for runtime
-            bool codegen(const ProfilingContext::Pointer& ke);
+            // bool codegen(const ProfilingContext::Pointer& ke);
             bool cmake_codegen(const ProfilingContext::Pointer& ke);
             bool compile(const ProfilingContext::Pointer& ke);
+            bool general_cmake_codegen();
             double
                 invoke(const ProfilingContext::Pointer& ke, void** input, void** output) override;
             unordered_set<string> global_required;
