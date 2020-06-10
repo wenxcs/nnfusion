@@ -192,8 +192,10 @@ namespace nnfusion
 
                     auto print_standard_codegen = [&](std::shared_ptr<GNode>& curr,
                                                       std::ofstream& fout,
-                                                      std::string code,
+                                                      std::string ir,
                                                       std::string options) {
+                        std::string code = autogen(ir);
+
                         if (options.size() > 0)
                         {
                             if (options[0] != '|')
@@ -228,6 +230,7 @@ namespace nnfusion
                             kernel = dedupe_kernels.find(code);
                         }
 
+                        fout << "// " << ir << "\n";
                         if (int(options.find("|inplace_wg|")) < 0)
                         {
                             fout << "NNfusionTensor " << arg_names[curr] << "(device, {"
@@ -276,9 +279,13 @@ namespace nnfusion
                         for (auto& it : curr->get_input_shape(0))
                             num_elements *= it;
 
-                        auto code = autogen(op::create_code_from_template(
-                            expr, {{"common_shape", "[ " + std::to_string(num_elements) + " ]"}}));
-                        print_standard_codegen(curr, fout, code, options);
+                        print_standard_codegen(
+                            curr,
+                            fout,
+                            op::create_code_from_template(
+                                expr,
+                                {{"common_shape", "[ " + std::to_string(num_elements) + " ]"}}),
+                            options);
                     };
 
                     std::unordered_map<std::string,
@@ -452,7 +459,7 @@ namespace nnfusion
                                     pos += sizeof(annotation) - 1;
                                     options = ir.substr(pos);
                                 }
-                                print_standard_codegen(curr, fout, autogen(ir), options);
+                                print_standard_codegen(curr, fout, ir, options);
                             }
                             else
                                 UNHANDLED_CASE(curr);

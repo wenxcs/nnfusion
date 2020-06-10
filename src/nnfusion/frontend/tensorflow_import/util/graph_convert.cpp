@@ -35,10 +35,47 @@ namespace nnfusion
                 for (int i = 0; i < input_cnt; i++)
                     input_gnodes.push_back(GetInputNode(all_ng_nodes, node, i));
 
+                nnfusion::op::OpConfig::any config;
+                for (auto& entry : node.attr())
+                {
+                    switch (entry.second.value_case())
+                    {
+                    case ::tensorflow::AttrValue::ValueCase::kS:
+                        config[entry.first] = entry.second.s();
+                        break;
+                    case ::tensorflow::AttrValue::ValueCase::kI:
+                        config[entry.first] = entry.second.i();
+                        break;
+                    case ::tensorflow::AttrValue::ValueCase::kF:
+                        config[entry.first] = entry.second.f();
+                        break;
+                    case ::tensorflow::AttrValue::ValueCase::kB:
+                        config[entry.first] = entry.second.b();
+                        break;
+                    case ::tensorflow::AttrValue::ValueCase::kType:
+                    {
+                        auto dtype = entry.second.type();
+                        switch (dtype)
+                        {
+                        case ::tensorflow::DataType::DT_FLOAT:
+                            config[entry.first] = "float32";
+                            break;
+                        case ::tensorflow::DataType::DT_INT32: config[entry.first] = "int32"; break;
+                        default: NNFUSION_CHECK(false) << "Unrecognized data type: " << dtype;
+                        }
+                    }
+                    break;
+                    default:
+                        NNFUSION_CHECK(false) << "Unrecognized value case: "
+                                              << entry.second.value_case();
+                    }
+                }
+                NNFUSION_LOG(INFO) << "GenericTFNode(" << node.op() << "): " << config << std::endl;
+
                 auto generic_op = std::make_shared<nnfusion::op::GenericOp>(
                     node.name(),
                     node.op(), // select which existing kernels to use;
-                    nnfusion::op::OpConfig::any{});
+                    config);
                 auto generic_gnode = m_graph->add_node_and_edge(generic_op, input_gnodes);
                 NamedNodeVector ret{{node.name(), generic_gnode}};
                 return ret;

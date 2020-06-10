@@ -165,8 +165,9 @@ namespace nnfusion
                 for (auto& item : customOpConfig.items())
                 {
                     NNFUSION_CHECK(keyset.find(item.key()) != keyset.end())
-                        << "Invalid attribution `" + item.key() + "` not recognized by op type `" +
-                               opname + "`";
+                        << "####### From " << opname << "'s config: " << customOpConfig
+                        << ": Invalid attribution `" + item.key() +
+                               "` not recognized by op type `" + opname + "`";
                     localOpConfig.getRoot()[item.key()] = item.value();
                 }
 

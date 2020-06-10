@@ -69,9 +69,9 @@ namespace nnfusion
                     auto const_op = std::dynamic_pointer_cast<op::Constant>(gnode->get_op_ptr());
                     std::vector<char> one(const_op->get_data_size());
                     memcpy(one.data(), const_op->get_data_ptr(), one.size());
-                    for (int i = 0; i < std::min(10LU, one.size()); ++i)
-                        NNFUSION_LOG(INFO) << one[i];
-                    puts("...");
+                    // for (int i = 0; i < std::min(10LU, one.size()); ++i)
+                    //     NNFUSION_LOG(INFO) << one[i];
+                    // puts("...");
                     auto& it = dict[gnode];
                     it.push_back(std::move(one));
                     NNFUSION_CHECK(one.size() == 0);
