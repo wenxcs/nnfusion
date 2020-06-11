@@ -73,6 +73,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
 {
     LanguageUnit_p _lu(new LanguageUnit(this->m_kernel_name + "_sig"));
     auto& lu = *_lu;
+    string::size_type idx = this->m_kernel_name.find("Result");
 
     vector<string> params;
     for (size_t i = 0; i < m_context->inputs.size(); i++)
@@ -85,8 +86,14 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
 
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
+        
         stringstream ss;
-        ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
+        if (idx == string::npos){
+            ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
+        }
+        else{
+            ss << m_context->outputs[i]->get_element_type().c_type_string() << "** ";
+        }
         ss << "output" << i;
         params.push_back(ss.str());
     }

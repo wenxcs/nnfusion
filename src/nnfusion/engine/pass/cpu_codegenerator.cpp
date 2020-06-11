@@ -126,7 +126,7 @@ std::pair<std::string, std::string> CpuCodeGenerator::get_paras_and_args(
                     {
                         string type = output->get_element_type().c_type_string();
                         stringstream ss;
-                        ss << type << "* " << name;
+                        ss << type << "** " << name;
                         allocated.insert(name);
                         params.push_back(ss.str());
                         args.push_back(name);
@@ -395,7 +395,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                 auto tv = tu->out[i];
                 string type = tv->get_element_type().c_type_string();
                 stringstream ss;
-                ss << type << "* " << tv->get_name();
+                ss << type << "** " << tv->get_name();
                 allocated.insert(tv->get_name());
                 params.push_back(ss.str());
                 args.push_back(tv->get_name());
@@ -792,10 +792,14 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             {
                 auto& tensor = *tu->out[i];
                 //malloc host output arg
+
+                // lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
+                //         << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
+                //         << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
+                //         << tensor.get_tensor_layout()->get_size() << ");\n ";
+
                 lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                        << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-                        << tensor.get_tensor_layout()->get_size() << ");\n ";
+                        << "_host;\n";
             }
             lu_main << "\n//fill input values\n";
             lu_main << fillval.get_code();
@@ -809,7 +813,7 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             for (int i = 0; i < tu->out.size(); i++)
             {
                 auto& tv = tu->out[i];
-                params.push_back(tv->get_name() + "_host");
+                params.push_back("&" + tv->get_name() + "_host");
             }
 
             lu_main << "\n//warm up\n";
@@ -858,11 +862,12 @@ bool CpuCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
             lu_main << "free(" << tensor.get_name() << "_host);\n";
         }
         //free host output args
-        for (size_t i = 0; i < tu->out.size(); i++)
-        {
-            auto& tensor = *tu->out[i];
-            lu_main << "free(" << tensor.get_name() << "_host);\n";
-        }
+
+        // for (size_t i = 0; i < tu->out.size(); i++)
+        // {
+        //     auto& tensor = *tu->out[i];
+        //     lu_main << "free(" << tensor.get_name() << "_host);\n";
+        // }
 
         lu_main << "\nreturn 0;\n";
         lu_main.block_end();
