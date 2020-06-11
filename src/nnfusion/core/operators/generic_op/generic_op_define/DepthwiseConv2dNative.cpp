@@ -19,6 +19,7 @@ REGISTER_OP(DepthwiseConv2dNative)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
         NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
+        NNFUSION_CHECK(op->localOpConfig.getRoot()["data_format"] == "NHWC");
 
         // [ batch, in_rows, in_cols, in_depth ]
         const Shape& input_shape = gnode->get_input_shape(0);
@@ -50,4 +51,25 @@ REGISTER_OP(DepthwiseConv2dNative)
                 : Shape({(size_t)batch, (size_t)out_depth, (size_t)out_rows, (size_t)out_cols}));
 
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape);
+    })
+    .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
+        NNFUSION_CHECK(gnode->get_input_size() == 2);
+        auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
+        NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
+        NNFUSION_CHECK(op->localOpConfig.getRoot()["data_format"] == "NHWC");
+
+        const auto& padding_below = op->localOpConfig.getRoot()["padding_before"];
+        const auto& padding_above = op->localOpConfig.getRoot()["padding_after"];
+        uint64_t padding[] = {
+            padding_below[1], padding_below[0], padding_above[1], padding_above[0]};
+
+        return op::create_code_from_template(
+            R"( - input("input0", @input_shape@); input("input1", @filter_shape@); output(@output_shape@, topi=topi.nn.depthwise_conv2d_nhwc(args("input0"), args("input1"), stride=@stride@, padding=@padding@, dilation=@dilation@)); )",
+            {{"input_shape", vector_to_string(gnode->get_input_shape(0))},
+             {"filter_shape", vector_to_string(gnode->get_input_shape(1))},
+             {"output_shape", vector_to_string(gnode->get_output_shape(0))},
+             {"stride", vector_to_string(op->localOpConfig.getRoot()["strides"])},
+             {"padding", vector_to_string(padding)},
+             {"dilation", vector_to_string(op->localOpConfig.getRoot()["dilations"])}});
+
     });
