@@ -86,12 +86,13 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
 
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
-        
         stringstream ss;
-        if (idx == string::npos){
+        if (idx == string::npos)
+        {
             ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
         }
-        else{
+        else
+        {
             ss << m_context->outputs[i]->get_element_type().c_type_string() << "** ";
         }
         ss << "output" << i;
