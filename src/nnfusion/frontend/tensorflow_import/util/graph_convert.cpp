@@ -229,28 +229,28 @@ namespace nnfusion
 
                 nnfusion::AxisSet ng_axes_softmax{lhs_gnode->get_shape().size() - 1};
 
-                if (!FLAGS_fantares_mode)
-                {
-                    auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
-                    auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {lhs_gnode});
+                // if (!FLAGS_fantares_mode)
+                // {
+                //     auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                //     auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {lhs_gnode});
 
-                    auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
-                        node.name(),
-                        "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
-                        nnfusion::op::OpConfig::any{});
-                    auto loss_gnode =
-                        m_graph->add_node_and_edge(loss_op, {softmax_gnode, rhs_gnode});
+                //     auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
+                //         node.name(),
+                //         "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
+                //         nnfusion::op::OpConfig::any{});
+                //     auto loss_gnode =
+                //         m_graph->add_node_and_edge(loss_op, {softmax_gnode, rhs_gnode});
 
-                    auto bwd_op = std::make_shared<nnfusion::op::GenericOp>(
-                        node.name(),
-                        "CrossEntropyFwdBwdWithSoftmaxBwd", // select which existing kernels to use;
-                        nnfusion::op::OpConfig::any{});
-                    auto bwd_gnode = m_graph->add_node_and_edge(bwd_op, {softmax_gnode, rhs_gnode});
+                //     auto bwd_op = std::make_shared<nnfusion::op::GenericOp>(
+                //         node.name(),
+                //         "CrossEntropyFwdBwdWithSoftmaxBwd", // select which existing kernels to use;
+                //         nnfusion::op::OpConfig::any{});
+                //     auto bwd_gnode = m_graph->add_node_and_edge(bwd_op, {softmax_gnode, rhs_gnode});
 
-                    NamedNodeVector ret{{node.name(), loss_gnode}, {node.name(), bwd_gnode}};
-                    return ret;
-                }
-                else
+                //     NamedNodeVector ret{{node.name(), loss_gnode}, {node.name(), bwd_gnode}};
+                //     return ret;
+                // }
+                // else
                 {
                     auto softmax_gnode =
                         TranslateSoftmaxToBasicOp(lhs_gnode, ng_axes_softmax, node.name(), m_graph);
@@ -3318,6 +3318,7 @@ namespace nnfusion
                 {"Identity", TranslateIdentityOp},
                 {"InvertPermutation", TranslateInvertPermutationOp},
                 {"LessEqual", TranslateBinaryOp<op::LessEq>},
+                {"GreaterEqual", TranslateBinaryOp<op::GreaterEq>},
                 {"Log", TranslateUnaryOp<op::Log>},
                 {"MatMul", TranslateMatMulOp},
                 {"Maximum", TranslateBinaryOp<op::Maximum>},

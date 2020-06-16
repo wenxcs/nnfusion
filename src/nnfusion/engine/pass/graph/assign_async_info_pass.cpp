@@ -503,7 +503,7 @@ void AssignAsyncInfoPass::init_assign_async_info(std::shared_ptr<Graph>& graph)
                         }
                     }
 
-                    if (const_inputs)
+                    if (const_inputs && !gnode->get_op_ptr()->is_output())
                     {
                         (*gnode)["rt_const_folding"] = true;
                         for (auto& out : kernel->m_context->output_names)
