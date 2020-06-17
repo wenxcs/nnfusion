@@ -33,8 +33,7 @@ REGISTER_OP(DepthToSpace)
         input_shape[3] /= block_size;
 
         auto output_shape = input_shape;
-        output_shape[1] = input_shape[2];
-        output_shape[2] = input_shape[1];
+        std::swap(input_shape[1], input_shape[2]);
 
         return op::create_code_from_template(
             R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.transpose(args("input0"), axes=[0, 2, 1, 3])); )",
