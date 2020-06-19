@@ -5,6 +5,7 @@
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 namespace nnfusion
 {
@@ -66,6 +67,7 @@ namespace nnfusion
                     : CpuKernelEmitter(ctx)
                 {
                     m_intra_op_parallelism = true;
+                    initialize(nnfusion::op::get_translation(ctx->gnode));
                 }
 
                 virtual LanguageUnit_p emit_function_body() override;

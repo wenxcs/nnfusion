@@ -9,9 +9,7 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-DEFINE_string(fantares_cpu_server,
-              "10.150.145.98:8882",
-              "Antares cpu server address and port, format: <ip>:<port>");
+DECLARE_string(fantares_codegen_server);
 
 LanguageUnit_p cpu::EigenKernelEmitter::emit_eigen_utils()
 {
@@ -149,7 +147,7 @@ std::unordered_map<std::string, std::string> cpu::AntaresCpuKernelEmitter::s_cac
 LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
 {
     // emit code.
-    if (m_expression.empty())
+    if (m_expression.empty() || FLAGS_fantares_codegen_server.empty())
     {
         return nullptr;
     }
@@ -166,7 +164,7 @@ LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
     }
     else
     {
-        CurlRequest req(FLAGS_fantares_cpu_server);
+        CurlRequest req(FLAGS_fantares_codegen_server);
         req.add_custom_header(m_expression.c_str());
         req.add_custom_header(m_args.c_str());
 

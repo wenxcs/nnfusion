@@ -211,6 +211,8 @@ namespace nnfusion
             struct CpuOpMap<nnfusion::op::Sign>
             {
                 static constexpr const char* antares_op = "topi.sign";
+                static constexpr const char* eigen_op = "eigen_sign";
+                static constexpr const char* eigen_math_kernel = "in0.sign()";
             };
 
             /*
