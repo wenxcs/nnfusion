@@ -30,6 +30,10 @@ namespace nnfusion
             // Return *this
             KernelRegistration& Tag(const string tag);
 
+            // Specify the priority level of this kernel
+            // Return *this
+            KernelRegistration& Priority(size_t priority);
+
             // Required: specify the kernel factory that creates this kernel emitter
             // Return *this
             KernelRegistration& KernelFactory(const Factory factory);
@@ -44,6 +48,7 @@ namespace nnfusion
                                    << "m_device_type: " << m_device_type << "\n"
                                    << "m_data_type: " << m_data_type << "\n"
                                    << "m_tag: " << m_tag << "\n"
+                                   << "m_priority: " << m_priority << "\n"
                                    << "m_factory: " << m_factory;
             }
 
@@ -54,6 +59,7 @@ namespace nnfusion
             DataType m_data_type;
             string m_tag;
             Factory m_factory;
+            size_t m_priority = 0;
         };
 
         static KernelRegistration& Name(const string op_name)

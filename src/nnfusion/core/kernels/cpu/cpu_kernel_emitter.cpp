@@ -142,56 +142,42 @@ std::string
     return ss.str();
 }
 
-std::unordered_map<std::string, std::string> cpu::AntaresCpuKernelEmitter::s_cached_kernels;
-
 LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
 {
-    // emit code.
-    if (m_expression.empty() || FLAGS_fantares_codegen_server.empty())
-    {
+    auto& ctx = m_context;
+    if (FLAGS_fantares_codegen_server.empty())
         return nullptr;
-    }
+    auto ir = nnfusion::op::get_translation(ctx->gnode);
+    if (ir == "")
+        return nullptr;
+    auto str = m_antares_ke_imp->autogen(ir);
+    if (str == "")
+        return nullptr;
+    if (!antares_quick_codegen && str.find("\n// Saved Perf =") == -1)
+        return nullptr;
 
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
-    bool ret = true;
-    std::string response;
-    auto it = s_cached_kernels.find(m_expression);
-    if (it != s_cached_kernels.end())
-    {
-        response = it->second;
-    }
-    else
-    {
-        CurlRequest req(FLAGS_fantares_codegen_server);
-        req.add_custom_header(m_expression.c_str());
-        req.add_custom_header(m_args.c_str());
+    // extract kernel code
+    const char* s_func_pattern = "// [thread_compute]\n";
+    const char* e_func_pattern = "\n}\n";
+    const char* s_rank_pattern = "__rank__ = ";
+    const char* e_rank_pattern = "\n";
+    std::string::size_type s_func_pos = str.find(s_func_pattern);
+    std::string::size_type e_func_pos = str.rfind(e_func_pattern);
 
-        ret = req.send_request(response);
-    }
-    if (ret)
-    {
-        const char* s_func_pattern = "// [thread_compute]\n";
-        const char* e_func_pattern = "\n}\n";
-        const char* s_rank_pattern = "__rank__ = ";
-        const char* e_rank_pattern = "\n";
-        std::string::size_type s_func_pos = response.find(s_func_pattern);
-        std::string::size_type e_func_pos = response.rfind(e_func_pattern);
-        if (s_func_pos != std::string::npos && e_func_pos != std::string::npos)
-        {
-            s_cached_kernels[m_expression] = response;
-            std::string func_body =
-                response.substr(s_func_pos + strlen(s_func_pattern),
-                                e_func_pos - s_func_pos - strlen(s_func_pattern));
-            std::string::size_type s_rank_pos = func_body.find(s_rank_pattern);
-            std::string::size_type e_rank_pos = func_body.find(e_rank_pattern);
-            std::string rank_str =
-                func_body.substr(s_rank_pos + strlen(s_rank_pattern),
-                                 e_rank_pos - s_rank_pos - strlen(s_rank_pattern));
-            int rank = atoi(rank_str.c_str());
-            auto code = op::create_code_from_template(
-                R"(
+    NNFUSION_CHECK(s_func_pos != std::string::npos && e_func_pos != std::string::npos);
+
+    std::string func_body = str.substr(s_func_pos + strlen(s_func_pattern),
+                                       e_func_pos - s_func_pos - strlen(s_func_pattern));
+    std::string::size_type s_rank_pos = func_body.find(s_rank_pattern);
+    std::string::size_type e_rank_pos = func_body.find(e_rank_pattern);
+    std::string rank_str = func_body.substr(s_rank_pos + strlen(s_rank_pattern),
+                                            e_rank_pos - s_rank_pos - strlen(s_rank_pattern));
+    int rank = atoi(rank_str.c_str());
+    auto code = op::create_code_from_template(
+        R"(
 int32_t rank = @rank@;
 
 auto func = [&](int __rank__)
@@ -201,43 +187,18 @@ auto func = [&](int __rank__)
 
 thread_pool->ParallelFor(rank, func);
 )",
-                {{"rank", rank}, {"func_body", func_body}});
+        {{"rank", rank}, {"func_body", func_body}});
 
-            lu.block_begin();
-            lu << code << "\n";
-            lu.block_end();
-            return _lu;
-        }
-        else
-        {
-            NNFUSION_LOG(NNFUSION_WARNING)
-                << "Extract kernel function from Antares response failed.";
-            NNFUSION_LOG(NNFUSION_WARNING) << "Function: " << get_function_name()
-                                           << ". Expression: " << m_expression;
-            NNFUSION_LOG(NNFUSION_WARNING) << "Response: " << response;
-        }
-    }
-    else
-    {
-        NNFUSION_LOG(NNFUSION_WARNING) << "Curl request Antares kernel failed.";
-    }
-
-    return nullptr;
+    lu.block_begin();
+    lu << code << "\n";
+    lu.block_end();
+    return _lu;
 }
 
 LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_dependency()
 {
     LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
     return _lu;
-}
-
-void cpu::AntaresCpuKernelEmitter::initialize(const std::string& expr)
-{
-    if (!expr.empty())
-    {
-        m_expression = std::string("COMPUTE_V1: ") + expr;
-    }
-    m_args = std::string("ARGS: ");
 }
 
 LanguageUnit_p cpu::CpuKernelEmitter::emit_function_signature()

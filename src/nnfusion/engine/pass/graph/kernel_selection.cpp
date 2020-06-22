@@ -1,9 +1,10 @@
 
 // Microsoft (c) 2019, NNFusion Team
 #include "kernel_selection.hpp"
-
 #include <queue>
 #include <utility>
+#include "nnfusion/core/kernels/cpu/cpu_kernel_emitter.hpp"
+#include "nnfusion/core/kernels/cuda_gpu/cuda_emitter.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::pass::graph;
@@ -15,7 +16,6 @@ using namespace nnfusion::profiler;
 
 DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
 DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
-// DECLARE_string(fdefault_device);
 
 pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     ProfilingBasedKernelSelector::profiling_best(shared_ptr<GNode> gnode,
@@ -129,23 +129,6 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
                         (*it)["Kernel_Selection_Result"] = ans_cuda;
                 }
             }
-
-            // (*it)["Kernel_Selection_Result"] = vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-            // auto& res = (*it)["Kernel_Selection_Result"]
-            //                 .as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
-
-            // vector<NNFusion_DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
-            // for (auto t : dev_type)
-            // {
-            //     if ((*it)["Kernel_Selection_Device"].is_valid() &&
-            //         (*it)["Kernel_Selection_Device"].as<NNFusion_DeviceType>() != t)
-            //         continue;
-
-            //     auto ans = profiling_best(it, t, get_default_runtime(t));
-
-            //     if (ans.second != nullptr)
-            //         res.push_back(ans);
-            // }
         }
     }
 
@@ -155,12 +138,51 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
 pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     DefaultKernelSelector::pick_first(shared_ptr<GNode> gnode, NNFusion_DeviceType devtype)
 {
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
     std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
         KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
-    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
+
+    if (devtype == ROCM_GPU)
+    {
+        for (auto it : KernelRegistry::Global()->FindKernelRegistrations(
+                 gnode->get_op_type(), CUDA_GPU, DT_FLOAT))
+            kernel_regs.push_back(it);
+    }
+
+    std::sort(kernel_regs.begin(),
+              kernel_regs.end(),
+              [&](const shared_ptr<const KernelRegistration>& x,
+                  const shared_ptr<const KernelRegistration>& y) {
+                  auto x_prio = x->m_priority, y_prio = y->m_priority;
+                  // the kernel device type may be different with gnode device type,
+                  // e.g., ROCM gnode may use CUDA kernel. To ensure kernel of same
+                  // device type have higher prioprity, we add 1 to their priority
+                  // before comparing.
+                  if (devtype == x->m_device_type)
+                      x_prio += 1;
+                  if (devtype == y->m_device_type)
+                      y_prio += 1;
+
+                  if (x_prio != y_prio)
+                      return x_prio > y_prio;
+
+                  auto x_type = x->m_factory(ctx)->get_kernel_type();
+                  auto y_type = y->m_factory(ctx)->get_kernel_type();
+                  if (x_type != y_type)
+                      return x_type < y_type;
+
+                  return false;
+              });
+
+    bool antares_quick_codegen = false;
+    if (kernel_regs.size() == 1 ||
+        (kernel_regs.size() == 2 && kernel_regs[1]->m_tag == "reference"))
+        antares_quick_codegen = true;
+
     for (auto kernel_reg : kernel_regs)
     {
         auto kernel = kernel_reg->m_factory(ctx);
+        kernel->antares_quick_codegen = antares_quick_codegen;
         // constant kernel emitter will write file to save weights, skip to do it when codegen.
         if (gnode->is_constant() || kernel->get_or_emit_source())
         {
@@ -169,62 +191,15 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
             return std::make_pair(devtype, kernel);
         }
     }
+
     NNFUSION_LOG(ERROR) << "No valid kernel found:" << gnode->get_name()
                         << "(op type: " << gnode->get_op_type() << ")";
     return std::make_pair(devtype, nullptr);
 }
 
-pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
-    DefaultKernelSelector::pick_first_rocm(shared_ptr<GNode> gnode)
-{
-    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
-    auto kernel_regs =
-        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), ROCM_GPU, DT_FLOAT);
-    for (auto it : KernelRegistry::Global()->FindKernelRegistrations(
-             gnode->get_op_type(), CUDA_GPU, DT_FLOAT))
-        kernel_regs.push_back(it);
-
-    {
-        auto priority = [](const std::string& tag) -> int {
-            static char sym_prio[] = "PRIORITY_";
-            int at = tag.find(sym_prio);
-            return (at != 0) ? 0 : atoi(tag.substr(sizeof(sym_prio) - 1).c_str());
-        };
-
-        std::sort(kernel_regs.begin(),
-                  kernel_regs.end(),
-                  [&](const shared_ptr<const KernelRegistration>& x,
-                      const shared_ptr<const KernelRegistration>& y) {
-                      auto x_prio = priority(x->m_tag), y_prio = priority(y->m_tag);
-                      if (x_prio != y_prio)
-                          return x_prio > y_prio;
-
-                      auto x_type = x->m_factory(ctx)->get_kernel_type();
-                      auto y_type = y->m_factory(ctx)->get_kernel_type();
-                      if (x_type != y_type)
-                          return x_type < y_type;
-
-                      return false;
-                  });
-    }
-
-    for (auto kernel_reg : kernel_regs)
-    {
-        auto kernel = kernel_reg->m_factory(ctx);
-        if (gnode->is_constant() || kernel->get_or_emit_source())
-        {
-            return std::make_pair(ROCM_GPU, kernel);
-        }
-    }
-    NNFUSION_LOG(ERROR) << "No valid kernel found:" << gnode->get_name() << gnode->get_op_type();
-    return std::make_pair(ROCM_GPU, nullptr);
-}
-
 bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
-    // auto dev_name = FLAGS_fdefault_device.c_str();
-    // NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
-
+    register_antares_kernel();
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_ordered_ops();
     for (auto it : nodes)
     {
@@ -237,54 +212,11 @@ bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>
             }
             auto n_device_type = (*it)["DeviceType"].as<NNFusion_DeviceType>();
             NNFUSION_CHECK(n_device_type != UNKNOWN);
-            if (n_device_type == ROCM_GPU)
-            {
-                auto ans = pick_first_rocm(it);
-                if (ans.second != nullptr)
-                    (*it)["Kernel_Selection_Result"] = ans;
-            }
-            else
-            {
-                auto ans = pick_first(it, n_device_type);
-                if (ans.second != nullptr)
-                    (*it)["Kernel_Selection_Result"] = ans;
-            }
+
+            auto ans = pick_first(it, n_device_type);
+            if (ans.second != nullptr)
+                (*it)["Kernel_Selection_Result"] = ans;
         }
-        // if (!(*it)["Kernel_Selection_Result"].is_valid())
-        //     (*it)["Kernel_Selection_Result"] = vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>();
-        // auto& res =
-        //     (*it)["Kernel_Selection_Result"].as<vector<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>>();
-
-        // vector<NNFusion_DeviceType> dev_type{CUDA_GPU, ROCM_GPU, GENERIC_CPU};
-        // for (auto t : dev_type)
-        // {
-        //     if ((*it)["Kernel_Selection_Device"].is_valid() &&
-        //         (*it)["Kernel_Selection_Device"].as<NNFusion_DeviceType>() != t)
-        //         continue;
-
-        //     bool selected = false;
-        //     for (auto& p : res)
-        //     {
-        //         if (p.first == t)
-        //         {
-        //             selected = true;
-        //             break;
-        //         }
-        //     }
-        //     if (selected)
-        //         continue;
-
-        //     if (t == ROCM_GPU)
-        //     {
-        //         auto ans = pick_first_rocm(it);
-        //         res.push_back(ans);
-        //     }
-        //     else
-        //     {
-        //         auto ans = pick_first(it, t);
-        //         res.push_back(ans);
-        //     }
-        // }
     }
 
     return true;
@@ -417,5 +349,36 @@ bool FetchBasedSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& g
         }
     }
 
+    return true;
+}
+
+bool DefaultKernelSelector::register_antares_kernel()
+{
+    for (auto pair : nnfusion::op::get_op_configs())
+    {
+        std::string op_name = pair.first;
+        KernelRegistrar kernel_registrar_cuda(
+            op_name,
+            Name(op_name)
+                .Device(CUDA_GPU)
+                .TypeConstraint(DT_FLOAT)
+                .Tag("antares")
+                .Priority(9)
+                .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {
+                    return make_shared<cuda::AntaresCudaKernelEmitter>(context);
+                })
+                .Build());
+        KernelRegistrar kernel_registrar_cpu(
+            op_name,
+            Name(op_name)
+                .Device(GENERIC_CPU)
+                .TypeConstraint(DT_FLOAT)
+                .Tag("antares")
+                .Priority(9)
+                .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {
+                    return make_shared<cpu::AntaresCpuKernelEmitter>(context);
+                })
+                .Build());
+    }
     return true;
 }

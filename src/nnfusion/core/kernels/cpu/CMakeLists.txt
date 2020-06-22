@@ -17,7 +17,6 @@ file(GLOB simd_kernels simd/*.cpp)
 
 set(KERNELS
     ${reference_kernels}
-    ${antares_kernels}
     ${general_kernels}
     ${mkl_kernels}
     ${eigen_kernels}

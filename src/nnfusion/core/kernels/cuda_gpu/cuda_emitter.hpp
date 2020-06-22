@@ -1,9 +1,13 @@
 // Microsoft (c) 2019, NNFusion Team
 #pragma once
 #include "cuda_helper.hpp"
+#include "cuda_langunit.hpp"
+#include "nnfusion/core/kernels/antares_ke_imp.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/async_manager.hpp"
+#include "nnfusion/util/curl_request.hpp"
 
 namespace nnfusion
 {
@@ -167,6 +171,22 @@ namespace nnfusion
                 }
                 virtual bool require_cudnn_handle() { return false; }
                 virtual bool require_cublas_handle() { return false; }
+            };
+
+            class AntaresCudaKernelEmitter : public CudaEmitter
+            {
+            public:
+                AntaresCudaKernelEmitter(shared_ptr<KernelContext> ctx)
+                    : CudaEmitter(ctx)
+                    , m_antares_ke_imp(new AntaresKEImp)
+                {
+                    GENERIC_OP_LOGGING();
+                }
+
+                LanguageUnit_p emit_function_body() override;
+                LanguageUnit_p emit_dependency() override;
+                void set_launch_config() override {}
+                AntaresKEImp::Pointer m_antares_ke_imp;
             };
 
         } // namespace cuda

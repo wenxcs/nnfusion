@@ -170,6 +170,6 @@ namespace nnfusion
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("Broadcast",                                                 //op_name
-                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("PRIORITY_1"), //attrs
-                        cuda::RocmBiasBroadcast)                                     // constructor
+REGISTER_KERNEL_EMITTER("Broadcast",                                           //op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Priority(1), //attrs
+                        cuda::RocmBiasBroadcast)                               // constructor

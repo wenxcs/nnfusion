@@ -111,6 +111,6 @@ namespace nnfusion
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("BatchMatMul",                                               // op_name
-                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("PRIORITY_2"), // attrs
-                        cuda::BatchGemmFixed)                                        // constructor
+REGISTER_KERNEL_EMITTER("BatchMatMul",                                         // op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Priority(2), // attrs
+                        cuda::BatchGemmFixed)                                  // constructor

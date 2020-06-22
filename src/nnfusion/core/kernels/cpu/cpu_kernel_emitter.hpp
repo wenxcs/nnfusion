@@ -2,6 +2,7 @@
 #pragma once
 #include "nnfusion/common/descriptor/layout/tensor_layout.hpp"
 #include "nnfusion/common/descriptor/tensor.hpp"
+#include "nnfusion/core/kernels/antares_ke_imp.hpp"
 #include "nnfusion/core/kernels/cpu/cpu_langunit.hpp"
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
@@ -65,20 +66,15 @@ namespace nnfusion
             public:
                 AntaresCpuKernelEmitter(shared_ptr<KernelContext> ctx)
                     : CpuKernelEmitter(ctx)
+                    , m_antares_ke_imp(new AntaresKEImp)
                 {
                     m_intra_op_parallelism = true;
-                    initialize(nnfusion::op::get_translation(ctx->gnode));
                 }
 
                 virtual LanguageUnit_p emit_function_body() override;
                 virtual LanguageUnit_p emit_dependency() override;
 
-                virtual void initialize(const std::string& expression);
-
-            protected:
-                std::string m_expression;
-                std::string m_args;
-                static std::unordered_map<std::string, std::string> s_cached_kernels;
+                AntaresKEImp::Pointer m_antares_ke_imp;
             };
 
             class SimdKernelEmitter : public CpuKernelEmitter

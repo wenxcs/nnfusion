@@ -28,6 +28,12 @@ KernelRegistration& KernelRegistration::Tag(const string tag)
     return *this;
 }
 
+KernelRegistration& KernelRegistration::Priority(size_t priority)
+{
+    m_priority = priority;
+    return *this;
+}
+
 KernelRegistration& KernelRegistration::KernelFactory(const Factory factory)
 {
     m_factory = factory;

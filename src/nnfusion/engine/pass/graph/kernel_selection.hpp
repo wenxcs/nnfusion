@@ -31,8 +31,7 @@ namespace nnfusion
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
                 pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
                     pick_first(shared_ptr<GNode> gnode, NNFusion_DeviceType devtype);
-                pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
-                    pick_first_rocm(shared_ptr<GNode> gnode);
+                bool register_antares_kernel();
             };
 
             class FetchBasedSelector : public GraphPassBase

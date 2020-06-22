@@ -4,6 +4,7 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 using namespace nnfusion::async;
+DECLARE_string(fantares_codegen_server);
 
 LanguageUnit_p cuda::CudaEmitter::emit_function_call()
 {
@@ -165,3 +166,76 @@ const std::unordered_map<std::string, size_t> cuda::BlockCudaEmitter::size_of_st
     {"uint16_t", sizeof(uint16_t)},
     {"uint32_t", sizeof(uint32_t)},
     {"uint64_t", sizeof(uint64_t)}};
+
+LanguageUnit_p cuda::AntaresCudaKernelEmitter::emit_function_body()
+{
+    GENERIC_OP_LOGGING();
+    auto& ctx = m_context;
+
+    if (FLAGS_fantares_codegen_server.empty())
+        return nullptr;
+    auto ir = nnfusion::op::get_translation(ctx->gnode);
+    if (ir == "")
+        return nullptr;
+    auto str = m_antares_ke_imp->autogen(ir);
+    if (str == "")
+        return nullptr;
+    if (!antares_quick_codegen && str.find("\n// Saved Perf =") == -1)
+        return nullptr;
+
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+    auto& lu = *_lu;
+
+    // extract kernel code
+    int start = str.find(") {\n"), end = str.find("\n}\n");
+    NNFUSION_CHECK(start >= 0 && end >= 0 && end > start);
+    str = str.substr(start + 4, end - start - 4);
+
+    int at_bx = str.find("// [thread_extent] blockIdx.x = "),
+        blockX =
+            (at_bx >= 0)
+                ? std::atoi(str.data() + at_bx + sizeof("// [thread_extent] blockIdx.x = ") - 1)
+                : 1;
+    int at_by = str.find("// [thread_extent] blockIdx.y = "),
+        blockY =
+            (at_by >= 0)
+                ? std::atoi(str.data() + at_by + sizeof("// [thread_extent] blockIdx.y = ") - 1)
+                : 1;
+    int at_bz = str.find("// [thread_extent] blockIdx.z = "),
+        blockZ =
+            (at_bz >= 0)
+                ? std::atoi(str.data() + at_bz + sizeof("// [thread_extent] blockIdx.z = ") - 1)
+                : 1;
+    int at_tx = str.find("// [thread_extent] threadIdx.x = "),
+        threadX =
+            (at_tx >= 0)
+                ? std::atoi(str.data() + at_tx + sizeof("// [thread_extent] threadIdx.x = ") - 1)
+                : 1;
+    int at_ty = str.find("// [thread_extent] threadIdx.y = "),
+        threadY =
+            (at_ty >= 0)
+                ? std::atoi(str.data() + at_ty + sizeof("// [thread_extent] threadIdx.y = ") - 1)
+                : 1;
+    int at_tz = str.find("// [thread_extent] threadIdx.z = "),
+        threadZ =
+            (at_tz >= 0)
+                ? std::atoi(str.data() + at_tz + sizeof("// [thread_extent] threadIdx.z = ") - 1)
+                : 1;
+
+    m_gridDim = dim3(blockX, blockY, blockZ);
+    m_blockDim = dim3(threadX, threadY, threadZ);
+
+    lu.block_begin();
+    lu << str << "\n";
+    lu.block_end();
+    return _lu;
+}
+
+LanguageUnit_p cuda::AntaresCudaKernelEmitter::emit_dependency()
+{
+    GENERIC_OP_LOGGING();
+
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+    _lu->require(header::cuda);
+    return _lu;
+}
