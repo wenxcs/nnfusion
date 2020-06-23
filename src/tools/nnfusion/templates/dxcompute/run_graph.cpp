@@ -51,6 +51,7 @@ int main(int argc, char** argv)
     }
 
     evaluateQueue(cmdQueue, "Standard Queue");
+    printf("Total GPU Memory Allocated = %g MB\n", totalGPUMemoryAccess / double(1024 * 1024));
     system("pause");
     return 0;
 }

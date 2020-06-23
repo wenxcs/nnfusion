@@ -39,6 +39,11 @@ namespace nnfusion_dml
         return std::move(ret);
     }
 
+    static std::vector<ID3D12CommandList*> cmdQueue, preloadQueue;
+    static std::map<std::wstring, ComPtr<ID3DBlob>> computeShaderDict;
+    static std::map<std::wstring, std::pair<double, int>> profCostDict;
+    static unsigned long totalGPUMemoryAccess = 0;
+
     class NNfusionTensor
     {
         ComPtr<ID3D12Resource> deviceGPUSrcX;
@@ -52,6 +57,7 @@ namespace nnfusion_dml
         {
             size_t size = type_size * NumElements();
             size = ((size - 1) | 1023) + 1;
+            totalGPUMemoryAccess += size;
             device.CreateGPUOnlyResource(size, &deviceGPUSrcX);
         }
 
@@ -65,9 +71,6 @@ namespace nnfusion_dml
         std::vector<size_t> Shape() const { return shape; }
     };
 
-    static std::vector<ID3D12CommandList*> cmdQueue, preloadQueue;
-    static std::map<std::wstring, ComPtr<ID3DBlob>> computeShaderDict;
-    static std::map<std::wstring, std::pair<double, int>> profCostDict;
 
     class NNfusionMemcpy
     {
@@ -169,6 +172,86 @@ namespace nnfusion_dml
             LPCWSTR hlsl_source)
             : hlsl_source(hlsl_source)
         {
+
+#define _USE_DECRIPTOR_HEAP_
+
+#ifdef _USE_DECRIPTOR_HEAP_
+
+			struct DescHeap {
+				ComPtr<ID3D12DescriptorHeap> heap;
+				D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+				UINT nDescStep, offsetRecord;
+			};
+
+			static DescHeap globalDescHeap;
+			static bool initHeap = false;
+			if (!globalDescHeap.nDescStep) {
+				initHeap = true;
+				auto InitDescriptorHeap = [](ID3D12Device* pDevice, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT nDescriptors)
+				{
+					D3D12_DESCRIPTOR_HEAP_DESC desc;
+					memset(&desc, 0, sizeof(desc));
+					ZeroMemory(&desc, sizeof(desc));
+					desc.NumDescriptors = nDescriptors;
+					desc.Type = type;
+					desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+					ComPtr<ID3D12DescriptorHeap> pDescHeap;
+					IFE(pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pDescHeap)));
+
+					globalDescHeap.nDescStep = pDevice->GetDescriptorHandleIncrementSize(type);
+					globalDescHeap.heap = pDescHeap;
+					globalDescHeap.cpuHandle = pDescHeap->GetCPUDescriptorHandleForHeapStart();
+					globalDescHeap.offsetRecord = 0;
+				};
+
+				const UINT MAX_HEAP_SIZE = (1U << 20);
+				InitDescriptorHeap(device.pDevice.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, MAX_HEAP_SIZE);
+				assert(globalDescHeap.nDescStep > 0);
+			}
+
+			std::vector<UINT> argsOffset;
+			// Prepare Heap Argument Offset
+			for (int i = 0; i < inputs.size(); ++i) {
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+				ZeroMemory(&srvDesc, sizeof(srvDesc));
+				srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+				srvDesc.Buffer.FirstElement = 0;
+				srvDesc.Buffer.NumElements = inputs[i].NumElements();
+				srvDesc.Buffer.StructureByteStride = inputs[i].TypeSize();
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+				device.pDevice->CreateShaderResourceView(inputs[i].Data().Get(), &srvDesc, globalDescHeap.cpuHandle);
+				globalDescHeap.cpuHandle.ptr += globalDescHeap.nDescStep;
+				argsOffset.push_back(globalDescHeap.offsetRecord++);
+				assert(globalDescHeap.offsetRecord <= MAX_HEAP_SIZE);
+			}
+			for (int i = 0; i < outputs.size(); ++i) {
+				D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+				ZeroMemory(&uavDesc, sizeof(uavDesc));
+				uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+				uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+				uavDesc.Buffer.FirstElement = 0;
+				uavDesc.Buffer.NumElements = outputs[i].NumElements();
+				uavDesc.Buffer.StructureByteStride = outputs[i].TypeSize();
+				device.pDevice->CreateUnorderedAccessView(outputs[i].Data().Get(), nullptr, &uavDesc, globalDescHeap.cpuHandle);
+				globalDescHeap.cpuHandle.ptr += globalDescHeap.nDescStep;
+				argsOffset.push_back(globalDescHeap.offsetRecord++);
+				assert(globalDescHeap.offsetRecord <= MAX_HEAP_SIZE);
+			}
+
+			// Prepare Root
+			std::vector<CD3DX12_ROOT_PARAMETER1> computeRootParameters(1);
+			CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
+			// D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE is needed to disable unproper driver optimization.
+			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, inputs.size(), 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE, argsOffset[0]);
+			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, outputs.size(), 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE, argsOffset[inputs.size()]);
+
+			computeRootParameters[0].InitAsDescriptorTable(2, ranges);
+			CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC computeRootSignatureDesc;
+			computeRootSignatureDesc.Init_1_1((UINT)computeRootParameters.size(),
+				computeRootParameters.data());
+#else
             // Prepare Root
             std::vector<CD3DX12_ROOT_PARAMETER1> computeRootParameters(inputs.size() +
                 outputs.size());
@@ -180,6 +263,7 @@ namespace nnfusion_dml
             CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC computeRootSignatureDesc;
             computeRootSignatureDesc.Init_1_1(computeRootParameters.size(),
                 computeRootParameters.data());
+#endif
 
             ComPtr<ID3DBlob> signature;
             ComPtr<ID3DBlob> error;
@@ -221,12 +305,19 @@ namespace nnfusion_dml
                 IID_PPV_ARGS(&m_computeCommandList)));
 
             m_computeCommandList->SetComputeRootSignature(m_computeRootSignature.Get());
+
+#ifdef _USE_DECRIPTOR_HEAP_
+			ID3D12DescriptorHeap* pHeaps[] = { globalDescHeap.heap.Get() };
+			m_computeCommandList->SetDescriptorHeaps(1, pHeaps);
+			m_computeCommandList->SetComputeRootDescriptorTable(0, globalDescHeap.heap->GetGPUDescriptorHandleForHeapStart());
+#else
             for (int i = 0; i < inputs.size(); ++i)
                 m_computeCommandList->SetComputeRootShaderResourceView(
                     i, inputs[i].Data()->GetGPUVirtualAddress());
             for (int i = 0; i < outputs.size(); ++i)
                 m_computeCommandList->SetComputeRootUnorderedAccessView(
                     inputs.size() + i, outputs[i].Data()->GetGPUVirtualAddress());
+#endif
             m_computeCommandList->Dispatch(threads[0], threads[1], threads[2]);
             IFE(m_computeCommandList->Close());
 
