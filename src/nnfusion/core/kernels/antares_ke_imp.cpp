@@ -8,7 +8,7 @@ DECLARE_string(fantares_codegen_server);
 
 std::unordered_map<std::string, std::string> AntaresKEImp::code_cache;
 
-std::string AntaresKEImp::autogen(const std::string& expr)
+std::string AntaresKEImp::autogen(const std::string& expr, bool antares_quick_codegen)
 {
     if (FLAGS_fantares_codegen_server == "")
         return ""; // FLAGS_fantares_codegen_server = "10.150.145.98:8881";
@@ -30,10 +30,16 @@ std::string AntaresKEImp::autogen(const std::string& expr)
             NNFUSION_LOG(ERROR) << expr << "\n" << response;
             return "";
         }
-        bool select = int(response.find("\n// CONFIG: {")) >= 0;
-        printf("[Autogen] %s (select = %d)\n", expr.c_str(), select);
-        if (!select)
+        bool tuned = response.find("\n// Saved Perf =") != std::string::npos;
+        bool choose = true;
+        if (!antares_quick_codegen && !tuned)
+        {
             response = "";
+            choose = false;
+        }
+
+        NNFUSION_LOG(INFO) << "[Autogen] " << expr << " (tuned = " << tuned
+                           << ", choose = " << choose << ")";
         code_cache[expr] = response;
         return std::move(response);
     }

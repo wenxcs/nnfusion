@@ -177,10 +177,8 @@ LanguageUnit_p cuda::AntaresCudaKernelEmitter::emit_function_body()
     auto ir = nnfusion::op::get_translation(ctx->gnode);
     if (ir == "")
         return nullptr;
-    auto str = m_antares_ke_imp->autogen(ir);
+    auto str = m_antares_ke_imp->autogen(ir, antares_quick_codegen);
     if (str == "")
-        return nullptr;
-    if (!antares_quick_codegen && str.find("\n// Saved Perf =") == -1)
         return nullptr;
 
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
