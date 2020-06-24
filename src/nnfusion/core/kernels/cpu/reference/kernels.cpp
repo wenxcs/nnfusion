@@ -4037,8 +4037,9 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    lu << "cpu_reference_result<float>(input0, output0,"
-                       << shape_size(m_context->outputs[0]->get_shape()) << ");";
+                    // lu << "cpu_reference_result<float>(input0, output1,"
+                    //    << shape_size(m_context->outputs[0]->get_shape()) << ");";
+                    lu << "*output0 = input0;";
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 
