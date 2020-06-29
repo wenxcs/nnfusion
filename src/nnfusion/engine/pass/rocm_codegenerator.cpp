@@ -32,7 +32,7 @@ namespace nnfusion
 cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_CXX_COMPILER /opt/rocm/bin/hipcc)
-set(CMAKE_CXX_FLAGS "-O2 -Wno-ignored-attributes")
+set(CMAKE_CXX_FLAGS "-O2 -Wno-ignored-attributes -Wno-duplicate-decl-specifier")
 )" << (super_scaler_enable ? "find_package(MPI)" : "")
                << R"(
 include_directories(
@@ -142,6 +142,8 @@ endif()
                         "\"..\\/rocm_adapter.h\"\\n#include "
                         "<hip\\/hip_runtime.h>/g' " +
                         kernel;
+                    NNFUSION_CHECK(0 == system((hipcmd).c_str())) << hipcmd;
+                    hipcmd = "sed -i 's/extern *__shared__/__shared__/g' " + kernel;
                     NNFUSION_CHECK(0 == system((hipcmd).c_str())) << hipcmd;
                 }
             }

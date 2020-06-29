@@ -474,7 +474,7 @@ while (@ARGV) {
 
             # Handle the <<numBlocks, blockDim, sharedSize, stream>>> syntax:
 	    # $k += s/(\w+)\s*(<.*>)?\s*<<<\s*(.+)\s*,\s*(.+)\s*,\s*(.+)\s*,\s*(.+)\s*>>>([\s*\\]*)\(/hipLaunchKernelGGL(($1$2), dim3($3), dim3($4), $5, $6, /g;
-	    $k += s/(\w+)\s*(<.*>)?\s*<<</hipLaunchKernelGGL($1$2, KERNEL_CONFIG(/g;
+	    $k += s/(\w+)\s*(<.*>)?\s*<<</hipLaunchKernelGGL(($1$2), /g;
 	    $kernelName = $1 if $k;
 
             # Handle the <<numBlocks, blockDim, sharedSize>>> syntax:
@@ -489,8 +489,8 @@ while (@ARGV) {
             if ($k) {
                 $Tkernels{$kernelName} ++;
             }
-	    $k += s/>>>([\s*\\]*)\(\)/\))/g;
-	    $k += s/>>>([\s*\\]*)\(/\), /g;
+	    $k += s/>>>([\s*\\]*)\(\)/\)/g;
+	    $k += s/>>>([\s*\\]*)\(/\, /g;
          }
 
 
