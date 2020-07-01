@@ -164,6 +164,7 @@ bool TensorLivenessAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                         for (auto tensor : tmp)
                         {
                             tensor->set_persistent();
+                            tensor->set_constant();
                             tensor->set_group("persist");
                         }
                     }

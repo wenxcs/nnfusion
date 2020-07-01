@@ -87,7 +87,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 find_package(CUDA)
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O2")
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -cudart shared")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -cudart shared --fmad=false")
 
 link_directories(/usr/local/cuda/lib64)
 
@@ -1289,8 +1289,11 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
          CUDA_SAFE_CALL(cudaMemcpy(host_tensor, tensor_ptr + offset,  sizeof(float) * debug_size, cudaMemcpyDeviceToHost));
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
+         double sum = 0.0;
+         for (size_t i = 0; i < debug_size; i++) sum += host_tensor[i];
          size_t print_size = min((size_t)10, debug_size);
          printf("%s: ", name.c_str());
+         printf("sum=%e; ", sum);
          for (int i = 0; i < print_size; ++i) printf("%e ", host_tensor[i]);
          printf("...(size= %lu end with %e ) :", debug_size, host_tensor[debug_size - 1]);
          //print with an offset

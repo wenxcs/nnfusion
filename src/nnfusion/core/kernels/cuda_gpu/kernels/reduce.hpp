@@ -69,6 +69,7 @@ namespace nnfusion
                     reduce_op = CudaOpMap<T>::op;
 
                     // use to determine if it is RowReduction
+
                     std::vector<size_t> axes_flag(input_shape.size(), 0);
                     for (auto const& axis : reduce_axis)
                     {
@@ -78,32 +79,29 @@ namespace nnfusion
                     width = 1;
                     is_row_reduction = true;
                     int i = 0;
-                    while (i < input_shape.size() && input_shape[i] == 1)
-                        i++;
+
                     for (; i < axes_flag.size() && (axes_flag[i] == 0 || input_shape[i] == 1); i++)
                     {
                         height *= input_shape[i];
                     }
-                    for (; i < axes_flag.size(); i++)
+                    for (; i < axes_flag.size() && (axes_flag[i] == 1 || input_shape[i] == 1); i++)
                     {
-                        if ((axes_flag[i] == 0 && input_shape[i] > 1) ||
-                            (axes_flag[i] == 1 && input_shape[i] == 0))
-                        {
-                            is_row_reduction = false;
-                            break;
-                        }
                         width *= input_shape[i];
                     }
+                    if (i != axes_flag.size())
+                        is_row_reduction = false;
+
                     // `is_row_reduction` is not working on ROCm, using old implementation
                     if (FLAGS_fdefault_device == "ROCm")
                     {
                         is_row_reduction = false;
                     }
-                    // current row_reduction implementation is now working for max/min/prod reduction if width is not warp alignment
-                    if (reduce_op != "add") // && width % 32 != 0)
+                    // current row_reduction implementation is now working for max/min/prod reduction
+                    if (reduce_op != "add") // || width % 32 != 0)
                     {
                         is_row_reduction = false;
                     }
+
                     if (is_row_reduction)
                         expected_block_size =
                             width > 512

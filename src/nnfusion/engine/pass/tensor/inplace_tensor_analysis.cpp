@@ -256,6 +256,12 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                                 continue;
                             }
 
+                            // skip pair with constant output tensor, as this might be used by runtime constant folding
+                            if (output->is_constant())
+                            {
+                                continue;
+                            }
+
                             // If the inplace is destructive, the output should not overwrite the constant tensor,
                             // parameter tensor and persistent tensor, and the input must be in free_list of this node.
                             // Otherwise, it is safe to do inplace reuse.
