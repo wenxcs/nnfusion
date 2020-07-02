@@ -53,7 +53,7 @@ include_directories(
                        : "add_library(nnfusion_naive_rt nnfusion_rt.cpp)\n")
                << R"(
 add_executable(main_test main_test.cpp)
-target_link_libraries(main_test nnfusion_naive_rt MIOpen rocblas )"
+target_link_libraries(main_test nnfusion_naive_rt /opt/rocm/lib/libMIOpen.so /opt/rocm/lib/librocblas.so )"
                << (super_scaler_enable ? "${ssrocm} ${MPI_LIBRARIES}" : "") << R"()
 if(EXISTS "${CMAKE_BINARY_DIR}/Constant")
 else()
@@ -96,6 +96,11 @@ endif()
                              "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
                              "nnfusion_rt.cu")
                                 .c_str()));
+
+            // for rocm 3.5 compatibility purpose
+            string rocm35cmd = "sed -i 's/extern *__shared__/__shared__/g' nnfusion_rt.cpp";
+            NNFUSION_CHECK(0 == system((rocm35cmd).c_str())) << rocm35cmd;
+
             // update for main_test.cpp
             NNFUSION_CHECK(
                 0 ==
@@ -105,6 +110,7 @@ endif()
             NNFUSION_CHECK(
                 0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' nnfusion_rt.h && sed -i "
                             "'s/cuda_runtime\\.h/hip\\/hip_runtime.h/g' nnfusion_rt.h"));
+
             // Update for kernels
             if (FLAGS_fkernels_as_files)
             {
