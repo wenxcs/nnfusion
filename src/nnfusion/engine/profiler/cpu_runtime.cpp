@@ -375,6 +375,8 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     }
 
     writer << "extern \"C\" double " << fu->name_unit->get_code() << "_host(";
+    auto idx = fu->name_unit->get_code().find("Result");
+
     for (size_t i = 0; i + 1 < arg.size(); i++)
     {
         writer << arg[i]->get_element_type().c_type_string() << "* " << arg_name_dedupe[i] << ", ";
@@ -388,11 +390,17 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
 
     for (size_t i = 0; i + 1 < out.size(); i++)
     {
-        writer << out[i]->get_element_type().c_type_string() << "* " << out_name_dedupe[i] << ", ";
+        if (idx != string::npos) 
+            writer << out[i]->get_element_type().c_type_string() << "** " << out_name_dedupe[i] << ", ";
+        else
+            writer << out[i]->get_element_type().c_type_string() << "* " << out_name_dedupe[i] << ", ";
     }
     if (!out.empty())
     {
-        writer << out.back()->get_element_type().c_type_string() << "* " << out_name_dedupe.back();
+        if (idx != string::npos) 
+            writer << out.back()->get_element_type().c_type_string() << "** " << out_name_dedupe.back();
+        else
+            writer << out.back()->get_element_type().c_type_string() << "* " << out_name_dedupe.back();
     }
     writer << ")\n";
 
@@ -506,8 +514,14 @@ bool CPUDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
                               : (i - arg.size() < out.size()
                                      ? out[i - arg.size()]->get_element_type().c_type_string()
                                      : "");
-            writer << "(" << type << "*)" << (out.size() == 0 ? "args" : "outputs") << "["
+            if (idx != string::npos) {
+                writer << "(" << type << "**)" << (out.size() == 0 ? "args" : "outputs") << "["
                    << i - (i >= arg.size() ? arg.size() : 0) << "]";
+            }     
+            else {
+                writer << "(" << type << "*)" << (out.size() == 0 ? "args" : "outputs") << "["
+                   << i - (i >= arg.size() ? arg.size() : 0) << "]";
+            }  
         }
         writer << ");\n";
     }
