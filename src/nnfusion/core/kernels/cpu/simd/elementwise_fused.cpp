@@ -389,5 +389,5 @@ LanguageUnit_p ElementwiseFused::emit_comments()
 }
 
 REGISTER_KERNEL_EMITTER("ElementwiseFused",                                       // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("simd"), // attrs
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("simd").Priority(4), // attrs
                         cpu::ElementwiseFused)

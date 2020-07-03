@@ -121,5 +121,5 @@ LanguageUnit_p cpu::DotMkl::emit_dependency()
 }
 
 REGISTER_KERNEL_EMITTER("Dot",                                                   // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mkl"), // attrs
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mkl").Priority(2), // attrs
                         cpu::DotMkl)

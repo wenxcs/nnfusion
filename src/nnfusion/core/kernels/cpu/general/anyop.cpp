@@ -35,5 +35,5 @@ LanguageUnit_p cpu::AnyOP::emit_dependency()
 // Register Pad kernel emitter
 
 REGISTER_KERNEL_EMITTER("AnyOP",                                      //op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT), //attrs
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Priority(1), //attrs
                         cpu::AnyOP)                                   // constructor

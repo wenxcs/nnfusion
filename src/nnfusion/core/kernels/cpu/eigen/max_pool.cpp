@@ -166,5 +166,5 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("MaxPool",                                                 // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen"), // attrs
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(3), // attrs
                         cpu::MaxPoolEigen)
