@@ -10,6 +10,8 @@ namespace nnfusion
         CUDA_GPU,
         ROCM_GPU,
         GENERIC_CPU,
+        HLSL,
+        GraphCore,
         UNKNOWN
     };
 

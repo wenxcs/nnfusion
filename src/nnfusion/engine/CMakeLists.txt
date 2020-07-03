@@ -4,12 +4,14 @@ if (NNFUSION_ENABLE)
 
     # Make pass and op object
     add_subdirectory(pass)
+    add_subdirectory(device)
     add_subdirectory(profiler)
     add_subdirectory(cache)
 
     # This is the source file shared by devices
     set(ENGINE
         interpreter.cpp
+        engine.cpp
         op.cpp
         memory_allocator.cpp
         async_manager.cpp
@@ -31,6 +33,7 @@ if (NNFUSION_ENABLE)
         kernels_registration
         # use ${WholeArchiveFlag} because MacOS' ldtool use different flag.
         ${WholeArchiveFlag}
+        nnfusion_engine_device
         kernels_cuda 
         kernels_cpu
         nnfusion_cache_manager

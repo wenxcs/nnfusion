@@ -102,9 +102,6 @@ namespace nnfusion
                 {
                     currentBackend = "dxcompute";
 
-                    if (FLAGS_fdefault_device != currentBackend)
-                        return true;
-
                     NNFUSION_LOG(INFO) << "Codegen for " << currentBackend << " starts up.";
 
                     auto nodes = graph->get_nodes();

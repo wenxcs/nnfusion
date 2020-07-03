@@ -23,6 +23,8 @@
 using namespace nnfusion::pass::graph;
 using namespace std;
 
+DEFINE_bool(ffold_reshape_op, true, "Folding Reshape operators.");
+DEFINE_bool(ftranspose_vecdot, false, "Enable vectdot transpose.");
 DEFINE_string(fantares_codegen_server,
               "",
               "Antares codegen server address and port, format: <ip>:<port>");
@@ -34,8 +36,6 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     // Generate result is implemented in gradient weight mapping pass
     pass_manager.register_pass<GradientWeightMappingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
-    pass_manager.register_pass<GraphCoreCodegenPass>();
-    pass_manager.register_pass<DirectComputeCodegenPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
     pass_manager.register_pass<GemmFusionPass>();

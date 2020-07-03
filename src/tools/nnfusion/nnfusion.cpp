@@ -13,11 +13,18 @@
 #include "nnfusion/frontend/torchscript_import/torchscript.hpp"
 #include "nnfusion/frontend/util/parameter.hpp"
 
+#include "nnfusion/engine/device/cuda.hpp"
+#include "nnfusion/engine/device/graphcore.hpp"
+#include "nnfusion/engine/device/hlsl.hpp"
+#include "nnfusion/engine/device/rocm.hpp"
+
 using namespace std;
 
 DEFINE_string(format,
               "tensorflow",
               "-f, Model file format (tensorflow(default) or torchscript, onnx)");
+
+DECLARE_string(fdefault_device);
 
 DEFINE_string(params,
               "##UNSET##",
@@ -133,14 +140,26 @@ int main(int argc, char** argv)
 
     if (!backend.empty())
     {
-        auto runtime = ngraph::runtime::Backend::create(backend);
-        runtime->codegen(graph);
-    }
-    // }
-    // catch (exception& e)
-    // {
-    //     cout << "Exception caught on '" << model << "'\n" << e.what() << endl;
-    // }
+        if (!FLAGS_fdefault_device.empty())
+        {
+            auto runtime = ngraph::runtime::Backend::create(backend);
+            nnfusion::engine::CudaEngine cuda_engine;
+            nnfusion::engine::HLSLEngine hlsl_engine;
+            nnfusion::engine::GraphCoreEngine gc_engine;
+            nnfusion::engine::ROCmEngine rocm_engine;
 
+            switch (get_device_type(FLAGS_fdefault_device))
+            {
+            // case CUDA_GPU: cuda_engine.run_on_graph(graph); break;
+            case CUDA_GPU:
+                runtime->codegen(graph);
+                break;
+            // case ROCM_GPU: rocm_engine.run_on_graph(graph); break;
+            case ROCM_GPU: runtime->codegen(graph); break;
+            case HLSL: hlsl_engine.run_on_graph(graph); break;
+            case GraphCore: gc_engine.run_on_graph(graph); break;
+            }
+        }
+    }
     return 0;
 }

@@ -8,7 +8,7 @@
 
 using namespace nnfusion::graph;
 
-DEFINE_bool(ffold_reshape_op, true, "Folding Reshape operators.");
+DECLARE_bool(ffold_reshape_op);
 
 namespace nnfusion
 {

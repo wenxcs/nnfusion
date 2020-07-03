@@ -2,18 +2,17 @@
 
 add_subdirectory(graph)
 
+file(GLOB codegen_pass codegen/*.cpp)
+file(GLOB tensor_pass tensor/*.cpp)
+file(GLOB train_pass train/*.cpp)
+
 set(SRC
     extract_graph_signature.cpp
-    cpu_codegenerator.cpp
-    cuda_codegenerator.cpp
-    rocm_codegenerator.cpp
-    codegenerator_helper.cpp
-    # tensor related
-    tensor/tensor_memory_layout.cpp
-    tensor/liveness_analysis.cpp
-    tensor/tensor_device_dispatcher.cpp
-    tensor/inplace_tensor_analysis.cpp
+    ${codegen_pass}
+    ${tensor_pass}
+    ${train_pass}
 )
+
 add_library(nnfusion_engine_pass STATIC ${SRC})
 target_include_directories(nnfusion_engine_pass SYSTEM PUBLIC
     ${NGRAPH_INCLUDE_PATH}

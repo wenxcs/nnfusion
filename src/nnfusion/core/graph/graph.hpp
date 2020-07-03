@@ -15,6 +15,7 @@ namespace nnfusion
         class Graph
         {
         public:
+            using Pointer = std::shared_ptr<Graph>;
             // Constructs a graph with a single SOURCE (always id kSourceId) and a
             // single SINK (always id kSinkId) node, and an edge from SOURCE->SINK.
 

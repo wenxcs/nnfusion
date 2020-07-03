@@ -1,155 +1,15 @@
-// Microsoft (c) 2019, Wenxiang Hu
-#include "interpreter.hpp"
-#include "nnfusion/engine/pass/codegen/cpu_codegenerator.hpp"
-#include "nnfusion/engine/pass/codegen/cuda_codegenerator.hpp"
-#include "nnfusion/engine/pass/codegen/rocm_codegenerator.hpp"
-#include "nnfusion/engine/pass/extract_graph_signature.hpp"
-
-#include <strings.h>
+#include "reversed_dfs_visitor.hpp"
 #include "nnfusion/common/descriptor/layout/dense_tensor_layout.hpp"
 #include "nnfusion/engine/async_manager.hpp"
-#include "pass/tensor/inplace_tensor_analysis.hpp"
-#include "pass/tensor/liveness_analysis.hpp"
-#include "pass/tensor/tensor_device_dispatcher.hpp"
-#include "pass/tensor/tensor_memory_layout.hpp"
-using namespace nnfusion::pass;
+#include "nnfusion/engine/pass/extract_graph_signature.hpp"
 
-DECLARE_string(fdefault_device);
-DEFINE_bool(fcuda_kernels_as_files, false, "Saving cuda kernels as standalone source code files.");
-DEFINE_int64(fcuda_kernels_files_number,
-             -1,
-             "Saving cuda kernels into how many source code files.");
+using namespace nnfusion;
 
-DEFINE_bool(fkernels_as_files, false, "Saving kernels as standalone source code files.");
-DEFINE_int64(fkernels_files_number, -1, "Saving kernels into how many source code files.");
 DECLARE_string(fcuda_init_stream);
-DECLARE_string(fstream_assign_policy);
 
-Interpreter::Interpreter()
-    : m_trans_ctx(new InterpreterContext())
-    , m_passes(new vector<shared_ptr<IInterpreterPass>>())
-{
-    // Todo: find another way
-    auto dev_name = FLAGS_fdefault_device.c_str();
-    NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
-
-    // To be compatible with former cli
-    //Todo(wenxh): Remove this;
-    FLAGS_fkernels_as_files = FLAGS_fkernels_as_files || FLAGS_fcuda_kernels_as_files;
-    FLAGS_fkernels_files_number =
-        max(FLAGS_fkernels_files_number, FLAGS_fcuda_kernels_files_number);
-
-    // kernel selection
-    // m_passes->push_back(make_shared<DefaultDeviceDispatcher>());
-    // m_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
-    // m_passes->push_back(make_shared<DefaultKernelSelector>());
-    m_passes->push_back(make_shared<TensorDeviceDispatcher>());
-    m_passes->push_back(make_shared<TensorLivenessAnalysis>());
-    m_passes->push_back(make_shared<InplaceTensorAnalysis>());
-    m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
-
-    switch (default_device)
-    {
-    case CUDA_GPU: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
-
-    case GENERIC_CPU: m_passes->push_back(make_shared<CpuCodeGenerator>()); break;
-
-    case ROCM_GPU:
-        FLAGS_fcuda_kernels_as_files = false;
-        m_passes->push_back(nnfusion::make_rocm_codegenerator());
-        break;
-
-    default: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
-    }
-}
-
-Interpreter::Interpreter(shared_ptr<vector<shared_ptr<IInterpreterPass>>> passes,
-                         shared_ptr<InterpreterContext> ctx)
-{
-    this->m_passes = passes;
-    this->m_trans_ctx = ctx;
-}
-
-bool Interpreter::translate(TranslationUnit::Pointer tu)
-{
-    NNFUSION_CHECK_NOT_NULLPTR(m_passes);
-    return IInterpreterPass::run_passes(*m_passes, m_trans_ctx, tu);
-}
-
-TranslationUnitMap& Interpreter::translate(shared_ptr<graph::Graph> graph)
-{
-    auto& _tus = m_trans_ctx->m_tus;
-    if (_tus.find(graph) != _tus.end() && _tus[graph]->m_is_translated)
-        return _tus;
-    // run graph passes
-    std::vector<shared_ptr<graph::Graph>> graph_vec{graph};
-    nnfusion::pass::graph::GraphPass graph_passes;
-    NNFUSION_CHECK(graph_passes.run(graph_vec) == true);
-
-    // Iterator through all nodes
-    static interpreter::ExtractGraphSignature extract_global;
-
-    // Deal with translation unit's program
-    for (auto cur_graph : graph_vec)
-    {
-        m_trans_ctx->m_graphs.insert(cur_graph);
-
-        shared_ptr<TranslationUnit> _tu(new TranslationUnit());
-        _tus.emplace(cur_graph, _tu);
-        NNFUSION_LOG(INFO) << "Translating graph:\t" << cur_graph->get_name();
-
-        _tu->program = nnfusion::ir::Program::create_single_basic_block_program();
-        _tu->m_graph = cur_graph;
-        auto bb_main = _tu->program.get_entry();
-
-        // extract output_names/constants/arg/out for _tu, m_variable_name_map for m_trans_ctx
-        NNFUSION_CHECK(extract_global.run(m_trans_ctx, _tu))
-            << "Error when extract global graph info.";
-
-        // Translate the Node
-        nnfusion::graph::GNodeVector node_vec;
-        if (FLAGS_fstream_assign_policy == "kernel_prof_based")
-            node_vec = cur_graph->get_bfs_ordered_ops();
-        else
-            node_vec = cur_graph->get_ordered_ops();
-        for (auto gnode : node_vec)
-        {
-            // Generate Translated OP
-            // <todo> not sure translated
-            auto it = m_trans_ctx->m_node_inter_map.find(gnode);
-            if (it == m_trans_ctx->m_node_inter_map.end())
-            {
-                nnfusion::ir::Instruction::Pointer ir(new nnfusion::ir::Instruction);
-                ir->setGNode(gnode);
-
-                // Tag example
-                {
-                    auto& INS = *ir;
-                    INS["DEBUG"] = 1;
-                    auto res = INS["DEBUG"].as<int>();
-                }
-
-                // move all tags on the node to the intruction
-                {
-                    ir->copy_tags_from(*gnode);
-                }
-
-                ir->setName(gnode->get_name());
-                bb_main->push_back(ir);
-
-                // add memcpy ir and async info if the gnode and its output gnodes are in diffrent devices
-                add_memcpy_ir(cur_graph, gnode, bb_main);
-            }
-        }
-        if (translate(_tu))
-            _tu->m_is_translated = true;
-    }
-    return m_trans_ctx->m_tus;
-}
-
-void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
-                                shared_ptr<nnfusion::graph::GNode> gnode,
-                                nnfusion::ir::BasicBlock::Pointer bb_main)
+void add_memcpy_ir(shared_ptr<graph::Graph> graph,
+                   shared_ptr<nnfusion::graph::GNode> gnode,
+                   nnfusion::ir::BasicBlock::Pointer bb_main)
 {
     auto CUDA_async_manager =
         nnfusion::async::AsyncManagerFactory::get_device_stream_async_manager(graph, CUDA_GPU);
@@ -364,4 +224,34 @@ void Interpreter::add_memcpy_ir(shared_ptr<graph::Graph> graph,
             }
         }
     }
+}
+
+nnfusion::ir::Program::Pointer ReversedDFSVisitor::run_on_graph(shared_ptr<graph::Graph> graph,
+                                                                EngineContext::Pointer context)
+{
+    NNFUSION_LOG(INFO) << "Translating graph:\t" << graph->get_name();
+
+    auto program =
+        make_shared<ir::Program>(nnfusion::ir::Program::create_single_basic_block_program());
+    auto bb_main = program->get_entry();
+
+    // Translate the Node
+    // Currently:
+    // * Translate each gnode into an instruction;
+    // * Store all instruction inside one basicblock since we don't have
+    //   control-flow by now.
+    nnfusion::graph::GNodeVector node_vec;
+    node_vec = graph->get_ordered_ops();
+    for (auto gnode : node_vec)
+    {
+        shared_ptr<TranslationUnit> _tu(new TranslationUnit());
+        nnfusion::ir::Instruction::Pointer ir(new nnfusion::ir::Instruction);
+        ir->setGNode(gnode);
+        ir->copy_tags_from(*gnode);
+        ir->setName(gnode->get_name());
+        bb_main->push_back(ir);
+        add_memcpy_ir(graph, gnode, bb_main);
+    }
+
+    return program;
 }

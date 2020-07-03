@@ -6,7 +6,7 @@
 #include "nnfusion/core/operators/op_define/dot.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 
-DEFINE_bool(ftranspose_vecdot, false, "Enable vectdot transpose.");
+DECLARE_bool(ftranspose_vecdot);
 
 namespace nnfusion
 {
