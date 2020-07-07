@@ -206,6 +206,7 @@ thread_pool->ParallelFor(num_shards, func);
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("Concat",                                                  // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(3), // attrs
-                        cpu::ConcatEigen)
+REGISTER_KERNEL_EMITTER(
+    "Concat",                                                              // op_name
+    Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(4), // attrs
+    cpu::ConcatEigen)
