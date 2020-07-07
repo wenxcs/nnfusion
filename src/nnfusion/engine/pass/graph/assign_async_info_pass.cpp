@@ -120,72 +120,82 @@ void AssignAsyncInfoPass::gpu_assign_thread_info(shared_ptr<Graph>& graph)
                     host_async_manager->set_stream(0, "async_" + to_string(count));
                 if (count < max_num_async_thread)
                     count += 1;
-                std::vector<std::shared_ptr<nnfusion::graph::GNode>> stack;
-                std::unordered_set<std::shared_ptr<nnfusion::graph::GNode>> same_thread{gnode};
-
-                auto add_gnode = [&stack, &same_thread](std::shared_ptr<GNode> out_gnode) {
-                    if (!(*out_gnode)["Async_info"].is_valid())
-                        (*out_gnode)["Async_info"] = AsyncExecutionInfo();
-                    auto& out_async_info = (*out_gnode)["Async_info"].as<AsyncExecutionInfo>();
-                    bool same = true;
-                    for (auto& in_edge : out_gnode->get_in_edges())
-                    {
-                        auto in_node = in_edge->get_src();
-                        if (same_thread.find(in_node) == same_thread.end())
-                        {
-                            same = false;
-                            break;
-                        }
-                    }
-                    if (same && out_async_info.execution_thread == nullptr &&
-                        !(*out_gnode)["is_async_node"].is_valid())
-                    {
-                        stack.push_back(out_gnode);
-                        same_thread.insert(out_gnode);
-                    }
-                };
 
                 for (auto& out_edge : gnode->get_out_edges())
                 {
                     auto out_gnode = out_edge->get_dst();
-                    int out_device_id = (*out_gnode)["DeviceID"].as<int>();
-                    auto out_device_type = (*out_gnode)["DeviceType"].as<NNFusion_DeviceType>();
-                    if (out_device_id == device_id && out_device_type == device_type)
-                        add_gnode(out_edge->get_dst());
+                    auto& out_gnode_async_info =
+                        (*out_gnode)["Async_info"].as<AsyncExecutionInfo>();
+                    if (!out_gnode_async_info.execution_thread &&
+                        out_gnode->get_op_ptr()->is_output())
+                        out_gnode_async_info.execution_thread = async_info.execution_thread;
                 }
+                // std::vector<std::shared_ptr<nnfusion::graph::GNode>> stack;
+                // std::unordered_set<std::shared_ptr<nnfusion::graph::GNode>> same_thread{gnode};
 
-                while (!stack.empty())
-                {
-                    std::shared_ptr<GNode> cur_gnode = stack.back();
-                    stack.pop_back();
-                    auto& cur_async_info = (*cur_gnode)["Async_info"].as<AsyncExecutionInfo>();
-                    cur_async_info.execution_thread = async_info.execution_thread;
-                    for (auto& out_edge : cur_gnode->get_out_edges())
-                    {
-                        auto out_gnode = out_edge->get_dst();
-                        int out_device_id = (*out_gnode)["DeviceID"].as<int>();
-                        if (out_device_id == device_id)
-                            add_gnode(out_edge->get_dst());
-                    }
-                }
+                // auto add_gnode = [&stack, &same_thread](std::shared_ptr<GNode> out_gnode) {
+                //     if (!(*out_gnode)["Async_info"].is_valid())
+                //         (*out_gnode)["Async_info"] = AsyncExecutionInfo();
+                //     auto& out_async_info = (*out_gnode)["Async_info"].as<AsyncExecutionInfo>();
+                //     bool same = true;
+                //     for (auto& in_edge : out_gnode->get_in_edges())
+                //     {
+                //         auto in_node = in_edge->get_src();
+                //         if (same_thread.find(in_node) == same_thread.end())
+                //         {
+                //             same = false;
+                //             break;
+                //         }
+                //     }
+                //     if (same && out_async_info.execution_thread == nullptr &&
+                //         !(*out_gnode)["is_async_node"].is_valid())
+                //     {
+                //         stack.push_back(out_gnode);
+                //         same_thread.insert(out_gnode);
+                //     }
+                // };
+
+                // for (auto& out_edge : gnode->get_out_edges())
+                // {
+                //     auto out_gnode = out_edge->get_dst();
+                //     int out_device_id = (*out_gnode)["DeviceID"].as<int>();
+                //     auto out_device_type = (*out_gnode)["DeviceType"].as<NNFusion_DeviceType>();
+                //     if (out_device_id == device_id && out_device_type == device_type)
+                //         add_gnode(out_edge->get_dst());
+                // }
+
+                // while (!stack.empty())
+                // {
+                //     std::shared_ptr<GNode> cur_gnode = stack.back();
+                //     stack.pop_back();
+                //     auto& cur_async_info = (*cur_gnode)["Async_info"].as<AsyncExecutionInfo>();
+                //     cur_async_info.execution_thread = async_info.execution_thread;
+                //     for (auto& out_edge : cur_gnode->get_out_edges())
+                //     {
+                //         auto out_gnode = out_edge->get_dst();
+                //         int out_device_id = (*out_gnode)["DeviceID"].as<int>();
+                //         if (out_device_id == device_id)
+                //             add_gnode(out_edge->get_dst());
+                //     }
+                // }
             }
             else
             {
-                for (auto& in_edge : gnode->get_in_edges())
-                {
-                    auto in_gnode = in_edge->get_src();
-                    int in_device_id = (*in_gnode)["DeviceID"].as<int>();
-                    if (in_device_id == device_id && !in_gnode->get_op_ptr()->is_tensor_op())
-                    {
-                        auto& in_async_info = (*in_gnode)["Async_info"].as<AsyncExecutionInfo>();
-                        auto in_thread = in_async_info.execution_thread;
-                        if (in_thread != nullptr)
-                        {
-                            async_info.execution_thread = in_thread;
-                            break;
-                        }
-                    }
-                }
+                // for (auto& in_edge : gnode->get_in_edges())
+                // {
+                //     auto in_gnode = in_edge->get_src();
+                //     int in_device_id = (*in_gnode)["DeviceID"].as<int>();
+                //     if (in_device_id == device_id && !in_gnode->get_op_ptr()->is_tensor_op())
+                //     {
+                //         auto& in_async_info = (*in_gnode)["Async_info"].as<AsyncExecutionInfo>();
+                //         auto in_thread = in_async_info.execution_thread;
+                //         if (in_thread != nullptr)
+                //         {
+                //             async_info.execution_thread = in_thread;
+                //             break;
+                //         }
+                //     }
+                // }
 
                 if (async_info.execution_thread == nullptr)
                 {
