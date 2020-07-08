@@ -30,9 +30,9 @@ if (NNFUSION_ENABLE)
         nnfusion_ir
         nnfusion_util
         # kernels
-        kernels_registration
         # use ${WholeArchiveFlag} because MacOS' ldtool use different flag.
         ${WholeArchiveFlag}
+        kernels_registration
         nnfusion_engine_device
         kernels_cuda 
         kernels_cpu

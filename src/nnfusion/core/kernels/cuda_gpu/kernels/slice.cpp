@@ -136,6 +136,7 @@ LanguageUnit_p cuda::Slice::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Slice",                                                      // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Slice)                                                  // constructor
+REGISTER_KERNEL_EMITTER(
+    "Slice",                                                                  // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::Slice)                                                              // constructor

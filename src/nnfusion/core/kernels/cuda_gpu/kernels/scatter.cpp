@@ -97,7 +97,7 @@ using namespace nnfusion::kernels;
 
 #define REGISTER_SCATTER_KERNEL(OP_NAME, KERNEL_NAME)                                              \
     REGISTER_KERNEL_EMITTER("" #KERNEL_NAME "",                                                    \
-                            Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("scatter"),              \
+                            Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("scatter").Priority(2),  \
                             cuda::Scatter<nnfusion::op::OP_NAME>);
 
 REGISTER_SCATTER_KERNEL(Subtract, ScatterSub);

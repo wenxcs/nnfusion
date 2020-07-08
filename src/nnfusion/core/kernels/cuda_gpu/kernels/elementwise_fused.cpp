@@ -302,6 +302,7 @@ void ElementWiseFused::compute_best_config(int& grids, int& blocks, int& bound)
         grids = (num_ele + 255) / 256, blocks = 256, bound = 1;
 }
 
-REGISTER_KERNEL_EMITTER("ElementWiseFused",                                           // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::ElementWiseFused)
+REGISTER_KERNEL_EMITTER(
+    "ElementWiseFused",                                                       // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::ElementWiseFused)

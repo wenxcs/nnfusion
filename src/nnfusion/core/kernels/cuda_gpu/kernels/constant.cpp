@@ -113,6 +113,6 @@ namespace nnfusion
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;
-REGISTER_KERNEL_EMITTER("Constant",                                //op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT), //attrs
-                        cuda::Constant)                            // constructor
+REGISTER_KERNEL_EMITTER("Constant",                                            //op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Priority(2), //attrs
+                        cuda::Constant)                                        // constructor

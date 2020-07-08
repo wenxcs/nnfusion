@@ -130,6 +130,7 @@ LanguageUnit_p cuda::Softmax::emit_function_signature()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Softmax",                                                     // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel"), // attrs
-                        cuda::Softmax) // constructor
+REGISTER_KERNEL_EMITTER(
+    "Softmax",                                                                 // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel").Priority(2), // attrs
+    cuda::Softmax)                                                             // constructor

@@ -190,6 +190,7 @@ LanguageUnit_p cuda::ConvolutionCudnn::emit_function_signature()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Convolution",                                                 // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel"), // attrs
-                        cuda::ConvolutionCudnn) // constructor
+REGISTER_KERNEL_EMITTER(
+    "Convolution",                                                             // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel").Priority(2), // attrs
+    cuda::ConvolutionCudnn)                                                    // constructor

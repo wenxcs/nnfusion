@@ -185,5 +185,5 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("UnsortedSegmentSum",
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2),
                         cuda::UnsortedSegmentSum)

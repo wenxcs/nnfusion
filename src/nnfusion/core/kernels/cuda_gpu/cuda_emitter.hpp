@@ -9,6 +9,8 @@
 #include "nnfusion/engine/async_manager.hpp"
 #include "nnfusion/util/curl_request.hpp"
 
+DECLARE_string(fantares_codegen_server);
+
 namespace nnfusion
 {
     namespace kernels
@@ -181,12 +183,23 @@ namespace nnfusion
                     , m_antares_ke_imp(new AntaresKEImp)
                 {
                     GENERIC_OP_LOGGING();
+                    if (!FLAGS_fantares_codegen_server.empty())
+                    {
+                        auto ir = nnfusion::op::get_translation(ctx->gnode);
+                        if (!ir.empty())
+                        {
+                            auto info = m_antares_ke_imp->autogen(ir);
+                            antares_code = info.first;
+                            m_is_tuned = info.second;
+                        }
+                    }
                 }
 
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
                 void set_launch_config() override {}
                 AntaresKEImp::Pointer m_antares_ke_imp;
+                std::string antares_code;
             };
 
         } // namespace cuda

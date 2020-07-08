@@ -120,6 +120,7 @@ LanguageUnit_p cuda::DynamicStitch::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("DynamicStitch",                                              // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::DynamicStitch)                                          // constructor
+REGISTER_KERNEL_EMITTER(
+    "DynamicStitch",                                                          // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::DynamicStitch)                                                      // constructor

@@ -107,6 +107,6 @@ LanguageUnit_p cuda::BatchNorm::emit_function_signature()
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("BatchNormInference",                                   // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn"), // attrs
-                        cuda::BatchNorm)                                        // constructor
+REGISTER_KERNEL_EMITTER("BatchNormInference", // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn").Priority(2), // attrs
+                        cuda::BatchNorm) // constructor

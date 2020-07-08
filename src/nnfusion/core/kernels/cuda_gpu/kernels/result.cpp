@@ -59,6 +59,7 @@ LanguageUnit_p cuda::Result::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Result",                                                  // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
-                        cuda::Result)                                              // constructor
+REGISTER_KERNEL_EMITTER(
+    "Result",                                                              // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib").Priority(2), // attrs
+    cuda::Result)                                                          // constructor

@@ -8,6 +8,8 @@
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
+DECLARE_string(fantares_codegen_server);
+
 namespace nnfusion
 {
     namespace kernels
@@ -69,12 +71,22 @@ namespace nnfusion
                     , m_antares_ke_imp(new AntaresKEImp)
                 {
                     m_intra_op_parallelism = true;
+                    if (!FLAGS_fantares_codegen_server.empty())
+                    {
+                        auto ir = nnfusion::op::get_translation(ctx->gnode);
+                        if (!ir.empty())
+                        {
+                            auto info = m_antares_ke_imp->autogen(ir);
+                            antares_code = info.first;
+                            m_is_tuned = info.second;
+                        }
+                    }
                 }
-
                 virtual LanguageUnit_p emit_function_body() override;
                 virtual LanguageUnit_p emit_dependency() override;
 
                 AntaresKEImp::Pointer m_antares_ke_imp;
+                std::string antares_code;
             };
 
             class SimdKernelEmitter : public CpuKernelEmitter

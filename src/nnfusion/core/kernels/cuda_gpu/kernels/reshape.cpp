@@ -555,18 +555,22 @@ LanguageUnit_p cuda::ReshapeMemcpy::emit_function_signature()
 
 // Register Reshape kernel emitter
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                       // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_2D"), // attrs
-                        cuda::Reshape2D) // constructor
+REGISTER_KERNEL_EMITTER(
+    "Reshape",                                                                   // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_2D").Priority(2), // attrs
+    cuda::Reshape2D)                                                             // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                       // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_3D"), // attrs
-                        cuda::Reshape3D) // constructor
+REGISTER_KERNEL_EMITTER(
+    "Reshape",                                                                   // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_3D").Priority(2), // attrs
+    cuda::Reshape3D)                                                             // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                      // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_D"), // attrs
-                        cuda::ReshapehD) // constructor
+REGISTER_KERNEL_EMITTER(
+    "Reshape",                                                                  // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel_D").Priority(2), // attrs
+    cuda::ReshapehD)                                                            // constructor
 
-REGISTER_KERNEL_EMITTER("Reshape",                                                 // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib"), // attrs
-                        cuda::ReshapeMemcpy)                                       // constructor
+REGISTER_KERNEL_EMITTER(
+    "Reshape",                                                             // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_lib").Priority(2), // attrs
+    cuda::ReshapeMemcpy)                                                   // constructor

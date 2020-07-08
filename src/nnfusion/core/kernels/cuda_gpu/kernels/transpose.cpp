@@ -141,6 +141,7 @@ namespace nnfusion
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("Transpose",                                                  // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Transpose)                                              // constructor
+REGISTER_KERNEL_EMITTER(
+    "Transpose",                                                              // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::Transpose)                                                          // constructor

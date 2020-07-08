@@ -4,7 +4,6 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 using namespace nnfusion::async;
-DECLARE_string(fantares_codegen_server);
 
 LanguageUnit_p cuda::CudaEmitter::emit_function_call()
 {
@@ -170,24 +169,16 @@ const std::unordered_map<std::string, size_t> cuda::BlockCudaEmitter::size_of_st
 LanguageUnit_p cuda::AntaresCudaKernelEmitter::emit_function_body()
 {
     GENERIC_OP_LOGGING();
-    auto& ctx = m_context;
-
-    if (FLAGS_fantares_codegen_server.empty())
-        return nullptr;
-    auto ir = nnfusion::op::get_translation(ctx->gnode);
-    if (ir == "")
-        return nullptr;
-    auto str = m_antares_ke_imp->autogen(ir, antares_quick_codegen);
-    if (str == "")
+    if (antares_code.empty())
         return nullptr;
 
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     auto& lu = *_lu;
 
     // extract kernel code
-    int start = str.find(") {\n"), end = str.find("\n}\n");
+    int start = antares_code.find(") {\n"), end = antares_code.find("\n}\n");
     NNFUSION_CHECK(start >= 0 && end >= 0 && end > start);
-    str = str.substr(start + 4, end - start - 4);
+    std::string str = antares_code.substr(start + 4, end - start - 4);
 
     int at_bx = str.find("// [thread_extent] blockIdx.x = "),
         blockX =

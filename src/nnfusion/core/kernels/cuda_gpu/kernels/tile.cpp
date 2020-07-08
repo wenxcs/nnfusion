@@ -146,9 +146,9 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("Tile",
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2),
                         cuda::Tile)
 
-REGISTER_KERNEL_EMITTER("Tile",                                    //op_name
-                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT), //attrs
-                        cuda::RocmTile)                            // constructor
+REGISTER_KERNEL_EMITTER("Tile",                                                //op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Priority(2), //attrs
+                        cuda::RocmTile)                                        // constructor

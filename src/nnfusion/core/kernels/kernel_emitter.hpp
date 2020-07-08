@@ -81,9 +81,7 @@ namespace nnfusion
             virtual bool is_eliminative() { return false; }
             // The context for this kernel
             shared_ptr<KernelContext> m_context;
-            // speficify if accept un-tuned antares kernel
-            bool antares_quick_codegen = false;
-
+            bool is_tuned() { return m_is_tuned; }
         protected:
             // Generate function name for this kernel, the default name is:
             // "op_name + args_shapes + data_type + device + custom_tag"
@@ -146,7 +144,8 @@ namespace nnfusion
             // if the kernel can be executed in parallel.
             bool m_intra_op_parallelism;
 
-            //
+            // speficify if accept un-tuned antares kernel
+            bool m_is_tuned = false;
         };
     } // namespace kernels
 } // namespace nnfusion

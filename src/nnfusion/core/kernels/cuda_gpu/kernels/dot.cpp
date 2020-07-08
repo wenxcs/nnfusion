@@ -253,10 +253,12 @@ LanguageUnit_p cuda::Dot::emit_function_signature()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Dot",                                                   // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cublas"), // attrs
-                        cuda::Dot)                                               // constructor
+REGISTER_KERNEL_EMITTER(
+    "Dot",                                                               // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cublas").Priority(2), // attrs
+    cuda::Dot)                                                           // constructor
 
-REGISTER_KERNEL_EMITTER("Dot",                                                   // op_name
-                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cublas"), // attrs
-                        cuda::Dot)                                               // constructor
+REGISTER_KERNEL_EMITTER(
+    "Dot",                                                               // op_name
+    Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cublas").Priority(2), // attrs
+    cuda::Dot)                                                           // constructor

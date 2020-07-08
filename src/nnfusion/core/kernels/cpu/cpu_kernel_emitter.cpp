@@ -9,8 +9,6 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-DECLARE_string(fantares_codegen_server);
-
 LanguageUnit_p cpu::EigenKernelEmitter::emit_eigen_utils()
 {
     LanguageUnit_p _lu(new LanguageUnit("eigen_utils.hpp"));
@@ -145,13 +143,8 @@ std::string
 LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
 {
     auto& ctx = m_context;
-    if (FLAGS_fantares_codegen_server.empty())
-        return nullptr;
-    auto ir = nnfusion::op::get_translation(ctx->gnode);
-    if (ir == "")
-        return nullptr;
-    auto str = m_antares_ke_imp->autogen(ir, antares_quick_codegen);
-    if (str == "")
+
+    if (antares_code.empty())
         return nullptr;
 
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
@@ -162,13 +155,13 @@ LanguageUnit_p cpu::AntaresCpuKernelEmitter::emit_function_body()
     const char* e_func_pattern = "\n}\n";
     const char* s_rank_pattern = "__rank__ = ";
     const char* e_rank_pattern = "\n";
-    std::string::size_type s_func_pos = str.find(s_func_pattern);
-    std::string::size_type e_func_pos = str.rfind(e_func_pattern);
+    std::string::size_type s_func_pos = antares_code.find(s_func_pattern);
+    std::string::size_type e_func_pos = antares_code.rfind(e_func_pattern);
 
     NNFUSION_CHECK(s_func_pos != std::string::npos && e_func_pos != std::string::npos);
 
-    std::string func_body = str.substr(s_func_pos + strlen(s_func_pattern),
-                                       e_func_pos - s_func_pos - strlen(s_func_pattern));
+    std::string func_body = antares_code.substr(s_func_pos + strlen(s_func_pattern),
+                                                e_func_pos - s_func_pos - strlen(s_func_pattern));
     std::string::size_type s_rank_pos = func_body.find(s_rank_pattern);
     std::string::size_type e_rank_pos = func_body.find(e_rank_pattern);
     std::string rank_str = func_body.substr(s_rank_pos + strlen(s_rank_pattern),

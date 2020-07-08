@@ -137,6 +137,7 @@ KernelRegistrar kernel_registrar0(
         .Build());
 */
 
-REGISTER_KERNEL_EMITTER("Pad",                                                        // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Pad)                                                    // constructor
+REGISTER_KERNEL_EMITTER(
+    "Pad",                                                                    // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::Pad)                                                                // constructor

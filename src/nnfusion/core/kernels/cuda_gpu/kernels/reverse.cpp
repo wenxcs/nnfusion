@@ -99,6 +99,7 @@ LanguageUnit_p cuda::Reverse::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("Reverse",                                                    // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Reverse)                                                // constructor
+REGISTER_KERNEL_EMITTER(
+    "Reverse",                                                                // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::Reverse)                                                            // constructor

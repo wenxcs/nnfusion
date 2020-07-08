@@ -238,10 +238,12 @@ LanguageUnit_p cuda::MaxPoolmD::emit_function_signature()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("MaxPool",                                                    // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::MaxPool1D)                                              // constructor
+REGISTER_KERNEL_EMITTER(
+    "MaxPool",                                                                // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::MaxPool1D)                                                          // constructor
 
-REGISTER_KERNEL_EMITTER("MaxPool",                                                     // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel"), // attrs
-                        cuda::MaxPoolmD) // constructor
+REGISTER_KERNEL_EMITTER(
+    "MaxPool",                                                                 // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn_kernel").Priority(2), // attrs
+    cuda::MaxPoolmD)                                                           // constructor

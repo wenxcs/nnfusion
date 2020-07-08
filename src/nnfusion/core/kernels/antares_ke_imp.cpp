@@ -6,14 +6,15 @@ using namespace nnfusion::kernels;
 
 DECLARE_string(fantares_codegen_server);
 
-std::unordered_map<std::string, std::string> AntaresKEImp::code_cache;
+std::unordered_map<std::string, std::pair<std::string, bool>> AntaresKEImp::code_cache;
 
-std::string AntaresKEImp::autogen(const std::string& expr, bool antares_quick_codegen)
+std::pair<std::string, bool> AntaresKEImp::autogen(const std::string& expr)
 {
     if (FLAGS_fantares_codegen_server == "")
-        return ""; // FLAGS_fantares_codegen_server = "10.150.145.98:8881";
+        return std::make_pair("", false); // FLAGS_fantares_codegen_server = "10.150.145.98:8881";
 
     std::string response;
+    bool tuned = false;
     auto it = code_cache.find(expr);
     if (it == code_cache.end())
     {
@@ -23,25 +24,18 @@ std::string AntaresKEImp::autogen(const std::string& expr, bool antares_quick_co
         if (!req.send_request(response))
         {
             NNFUSION_LOG(NNFUSION_WARNING) << "Curl request Antares kernel failed.";
-            return "";
+            return std::make_pair("", tuned);
         }
         if (strncmp(response.c_str(), "[ERROR]", 7) == 0)
         {
             NNFUSION_LOG(ERROR) << expr << "\n" << response;
-            return "";
+            return std::make_pair("", tuned);
         }
-        bool tuned = response.find("\n// Saved Perf =") != std::string::npos;
-        bool choose = true;
-        if (!antares_quick_codegen && !tuned)
-        {
-            response = "";
-            choose = false;
-        }
+        tuned = response.find("\n// Saved Perf =") != std::string::npos;
 
-        NNFUSION_LOG(INFO) << "[Autogen] " << expr << " (tuned = " << tuned
-                           << ", choose = " << choose << ")";
-        code_cache[expr] = response;
-        return std::move(response);
+        NNFUSION_LOG(INFO) << "[Autogen] " << expr << " (tuned = " << tuned << ")";
+        code_cache[expr] = std::make_pair(response, tuned);
+        return std::make_pair(std::move(response), tuned);
     }
     else
         return it->second;

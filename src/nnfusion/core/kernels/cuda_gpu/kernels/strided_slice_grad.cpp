@@ -111,6 +111,7 @@ LanguageUnit_p cuda::StridedSliceGrad::emit_dependency()
     _lu->require(header::cuda);
     return _lu;
 }
-REGISTER_KERNEL_EMITTER("StridedSliceGrad",                                           // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::StridedSliceGrad)                                       // constructor
+REGISTER_KERNEL_EMITTER(
+    "StridedSliceGrad",                                                       // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::StridedSliceGrad)                                                   // constructor

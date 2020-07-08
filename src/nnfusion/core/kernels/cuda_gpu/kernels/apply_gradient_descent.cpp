@@ -75,8 +75,8 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("ApplyGradient",
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2),
                         cuda::ApplyGradientDescent)
 REGISTER_KERNEL_EMITTER("ApplyGradientDescent",
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"),
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2),
                         cuda::ApplyGradientDescent)

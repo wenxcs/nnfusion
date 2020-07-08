@@ -16,6 +16,7 @@ using namespace nnfusion::profiler;
 
 DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
 DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
+DECLARE_bool(fantares_mode);
 
 pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     ProfilingBasedKernelSelector::profiling_best(shared_ptr<GNode> gnode,
@@ -149,11 +150,43 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
             kernel_regs.push_back(it);
     }
 
+    KernelEmitter::Pointer antares_kernel;
+    for (auto kernel_reg : kernel_regs)
+    {
+        if (kernel_reg->m_tag == "antares")
+        {
+            antares_kernel = kernel_reg->m_factory(ctx);
+            break;
+        }
+    }
+
     std::sort(kernel_regs.begin(),
               kernel_regs.end(),
               [&](const shared_ptr<const KernelRegistration>& x,
                   const shared_ptr<const KernelRegistration>& y) {
-                  auto x_prio = x->m_priority, y_prio = y->m_priority;
+                  size_t x_prio, y_prio;
+                  // If antares_mode is turned on, the priority of antares kernel is always the highest(9),
+                  // and we do not modify the antares kernel priority. Otherwise, the priority of tuned
+                  // antares kernel is the highest, while the priority of untuned antares kernel is just
+                  // higher than reference kernel(0). Hence, we set its priority to 1. For now, the priority
+                  // of other kernels is 2~8.
+                  if (!FLAGS_fantares_mode && x->m_tag == "antares" && !antares_kernel->is_tuned())
+                  {
+                      x_prio = 1;
+                  }
+                  else
+                  {
+                      x_prio = x->m_priority;
+                  }
+
+                  if (!FLAGS_fantares_mode && y->m_tag == "antares" && !antares_kernel->is_tuned())
+                  {
+                      y_prio = 1;
+                  }
+                  else
+                  {
+                      y_prio = y->m_priority;
+                  }
                   // the kernel device type may be different with gnode device type,
                   // e.g., ROCM gnode may use CUDA kernel. To ensure kernel of same
                   // device type have higher prioprity, we add 1 to their priority
@@ -174,15 +207,16 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
                   return false;
               });
 
-    bool antares_quick_codegen = false;
-    if (kernel_regs.size() == 1 ||
-        (kernel_regs.size() == 2 && kernel_regs[1]->m_tag == "reference"))
-        antares_quick_codegen = true;
-
+    shared_ptr<const KernelRegistration> untuned_antares_kernel_reg;
+    std::vector<shared_ptr<const KernelRegistration>> cand_kernel_regs;
     for (auto kernel_reg : kernel_regs)
     {
-        auto kernel = kernel_reg->m_factory(ctx);
-        kernel->antares_quick_codegen = antares_quick_codegen;
+        KernelEmitter::Pointer kernel;
+        if (kernel_reg->m_tag == "antares")
+            kernel = antares_kernel;
+        else
+            kernel = kernel_reg->m_factory(ctx);
+
         // constant kernel emitter will write file to save weights, skip to do it when codegen.
         if (gnode->is_constant() || kernel->get_or_emit_source())
         {

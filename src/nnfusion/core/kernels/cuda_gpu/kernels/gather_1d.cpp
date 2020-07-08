@@ -110,6 +110,7 @@ LanguageUnit_p cuda::Gather1D::emit_dependency()
     _lu->require(header::cuda);
     return _lu;
 }
-REGISTER_KERNEL_EMITTER("GatherV2",                                                   // op_name
-                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel"), // attrs
-                        cuda::Gather1D)                                               // constructor
+REGISTER_KERNEL_EMITTER(
+    "GatherV2",                                                               // op_name
+    Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda_kernel").Priority(2), // attrs
+    cuda::Gather1D)                                                           // constructor
