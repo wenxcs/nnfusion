@@ -87,7 +87,6 @@ LanguageUnit_p cpu::Dot::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER(
-    "Dot",                                                                 // op_name
-    Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(4), // attrs
-    cpu::Dot)
+REGISTER_KERNEL_EMITTER("Dot",                                                     // op_name
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(3), // attrs
+                        cpu::Dot)

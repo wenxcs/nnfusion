@@ -109,7 +109,6 @@ LanguageUnit_p cpu::DotMlas::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER(
-    "Dot",                                                                // op_name
-    Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mlas").Priority(6), // attrs
-    cpu::DotMlas)
+REGISTER_KERNEL_EMITTER("Dot",                                                    // op_name
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mlas").Priority(5), // attrs
+                        cpu::DotMlas)
