@@ -170,5 +170,5 @@ LanguageUnit_p cpu::ConvolutionMlas::emit_dependency()
 }
 
 REGISTER_KERNEL_EMITTER("Convolution",                                            // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mlas").Priority(5), // attrs
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mlas"), // attrs
                         cpu::ConvolutionMlas)                                     // constructor

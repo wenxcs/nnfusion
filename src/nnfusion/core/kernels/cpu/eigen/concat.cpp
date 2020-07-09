@@ -207,5 +207,5 @@ using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("Concat",                                                  // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(3), // attrs
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen"), // attrs
                         cpu::ConcatEigen)
