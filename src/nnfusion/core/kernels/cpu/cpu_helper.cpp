@@ -36,14 +36,33 @@ LanguageUnit_p cpu::get_eigen_math_kernel(const std::string& name,
         {
             for (size_t i = 0; i < num_inputs; ++i)
             {
-                writer << "Eigen::TensorMap<Eigen::Tensor<" << data_types[i]
-                       << ", 1, Eigen::RowMajor>>"
-                       << " in" << i << "(x" << i << ", {" << data_size << "});\n";
+                if (math_kernel.find("pow") != std::string::npos)
+                {
+                    writer << "Eigen::Map<Eigen::Array<" << data_types[i] << ", 1, " << data_size
+                           << ">>"
+                           << " in" << i << "(x" << i << ", {" << data_size << "});\n";
+                }
+                else
+                {
+                    writer << "Eigen::TensorMap<Eigen::Tensor<" << data_types[i]
+                           << ", 1, Eigen::RowMajor>>"
+                           << " in" << i << "(x" << i << ", {" << data_size << "});\n";
+                }
             }
-            writer << "Eigen::TensorMap<Eigen::Tensor<" << data_types[num_inputs]
-                   << ", 1, Eigen::RowMajor>>"
-                   << " out(y0, {" << data_size << "});\n";
-            writer << "out.device(*(thread_pool->GetDevice())) = " << math_kernel << ";\n";
+            if (math_kernel.find("pow") != std::string::npos)
+            {
+                writer << "Eigen::Map<Eigen::Array<" << data_types[num_inputs] << ", 1, "
+                       << data_size << ">>"
+                       << " out(y0, {" << data_size << "});\n";
+                writer << "out = " << math_kernel << ";\n";
+            }
+            else
+            {
+                writer << "Eigen::TensorMap<Eigen::Tensor<" << data_types[num_inputs]
+                       << ", 1, Eigen::RowMajor>>"
+                       << " out(y0, {" << data_size << "});\n";
+                writer << "out.device(*(thread_pool->GetDevice())) = " << math_kernel << ";\n";
+            }
         }
         writer.indent--;
         writer << "}\n";
