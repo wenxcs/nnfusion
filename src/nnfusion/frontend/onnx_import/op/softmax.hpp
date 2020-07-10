@@ -5,24 +5,39 @@
 
 #pragma once
 
-#include <memory>
-
 #include "core/node.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                NodeVector softmax(const Node& node);
+                NamedNodeVector TranslateSoftmaxOp(const onnx::NodeProto& node_proto,
+                                                   const NodeMap& all_ng_nodes,
+                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph);
+
+                NamedNodeVector
+                    TranslateSoftmaxGradOp(const onnx::NodeProto& node_proto,
+                                           const NodeMap& all_ng_nodes,
+                                           std::shared_ptr<nnfusion::graph::Graph> m_graph);
+
+                NamedNodeVector TranslateSparseSoftmaxCrossEntropyOp(
+                    const onnx::NodeProto& node_proto,
+                    const NodeMap& all_ng_nodes,
+                    std::shared_ptr<nnfusion::graph::Graph> m_graph);
+
+                NamedNodeVector TranslateSparseSoftmaxCrossEntropyGradOp(
+                    const onnx::NodeProto& node_proto,
+                    const NodeMap& all_ng_nodes,
+                    std::shared_ptr<nnfusion::graph::Graph> m_graph);
 
             } // namespace set_1
 
-        } //namespace op
+        } //namespace onnx_import
 
-    } // namespace onnx_import
+    } // namespace frontend
 
-} // namespace ngraph
+} // namespace nnfusion

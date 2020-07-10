@@ -268,6 +268,8 @@ bool InplaceTensorAnalysis::run(std::shared_ptr<InterpreterContext> ctx,
                             if (ins->liveness_new_list.count(output) != 0)
                             {
                                 if (!oi_pair.destructive ||
+                                    ///\todo uncomment below after correctness
+                                    // if ((!oi_pair.destructive && !output->is_persistent()) ||
                                     (!input_gnode->is_constant() && !input->is_persistent() &&
                                      (inplace_inputs.count(input) == 0 ||
                                       inplace_use_count[inplace_inputs[input].tensor] == 0) &&

@@ -11,8 +11,8 @@ class E2EEvaluator:
 
     def nnfusion_compile(self):
         logging.info("Compiling " + self.testcase.get_filename())
-        os.system("cd %s && %s %s -f tensorflow -fdefault_device=%s %s >> nnfusion.log" %
-                (self.working_foler, nnfusion_cli, self.testcase.get_filename(), self.default_device, nnfusion_cli_arg))
+        os.system("cd %s && %s %s -f %s -fdefault_device=%s %s >> nnfusion.log" %
+                (self.working_foler, nnfusion_cli, self.testcase.get_filename(), self.testcase.format, self.default_device, self.testcase.extra_args + " " + nnfusion_cli_arg))
         if not os.path.exists("%s/nnfusion_rt/%s/nnfusion_rt.h"%(self.working_foler, self.codegen_folder)):
             logging.error("Failed at nnfusion compiling phase.")
             return False
@@ -26,7 +26,10 @@ class E2EEvaluator:
         return True
     
     def allclose(self):
-        os.system("cd %s/nnfusion_rt/%s/ && ./main_test > result.txt"%(self.working_foler, self.codegen_folder))
+        code = os.system("cd %s/nnfusion_rt/%s/ && ./main_test > result.txt"%(self.working_foler, self.codegen_folder))
+        if code != 0:
+            logging.error("%s execution failed."%self.testcase.casename)
+            return False
         if not os.path.exists("%s/nnfusion_rt/%s/result.txt"%(self.working_foler, self.codegen_folder)):
             logging.error("Failed at compiling phase.")
             return False
@@ -59,12 +62,15 @@ def E2EExecutor(TestCases, devname, report_list):
 
     for test in TestCases:
         if test.valid():
-            eval = E2EEvaluator(test, configs[devname][0], configs[devname][1], tmpdir)
-            report = devname + "\t" + test.casename + "\t";
-            if eval.report():
-                report += "Succeed!"
+            report = devname + "\t" + test.casename + "\t"
+            if len(test.backend) > 0 and devname not in test.backend:
+                report += "Skipped"
             else:
-                report += "Failed"
+                eval = E2EEvaluator(test, configs[devname][0], configs[devname][1], tmpdir)
+                if eval.report():
+                    report += "Succeed!"
+                else:
+                    report += "Failed"
             logging.info(report)
             report_list.append(report)
 

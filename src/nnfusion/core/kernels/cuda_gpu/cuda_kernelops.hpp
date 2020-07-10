@@ -46,6 +46,7 @@ namespace nnfusion
         class Convert;
         class Equal;
         class NotEqual;
+        class Gelu;
         class Greater;
         class GreaterEq;
         class Less;
@@ -282,6 +283,13 @@ namespace nnfusion
             {
                 static constexpr const char* op = "not_equal";
                 static constexpr const char* math_kernel = "x0 != x1";
+            };
+
+            template <>
+            struct CudaOpMap<nnfusion::op::Gelu>
+            {
+                static constexpr const char* op = "gelu";
+                static constexpr const char* math_kernel = "x0 * normcdff(x0)";
             };
 
             template <>

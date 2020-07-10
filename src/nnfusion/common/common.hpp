@@ -52,6 +52,7 @@
 #include "nnfusion/core/operators/op_define/erf.hpp"
 #include "nnfusion/core/operators/op_define/exp.hpp"
 #include "nnfusion/core/operators/op_define/floor.hpp"
+#include "nnfusion/core/operators/op_define/gelu.hpp"
 #include "nnfusion/core/operators/op_define/greater.hpp"
 #include "nnfusion/core/operators/op_define/greater_eq.hpp"
 #include "nnfusion/core/operators/op_define/less.hpp"

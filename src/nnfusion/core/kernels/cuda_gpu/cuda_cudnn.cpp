@@ -1,5 +1,6 @@
 // Microsoft (c) 2019, Wenxiang
 #include "cuda_cudnn.hpp"
+#include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 using namespace nnfusion::kernels;
 
@@ -190,4 +191,38 @@ LanguageUnit_p cuda::get_cudnn_convolution_descriptor(const Shape& padding,
            << "window_dilation_strides_int, CUDNN_CROSS_CORRELATION, " << data_type << "));\n";
     }
     return _lu;
+}
+
+LanguageUnit_p cuda::get_dropout_global_states(float ratio)
+{
+    NNFUSION_CHECK(ratio >= 0 && ratio < 1);
+    std::string prefix = "dropout_" + ratio2str(ratio);
+
+    std::string mangled_name = "declaration::" + prefix;
+    std::string code = nnfusion::op::create_code_from_template(
+        R"(
+cudnnDropoutDescriptor_t @prefix@_desc;
+void* @prefix@_states;
+
+void @prefix@_init(cudnnHandle_t cudnn_handle)
+{
+    size_t dropout_state_size;
+    CUDNN_SAFE_CALL(cudnnCreateDropoutDescriptor(&@prefix@_desc));
+    CUDNN_SAFE_CALL(cudnnDropoutGetStatesSize(cudnn_handle, &dropout_state_size));
+    CUDA_SAFE_CALL(cudaMalloc(&@prefix@_states, dropout_state_size));
+    CUDNN_SAFE_CALL(cudnnSetDropoutDescriptor(@prefix@_desc, cudnn_handle, @ratio@, @prefix@_states, dropout_state_size, /*seed*/ 0));
+}
+
+void @prefix@_free()
+{
+    CUDNN_SAFE_CALL(cudnnDestroyDropoutDescriptor(@prefix@_desc));
+    CUDA_SAFE_CALL(cudaFree(@prefix@_states));
+}
+
+)",
+        {
+            {"prefix", prefix}, {"ratio", ratio},
+        });
+    LanguageUnit_p lu(new LanguageUnit(mangled_name, code));
+    return lu;
 }

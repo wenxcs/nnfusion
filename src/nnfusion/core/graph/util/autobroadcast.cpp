@@ -166,6 +166,38 @@ namespace nnfusion
             return return_gnode;
         }
 
+        static GNodeIndex
+            add_required_ops(const GNodeIndex& gnode_index,
+                             const nnfusion::Shape& node_shape_after_possible_reshaping,
+                             const nnfusion::AxisSet& node_broadcast_axes,
+                             const nnfusion::Shape& node_final_shape,
+                             std::shared_ptr<nnfusion::graph::Graph> graph)
+        {
+            auto gnode = gnode_index.gnode;
+            auto return_gnode_index = gnode_index;
+
+            if (gnode->get_output_shape(gnode_index.index) != node_shape_after_possible_reshaping)
+            {
+                // tell reshape to examine input dimensions in order
+                nnfusion::AxisVector order =
+                    nnfusion::get_default_order(gnode->get_output_shape(gnode_index.index));
+                auto return_op =
+                    std::make_shared<op::Reshape>(order, node_shape_after_possible_reshaping);
+                return_gnode_index =
+                    GNodeIndex{graph->add_node_and_edge(return_op, {return_gnode_index})};
+            }
+
+            if (node_final_shape != node_shape_after_possible_reshaping)
+            {
+                auto return_op =
+                    std::make_shared<op::Broadcast>(node_final_shape, node_broadcast_axes);
+                return_gnode_index =
+                    GNodeIndex{graph->add_node_and_edge(return_op, {return_gnode_index})};
+            }
+
+            return return_gnode_index;
+        }
+
         std::pair<std::shared_ptr<GNode>, std::shared_ptr<GNode>>
             numpy_broadcast(const std::pair<std::shared_ptr<GNode>, std::shared_ptr<GNode>>& args,
                             std::shared_ptr<nnfusion::graph::Graph> graph)
@@ -175,6 +207,42 @@ namespace nnfusion
 
             const nnfusion::Shape& arg1_in_shape = args.first->get_shape();
             const nnfusion::Shape& arg2_in_shape = args.second->get_shape();
+
+            // Handle the trivial case...
+            if (arg1_in_shape == arg2_in_shape)
+            {
+                return args;
+            }
+
+            Autobroadcast_plan plan =
+                compute_shapes_and_broadcast_axes(arg1_in_shape, arg2_in_shape);
+
+            auto arg1_out = add_required_ops(args.first,
+                                             plan.m_arg1_shape_after_possible_reshaping,
+                                             plan.m_arg1_broadcast_axes,
+                                             plan.m_final_shape,
+                                             graph);
+
+            auto arg2_out = add_required_ops(args.second,
+                                             plan.m_arg2_shape_after_possible_reshaping,
+                                             plan.m_arg2_broadcast_axes,
+                                             plan.m_final_shape,
+                                             graph);
+
+            return {arg1_out, arg2_out};
+        }
+
+        std::pair<GNodeIndex, GNodeIndex>
+            numpy_broadcast(const std::pair<GNodeIndex, GNodeIndex>& args,
+                            std::shared_ptr<nnfusion::graph::Graph> graph)
+        {
+            assert(args.first.gnode);
+            assert(args.second.gnode);
+
+            const nnfusion::Shape& arg1_in_shape =
+                args.first.gnode->get_output_shape(args.first.index);
+            const nnfusion::Shape& arg2_in_shape =
+                args.second.gnode->get_output_shape(args.second.index);
 
             // Handle the trivial case...
             if (arg1_in_shape == arg2_in_shape)

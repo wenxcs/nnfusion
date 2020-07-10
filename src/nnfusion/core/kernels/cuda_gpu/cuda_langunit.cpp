@@ -323,3 +323,235 @@ __device__ static float reduceSum(float val, int tid, int blockSize, float* shm)
   return val;
 }
 )");
+
+LU_DEFINE(declaration::cuda_layer_norm,
+          R"(
+// Check compute capability
+const int GPU_WARP_SIZE = 32;
+const uint64_t MAX_GRID_Y = 65535;
+
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL(T value, int srcLane, int width = GPU_WARP_SIZE, unsigned int mask = 0xffffffff)
+{
+#if CUDA_VERSION >= 9000
+  return __shfl_sync(mask, value, srcLane, width);
+#else
+  return __shfl(value, srcLane, width);
+#endif
+}
+
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL_XOR(T value, int laneMask, int width = GPU_WARP_SIZE, unsigned int mask = 0xffffffff)
+{
+#if CUDA_VERSION >= 9000
+  return __shfl_xor_sync(mask, value, laneMask, width);
+#else
+  return __shfl_xor(value, laneMask, width);
+#endif
+}
+
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL_UP(T value, unsigned int delta, int width = GPU_WARP_SIZE, unsigned int mask = 0xffffffff)
+{
+#if CUDA_VERSION >= 9000
+  return __shfl_up_sync(mask, value, delta, width);
+#else
+  return __shfl_up(value, delta, width);
+#endif
+}
+
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL_DOWN(T value, unsigned int delta, int width = GPU_WARP_SIZE, unsigned int mask = 0xffffffff)
+{
+#if CUDA_VERSION >= 9000
+  return __shfl_down_sync(mask, value, delta, width);
+#else
+  return __shfl_down(value, delta, width);
+#endif
+}
+
+__device__ void cuWelfordOnlineSum(
+    const float curr,
+    float& mu,
+    float& sigma2,
+    float& count) {
+  count = count + float(1);
+  float delta = curr - mu;
+  float lmean = mu + delta / count;
+  mu = lmean;
+  float delta2 = curr - lmean;
+  sigma2 = sigma2 + delta * delta2;
+}
+
+__device__ void cuChanOnlineSum(
+    const float muB,
+    const float sigma2B,
+    const float countB,
+    float& mu,
+    float& sigma2,
+    float& count) {
+  float delta = muB - mu;
+  float nA = count;
+  float nB = countB;
+  count = count + countB;
+  float nX = count;
+  if (nX > float(0)) {
+    nA = nA / nX;
+    nB = nB / nX;
+    mu = nA * mu + nB * muB;
+    sigma2 = sigma2 + sigma2B + delta * delta * nA * nB * nX;
+  } else {
+    mu = float(0);
+    sigma2 = float(0);
+  }
+}
+
+__device__ void cuWelfordMuSigma2(
+    const float* __restrict__ vals,
+    const int n1,
+    const int n2,
+    const int i1,
+    float& mu,
+    float& sigma2,
+    float* buf) {
+  // Assumptions:
+  // 1) blockDim.x == GPU_WARP_SIZE
+  // 2) Tensor is contiguous
+  // 3) 2*blockDim.y*sizeof(float)+blockDim.y*sizeof(int) shared memory available.
+  //
+  // compute variance and mean over n2
+  float count = float(0);
+  mu = float(0);
+  sigma2 = float(0);
+  if (i1 < n1) {
+    // one warp normalizes one n1 index,
+    // synchronization is implicit
+    // initialize with standard Welford algorithm
+    const int numx = blockDim.x * blockDim.y;
+    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
+    const float* lvals = vals + i1 * n2;
+    int l = 4 * thrx;
+    for (; l + 3 < n2; l += 4 * numx) {
+      for (int k = 0; k < 4; ++k) {
+        float curr = static_cast<float>(lvals[l + k]);
+        cuWelfordOnlineSum(curr, mu, sigma2, count);
+      }
+    }
+    for (; l < n2; ++l) {
+      float curr = static_cast<float>(lvals[l]);
+      cuWelfordOnlineSum(curr, mu, sigma2, count);
+    }
+    // intra-warp reductions
+    #pragma unroll
+    for (int stride = GPU_WARP_SIZE / 2; stride > 0; stride /= 2) {
+      float muB = WARP_SHFL_DOWN(mu, stride);
+      float countB = WARP_SHFL_DOWN(count, stride);
+      float sigma2B = WARP_SHFL_DOWN(sigma2, stride);
+      cuChanOnlineSum(muB, sigma2B, countB, mu, sigma2, count);
+    }
+
+    // threadIdx.x == 0 has correct values for each warp
+    // inter-warp reductions
+    if (blockDim.y > 1) {
+      float* ubuf = (float*)buf;
+      float* ibuf = (float*)(ubuf + blockDim.y);
+      for (int offset = blockDim.y / 2; offset > 0; offset /= 2) {
+        // upper half of warps write to shared
+        if (threadIdx.x == 0 && threadIdx.y >= offset && threadIdx.y < 2 * offset) {
+          const int wrt_y = threadIdx.y - offset;
+          ubuf[2 * wrt_y] = mu;
+          ubuf[2 * wrt_y + 1] = sigma2;
+          ibuf[wrt_y] = count;
+        }
+        __syncthreads();
+        // lower half merges
+        if (threadIdx.x == 0 && threadIdx.y < offset) {
+          float muB = ubuf[2 * threadIdx.y];
+          float sigma2B = ubuf[2 * threadIdx.y + 1];
+          float countB = ibuf[threadIdx.y];
+          cuChanOnlineSum(muB, sigma2B, countB, mu, sigma2, count);
+        }
+        __syncthreads();
+      }
+      // threadIdx.x = 0 && threadIdx.y == 0 only thread that has correct values
+      if (threadIdx.x == 0 && threadIdx.y == 0) {
+        ubuf[0] = mu;
+        ubuf[1] = sigma2;
+      }
+      __syncthreads();
+      mu = ubuf[0];
+      sigma2 = ubuf[1] / float(n2);
+      // don't care about final value of count, we know count == n2
+    } else {
+      mu = WARP_SHFL(mu, 0);
+      sigma2 = WARP_SHFL(sigma2 / float(n2), 0);
+    }
+  }
+}
+
+__global__ void cuApplyLayerNorm(
+    float* __restrict__ output_vals,
+    float* __restrict__ mean,
+    float* __restrict__ invvar,
+    const float* __restrict__ vals,
+    const int n1,
+    const int n2,
+    const float epsilon,
+    const float* __restrict__ gamma,
+    const float* __restrict__ beta) {
+  // Assumptions:
+  // 1) blockDim.x == GPU_WARP_SIZE
+  // 2) Tensors are contiguous
+  //
+  for (int i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+    extern __shared__ float s_float[];
+    float* buf = (float*)s_float;
+    float mu, sigma2;
+    cuWelfordMuSigma2(vals, n1, n2, i1, mu, sigma2, buf);
+    const float* lvals = vals + i1 * n2;
+    float* ovals = output_vals + i1 * n2;
+    float c_invvar = rsqrt(sigma2 + epsilon);
+    const int numx = blockDim.x * blockDim.y;
+    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
+    if (gamma != NULL && beta != NULL) {
+      for (int i = thrx; i < n2; i += numx) {
+        float curr = static_cast<float>(lvals[i]);
+        ovals[i] = gamma[i] * static_cast<float>(c_invvar * (curr - mu)) + beta[i];
+      }
+    } else {
+      for (int i = thrx; i < n2; i += numx) {
+        float curr = static_cast<float>(lvals[i]);
+        ovals[i] = static_cast<float>(c_invvar * (curr - mu));
+      }
+    }
+    if (threadIdx.x == 0 && threadIdx.y == 0) {
+      mean[i1] = mu;
+      invvar[i1] = c_invvar;
+    }
+  }
+}
+
+void HostApplyLayerNorm(
+    float* output,
+    float* mean,
+    float* invvar,
+    const float* input,
+    int64_t n1,
+    int64_t n2,
+    double epsilon,
+    const float* gamma,
+    const float* beta) {
+  const dim3 threads(GPU_WARP_SIZE, 4, 1);
+  const dim3 blocks(1, std::min((uint64_t)n1, MAX_GRID_Y), 1);
+  int nshared =
+      threads.y > 1 ? threads.y * sizeof(float) + (threads.y / 2) * sizeof(float) : 0;
+  cuApplyLayerNorm<<<blocks, threads, nshared, 0>>>(
+      output,
+      mean,
+      invvar,
+      input,
+      n1, n2,
+      float(epsilon),
+      gamma, beta);
+}
+)");

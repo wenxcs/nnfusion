@@ -20,7 +20,9 @@ namespace nnfusion
                 ValueInfo(const ValueInfo&) = default;
 
                 ValueInfo() = delete;
-                explicit ValueInfo(const onnx::ValueInfoProto& value_info_proto)
+                explicit ValueInfo(
+                    const onnx::ValueInfoProto& value_info_proto,
+                    const std::unordered_map<std::string, size_t>& value_dim_params = {})
                     : m_value_info_proto{&value_info_proto}
                 {
                     NNFUSION_CHECK(value_info_proto.type().has_tensor_type())
@@ -28,12 +30,31 @@ namespace nnfusion
 
                     for (const auto& dim : value_info_proto.type().tensor_type().shape().dim())
                     {
-                        m_shape.emplace_back(static_cast<Shape::value_type>(dim.dim_value()));
+                        if (dim.value_case() ==
+                            onnx::TensorShapeProto_Dimension::ValueCase::kDimValue)
+                        {
+                            m_shape.emplace_back(static_cast<Shape::value_type>(dim.dim_value()));
+                        }
+                        else if (dim.value_case() ==
+                                 onnx::TensorShapeProto_Dimension::ValueCase::kDimParam)
+                        {
+                            std::string value_name = dim.dim_param();
+                            NNFUSION_CHECK(value_dim_params.count(value_name))
+                                << "unknown input dim_param: " << value_name;
+                            m_shape.emplace_back(
+                                static_cast<Shape::value_type>(value_dim_params.at(value_name)));
+                        }
+                        else
+                        {
+                            NNFUSION_CHECK_FAIL() << "input dim unset";
+                        }
                     }
                     NNFUSION_CHECK(m_value_info_proto->type().tensor_type().has_elem_type())
                         << "value info has no element type specified.";
                     ONNXDataTypeToNNFusionElementType(
-                        m_value_info_proto->type().tensor_type().elem_type(), &m_type);
+                        onnx::TensorProto_DataType(
+                            m_value_info_proto->type().tensor_type().elem_type()),
+                        &m_type);
                 }
 
                 ValueInfo& operator=(const ValueInfo&) = delete;

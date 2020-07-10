@@ -8,12 +8,15 @@ TestCases = list()
 ModelFolder = sys.argv[1]
 
 class TestCase:
-    def __init__(self, casename, ground_truth, url = ""):
+    def __init__(self, casename, ground_truth, url = "", format = "tensorflow", extra_args = "", backend = None):
         self.casename = casename
         self.ground_truth  = ground_truth
-        self.rtol = 1.e-4
-        self.atol = 1.e-4
+        self.rtol = 1.e-2
+        self.atol = 1.e-2
         self.url = url
+        self.format = format
+        self.extra_args = extra_args
+        self.backend = backend or []
     
     def get_filename(self):
         return os.path.join(ModelFolder, self.casename)

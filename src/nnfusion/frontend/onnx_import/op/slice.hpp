@@ -5,24 +5,30 @@
 
 #pragma once
 
-#include "ngraph/node_vector.hpp"
-
 #include "core/node.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                NodeVector slice(const Node& node);
-
+                NamedNodeVector TranslateSliceOp(const onnx::NodeProto& node_proto,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph);
             } // namespace set_1
 
-        } //namespace op
+            namespace set_10
+            {
+                NamedNodeVector TranslateSliceOp(const onnx::NodeProto& node_proto,
+                                                 const NodeMap& all_ng_nodes,
+                                                 std::shared_ptr<nnfusion::graph::Graph> m_graph);
+            } // namespace set_10
 
-    } // namespace onnx_import
+        } //namespace onnx_import
 
-} // namespace ngraph
+    } // namespace frontend
+
+} // namespace nnfusion

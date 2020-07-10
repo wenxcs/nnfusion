@@ -18,10 +18,35 @@ namespace nnfusion
     {
         namespace onnx_import
         {
-            using NamedNode = std::pair<std::string, std::shared_ptr<nnfusion::graph::GNode>>;
+            using GNodeIndex = nnfusion::graph::GNodeIndex;
+            using GNodeIndexVector = nnfusion::graph::GNodeIndexVector;
+            struct NamedNode
+            {
+                NamedNode(std::string name, std::shared_ptr<nnfusion::graph::GNode> gnode)
+                    : name(name)
+                    , gnode_index{gnode}
+                {
+                }
+
+                NamedNode(std::string name, GNodeIndex gnode_index)
+                    : name(name)
+                    , gnode_index{gnode_index}
+                {
+                }
+
+                NamedNode(std::string name,
+                          std::shared_ptr<nnfusion::graph::GNode> gnode,
+                          int output_index)
+                    : name(name)
+                    , gnode_index{gnode, output_index}
+                {
+                }
+
+                std::string name;
+                GNodeIndex gnode_index;
+            };
             using NamedNodeVector = std::vector<NamedNode>;
-            using NodeMap =
-                std::map<std::string, std::vector<std::shared_ptr<nnfusion::graph::GNode>>>;
+            using NodeMap = std::map<std::string, nnfusion::graph::GNodeIndexVector>;
             using ConvertFunc =
                 std::function<NamedNodeVector(const onnx::NodeProto&,
                                               const NodeMap&,

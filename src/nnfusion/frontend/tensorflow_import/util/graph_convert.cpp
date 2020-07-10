@@ -349,25 +349,6 @@ namespace nnfusion
                 NNFUSION_CHECK(status);
 
                 int input_dims = lhs_gnode->get_output_shape(0).size();
-                nnfusion::AxisVector ng_axis_order;
-
-                ng_axis_order.reserve(input_dims);
-
-                for (int i = 0; i < input_dims - 2; i++)
-                {
-                    ng_axis_order.push_back(i);
-                }
-                ng_axis_order.push_back(input_dims - 1);
-                ng_axis_order.push_back(input_dims - 2);
-
-                // if (adj_x)
-                // {
-                //     ng_lhs = ngraph::builder::numpy_transpose(ng_lhs, ng_axis_order);
-                // }
-                // if (adj_y)
-                // {
-                //     ng_rhs = ngraph::builder::numpy_transpose(ng_rhs, ng_axis_order);
-                // }
 
                 nnfusion::op::OpConfig::any myConfig;
                 myConfig["adj_x"]["b"] = adj_x;
@@ -2204,8 +2185,8 @@ namespace nnfusion
                 NamedNodeVector ret;
                 auto input_gnode = GetInputNode(all_ng_nodes, node, 0);
                 auto axes_gnode = GetInputNode(all_ng_nodes, node, 1);
-                NNFUSION_CHECK(input_gnode->get_output_element_type(0).c_type_string() == "bool")
-                    << "Input tensor of ReduceAny op should be bool, but gaven as "
+                NNFUSION_CHECK(input_gnode->get_output_element_type(0).c_type_string() == "char")
+                    << "Input tensor of ReduceAny op should be bool(underlying char), but gaven as "
                     << input_gnode->get_output_element_type(0).c_type_string() << ".";
 
                 nnfusion::Shape output_shape;

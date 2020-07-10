@@ -58,7 +58,8 @@ std::vector<std::vector<T1>> execute(const std::shared_ptr<nnfusion::graph::Grap
 
 TEST(nnfusion_torchscript_import, add_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("1,3:float;1,3:float");
+    auto params_vec =
+        nnfusion::frontend::build_torchscript_params_from_string("1,3:float;1,3:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/add_module.pt"), params_vec);
 
@@ -76,7 +77,8 @@ TEST(nnfusion_torchscript_import, add_op)
 
 TEST(nnfusion_torchscript_import, dot_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("1,3:float;1,3:float");
+    auto params_vec =
+        nnfusion::frontend::build_torchscript_params_from_string("1,3:float;1,3:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/dot_module.pt"), params_vec);
 
@@ -94,7 +96,7 @@ TEST(nnfusion_torchscript_import, dot_op)
 
 TEST(nnfusion_torchscript_import, tanh_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("2:float");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("2:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/tanh_trace_module.pt"), params_vec);
 
@@ -112,7 +114,7 @@ TEST(nnfusion_torchscript_import, tanh_op)
 
 TEST(nnfusion_torchscript_import, permute_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("2,3,5:float");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("2,3,5:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/permute_trace_module.pt"), params_vec);
 
@@ -148,7 +150,7 @@ TEST(nnfusion_torchscript_import, permute_op)
 
 TEST(nnfusion_torchscript_import, expand_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("3,1:float");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("3,1:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/expand_trace_module.pt"), params_vec);
 
@@ -170,7 +172,7 @@ TEST(nnfusion_torchscript_import, expand_op)
 
 TEST(nnfusion_torchscript_import, softmax_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("2,3,5:float");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("2,3,5:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/softmax_trace_module.pt"), params_vec);
 
@@ -200,7 +202,7 @@ TEST(nnfusion_torchscript_import, softmax_op)
 
 TEST(nnfusion_torchscript_import, div_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("2,3:float;3:float");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("2,3:float;3:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/div_trace_module.pt"), params_vec);
 
@@ -221,7 +223,7 @@ TEST(nnfusion_torchscript_import, div_op)
 
 TEST(nnfusion_torchscript_import, div_scale_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("2,3,5:float");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("2,3,5:float");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/div_scale_trace_module.pt"), params_vec);
 
@@ -249,7 +251,7 @@ TEST(nnfusion_torchscript_import, div_scale_op)
 
 TEST(nnfusion_torchscript_import, embedding_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("2,4:int32_t");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("2,4:int32_t");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/embedding_trace_module.pt"), params_vec);
 
@@ -278,7 +280,7 @@ TEST(nnfusion_torchscript_import, embedding_op)
 
 TEST(nnfusion_torchscript_import, embedding_padding_idx_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("1,4:int32_t");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("1,4:int32_t");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/embedding_padding_idx_trace_module.pt"),
         params_vec);
@@ -302,7 +304,7 @@ TEST(nnfusion_torchscript_import, embedding_padding_idx_op)
 
 TEST(nnfusion_torchscript_import, embedding_pretrained_op)
 {
-    auto params_vec = nnfusion::frontend::build_params_from_string("1:int32_t");
+    auto params_vec = nnfusion::frontend::build_torchscript_params_from_string("1:int32_t");
     auto model = frontend::load_torchscript_model(
         file_util::path_join(SERIALIZED_ZOO, "torchscript/embedding_pretrained_trace_module.pt"),
         params_vec);

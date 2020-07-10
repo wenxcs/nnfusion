@@ -27,5 +27,27 @@ namespace nnfusion
                 int64_t slice_size;
             };
         } // namespace cuda
+
+        namespace cuda
+        {
+            class Gather1DGrad : public BlockCudaEmitter
+            {
+            public:
+                Gather1DGrad(shared_ptr<KernelContext> ctx);
+
+                LanguageUnit_p emit_function_body() override;
+                LanguageUnit_p emit_dependency() override;
+                void set_launch_config() override;
+
+            private:
+                nnfusion::Shape x_shape, y_shape, indices_shape;
+                int axis;
+                bool is_axis_zero;
+                int64_t gather_dim_size;
+                int64_t indices_size;
+                int64_t slice_size;
+                nnfusion::element::Type dtype;
+            };
+        } // namespace cuda
     }     // namespace kernels
 } // namespace nnfusion

@@ -79,12 +79,17 @@ namespace nnfusion
                     default:
                         NNFUSION_CHECK_FAIL()
                             << "unsupported data type: "
-                            << onnx::TensorProto_DataType_Name(m_tensor_proto->data_type());
+                            << onnx::TensorProto_DataType_Name(
+                                   onnx::TensorProto_DataType(m_tensor_proto->data_type()));
                         break;
                     }
                 }
 
-                operator onnx::TensorProto_DataType() const { return m_tensor_proto->data_type(); }
+                operator onnx::TensorProto_DataType() const
+                {
+                    return onnx::TensorProto_DataType(m_tensor_proto->data_type());
+                }
+
             private:
                 const onnx::TensorProto* m_tensor_proto;
                 Shape m_shape;

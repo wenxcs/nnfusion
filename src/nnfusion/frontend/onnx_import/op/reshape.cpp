@@ -1,78 +1,113 @@
-//*****************************************************************************
-// Copyright 2018 Intel Corporation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//*****************************************************************************
+//----------------------------------------------------------------------------------------------
+//  Copyright (c) Microsoft Corporation. All rights reserved.
+//  Licensed under the MIT License. See License.txt in the project root for license information.
+//----------------------------------------------------------------------------------------------
 
-#include <cstddef>
-#include <memory>
-#include <vector>
-
-#include "ngraph/axis_vector.hpp"
-#include "ngraph/shape.hpp"
-#include "nnfusion/core/operators/constant.hpp"
-#include "nnfusion/core/operators/reshape.hpp"
-
-#include "exceptions.hpp"
 #include "reshape.hpp"
-#include "utils/reshape.hpp"
+#include "../../util/evaluator.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                NodeVector reshape(const Node& node)
+                NamedNodeVector TranslateReshapeOp(const onnx::NodeProto& node_proto,
+                                                   const NodeMap& all_ng_nodes,
+                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
-                    NodeVector ng_inputs{node.get_ng_inputs()};
-                    auto data = ng_inputs.at(0);
-                    auto data_shape = data->get_shape();
+                    auto input_indexes = GetAllInputIndex(all_ng_nodes, node_proto);
 
-                    auto output_shape =
-                        node.get_attribute_value<std::vector<std::size_t>>("shape", {});
+                    auto input = input_indexes[0];
 
-                    // If no shape argument (opset >= 5) and there is second input.
-                    if (output_shape.empty() && ng_inputs.size() == 2)
+                    auto input_shape = input.get_shape();
+                    size_t input_rank = input_shape.size();
+                    std::vector<int64> output_shape;
+                    NNFUSION_CHECK(GetValueFromNGraphOp(input_indexes[1].gnode, &output_shape));
+                    NNFUSION_CHECK(std::count(output_shape.begin(), output_shape.end(), -1) <= 1)
+                        << "Shape should have at most 1 dynamic dimension";
+
+                    size_t num_input_elements = nnfusion::shape_size(input_shape);
+
+                    // infer the dimension of -1 and 0
+                    auto dynamic_dim = output_shape.end();
+                    size_t static_size = 1;
+                    for (auto it = output_shape.begin(); it != output_shape.end(); it++)
                     {
-                        // Currently only support Constant node.
-                        ASSERT_IS_SUPPORTED(node, ng_inputs.at(1)->description() == "Constant")
-                            << "doesn't support shape input of other type than Constant.";
-
-                        auto output_shape_node =
-                            std::dynamic_pointer_cast<ngraph::op::Constant>(ng_inputs.at(1));
-                        output_shape = output_shape_node->get_vector<std::size_t>();
+                        if (*it == -1)
+                        {
+                            dynamic_dim = it;
+                        }
+                        else
+                        {
+                            if (*it == 0)
+                            {
+                                *it = *std::next(input_shape.begin(),
+                                                 std::distance(output_shape.begin(), it));
+                            }
+                            static_size *= *it;
+                        }
                     }
-                    // Do nothing if there is no shape argument nor second node input.
-                    else if (output_shape.empty())
+                    if (dynamic_dim == output_shape.end())
                     {
-                        return {data};
+                        NNFUSION_CHECK(static_size == num_input_elements)
+                            << "Reshape size doesn\'t match";
+                    }
+                    else
+                    {
+                        NNFUSION_CHECK(num_input_elements % static_size == 0)
+                            << "The product of static dims cannot be evenly divided by element "
+                               "number.";
+                        *dynamic_dim = num_input_elements / static_size;
                     }
 
-                    output_shape =
-                        reshape::infer_dimensions(node.get_name(), data_shape, output_shape);
-                    return {std::make_shared<ngraph::op::Reshape>(
-                        data,
-                        reshape::get_default_axis_vector(data_shape.size()),
-                        Shape{output_shape})};
+                    nnfusion::Shape ng_shape(output_shape.begin(), output_shape.end());
+
+                    nnfusion::AxisVector ng_axis_order(input_shape.size());
+                    std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
+                    auto reshape_op =
+                        std::make_shared<nnfusion::op::Reshape>(ng_axis_order, ng_shape);
+                    reshape_op->set_name(node_proto.output(0));
+                    auto reshape_gnode = m_graph->add_node_and_edge(reshape_op, {input});
+                    return {{node_proto.output(0), reshape_gnode}};
                 }
 
             } // namespace set_1
 
-        } //namespace op
+            namespace set_1
+            {
+                NamedNodeVector
+                    TranslateReshapeGradOp(const onnx::NodeProto& node_proto,
+                                           const NodeMap& all_ng_nodes,
+                                           std::shared_ptr<nnfusion::graph::Graph> m_graph)
+                {
+                    // y = reshape(x, shape(y)), x_grad = reshape(y_grad, shape(x))
+                    auto input_indexes = GetAllInputIndex(all_ng_nodes, node_proto);
+                    NNFUSION_CHECK(input_indexes.size() == 2);
 
-    } // namespace onnx_import
+                    auto x = input_indexes[0];
+                    auto y_grad = input_indexes[1];
 
-} // namespace ngraph
+                    // x_grad
+                    auto x_shape = x.get_shape();
+                    auto y_shape = y_grad.get_shape();
+
+                    nnfusion::AxisVector ng_axis_order(y_shape.size());
+                    std::iota(ng_axis_order.begin(), ng_axis_order.end(), 0);
+                    auto x_grad_op =
+                        std::make_shared<nnfusion::op::Reshape>(ng_axis_order, x_shape);
+                    x_grad_op->set_name(node_proto.output(0));
+                    auto x_grad = m_graph->add_node_and_edge(x_grad_op, {y_grad});
+
+                    return {{node_proto.output(0), x_grad}};
+                }
+
+            } // namespace set_1
+
+        } //namespace onnx_import
+
+    } // namespace frontend
+
+} // namespace nnfusion

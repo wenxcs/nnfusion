@@ -14,10 +14,9 @@ namespace nnfusion
 {
     namespace frontend
     {
-        // Convert an ONNX model to a nnfusion graph (input stream)
-        std::shared_ptr<nnfusion::graph::Graph> load_onnx_model(std::istream&);
-
         // Convert an ONNX model to a nnfusion graph
-        std::shared_ptr<nnfusion::graph::Graph> load_onnx_model(const std::string&);
+        std::shared_ptr<nnfusion::graph::Graph>
+            load_onnx_model(const std::string&,
+                            const std::unordered_map<std::string, size_t>& dim_params = {});
     } // namespace frontend
 } // namespace nnfusion

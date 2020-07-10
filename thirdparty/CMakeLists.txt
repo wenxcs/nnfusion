@@ -6,7 +6,7 @@ find_package(gflags)
 if(NOT gflags_FOUND)
     # include directories need to be updated because the header files "gflags.h" is generated during build, but we
     # need it before build (nnfusion/common.h need it).
-    set(NGRAPH_INCLUDE_PATH ${NGRAPH_INCLUDE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/gflags_headers/ PARENT_SCOPE)
+    set(NGRAPH_INCLUDE_PATH ${NGRAPH_INCLUDE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/gflags_headers/)
     # We use gflags==v2.2.2 either installed in system or in the thirdparty
     # folder.
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/gflags/README.md")
@@ -25,12 +25,17 @@ if(NOT gflags_FOUND)
 endif()
 
 find_package(CURL)
-if(NOT CURL_FOUND)
+if(CURL_FOUND)
+    set(NGRAPH_INCLUDE_PATH ${NGRAPH_INCLUDE_PATH} ${CURL_INCLUDE_DIR}/curl)
+else()
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/curl/README.md")
         add_subdirectory(curl)
     else()
         include(../cmake/external_curl.cmake)
         message(STATUS "Use downloaded curl.")
-        set(CURL_LIBRARIES libcurl PARENT_SCOPE)
+        set(CURL_LIBRARIES libcurl)
     endif()
 endif()
+
+set(NGRAPH_INCLUDE_PATH ${NGRAPH_INCLUDE_PATH} PARENT_SCOPE)
+set(CURL_LIBRARIES ${CURL_LIBRARIES} PARENT_SCOPE)

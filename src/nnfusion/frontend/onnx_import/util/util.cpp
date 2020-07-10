@@ -108,10 +108,36 @@ namespace nnfusion
                 std::shared_ptr<graph::GNode> result = nullptr;
                 try
                 {
+                    result = all_ng_nodes.at(node.input(input_idx)).at(0).gnode;
+                }
+                catch (const std::out_of_range&)
+                {
+                    if (node.input(input_idx) == "")
+                    {
+                        return nullptr;
+                    }
+                    NNFUSION_CHECK_FAIL() << "Input Ngraph op not found for "
+                                          << node.input(input_idx);
+                }
+                return result;
+            }
+
+            // TODO: replace all GetInputNode to GetInputIndex
+            GNodeIndex GetInputIndex(const NodeMap& all_ng_nodes,
+                                     const onnx::NodeProto& node,
+                                     size_t input_idx)
+            {
+                GNodeIndex result{nullptr};
+                try
+                {
                     result = all_ng_nodes.at(node.input(input_idx)).at(0);
                 }
                 catch (const std::out_of_range&)
                 {
+                    if (node.input(input_idx) == "")
+                    {
+                        return GNodeIndex{nullptr};
+                    }
                     NNFUSION_CHECK_FAIL() << "Input Ngraph op not found for "
                                           << node.input(input_idx);
                 }
@@ -127,6 +153,17 @@ namespace nnfusion
                     nodes.push_back(GetInputNode(all_ng_nodes, node, i));
                 }
                 return nodes;
+            }
+
+            GNodeIndexVector GetAllInputIndex(const NodeMap& all_ng_nodes,
+                                              const onnx::NodeProto& node)
+            {
+                GNodeIndexVector indexes;
+                for (size_t i = 0; i < node.input_size(); i++)
+                {
+                    indexes.push_back(GetInputIndex(all_ng_nodes, node, i));
+                }
+                return indexes;
             }
 
             Shape get_kernel_shape(const Node& node,

@@ -5,23 +5,23 @@
 
 #pragma once
 
-#include "ngraph/node_vector.hpp"
-
 #include "core/node.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                NodeVector matmul(const Node& node);
+                NamedNodeVector TranslateMatmulOp(const onnx::NodeProto& node_proto,
+                                                  const NodeMap& all_ng_nodes,
+                                                  std::shared_ptr<nnfusion::graph::Graph> m_graph);
             } // namespace set_1
 
-        } //namespace op
+        } //namespace onnx_import
 
-    } // namespace onnx_import
+    } // namespace frontend
 
-} // namespace ngraph
+} // namespace nnfusion

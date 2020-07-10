@@ -25,7 +25,9 @@ namespace nnfusion
             class GraphConvert
             {
             public:
-                GraphConvert(const onnx::ModelProto& model_proto);
+                GraphConvert(const onnx::ModelProto& model_proto,
+                             const std::unordered_map<std::string, size_t>& dim_params = {},
+                             const string& model_dir = "");
 
                 std::shared_ptr<nnfusion::graph::Graph> get_graph() { return m_graph; }
                 const std::string& get_onnx_proto_producer_name() const
@@ -78,7 +80,8 @@ namespace nnfusion
 
                 graph::GNodeVector m_graph_outputs;
 
-                std::map<std::string, Tensor> m_initializers;
+                std::unordered_map<std::string, size_t> m_dim_params;
+                std::string model_dir;
             };
         } // namespace onnx_import
     }     // namespace frontend

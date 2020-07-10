@@ -22,20 +22,22 @@ namespace nnfusion
                                {"uint16_t", nnfusion::element::u16},
                                {"uint32_t", nnfusion::element::u32},
                                {"uint64_t", nnfusion::element::u64}};
-
-        static std::vector<std::string> split_string(const std::string& s,
-                                                     const std::string& delimiter)
+        namespace
         {
-            size_t last = 0;
-            size_t next = 0;
-            std::vector<std::string> result;
-            while ((next = s.find(delimiter, last)) != std::string::npos)
+            std::vector<std::string> split_string(const std::string& s,
+                                                  const std::string& delimiter)
             {
+                size_t last = 0;
+                size_t next = 0;
+                std::vector<std::string> result;
+                while ((next = s.find(delimiter, last)) != std::string::npos)
+                {
+                    result.push_back(s.substr(last, next - last));
+                    last = next + 1;
+                }
                 result.push_back(s.substr(last, next - last));
-                last = next + 1;
+                return result;
             }
-            result.push_back(s.substr(last, next - last));
-            return result;
         }
 
         // ParamInfo::ParamInfo(const nnfusion::Shape& shape, nnfusion::element::Type type): shape(shape), type(type) {}
@@ -87,7 +89,7 @@ namespace nnfusion
             this->type = it->second;
         }
 
-        std::vector<ParamInfo> build_params_from_string(const std::string& ss)
+        std::vector<ParamInfo> build_torchscript_params_from_string(const std::string& ss)
         {
             std::vector<ParamInfo> params;
             for (auto s : split_string(ss, ";"))
@@ -95,6 +97,18 @@ namespace nnfusion
                 params.emplace_back(s);
             }
             return params;
+        }
+
+        std::unordered_map<std::string, size_t> build_onnx_params_from_string(const std::string& ss)
+        {
+            std::unordered_map<std::string, size_t> ret;
+            for (auto s : split_string(ss, ";"))
+            {
+                auto dim_info = split_string(s, ":");
+                NNFUSION_CHECK(dim_info.size() == 2) << "illegal dim info " << s;
+                ret.emplace(dim_info[0], std::stoull(dim_info[1]));
+            }
+            return ret;
         }
     } // namespace frontend
 } // namespace nnfusion

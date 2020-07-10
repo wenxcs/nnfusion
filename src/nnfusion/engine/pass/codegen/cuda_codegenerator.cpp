@@ -740,6 +740,17 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
                                 "Eigen::ThreadPoolDevice(global_thread_pool, "
                                 "global_thread_pool->NumThreads());";
             }
+            //dropout
+            for (auto dep : global_required)
+            {
+                size_t position = dep.find("declaration::dropout_");
+                if (position == dep.npos)
+                    continue;
+                position = dep.find("dropout_");
+                std::string dropout_name = dep.substr(position);
+                lu_main_init << dropout_name << "_init(cudnn_handle_0);\n";
+                lu_main_free << dropout_name << "_free();\n";
+            }
             //const
             set<string> constant_vals;
             std::unordered_map<string, vector<nnfusion::ir::Instruction::Pointer>>
@@ -1283,7 +1294,7 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
     if (enable_debug)
     {
         lu << R"(
-     inline void Debug(std::string name, float* tensor_ptr, std::string inputs, size_t debug_size = 10, size_t offset=0)
+     inline void Debug(std::string name, float* tensor_ptr, std::string inputs, size_t debug_size = 10, size_t offset=0, bool check_finite=true)
      {
          float* host_tensor = (float*)malloc(sizeof(float) * debug_size);
          CUDA_SAFE_CALL(cudaDeviceSynchronize());
@@ -1302,6 +1313,14 @@ bool CudaCodeGenerator::run(std::shared_ptr<InterpreterContext> ctx,
          for (int i = 0; i < print_size; ++i) printf("%e ", host_tensor[i + print_offset]);
          printf("...(offset= %lu) ", print_offset);
          printf(": %s\n", inputs.c_str());
+         if (check_finite)
+            for (size_t ii = 0; ii < debug_size; ii++)
+                if (!isfinite(host_tensor[ii]))
+                {
+                    printf("Infinite found at %s[%lu]=%e\n", name.c_str(), ii, host_tensor[ii]);
+                    exit(1);
+                }
+        free(host_tensor);
      }
              )";
     }

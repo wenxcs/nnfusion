@@ -87,7 +87,8 @@ bool GradientWeightMappingPass::run_on_graph(std::shared_ptr<Graph>& graph)
         {
             result_op->set_needs_copy_to_host(false);
         }
-        auto result_node = graph->add_node_and_edge(result_op, {update_node});
+        ///\todo: the first output of gnode, remove the restriction
+        auto result_node = graph->add_node_and_edge(result_op, {GNodeIndex{update_node, 0}});
         result_nodes.emplace_back(result_node);
     }
     graph->set_outputs(result_nodes);

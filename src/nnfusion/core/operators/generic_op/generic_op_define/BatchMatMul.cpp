@@ -56,15 +56,18 @@ REGISTER_OP(BatchMatMul)
 
         NNFUSION_CHECK(input_shape_0.size() == input_shape_1.size());
         NNFUSION_CHECK(gnode->get_input_element_type(0) == gnode->get_input_element_type(1));
-        NNFUSION_CHECK(input_shape_0[0] == input_shape_1[0] || input_shape_0[0] == 1 ||
-                       input_shape_1[0] == 1);
+        // NNFUSION_CHECK(input_shape_0[0] == input_shape_1[0] || input_shape_0[0] == 1 ||
+        //                input_shape_1[0] == 1);
 
         int m0 = input_shape_0[input_shape_0.size() - 2],
             n0 = input_shape_0[input_shape_0.size() - 1];
 
         int batch = 1;
         for (int i = 0; i < input_shape_0.size() - 2; ++i)
+        {
+            NNFUSION_CHECK(input_shape_0[i] == input_shape_1[i]);
             batch *= input_shape_0[i];
+        }
 
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         bool trans_A = generic_op->localOpConfig.getRoot()["adj_x"]["b"];

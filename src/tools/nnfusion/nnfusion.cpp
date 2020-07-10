@@ -28,7 +28,9 @@ DECLARE_string(fdefault_device);
 
 DEFINE_string(params,
               "##UNSET##",
-              "-p, Model input shape and type, format like \"1,1:float;2,3,4,5:double\"");
+              "-p, Model input shape and type, fot torchscript, it's full shape like "
+              "\"1,1:float;2,3,4,5:double\", for onnx, it's dynamic dim like "
+              "\"dim1_name:4;dim2_name:128\"");
 
 void display_help()
 {
@@ -115,21 +117,26 @@ int main(int argc, char** argv)
         // load tensorlfow model as graph
         graph = nnfusion::frontend::load_tensorflow_model(model);
     }
-#if NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
+#ifdef NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
     else if (format == "torchscript")
     {
         std::vector<nnfusion::frontend::ParamInfo> params_vec;
         if (params != "##UNSET##")
         {
-            params_vec = nnfusion::frontend::build_params_from_string(params);
+            params_vec = nnfusion::frontend::build_torchscript_params_from_string(params);
         }
         graph = nnfusion::frontend::load_torchscript_model(model, params_vec);
     }
 #endif
-#if NNFUSION_ONNX_IMPORT_ENABLE
+#ifdef NNFUSION_ONNX_IMPORT_ENABLE
     else if (format == "onnx")
     {
-        graph = nnfusion::frontend::load_onnx_model(model);
+        std::unordered_map<std::string, size_t> dim_params;
+        if (params != "##UNSET##")
+        {
+            dim_params = nnfusion::frontend::build_onnx_params_from_string(params);
+        }
+        graph = nnfusion::frontend::load_onnx_model(model, dim_params);
     }
 #endif
     else

@@ -5,29 +5,23 @@
 
 #pragma once
 
-#include "ngraph/node_vector.hpp"
-#include "nnfusion/core/operators/minimum.hpp"
-
 #include "core/node.hpp"
-#include "utils/variadic.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                inline NodeVector min(const Node& node)
-                {
-                    return variadic::make_ng_variadic_op<ngraph::op::Minimum>(node);
-                }
-
+                NamedNodeVector TranslateNoOp(const onnx::NodeProto& node_proto,
+                                              const NodeMap& all_ng_nodes,
+                                              std::shared_ptr<nnfusion::graph::Graph> m_graph);
             } // namespace set_1
 
         } //namespace op
 
     } // namespace onnx_import
 
-} // namespace ngraph
+} // namespace nnfusion

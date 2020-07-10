@@ -83,17 +83,6 @@ namespace nnfusion
                 }
                 else if (lhs_rank == rhs_rank)
                 { // batch mat-mat
-                    nnfusion::AxisVector ng_axis_order;
-
-                    ng_axis_order.reserve(lhs_rank);
-
-                    for (int i = 0; i < lhs_rank - 2; i++)
-                    {
-                        ng_axis_order.push_back(i);
-                    }
-                    ng_axis_order.push_back(lhs_rank - 1);
-                    ng_axis_order.push_back(lhs_rank - 2);
-
                     nnfusion::op::OpConfig::any myConfig;
                     myConfig["adj_x"]["b"] = false;
                     myConfig["adj_y"]["b"] = false;
@@ -421,8 +410,8 @@ namespace nnfusion
                 NNFUSION_CHECK(std::all_of(dilation.begin(), dilation.end(), [](int64 i) {
                     return i == 1;
                 })) << "MaxPool2D dilation should be 1";
-                auto ceil_mode = GetConstValues<bool>(input_gnodes[5], 1)[0];
-                NNFUSION_CHECK(ceil_mode) << "MaxPool2D ceil_mode not supported";
+                // auto ceil_mode = GetConstValues<bool>(input_gnodes[5], 1)[0];
+                // NNFUSION_CHECK(ceil_mode) << "MaxPool2D ceil_mode not supported";
 
                 auto pad_dim = input_shape.size() - 2;
                 Shape ng_kernel_shape(kernel_size.begin(), kernel_size.end());

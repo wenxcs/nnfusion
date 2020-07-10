@@ -39,6 +39,8 @@ namespace nnfusion
                 , index(0)
             {
             }
+            const nnfusion::Shape& get_shape() const;
+            const nnfusion::element::Type& get_element_type() const;
             std::shared_ptr<nnfusion::graph::GNode> gnode;
             int index;
         };
@@ -66,8 +68,8 @@ namespace nnfusion
                             const GNodeIndexVector& input_gnode_indexs,
                             size_t output_size = 1);
             size_t get_instance_id() const { return m_instance_id; }
-            size_t get_id() const { return m_id; }
-            size_t set_id(size_t id);
+            int64_t get_id() const { return m_id; }
+            int64_t set_id(int64_t id);
 
             /// The class name, must not contain spaces
             std::string get_op_type() const { return m_op_type; }
@@ -154,7 +156,7 @@ namespace nnfusion
             // std::unordered_set<std::shared_ptr<descriptor::Tensor>> liveness_free_list;
 
         protected:
-            size_t m_id; // m_id is for graph, the index in graph m_nodes
+            int64_t m_id; // m_id is for graph, the index in graph m_nodes
             size_t m_instance_id;
             static std::atomic<size_t> m_next_instance_id;
             std::string m_name;

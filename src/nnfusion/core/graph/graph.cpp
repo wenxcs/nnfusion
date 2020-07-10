@@ -47,6 +47,12 @@ void Graph::set_name(const std::string& name)
 
 void Graph::add_node(std::shared_ptr<GNode> node)
 {
+    if (node->get_id() != freeGnodeId)
+    {
+        // already added to graph
+        NNFUSION_CHECK(m_nodes[node->get_id()] == node);
+        return;
+    }
     const size_t id = m_nodes.size();
     node->set_id(id);
     m_nodes.push_back(node);
@@ -54,9 +60,10 @@ void Graph::add_node(std::shared_ptr<GNode> node)
 }
 
 std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
-                                                const GNodeVector& input_gnodes)
+                                                const GNodeVector& input_gnodes,
+                                                const size_t output_size)
 {
-    auto gnode = std::make_shared<GNode>(op, input_gnodes);
+    auto gnode = std::make_shared<GNode>(op, input_gnodes, output_size);
 
     add_node(gnode);
 
@@ -69,9 +76,10 @@ std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::
 }
 
 std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
-                                                const GNodeIndexVector& input_gnodes)
+                                                const GNodeIndexVector& input_gnodes,
+                                                const size_t output_size)
 {
-    auto gnode = std::make_shared<GNode>(op, input_gnodes);
+    auto gnode = std::make_shared<GNode>(op, input_gnodes, output_size);
 
     add_node(gnode);
 

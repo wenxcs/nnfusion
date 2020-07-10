@@ -3,86 +3,75 @@
 //  Licensed under the MIT License. See License.txt in the project root for license information.
 //----------------------------------------------------------------------------------------------
 
-#include "op/gemm.hpp"
+#include "gemm.hpp"
+#include "../../util/evaluator.hpp"
+#include "../util/util.hpp"
+#include "nnfusion/core/graph/util/autobroadcast.hpp"
+#include "nnfusion/core/graph/util/numpy_transpose.hpp"
 
-#include "nnfusion/core/operators/add.hpp"
-#include "nnfusion/core/operators/broadcast.hpp"
-#include "nnfusion/core/operators/constant.hpp"
-#include "nnfusion/core/operators/dot.hpp"
-#include "nnfusion/core/operators/multiply.hpp"
-
-#include "../exceptions.hpp"
-#include "../utils/broadcasting.hpp"
-#include "../utils/reshape.hpp"
-
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                NodeVector gemm(const Node& node)
+                NamedNodeVector TranslateGemmOp(const onnx::NodeProto& node_proto,
+                                                const NodeMap& all_ng_nodes,
+                                                std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
-                    NodeVector inputs{node.get_ng_inputs()};
-                    auto input_a = inputs.at(0);
-                    auto input_b = inputs.at(1);
-                    auto input_c = inputs.at(2);
+                    auto input_indexes = GetAllInputIndex(all_ng_nodes, node_proto);
 
-                    double alpha = node.get_attribute_value<double>("alpha", 1);
-                    double beta = node.get_attribute_value<double>("beta", 1);
+                    auto A = input_indexes[0];
+                    auto B = input_indexes[1];
+                    auto C = input_indexes[2];
 
-                    auto trans_a = node.get_attribute_value<int64_t>("transA", 0);
-                    auto trans_b = node.get_attribute_value<int64_t>("transB", 0);
+                    Node node(node_proto);
+                    auto beta_value = node.get_attribute_value<float>("beta", 1.0);
+                    auto alpha_value = node.get_attribute_value<float>("alpha", 1.0);
+                    auto transA = node.get_attribute_value<int64>("transA", 0);
+                    auto transB = node.get_attribute_value<int64>("transB", 0);
 
-                    if (trans_a != 0)
+                    auto result = m_graph->add_node_and_edge(
+                        std::make_shared<op::Dot>(
+                            0, false, static_cast<bool>(transA), static_cast<bool>(transB)),
+                        {A, B});
+
+                    if (alpha_value != 1)
                     {
-                        input_a = reshape::transpose(input_a);
+                        auto alpha_op = std::make_shared<op::Constant>(
+                            element::f32, result->get_shape(), std::vector<float>({alpha_value}));
+                        auto alpha = m_graph->add_node_and_edge(alpha_op, GNodeVector({}));
+                        auto cast_op = std::make_shared<op::Convert>(result->get_element_type());
+                        alpha = m_graph->add_node_and_edge(cast_op, {alpha});
+                        result = m_graph->add_node_and_edge(std::make_shared<op::Multiply>(),
+                                                            {result, alpha});
                     }
-                    if (trans_b != 0)
+
+                    if (beta_value != 0)
                     {
-                        input_b = reshape::transpose(input_b);
+                        auto beta_op = std::make_shared<op::Constant>(
+                            element::f32, C.get_shape(), std::vector<float>({beta_value}));
+                        auto beta = m_graph->add_node_and_edge(beta_op, GNodeVector({}));
+                        auto cast_op = std::make_shared<op::Convert>(
+                            C.gnode->get_output_element_type(C.index));
+                        beta = m_graph->add_node_and_edge(cast_op, {beta});
+                        auto bias = m_graph->add_node_and_edge(std::make_shared<op::Multiply>(),
+                                                               {C, GNodeIndex{beta, 0}});
+                        std::tie(result, bias) =
+                            numpy_broadcast(std::make_pair(result, bias), m_graph);
+                        result =
+                            m_graph->add_node_and_edge(std::make_shared<op::Add>(), {result, bias});
                     }
 
-                    // code from python not implemented in c++ yet.
-                    // reshape_for_matmul(node, input_a, input_b);
-
-                    // A' * B'
-                    std::shared_ptr<ngraph::Node> a_dot_b =
-                        std::make_shared<ngraph::op::Dot>(input_a, input_b);
-
-                    // alpha
-                    std::shared_ptr<ngraph::Node> alpha_node =
-                        std::make_shared<ngraph::op::Constant>(a_dot_b->get_element_type(),
-                                                               ngraph::Shape{},
-                                                               std::vector<double>{alpha});
-                    alpha_node = make_broadcast_node(alpha_node, a_dot_b->get_shape());
-                    // alpha * A' * B'
-                    a_dot_b = std::make_shared<ngraph::op::Multiply>(alpha_node, a_dot_b);
-
-                    // beta * C
-                    std::shared_ptr<ngraph::Node> beta_node =
-                        std::make_shared<ngraph::op::Constant>(input_c->get_element_type(),
-                                                               ngraph::Shape{},
-                                                               std::vector<double>{beta});
-                    beta_node = make_broadcast_node(beta_node, input_c->get_shape());
-                    input_c = std::make_shared<ngraph::op::Multiply>(beta_node, input_c);
-
-                    // alpha * A' * B' + beta * C
-                    NodeVector broadcasted_nodes =
-                        numpy_style_broadcast_for_binary_operation(a_dot_b, input_c);
-                    // The ONNX documentation says that `input_c` should be "unidirectional broadcastable"
-                    // to the `a_dot_b` tensor. Since numpy style broadcasting is bidirectional, below we
-                    // only use the second output from above broadcasting. In other words we want to
-                    // preserve the shape of original `a_dot_b` tensor.
-                    return {std::make_shared<ngraph::op::Add>(a_dot_b, broadcasted_nodes.at(1))};
+                    return {{node_proto.output(0), result}};
                 }
 
             } // namespace set_1
 
-        } //namespace op
+        } //namespace onnx_import
 
-    } // namespace  onnx_import
+    } // namespace frontend
 
-} // namespace  ngraph
+} // namespace nnfusion

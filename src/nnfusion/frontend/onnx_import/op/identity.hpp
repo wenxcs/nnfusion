@@ -5,26 +5,28 @@
 
 #pragma once
 
-#include "ngraph/node_vector.hpp"
-
 #include "core/node.hpp"
+#include "no.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                inline NodeVector identity(const Node& node)
+                NamedNodeVector TranslateIdentityOp(const onnx::NodeProto& node_proto,
+                                                    const NodeMap& all_ng_nodes,
+                                                    std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
-                    return {node.get_ng_inputs().at(0)};
+                    NNFUSION_CHECK(node_proto.input_size() == 1 && node_proto.output_size() == 1);
+                    return TranslateNoOp(node_proto, all_ng_nodes, m_graph);
                 }
             } // namespace set_1
 
-        } //namespace op
+        } //namespace onnx_import
 
-    } // namespace onnx_import
+    } // namespace frontend
 
-} // namespace ngraph
+} // namespace nnfusion

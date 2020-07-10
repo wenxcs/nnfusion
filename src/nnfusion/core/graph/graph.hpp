@@ -24,6 +24,7 @@ namespace nnfusion
             ~Graph();
 
             static const int kControlSlot = -1;
+            static const int freeGnodeId = -1;
 
             const std::string& get_friendly_name() const;
             const std::string& get_name() const;
@@ -35,10 +36,12 @@ namespace nnfusion
             void add_node(std::shared_ptr<GNode> node);
 
             std::shared_ptr<GNode> add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
-                                                     const GNodeVector& input_gnodes);
+                                                     const GNodeVector& input_gnodes,
+                                                     const size_t output_size = 1);
 
             std::shared_ptr<GNode> add_node_and_edge(const std::shared_ptr<nnfusion::op::Op> op,
-                                                     const GNodeIndexVector& input_gnodes);
+                                                     const GNodeIndexVector& input_gnodes,
+                                                     const size_t output_size = 1);
 
             void add_gnode_and_edge(const std::shared_ptr<GNode> gnode,
                                     const GNodeIndexVector& input_gnodes);

@@ -26,8 +26,11 @@ namespace nnfusion
                                             const NodeMap& all_ng_nodes,
                                             std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
+                    // TODO: Fix GetInputNode -> GetInputIndex
                     auto lhs_gnode = GetInputNode(all_ng_nodes, node_proto, 0);
+                    NNFUSION_CHECK(lhs_gnode != nullptr);
                     auto rhs_gnode = GetInputNode(all_ng_nodes, node_proto, 1);
+                    NNFUSION_CHECK(rhs_gnode != nullptr);
                     Node node(node_proto);
                     auto axis = node.get_attribute_value<int64_t>("axis", 0);
 
@@ -48,17 +51,17 @@ namespace nnfusion
                                                   const NodeMap& all_ng_nodes,
                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
-                    auto lhs_gnode = GetInputNode(all_ng_nodes, node_proto, 0);
-                    auto rhs_gnode = GetInputNode(all_ng_nodes, node_proto, 1);
+                    auto lhs_index = GetInputIndex(all_ng_nodes, node_proto, 0);
+                    auto rhs_index = GetInputIndex(all_ng_nodes, node_proto, 1);
 
-                    std::tie(lhs_gnode, rhs_gnode) =
-                        graph::numpy_broadcast(std::make_pair(lhs_gnode, rhs_gnode), m_graph);
+                    std::tie(lhs_index, rhs_index) =
+                        graph::numpy_broadcast(std::make_pair(lhs_index, rhs_index), m_graph);
 
                     auto op = std::make_shared<T>();
                     NNFUSION_CHECK(node_proto.output_size() == 1)
                         << "Binary op should only has one output.";
                     op->set_name(node_proto.output(0));
-                    auto gnode = m_graph->add_node_and_edge(op, {lhs_gnode, rhs_gnode});
+                    auto gnode = m_graph->add_node_and_edge(op, {lhs_index, rhs_index});
                     NamedNodeVector ret{{node_proto.output(0), gnode}};
                     return ret;
                 }
@@ -72,17 +75,17 @@ namespace nnfusion
                                                   const NodeMap& all_ng_nodes,
                                                   std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
-                    auto lhs_gnode = GetInputNode(all_ng_nodes, node_proto, 0);
-                    auto rhs_gnode = GetInputNode(all_ng_nodes, node_proto, 1);
+                    auto lhs_index = GetInputIndex(all_ng_nodes, node_proto, 0);
+                    auto rhs_index = GetInputIndex(all_ng_nodes, node_proto, 1);
 
-                    std::tie(lhs_gnode, rhs_gnode) =
-                        graph::numpy_broadcast(std::make_pair(lhs_gnode, rhs_gnode), m_graph);
+                    std::tie(lhs_index, rhs_index) =
+                        graph::numpy_broadcast(std::make_pair(lhs_index, rhs_index), m_graph);
 
                     auto op = std::make_shared<T>();
                     NNFUSION_CHECK(node_proto.output_size() == 1)
                         << "Binary op should only has one output.";
                     op->set_name(node_proto.output(0));
-                    auto gnode = m_graph->add_node_and_edge(op, {lhs_gnode, rhs_gnode});
+                    auto gnode = m_graph->add_node_and_edge(op, {lhs_index, rhs_index});
                     NamedNodeVector ret{{node_proto.output(0), gnode}};
                     return ret;
                 }

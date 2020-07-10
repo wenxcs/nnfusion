@@ -37,6 +37,7 @@ set(SRC
     op_define/erf.cpp
     op_define/exp.cpp
     op_define/floor.cpp
+    op_define/gelu.cpp
     op_define/greater_eq.cpp
     op_define/greater.cpp
     op_define/less_eq.cpp

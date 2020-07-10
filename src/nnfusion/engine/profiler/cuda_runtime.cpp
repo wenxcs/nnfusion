@@ -53,7 +53,6 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
     re->require(macro::CUDA_SAFE_CALL);
     re->require(declaration::typedef_int);
 
-    // Write Dependency
     for (auto& it : re->local_symbol)
         if (it.second->symbol.find("header::") != string::npos)
             writer << it.second->get_code();
@@ -77,6 +76,16 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         {
             writer << "cublasHandle_t cublas_handle_0;\n";
         }
+    }
+    // special for dropout
+    std::unordered_set<std::string> dropout_prefix;
+    for (auto& it : re->local_symbol)
+    {
+        auto symbol_name = it.second->symbol;
+        if (symbol_name.find("declaration::dropout_") == string::npos)
+            continue;
+        auto position = symbol_name.find("dropout");
+        dropout_prefix.insert(it.second->symbol.substr(position));
     }
 
     std::string body_unit = fu->body_unit->get_code();
@@ -200,6 +209,10 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
         if (require_cublas_handle)
         {
             writer << "CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_0));\n";
+        }
+        for (auto prefix : dropout_prefix)
+        {
+            writer << prefix << "_init(cudnn_handle_0);\n";
         }
 
         if (re->local_symbol.count("declaration::num_SMs") > 0)
@@ -363,6 +376,10 @@ bool CudaDefaultRuntime::codegen(const ProfilingContext::Pointer& ke)
                     writer << tensor_free_host(tensor);
             }
         }
+        for (auto prefix : dropout_prefix)
+        {
+            writer << prefix << "_free();\n";
+        }
 
         if (require_cudnn_handle)
         {
@@ -429,6 +446,7 @@ bool CudaDefaultRuntime::compile(const ProfilingContext::Pointer& ke)
     string objname = filename + DLIB_SUFFIX;
     string srcname = filename + ".cu";
     // ofstream source_file(ke->working_dir + "/" + ke->source_code->symbol);
+    NNFUSION_LOG(DEBUG) << "complie source file: " << srcname;
     ofstream source_file(srcname);
     source_file << ke->source_code->get_code();
     source_file.close();

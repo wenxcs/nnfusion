@@ -253,6 +253,74 @@ namespace nnfusion
                 return move(result);
             }
 
+            unordered_map<string, vector<vector<char>>>
+                mixed_type_eval(const vector<vector<char>>& inputs)
+            {
+                auto parameters = gctx.graph->get_parameters();
+
+                NNFUSION_CHECK(inputs.size() == parameters.size())
+                    << "The input size does not match graph's Parameter count";
+                for (size_t i = 0; i < parameters.size(); i++)
+                {
+                    parameter_map[parameters[i]] = i;
+                }
+                auto ordered_ops = gctx.graph->get_ordered_ops();
+                for (auto& op : ordered_ops)
+                {
+                    create_profiling_contexts(op);
+                }
+
+                for (auto& op : ordered_ops)
+                {
+                    connect_nodes(op, inputs);
+                }
+
+                int i = 0;
+                for (auto& node : ordered_ops)
+                {
+                    if (node->get_op_ptr()->is_tensor_op())
+                    {
+                        continue;
+                    }
+                    auto pctx = gctx.get_profiling_context(node);
+                    // Ensure only run once
+                    pctx->warmup_times = 0;
+                    pctx->runtime_times = 1;
+
+                    rt->execute(pctx,
+                                pctx->kernel_memory->unsafe_inputs(),
+                                pctx->kernel_memory->unsafe_outputs());
+                }
+
+                unordered_map<string, vector<vector<char>>> result;
+                vector<vector<char>> outputs;
+                for (auto& outnode : gctx.graph->get_outputs())
+                {
+                    outputs.clear();
+                    auto pctx = gctx.get_profiling_context(outnode);
+
+                    auto& kernel_mem = pctx->kernel_memory;
+                    auto kctx = pctx->kernel->m_context;
+
+                    void** ptrs = kernel_mem->unsafe_outputs();
+                    for (size_t i = 0; i < kctx->outputs.size(); ++i)
+                    {
+                        auto& t = kctx->outputs[i];
+                        size_t _size = t->size();
+
+                        NNFUSION_CHECK(ptrs[i] != nullptr);
+                        vector<char> output(_size);
+                        memcpy(output.data(), ptrs[i], _size);
+
+                        outputs.push_back(move(output));
+                    }
+                    result[outnode->get_unique_name()] = outputs;
+                }
+
+                // The result data ptr is like result["nodename"]->kernel_memory->unsafe_output(0);
+                return move(result);
+            }
+
         private:
             GraphEvaluationContext gctx;
             IProfilingRuntime::Pointer rt;

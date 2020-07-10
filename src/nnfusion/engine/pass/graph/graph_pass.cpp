@@ -8,6 +8,7 @@
 #include "blockfusion_pass.hpp"
 #include "codegen_dxcompute_pass.hpp"
 #include "codegen_graphcore_pass.hpp"
+#include "common_subexpression_elimination_pass.hpp"
 #include "gemm_fusion_pass.hpp"
 #include "gnode_device_dispatcher.hpp"
 #include "gnode_device_dispatcher.hpp"
@@ -34,6 +35,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     GraphPassManager pass_manager;
     // Generate result op must before LivenessPass
     // Generate result is implemented in gradient weight mapping pass
+    pass_manager.register_pass<CSEPass>();
     pass_manager.register_pass<GradientWeightMappingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();

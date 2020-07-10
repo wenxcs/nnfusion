@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, Wenxiang
 #pragma once
 
+#include <iomanip>
 #include "cuda_helper.hpp"
 
 namespace nnfusion
@@ -18,6 +19,19 @@ namespace nnfusion
                                                             const Strides& window_dilation_strides,
                                                             string desc);
             LanguageUnit_p get_cudnn_filter_descriptor(const Shape& shape, string desc);
+            LanguageUnit_p get_dropout_global_states(float ratio);
+            inline std::string ratio2str(float ratio)
+            {
+                // convert ratio to a legal c-style variable name
+                std::stringstream stream;
+                stream << std::fixed << std::setprecision(2) << ratio;
+                std::string s = stream.str();
+                ///\todo handle 1e-6
+                auto found = s.find(".");
+                if (found != std::string::npos)
+                    s = s.replace(found, 1, "_");
+                return s;
+            }
         }
     }
 }

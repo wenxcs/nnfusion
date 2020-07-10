@@ -173,6 +173,7 @@ namespace nnfusion
                     dst[i] = raw_data[i];
             }
 
+            // TODO: currently we only get the first gnode output, might add an out_index argument.
             template <typename T>
             bool GetValueFromNGraphOp(std::shared_ptr<GNode> gnode, std::vector<T>* values)
             {

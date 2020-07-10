@@ -3,7 +3,6 @@
 #include <cstring>
 #include <sstream>
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
-#include "nnfusion/util/curl_request.hpp"
 #include "nnfusion/util/logging.hpp"
 
 using namespace nnfusion;

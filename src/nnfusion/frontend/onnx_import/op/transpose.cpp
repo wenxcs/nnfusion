@@ -2,38 +2,49 @@
 //  Copyright (c) Microsoft Corporation. All rights reserved.
 //  Licensed under the MIT License. See License.txt in the project root for license information.
 //----------------------------------------------------------------------------------------------
-
-#include <memory>
-#include <vector>
-
-#include "ngraph/node.hpp"
-
 #include "transpose.hpp"
-#include "utils/reshape.hpp"
+#include "nnfusion/core/graph/util/numpy_transpose.hpp"
 
-namespace ngraph
+namespace nnfusion
 {
-    namespace onnx_import
+    namespace frontend
     {
-        namespace op
+        namespace onnx_import
         {
             namespace set_1
             {
-                NodeVector transpose(const Node& node)
+                NamedNodeVector
+                    TranslateTransposeOp(const onnx::NodeProto& node_proto,
+                                         const NodeMap& all_ng_nodes,
+                                         std::shared_ptr<nnfusion::graph::Graph> m_graph)
                 {
-                    std::shared_ptr<ngraph::Node> data = node.get_ng_inputs().at(0);
+                    auto data = GetInputIndex(all_ng_nodes, node_proto, 0);
 
-                    auto permute_axes =
-                        node.get_attribute_value<std::vector<std::size_t>>("perm", {});
+                    auto input_rank = data.get_shape().size();
+                    Node node(node_proto);
+                    auto perm = node.get_attribute_value<std::vector<int64_t>>("perm");
+                    if (perm.empty())
+                    {
+                        perm.resize(input_rank);
+                        // by default it reverse input dims
+                        std::iota(perm.rbegin(), perm.rend(), 0);
+                    }
+                    AxisVector ng_axis_order(perm.begin(), perm.end());
 
-                    return {(permute_axes.empty()) ? reshape::transpose(data)
-                                                   : reshape::reorder_axes(data, permute_axes)};
+                    auto out_gnode =
+                        nnfusion::graph::numpy_transpose(data.gnode, ng_axis_order, data.index);
+                    out_gnode->get_op_ptr()->set_name(node_proto.output(0));
+                    out_gnode->set_name(node_proto.output(0));
+                    m_graph->add_node(out_gnode);
+                    m_graph->add_edge(data.gnode, data.index, out_gnode, 0);
+
+                    return {{node_proto.output(0), out_gnode}};
                 }
 
             } // namespace set_1
 
-        } //namespace op
+        } //namespace onnx_import
 
-    } // namespace onnx_import
+    } // namespace frontend
 
-} // namespace ngraph
+} // namespace nnfusion

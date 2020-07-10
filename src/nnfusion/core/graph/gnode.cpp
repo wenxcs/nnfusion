@@ -16,7 +16,7 @@ using namespace nnfusion::op;
 atomic<size_t> GNode::m_next_instance_id(0);
 
 GNode::GNode()
-    : m_id(-1)
+    : m_id(Graph::freeGnodeId)
     , m_instance_id(m_next_instance_id.fetch_add(1))
     , m_unique_name("graph_node_" + to_string(m_instance_id))
 {
@@ -137,7 +137,7 @@ GNode::~GNode()
 {
 }
 
-size_t GNode::set_id(size_t id)
+int64_t GNode::set_id(int64_t id)
 {
     m_id = id;
     return m_id;
@@ -336,7 +336,17 @@ void GNode::Clear()
     m_inputs.clear();
     m_outputs.clear();
     m_op_ptr = nullptr;
-    m_id = -1;
+    m_id = Graph::freeGnodeId;
     m_name.clear();
     m_op_type.clear();
+}
+
+const nnfusion::Shape& GNodeIndex::get_shape() const
+{
+    return gnode->get_output_shape(index);
+}
+
+const nnfusion::element::Type& GNodeIndex::get_element_type() const
+{
+    return gnode->get_output_element_type(index);
 }

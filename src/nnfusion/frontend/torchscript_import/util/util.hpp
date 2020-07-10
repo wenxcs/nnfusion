@@ -33,7 +33,7 @@ namespace nnfusion
             std::vector<T> GetConstValues(GNodePtr n, int64 expect_size = -1)
             {
                 NNFUSION_CHECK(n) << "Nullptr found";
-                const nnfusion::element::Type et = nnfusion::element::from<T>();
+                // const nnfusion::element::Type et = nnfusion::element::from<T>();
                 std::vector<T> ret;
                 NNFUSION_CHECK(GetValueFromNGraphOp<T>(n, &ret)) << "Fail to get value from node: "
                                                                  << n->get_name();

@@ -7,7 +7,6 @@
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "nnfusion/engine/async_manager.hpp"
-#include "nnfusion/util/curl_request.hpp"
 
 DECLARE_string(fantares_codegen_server);
 

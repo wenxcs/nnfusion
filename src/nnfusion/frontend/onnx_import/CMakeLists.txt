@@ -21,6 +21,8 @@ add_library(onnx_import_interface STATIC
         onnx.hpp
 )
 
+# file(GLOB ops_source op/*.cpp)
+
 add_library(onnx_import STATIC
         onnx_base.hpp
         onnx_base.cpp
@@ -30,18 +32,27 @@ add_library(onnx_import STATIC
         core/attribute.cpp
         core/node.hpp
         core/node.cpp
-        core/tensor.hpp
-        core/value_info.hpp
-        op/batch_norm.hpp
-        op/binaryop.hpp
-        op/cast.hpp
-        op/clip.hpp
-        op/concat.hpp
-        op/constant.hpp
-        op/index_reduce.hpp
-        op/pool.hpp
-        op/unaryop.hpp
-        util/broadcasting.hpp
+        op/no.hpp
+        op/no.cpp
+        op/slice.hpp
+        op/slice.cpp
+        op/expand.hpp
+        op/expand.cpp
+        op/gather.hpp
+        op/gather.cpp
+        op/softmax.hpp
+        op/softmax.cpp
+        op/unsqueeze.hpp
+        op/unsqueeze.cpp
+        op/matmul.hpp
+        op/matmul.cpp
+        op/reshape.hpp
+        op/reshape.cpp
+        op/transpose.hpp
+        op/transpose.cpp
+        op/gemm.hpp
+        op/gemm.cpp
+        # ${ops_source}
         util/broadcasting.cpp
         util/graph_convert.cpp
         util/graph_convert.hpp

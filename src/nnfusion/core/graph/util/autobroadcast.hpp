@@ -60,6 +60,10 @@ namespace nnfusion
             numpy_broadcast(const std::pair<std::shared_ptr<GNode>, std::shared_ptr<GNode>>& args,
                             std::shared_ptr<nnfusion::graph::Graph> graph);
 
+        std::pair<GNodeIndex, GNodeIndex>
+            numpy_broadcast(const std::pair<GNodeIndex, GNodeIndex>& args,
+                            std::shared_ptr<nnfusion::graph::Graph> graph);
+
         /* todo
         /// Create a new \p NodeType node, and any additional nodes required to simulate NumPy-style autobroadcast
         /// semantics.  Intended for binary operations such as "Add".

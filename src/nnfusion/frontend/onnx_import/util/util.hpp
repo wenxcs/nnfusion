@@ -38,8 +38,9 @@ namespace nnfusion
                 template <typename T>
                 inline std::vector<T> get_data(const onnx::TensorProto& tensor)
                 {
-                    NNFUSION_CHECK_FAIL() << "unsupported data type: "
-                                          << onnx::TensorProto_DataType_Name(tensor.data_type());
+                    NNFUSION_CHECK_FAIL()
+                        << "unsupported data type: "
+                        << static_cast<onnx::TensorProto_DataType>(tensor.data_type());
                 }
 
                 template <>
@@ -65,7 +66,8 @@ namespace nnfusion
                     default:
                         NNFUSION_CHECK_FAIL()
                             << "invalid data type: "
-                            << onnx::TensorProto_DataType_Name(tensor.data_type());
+                            << onnx::TensorProto_DataType_Name(
+                                   static_cast<onnx::TensorProto_DataType>(tensor.data_type()));
                         break;
                     }
                 }
@@ -94,8 +96,10 @@ namespace nnfusion
                     {
                         return __get_data<float>(tensor.uint64_data());
                     }
-                    NNFUSION_CHECK_FAIL() << "invalid data type: "
-                                          << onnx::TensorProto_DataType_Name(tensor.data_type());
+                    NNFUSION_CHECK_FAIL()
+                        << "invalid data type: "
+                        << onnx::TensorProto_DataType_Name(
+                               static_cast<onnx::TensorProto_DataType>(tensor.data_type()));
                 }
 
                 template <>
@@ -110,7 +114,8 @@ namespace nnfusion
                         return __get_data<int32_t>(tensor.int32_data());
                     }
                     NNFUSION_CHECK_FAIL() << "invalid data type: "
-                                          << onnx::TensorProto_DataType_Name(tensor.data_type());
+                                          << onnx::TensorProto_DataType_Name(
+                                                 onnx::TensorProto_DataType(tensor.data_type()));
                 }
 
                 template <>
@@ -134,7 +139,8 @@ namespace nnfusion
                     }
                     NNFUSION_CHECK(tensor.data_type() == onnx::TensorProto_DataType_UINT64)
                         << "invalid data type: "
-                        << onnx::TensorProto_DataType_Name(tensor.data_type());
+                        << onnx::TensorProto_DataType_Name(
+                               static_cast<onnx::TensorProto_DataType>(tensor.data_type()));
                     return __get_data<uint64_t>(tensor.uint64_data());
                 }
 
@@ -180,8 +186,15 @@ namespace nnfusion
                                                        const onnx::NodeProto& node,
                                                        size_t input_idx);
 
+            nnfusion::graph::GNodeIndex GetInputIndex(const NodeMap& all_ng_nodes,
+                                                      const onnx::NodeProto& node,
+                                                      size_t input_idx);
+
             graph::GNodeVector GetAllInputNode(const NodeMap& all_ng_nodes,
                                                const onnx::NodeProto& node);
+
+            GNodeIndexVector GetAllInputIndex(const NodeMap& all_ng_nodes,
+                                              const onnx::NodeProto& node);
 
             /// \brief      Return the monotonic sequence.
             ///

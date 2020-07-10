@@ -6,6 +6,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "nnfusion/core/graph/graph.hpp"
@@ -23,7 +24,9 @@ namespace nnfusion
             ParamInfo(const std::string&);
         };
 
-        std::vector<ParamInfo> build_params_from_string(const std::string&);
+        std::vector<ParamInfo> build_torchscript_params_from_string(const std::string&);
+
+        std::unordered_map<std::string, size_t> build_onnx_params_from_string(const std::string&);
 
     } // namespace frontend
 } // namespace nnfusion

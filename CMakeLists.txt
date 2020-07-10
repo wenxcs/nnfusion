@@ -263,7 +263,13 @@ if(NOT DEFINED EXTERNAL_PROJECTS_ROOT)
     set(EXTERNAL_PROJECTS_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-add_definitions(-DNNFUSION_TORCHSCRIPT_IMPORT_ENABLE=${NNFUSION_TORCHSCRIPT_IMPORT_ENABLE})
+if(NNFUSION_ONNX_IMPORT_ENABLE)
+    add_definitions(-DNNFUSION_ONNX_IMPORT_ENABLE)
+endif()
+
+if(NNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+    add_definitions(-DNNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+endif()
 
 if (NNFUSION_ONNX_IMPORT_ENABLE OR NNFUSION_TENSORFLOW_IMPORT_ENABLE)
     if (NOT NGRAPH_USE_SYSTEM_PROTOBUF)
@@ -316,16 +322,10 @@ else()
     endif()
 endif()
 
-find_package(CURL)
-if(CURL_FOUND)
-    include_directories("${CURL_INCLUDE_DIR}/curl")
-endif()
-
 add_definitions(-DPROJECT_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(thirdparty)
 add_subdirectory(src)
-message(STATUS "${NGRAPH_INCLUDE_PATH}") 
 
 if (NGRAPH_UNIT_TEST_ENABLE)
     add_subdirectory(test)
