@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS KernelCache(
 
 KernelCacheManager::~KernelCacheManager()
 {
-    sqlite3_close(kernel_cache);
+    NNFUSION_CHECK(SQLITE_OK == sqlite3_close(kernel_cache));
+    kernel_cache = NULL;
 }
 
 std::string KernelCacheManager::fetch(std::string identifier, std::string tag)
@@ -60,6 +61,7 @@ SELECT function FROM KernelCache WHERE (identifier = ?) AND (tag = ?);
     }
     else
     {
+        NNFUSION_CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
         NNFUSION_LOG(DEBUG) << "Failed to fetch, fallback plan will be used";
         return std::string("");
     }

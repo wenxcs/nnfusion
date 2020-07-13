@@ -352,8 +352,9 @@ private:
         ctx->gnode = fused_node;
 
         (*fused_node)["Kernel_Selection_Result"] = std::make_pair(CUDA_GPU, kernel);
-        (*fused_node)["DeviceType"] = CUDA_GPU;
+
         int n_device_id;
+        NNFusion_DeviceType n_device_type;
 
         // rewrite the graph by replacing the group with fused node
         m_graph->add_node(fused_node);
@@ -365,6 +366,7 @@ private:
         {
             auto node = m_nodes[node_id]->node;
             n_device_id = (*node)["DeviceID"].as<int>();
+            n_device_type = (*node)["DeviceType"].as<NNFusion_DeviceType>();
             for (const auto& in_edge : node->get_in_edges())
             {
                 if (std::find(group->nodes.begin(),
@@ -405,6 +407,7 @@ private:
 
         NNFUSION_CHECK(n_device_id != -1);
         (*fused_node)["DeviceID"] = n_device_id;
+        (*fused_node)["DeviceType"] = n_device_type;
 
         // ROCm can only support maximum 70 args for single kernel
         // CUDA support maxumum 4096 bytes for parameter space

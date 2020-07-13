@@ -104,9 +104,108 @@ LanguageUnit_p cuda::BatchNorm::emit_function_signature()
     return _lu;
 }
 
+cuda::BatchNormNCHW::BatchNormNCHW(shared_ptr<KernelContext> ctx)
+    : BlockCudaEmitter(ctx)
+{
+    // nnfusion::op::BatchNormInferece <-> nnfusion::ir::BatchNormNCHW
+    auto bn_op = static_pointer_cast<nnfusion::op::BatchNormInference>(ctx->gnode->get_op_ptr());
+    dtype = nnfusion::element::Type(ctx->outputs[0]->get_element_type());
+    // <todo> need to check the index
+    tensor_shape = nnfusion::Shape(ctx->inputs[2]->get_shape());
+    param_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
+    epsilon = bn_op->get_eps_value();
+
+    // CHECK(tensor_shape.size() == 4) << "BatchNormNCHW: input must be 4-dimensional";
+    // CHECK(param_shape.size() == 1) << "BatchNormNCHW: param must be 1-dimensional";
+    // CHECK(tensor_shape[1] == param_shape[0])
+    //     << "BatchNormNCHW: channels of input and param do not match";
+
+    std::stringstream tag;
+    tag << "cuda_batch_norm_nchw"
+        << "_dtype_" << dtype.c_type_string() << "_i_" << join(tensor_shape, "_") << "_i_"
+        << join(param_shape, "_") << "_" << ctx->outputs[0]->get_name();
+    custom_tag = tag.str();
+}
+
+LanguageUnit_p cuda::BatchNormNCHW::emit_function_body()
+{
+    if (tensor_shape.size() != 4)
+    {
+        return nullptr;
+    }
+    if (param_shape.size() != 1)
+    {
+        return nullptr;
+    }
+    if (tensor_shape[1] != param_shape[0])
+    {
+        return nullptr;
+    }
+
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
+    auto& lu = *_lu;
+
+    const float alpha = 1.0;
+    const float beta = 0.0;
+    const size_t batch_size = tensor_shape[0];
+    const size_t channel_size = tensor_shape[1];
+    const size_t height_size = tensor_shape[2];
+    const size_t width_size = tensor_shape[3];
+
+    lu << "const int st = blockIdx.x * " << height_size << " * " << width_size << ";\n";
+    lu << "const int c_id = blockIdx.x % " << channel_size << ";\n";
+    lu << "#pragma unroll 1\n";
+    lu << "for (int i = threadIdx.x; i < " << height_size << " * " << width_size
+       << "; i += blockDim.x)\n";
+    lu.block_begin();
+    lu << "output0[st + i] = ";
+    if (beta != 0)
+    {
+        lu << beta << " * output0[st + i] + ";
+    }
+    if (alpha != 1)
+    {
+        lu << alpha << " * ";
+    }
+    lu << "(input1[c_id] + (input0[c_id] * "
+          "(input2[st + i] - input3[c_id]) / sqrtf("
+       << epsilon << " + input4[c_id])));\n";
+    // lu << "output0[st + i] = " << beta << " * output0[st + i] + " << alpha
+    //    << " * (input1[c_id] + (input0[c_id] * "
+    //       "(input2[st + i] - input3[c_id]) / sqrtf("
+    //    << epsilon << " + input4[c_id])));\n";
+    lu.block_end();
+
+    return _lu;
+}
+
+LanguageUnit_p cuda::BatchNormNCHW::emit_dependency()
+{
+    LanguageUnit_p _lu(new LanguageUnit(get_function_name() + "_dep"));
+    _lu->require(header::cuda);
+    return _lu;
+}
+
+void cuda::BatchNormNCHW::set_launch_config()
+{
+    const size_t batch_size = tensor_shape[0];
+    const size_t channel_size = tensor_shape[1];
+    const size_t height_size = tensor_shape[2];
+    const size_t width_size = tensor_shape[3];
+
+    m_gridDim = dim3(batch_size * channel_size, 1, 1);
+    m_blockDim = dim3(std::min(512, (int)(height_size * width_size)), 1, 1);
+}
+
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
 REGISTER_KERNEL_EMITTER("BatchNormInference", // op_name
                         Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cudnn").Priority(2), // attrs
-                        cuda::BatchNorm) // constructor
+                        cuda::BatchNorm)      // constructor
+REGISTER_KERNEL_EMITTER("BatchNormInference", // op_name
+                        Device(CUDA_GPU).TypeConstraint(DT_FLOAT).Tag("cuda").Priority(2), // attrs
+                        cuda::BatchNormNCHW)  // constructor
+REGISTER_KERNEL_EMITTER("BatchNormInference", // op_name
+                        Device(ROCM_GPU).TypeConstraint(DT_FLOAT).Tag("cuda").Priority(2), // attrs
+                        cuda::BatchNormNCHW) // constructor

@@ -17,6 +17,7 @@ set(SRC
     kernel_profiling_pass.cpp
     runtime_const_folding_pass.cpp
     common_subexpression_elimination_pass.cpp
+    pattern_substitution.cpp
 )
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})

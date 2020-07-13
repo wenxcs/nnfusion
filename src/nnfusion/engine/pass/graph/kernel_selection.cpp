@@ -256,13 +256,19 @@ bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>
     return true;
 }
 
-static std::string generate_identifier(const shared_ptr<KernelContext>& ctx)
+std::string nnfusion::pass::graph::generate_identifier(const shared_ptr<KernelContext>& ctx)
 {
+    std::string op_type = ctx->gnode->get_op_type();
+
+    // identifier of pattern substitution kernel was generated before
+    if (op_type == "Matched_Pattern")
+        return (*ctx->gnode)["identifier"].as<std::string>();
+
     // Todo: more spec to be added
     std::string identifier("");
 
     // operator type as identifier
-    identifier += ctx->gnode->get_op_ptr()->get_op_type();
+    identifier += op_type;
 
     // shapes of input tensors as identifier
     for (int i = 0; i < ctx->inputs.size(); ++i)
@@ -286,7 +292,7 @@ static std::string generate_identifier(const shared_ptr<KernelContext>& ctx)
         identifier += ctx->dtypes[i];
     }
 
-    if (ctx->gnode->get_op_ptr()->get_op_type() == "Convolution")
+    if (op_type == "Convolution")
     {
         auto conv = std::dynamic_pointer_cast<op::Convolution>(ctx->gnode->get_op_ptr());
         NNFUSION_CHECK_NOT_NULLPTR(conv);
@@ -294,6 +300,26 @@ static std::string generate_identifier(const shared_ptr<KernelContext>& ctx)
         str << conv->get_window_movement_strides();
         str << conv->get_window_dilation_strides();
         str << conv->get_padding_below();
+        identifier += str.str();
+    }
+    else if (op_type == "AvgPool")
+    {
+        auto avgpool = std::dynamic_pointer_cast<op::AvgPool>(ctx->gnode->get_op_ptr());
+        NNFUSION_CHECK_NOT_NULLPTR(avgpool);
+        std::stringstream str;
+        str << avgpool->get_window_shape();
+        str << avgpool->get_window_movement_strides();
+        str << avgpool->get_padding_below();
+        identifier += str.str();
+    }
+    else if (op_type == "MaxPool")
+    {
+        auto maxpool = std::dynamic_pointer_cast<op::MaxPool>(ctx->gnode->get_op_ptr());
+        NNFUSION_CHECK_NOT_NULLPTR(maxpool);
+        std::stringstream str;
+        str << maxpool->get_window_shape();
+        str << maxpool->get_window_movement_strides();
+        str << maxpool->get_padding_below();
         identifier += str.str();
     }
 
@@ -340,15 +366,6 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     else
     {
         return std::make_pair(devtype, nullptr);
-        // for (auto kernel_reg : kernel_regs)
-        // {
-        //     auto kernel = kernel_reg->m_factory(ctx);
-        //     // constant kernel emitter will write file to save weights, skip to do it when codegen.
-        //     if (gnode->is_constant() || kernel->get_or_emit_source())
-        //     {
-        //         return std::make_pair(devtype, kernel);
-        //     }
-        // }
     }
 }
 

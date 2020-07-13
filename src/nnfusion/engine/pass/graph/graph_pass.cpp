@@ -18,6 +18,7 @@
 #include "kernel_selection.hpp"
 #include "multi_reshape_folding_pass.hpp"
 #include "op_inplace_pass.hpp"
+#include "pattern_substitution.hpp"
 #include "runtime_const_folding_pass.hpp"
 #include "vector_dot_transpose_pass.hpp"
 
@@ -44,6 +45,8 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<OpInplacePass>();
 
+    pass_manager.register_pass<PatternSubstitutionPass>();
+
     // The graph after this pass will have selected kernels
     pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
@@ -53,6 +56,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     // GPU specific graph passes
     pass_manager.register_pass<KernelFusionPass>();
     pass_manager.register_pass<KernelProfilingPass>();
+    pass_manager.register_pass<PatternSubstitutionPass>();
     pass_manager.register_pass<BlockFusionPass>();
 
     // assign stream
