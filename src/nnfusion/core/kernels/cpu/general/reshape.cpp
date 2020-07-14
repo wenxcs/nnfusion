@@ -94,6 +94,6 @@ namespace nnfusion
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("Reshape",                                               //op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("cpu"), //attrs
-                        cpu::ReshapeMemcpy)                                      //constructor
+REGISTER_KERNEL_EMITTER("Reshape", //op_name
+                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("cpu").Priority(2), //attrs
+                        cpu::ReshapeMemcpy) //constructor

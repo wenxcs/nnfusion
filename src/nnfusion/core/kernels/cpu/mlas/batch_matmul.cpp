@@ -112,6 +112,7 @@ LanguageUnit_p cpu::BatchMatMulMlas::emit_dependency()
     return _lu;
 }
 
-REGISTER_KERNEL_EMITTER("BatchMatMul",                                            // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mlas"), // attrs
-                        cpu::BatchMatMulMlas)
+REGISTER_KERNEL_EMITTER(
+    "BatchMatMul",                                                        // op_name
+    Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("mlas").Priority(6), // attrs
+    cpu::BatchMatMulMlas)

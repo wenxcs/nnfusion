@@ -165,6 +165,7 @@ thread_pool->ParallelFor(num_shards, func);
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("MaxPool",                                                 // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen"), // attrs
-                        cpu::MaxPoolEigen)
+REGISTER_KERNEL_EMITTER(
+    "MaxPool",                                                             // op_name
+    Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(4), // attrs
+    cpu::MaxPoolEigen)

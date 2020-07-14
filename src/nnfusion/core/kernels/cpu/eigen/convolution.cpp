@@ -140,6 +140,7 @@ out.device(*(thread_pool->GetDevice())) = in
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
-REGISTER_KERNEL_EMITTER("Convolution",                                             // op_name
-                        Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen"), // attrs
-                        cpu::ConvolutionEigen)
+REGISTER_KERNEL_EMITTER(
+    "Convolution",                                                         // op_name
+    Device(GENERIC_CPU).TypeConstraint(DT_FLOAT).Tag("eigen").Priority(4), // attrs
+    cpu::ConvolutionEigen)
