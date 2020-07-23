@@ -641,7 +641,8 @@ namespace nnfusion
                 BatchedOpParamToNGraph(is_nhwc, tf_ksize, ng_kernel_shape);
 
                 auto reshape_gnode = BatchToNGraph(is_nhwc, input_gnode);
-                if (reshape_gnode != nullptr && FLAGS_fdefault_device != "CPU")
+                if (reshape_gnode != nullptr && FLAGS_fdefault_device != "CPU" &&
+                    FLAGS_fdefault_device != "dxcompute")
                 {
                     // Set data format as "NCHW", since have transposed the data from "NHWC" to "NCHW".
                     tf_data_format = "NCHW";
@@ -675,7 +676,8 @@ namespace nnfusion
                 auto maxpool_gnode = m_graph->add_node_and_edge(maxpool_op, {reshape_gnode});
 
                 auto reshape_maxpool_gnode = BatchToTensorflow(is_nhwc, maxpool_gnode);
-                if (reshape_maxpool_gnode != nullptr && FLAGS_fdefault_device != "CPU")
+                if (reshape_maxpool_gnode != nullptr && FLAGS_fdefault_device != "CPU" &&
+                    FLAGS_fdefault_device != "dxcompute")
                 {
                     m_graph->add_node(reshape_maxpool_gnode);
                     m_graph->add_edge(maxpool_gnode, 0, reshape_maxpool_gnode, 0);
@@ -727,7 +729,8 @@ namespace nnfusion
                 BatchedOpParamToNGraph(is_nhwc, tf_dilations, ng_dilations);
 
                 auto reshape_input_gnode = BatchToNGraph(is_nhwc, input_gnode);
-                if (reshape_input_gnode != nullptr && FLAGS_fdefault_device != "CPU")
+                if (reshape_input_gnode != nullptr && FLAGS_fdefault_device != "CPU" &&
+                    FLAGS_fdefault_device != "dxcompute")
                 {
                     m_graph->add_node(reshape_input_gnode);
                     m_graph->add_edge(input_gnode, 0, reshape_input_gnode, 0);
@@ -741,7 +744,8 @@ namespace nnfusion
                 ng_kernel_shape[0] = filter_shape[0];
                 ng_kernel_shape[1] = filter_shape[1];
                 auto reshape_filter_gnode = Reshape<3, 2, 0, 1>(filter_gnode);
-                if (!is_nhwc || FLAGS_fdefault_device != "CPU")
+                if (!is_nhwc ||
+                    (FLAGS_fdefault_device != "CPU" && FLAGS_fdefault_device != "dxcompute"))
                 {
                     // Set data format as "NCHW", since have transposed the data from "NHWC" to "NCHW".
                     tf_data_format = "NCHW";
@@ -772,7 +776,8 @@ namespace nnfusion
                     conv_op, {reshape_input_gnode, reshape_filter_gnode});
 
                 auto reshape_conv_gnode = BatchToTensorflow(is_nhwc, conv_gnode);
-                if (reshape_conv_gnode != nullptr && FLAGS_fdefault_device != "CPU")
+                if (reshape_conv_gnode != nullptr && FLAGS_fdefault_device != "CPU" &&
+                    FLAGS_fdefault_device != "dxcompute")
                 {
                     m_graph->add_node(reshape_conv_gnode);
                     m_graph->add_edge(conv_gnode, 0, reshape_conv_gnode, 0);

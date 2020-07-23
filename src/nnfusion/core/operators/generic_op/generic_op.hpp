@@ -24,6 +24,7 @@ namespace nnfusion
             using constrait_func_t = bool (*)(const OpConfig::any& config);
             using infershape_func_t = void (*)(std::shared_ptr<graph::GNode> gnode);
             using translate_func_t = std::string (*)(std::shared_ptr<graph::GNode> gnode);
+            using translate_func_t_v2 = std::string (*)(std::shared_ptr<graph::GNode> gnode);
 
             // OpConfig(): f_infershape(infershape::copy_shape_from_inputs) { }
 
@@ -58,6 +59,12 @@ namespace nnfusion
                 return *this;
             }
 
+            OpConfig& translate_v2(const translate_func_t_v2& func)
+            {
+                f_translate_v2 = func;
+                return *this;
+            }
+
             OpConfig& show()
             {
                 NNFUSION_LOG(INFO) << getRoot();
@@ -79,11 +86,13 @@ namespace nnfusion
             std::vector<constrait_func_t> f_constraits;
             infershape_func_t f_infershape;
             translate_func_t f_translate;
+            translate_func_t_v2 f_translate_v2;
             OpConfig::any j_attrs;
         };
 
         std::unordered_map<std::string, OpConfig>& get_op_configs();
         std::string get_translation(std::shared_ptr<nnfusion::graph::GNode>& gnode);
+        std::string get_translation_v2(std::shared_ptr<nnfusion::graph::GNode>& gnode);
 
         inline const OpConfig& lookup_op_config(const std::string& opname)
         {
@@ -147,6 +156,40 @@ namespace nnfusion
             }
             return std::move(templ);
         };
+
+        inline std::vector<std::string> create_layout_from_dims(nnfusion::Shape shape)
+        {
+            std::vector<std::string> shape_def;
+            for (int d = 0; d < shape.size(); d++)
+            {
+                shape_def.push_back(shape[d] == 0 ? "1" : ("N" + to_string(d)));
+            }
+            return shape_def;
+        }
+
+        inline void create_inputs_definition_from_tensor(
+            std::shared_ptr<nnfusion::descriptor::Tensor> tensor,
+            std::string input_name,
+            OpConfig::any& config,
+            std::string alias_name = "")
+        {
+            alias_name = alias_name.empty() ? input_name : alias_name;
+            config[alias_name] = input_name;
+            auto d_type = tensor->get_element_type().c_type_string();
+            if (d_type == "float")
+            {
+                config[alias_name + "_dtype"] = "float32";
+            }
+            else if (d_type == "int32_t")
+            {
+                config[alias_name + "_dtype"] = "int32";
+            }
+            else
+            {
+                assert(0);
+            }
+            config[alias_name + "_shape"] = vector_to_string(tensor->get_shape());
+        }
 
         class GenericOp : public Op
         {

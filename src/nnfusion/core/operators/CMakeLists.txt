@@ -84,6 +84,7 @@ set(SRC
     op_define/tanh.cpp
     op_define/topk.cpp
     op_define/variable.cpp
+    op_define/fused.cpp
     ${generic_op_define}
 )
 

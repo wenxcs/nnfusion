@@ -32,4 +32,34 @@ REGISTER_OP(Broadcast)
              {"output_shape", vector_to_string(output_shape)}});
 
         return expression + (memcpy_annotation ? " ## @annotation: memcpy" : "");
+    })
+    .translate_v2([](std::shared_ptr<graph::GNode> curr) -> std::string {
+        auto expression_template =
+            R"( @output0@@output0_layout@ = @input0@@input0_layout@ where @boardcast_dims@; )";
+
+        auto op = static_pointer_cast<nnfusion::op::Broadcast>(curr->get_op_ptr());
+        NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << curr->get_op_ptr()->get_op_type();
+
+        auto output_shape = curr->get_output_shape(0);
+        auto output_layout = op::create_layout_from_dims(output_shape);
+        auto boardcast_dims = op->get_broadcast_axes();
+        std::vector<std::string> input_layout;
+        std::string boardcast_code;
+        for (int d = 0; d < output_layout.size(); ++d)
+        {
+            if (boardcast_dims.find(d) == boardcast_dims.end())
+                input_layout.push_back(output_layout[d]);
+            else
+            {
+                boardcast_code = boardcast_code + (boardcast_code.empty() ? "" : ", ") +
+                                 output_layout[d] + " in " + to_string(output_shape[d]);
+            }
+        }
+
+        auto expression_code = op::create_code_from_template(
+            expression_template,
+            {{"output0_layout", vector_to_string<std::vector<std::string>>(output_layout)},
+             {"input0_layout", vector_to_string<std::vector<std::string>>(input_layout)},
+             {"boardcast_dims", boardcast_code}});
+        return expression_code;
     });

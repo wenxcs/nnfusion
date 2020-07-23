@@ -290,10 +290,6 @@ namespace nnfusion
                         kernel_dict;
 
                     // Elementwise Ops
-                    kernel_dict["Add"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        codegen_for_elementwise(
-                            curr, fout, "topi=topi.add(args(\"input0\"), args(\"input1\"))");
-                    };
                     kernel_dict["Subtract"] = [&](std::shared_ptr<GNode>& curr,
                                                   std::ofstream& fout) {
                         codegen_for_elementwise(
@@ -341,9 +337,6 @@ namespace nnfusion
                     };
                     kernel_dict["Tanh"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(curr, fout, "topi=topi.tanh(args(\"input0\"))");
-                    };
-                    kernel_dict["Relu"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
-                        codegen_for_elementwise(curr, fout, "topi=topi.nn.relu(args(\"input0\"))");
                     };
                     kernel_dict["Relu6"] = [&](std::shared_ptr<GNode>& curr, std::ofstream& fout) {
                         codegen_for_elementwise(
@@ -445,7 +438,9 @@ namespace nnfusion
                             entry->second(curr, fout);
                         else
                         {
-                            auto ir = nnfusion::op::get_translation(curr);
+                            auto ir = nnfusion::op::get_translation_v2(curr);
+                            if (ir.empty())
+                                ir = nnfusion::op::get_translation(curr);
                             if (ir != "")
                             {
                                 const char annotation[] = "## @annotation: ";

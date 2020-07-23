@@ -71,5 +71,38 @@ REGISTER_OP(DepthwiseConv2dNative)
              {"stride", vector_to_string(op->localOpConfig.getRoot()["strides"])},
              {"padding", vector_to_string(padding)},
              {"dilation", vector_to_string(op->localOpConfig.getRoot()["dilations"])}});
+    })
+    .translate_v2([](std::shared_ptr<graph::GNode> curr) -> std::string {
+        auto ir_template =
+            R"( @output0@@output0_layout@ +=! @input0@@input0_layout@ * @input1@@input1_layout@@pad_cond@ where HO in @height@, WO in @width@; )";
+        auto manual_rule = R"( ## @: plan/depthwise_convfwd_nhwc_v1 )";
 
+        auto _op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(curr->get_op_ptr());
+        NNFUSION_CHECK_NOT_NULLPTR(_op) << "Node type is not " << curr->get_op_ptr()->get_op_type();
+
+        const auto& padding_h = int64_t(_op->localOpConfig.getRoot()["padding_before"][0]);
+        const auto& padding_w = int64_t(_op->localOpConfig.getRoot()["padding_before"][1]);
+        const auto& in_shape = curr->get_input_shape(0);
+
+        nnfusion::op::OpConfig::any config;
+        config["input1_layout"] = "[KH, KW, C, 0]";
+        config["output0_layout"] = "[N, HO, WO, C]";
+        config["height"] = in_shape[1];
+        config["width"] = in_shape[2];
+        config["pad_0"] = to_string(padding_h);
+        config["pad_1"] = to_string(padding_w);
+        auto shape_template = "[N, -@pad_0@ + HO + KH, -@pad_1@ + WO + KW, C]";
+        config["input0_layout"] = op::create_code_from_template(shape_template, config);
+
+        std::string pad_cond;
+        if (padding_h || padding_w)
+        {
+            auto pad_template =
+                ".when([-@pad_0@ + HO + KH >= 0, -@pad_0@ + HO + KH < @height@, -@pad_1@ + WO + KW "
+                ">= 0, -@pad_1@ + WO + KW < @width@], 0.0)";
+            pad_cond = op::create_code_from_template(pad_template, config);
+        }
+        config["pad_cond"] = pad_cond;
+
+        return op::create_code_from_template(ir_template, config) + manual_rule;
     });
