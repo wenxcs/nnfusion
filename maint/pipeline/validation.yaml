@@ -1,0 +1,14 @@
+pr:
+  - opensource
+  - releases/*
+
+pool:
+  name : NNFusion Build Agents
+  demands : gpu
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildJob
+    steps:
+    - script: ./maint/script/test.sh

@@ -1,4 +1,4 @@
-if(NGRAPH_USE_SYSTEM_PROTOBUF)
+if(NOT Protobuf_VERSION VERSION_EQUAL "3.5.0")
     add_subdirectory(onnx)
     target_include_directories(onnx_proto PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${Protobuf_INCLUDE_DIR})
     set(ONNXPROTO_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}" CACHE INTERNAL "Location for generated onnx protobuf headers." )

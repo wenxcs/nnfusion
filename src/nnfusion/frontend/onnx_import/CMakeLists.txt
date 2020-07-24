@@ -70,14 +70,14 @@ if (NOT NGRAPH_USE_SYSTEM_PROTOBUF)
 endif()
 
 set_property(TARGET onnx_import PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(onnx_import PRIVATE ${ONNXPROTO_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR} ${NGRAPH_INCLUDE_PATH}
+target_include_directories(onnx_import PRIVATE ${ONNXPROTO_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR} ${GLOBAL_INCLUDE_PATH}
     SYSTEM PRIVATE ${Protobuf_INCLUDE_DIR})
 target_link_libraries(onnx_import PRIVATE ${Protobuf_LIBRARIES} ${ONNX_PROTO_LIBRARY} nnfusion_operators nnfusion_graph)
 
 target_compile_definitions(onnx_import PRIVATE ONNX_OPSET_VERSION=${ONNX_OPSET_VERSION})
 
 set_property(TARGET onnx_import_interface PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(onnx_import_interface PRIVATE ${ONNXPROTO_INCLUDE} ${CMAKE_CURRENT_BINARY_DIR} ${NGRAPH_INCLUDE_PATH}
+target_include_directories(onnx_import_interface PRIVATE ${ONNXPROTO_INCLUDE} ${CMAKE_CURRENT_BINARY_DIR} ${GLOBAL_INCLUDE_PATH}
     SYSTEM PRIVATE  ${Protobuf_INCLUDE_DIR})
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")

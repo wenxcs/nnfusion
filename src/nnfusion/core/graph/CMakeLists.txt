@@ -11,6 +11,6 @@ set(SRC
 
 add_library(nnfusion_graph STATIC ${SRC})
 target_include_directories(nnfusion_graph SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(nnfusion_graph PRIVATE "-fPIC")

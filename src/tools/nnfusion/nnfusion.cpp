@@ -117,7 +117,7 @@ int main(int argc, char** argv)
         // load tensorlfow model as graph
         graph = nnfusion::frontend::load_tensorflow_model(model);
     }
-#ifdef NNFUSION_TORCHSCRIPT_IMPORT_ENABLE
+#if TORCHSCRIPT_FRONTEND
     else if (format == "torchscript")
     {
         std::vector<nnfusion::frontend::ParamInfo> params_vec;
@@ -128,7 +128,7 @@ int main(int argc, char** argv)
         graph = nnfusion::frontend::load_torchscript_model(model, params_vec);
     }
 #endif
-#ifdef NNFUSION_ONNX_IMPORT_ENABLE
+#if ONNX_FRONTEND
     else if (format == "onnx")
     {
         std::unordered_map<std::string, size_t> dim_params;

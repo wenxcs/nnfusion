@@ -1,15 +1,3 @@
-[submodule "thirdparty/protobuf"]
-	path = thirdparty/protobuf
-	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.protobuf
-[submodule "thirdparty/googletest"]
-	path = thirdparty/googletest
-	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.googletest
-[submodule "thirdparty/gflags"]
-	path = thirdparty/gflags
-	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.gflags
 [submodule "thirdparty/torch/binary"]
 	path = thirdparty/torch/binary
 	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.torch.binary
-[submodule "thirdparty/curl"]
-	path = thirdparty/curl
-	url = https://sysdnn.visualstudio.com/NNFusion/_git/thirdparty.curl

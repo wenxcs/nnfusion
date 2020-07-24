@@ -8,6 +8,6 @@ set(SRC
 
 add_library(nnfusion_ir STATIC ${SRC})
 target_include_directories(nnfusion_ir SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(nnfusion_ir PRIVATE "-fPIC")

@@ -26,7 +26,7 @@ set(KERNELS
 
 add_library(kernels_cpu STATIC ${SRC} ${KERNELS})
 target_include_directories(kernels_cpu SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(kernels_cpu PRIVATE "-fPIC")
 

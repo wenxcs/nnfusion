@@ -17,8 +17,7 @@ target_link_libraries(nnfusion_engine_profiler
     nnfusion_graph sqlite3
 )
 
-set_target_properties(nnfusion_engine_profiler PROPERTIES VERSION ${NGRAPH_VERSION})
 target_include_directories(nnfusion_engine_profiler SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(nnfusion_engine_profiler PRIVATE "-fPIC")

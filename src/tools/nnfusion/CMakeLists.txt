@@ -21,21 +21,20 @@ set (SRC
 add_executable(nnfusion ${SRC})
 target_include_directories(nnfusion PRIVATE ${TFPROTO_INCLUDE})
 target_link_libraries(nnfusion ${CMAKE_DL_LIBS})
-if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
+
+if (TENSORFLOW_FRONTEND)
     target_link_libraries(nnfusion tensorflow_import_interface tensorflow_import tensorflow_proto)
 endif()
-if (NNFUSION_ONNX_IMPORT_ENABLE)
+
+if (ONNX_FRONTEND)
     target_link_libraries(nnfusion onnx_import_interface onnx_import onnx_proto frontend_util)
 endif()
-if (NNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+
+if (TORCHSCRIPT_FRONTEND)
     target_link_libraries(nnfusion torchscript_import_interface torchscript_import frontend_util)
 endif()
-if (NNFUSION_ENABLE)
-    target_link_libraries(nnfusion nnfusion_backend nnfusion_engine_pass_graph nnfusion_operators)
-endif()
-target_link_libraries(nnfusion gflags)
 
-install(TARGETS nnfusion RUNTIME DESTINATION ${NGRAPH_INSTALL_BIN})
+target_link_libraries(nnfusion nnfusion_backend nnfusion_engine_pass_graph nnfusion_operators gflags)
 
 add_custom_command(
     TARGET nnfusion
@@ -45,3 +44,16 @@ add_custom_command(
     POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/thirdparty/mlas ${CMAKE_BINARY_DIR}/src/tools/nnfusion/mlas
     POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/tools/nnfusion/templates ${CMAKE_BINARY_DIR}/test/templates
 )
+
+install(TARGETS nnfusion
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    PUBLIC_HEADER DESTINATION include
+)
+
+install(DIRECTORY ${CMAKE_BINARY_DIR}/src/tools/nnfusion/templates DESTINATION bin)
+install(DIRECTORY ${CMAKE_BINARY_DIR}/src/tools/nnfusion/eigen DESTINATION bin)
+install(DIRECTORY ${CMAKE_BINARY_DIR}/src/tools/nnfusion/threadpool DESTINATION bin)
+install(DIRECTORY ${CMAKE_BINARY_DIR}/src/tools/nnfusion/mlas DESTINATION bin)
+install(DIRECTORY ${CMAKE_BINARY_DIR}/test/templates DESTINATION bin)

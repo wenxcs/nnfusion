@@ -4,7 +4,7 @@ add_library(frontend_util STATIC
         parameter.cpp)
 
 target_include_directories(frontend_util SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(frontend_util PRIVATE "-fPIC")
 

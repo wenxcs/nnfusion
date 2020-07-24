@@ -6,7 +6,7 @@ set(SRC
 
 add_library(kernels_cache STATIC ${SRC})
 target_include_directories(kernels_cache SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(kernels_cache PRIVATE "-fPIC")
 

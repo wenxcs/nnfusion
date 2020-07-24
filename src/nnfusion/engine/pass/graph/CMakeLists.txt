@@ -22,7 +22,7 @@ set(SRC
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})
 target_include_directories(nnfusion_engine_pass_graph SYSTEM PUBLIC
-    ${NGRAPH_INCLUDE_PATH}
+    ${GLOBAL_INCLUDE_PATH}
 )
 target_compile_options(nnfusion_engine_pass_graph PRIVATE "-fPIC")
 

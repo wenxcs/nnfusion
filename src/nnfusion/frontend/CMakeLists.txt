@@ -1,14 +1,14 @@
 # Microsoft (c) 2019
 
-if (NNFUSION_ONNX_IMPORT_ENABLE)
+if (ONNX_FRONTEND)
     add_subdirectory(onnx_import)
 endif()
 
-if (NNFUSION_TENSORFLOW_IMPORT_ENABLE)
+if (TENSORFLOW_FRONTEND)
     add_subdirectory(tensorflow_import)
 endif()
 
-if (NNFUSION_TORCHSCRIPT_IMPORT_ENABLE)
+if (TORCHSCRIPT_FRONTEND)
     add_subdirectory(torchscript_import)
 endif()
 
