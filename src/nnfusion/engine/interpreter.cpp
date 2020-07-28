@@ -24,6 +24,7 @@ DEFINE_bool(fkernels_as_files, false, "Saving kernels as standalone source code 
 DEFINE_int64(fkernels_files_number, -1, "Saving kernels into how many source code files.");
 DECLARE_string(fcuda_init_stream);
 DECLARE_string(fstream_assign_policy);
+DEFINE_bool(ftraining_mode, false, "Turn on training mode.");
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())

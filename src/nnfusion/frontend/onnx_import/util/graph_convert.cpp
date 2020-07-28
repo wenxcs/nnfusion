@@ -8,6 +8,8 @@
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 #include "ops_bridge.hpp"
 
+DECLARE_bool(ftraining_mode);
+
 namespace nnfusion
 {
     namespace frontend
@@ -316,14 +318,30 @@ namespace nnfusion
                     if (tensor.has_name())
                     {
                         move_external_to_rawdata(tensor, model_dir);
-                        auto tensor_op = make_constant_op(
-                            static_cast<onnx::TensorProto_DataType>(tensor.data_type()),
-                            Shape(std::begin(tensor.dims()), std::end(tensor.dims())),
-                            Tensor{tensor});
-                        tensor_op->set_name(tensor.name());
-                        auto tensor_gnode =
-                            m_graph->add_node_and_edge(tensor_op, graph::GNodeVector({}));
-                        m_node_map[tensor.name()] = {GNodeIndex{tensor_gnode}};
+                        if (FLAGS_ftraining_mode)
+                        {
+                            element::Type type;
+                            ONNXDataTypeToNNFusionElementType(
+                                static_cast<onnx::TensorProto_DataType>(tensor.data_type()), &type);
+                            std::shared_ptr<graph::GNode> input_gnode;
+                            auto tensor_op = std::make_shared<op::Parameter>(
+                                type, Shape(std::begin(tensor.dims()), std::end(tensor.dims())));
+                            tensor_op->set_name(tensor.name());
+                            input_gnode =
+                                m_graph->add_node_and_edge(tensor_op, graph::GNodeVector({}));
+                            m_node_map[tensor.name()] = {GNodeIndex{input_gnode}};
+                        }
+                        else
+                        {
+                            auto tensor_op = make_constant_op(
+                                static_cast<onnx::TensorProto_DataType>(tensor.data_type()),
+                                Shape(std::begin(tensor.dims()), std::end(tensor.dims())),
+                                Tensor{tensor});
+                            tensor_op->set_name(tensor.name());
+                            auto tensor_gnode =
+                                m_graph->add_node_and_edge(tensor_op, graph::GNodeVector({}));
+                            m_node_map[tensor.name()] = {GNodeIndex{tensor_gnode}};
+                        }
                     }
                 }
                 // Process all ONNX graph inputs, convert them to NNFusion nodes
