@@ -80,3 +80,4 @@ def create_naive_case_multi_lines(json_file, json_data):
     if "flag" in json_data:
         flag = json_data["flag"]
     return TestMultiOutput(testcase, output, filename, tags, flag)
+

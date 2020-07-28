@@ -391,7 +391,7 @@ namespace nnfusion
                         NNFUSION_LOG(ERROR) << "unknown operations: " << node_proto.DebugString();
                     }
                 }
-                NNFUSION_CHECK(unknown_nodes.size() == 0);
+                NNFUSION_CHECK(unknown_nodes.size() == 0) << "unknown operations found";
 
                 // Process ONNX graph nodes, convert to nGraph nodes
                 // sorted to avoid non-stardard model

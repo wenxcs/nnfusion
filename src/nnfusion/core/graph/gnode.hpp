@@ -34,11 +34,21 @@ namespace nnfusion
                 , index(i)
             {
             }
+            ///\todo remove explicit
             explicit GNodeIndex(std::shared_ptr<GNode> gnode)
-                : gnode(gnode)
-                , index(0)
+                : GNodeIndex(gnode, 0)
             {
             }
+            GNodeIndex()
+                : GNodeIndex(nullptr)
+            {
+            }
+            GNodeIndex& operator=(const GNodeIndex& gnode_index) = default;
+            bool operator==(const GNodeIndex& other) const
+            {
+                return gnode == other.gnode && index == other.index;
+            }
+            bool operator!=(const GNodeIndex& other) const { return !(*this == other); }
             const nnfusion::Shape& get_shape() const;
             const nnfusion::element::Type& get_element_type() const;
             std::shared_ptr<nnfusion::graph::GNode> gnode;

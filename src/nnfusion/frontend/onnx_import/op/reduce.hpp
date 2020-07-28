@@ -27,11 +27,24 @@ namespace nnfusion
                     bool keep_dims;
                     Node node(node_proto);
                     nnfusion::AxisSet ng_reduction_axes;
-                    auto axes = node.get_attribute_value<std::vector<int64_t>>("axes", {});
-                    for (auto axis : axes)
                     {
-                        ng_reduction_axes.insert(axis += axis < 0 ? input_shape.size() : 0);
+                        auto axes = node.get_attribute_value<std::vector<int64_t>>("axes", {});
+                        if (axes.empty())
+                        {
+                            auto axes_uint = get_default_order(input_shape);
+                            std::copy(axes_uint.begin(),
+                                      axes_uint.end(),
+                                      std::inserter(ng_reduction_axes, ng_reduction_axes.end()));
+                        }
+                        else
+                        {
+                            for (auto axis : axes)
+                            {
+                                ng_reduction_axes.insert(axis += axis < 0 ? input_shape.size() : 0);
+                            }
+                        }
                     }
+
                     auto keepdims = node.get_attribute_value<int64>("keepdims", 1);
 
                     auto sum_op = std::make_shared<op::Sum>(ng_reduction_axes);

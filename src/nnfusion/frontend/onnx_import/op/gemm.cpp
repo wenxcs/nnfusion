@@ -43,8 +43,12 @@ namespace nnfusion
                         auto alpha_op = std::make_shared<op::Constant>(
                             element::f32, result->get_shape(), std::vector<float>({alpha_value}));
                         auto alpha = m_graph->add_node_and_edge(alpha_op, GNodeVector({}));
-                        auto cast_op = std::make_shared<op::Convert>(result->get_element_type());
-                        alpha = m_graph->add_node_and_edge(cast_op, {alpha});
+                        if (alpha->get_element_type() != result->get_element_type())
+                        {
+                            auto cast_op =
+                                std::make_shared<op::Convert>(result->get_element_type());
+                            alpha = m_graph->add_node_and_edge(cast_op, {alpha});
+                        }
                         result = m_graph->add_node_and_edge(std::make_shared<op::Multiply>(),
                                                             {result, alpha});
                     }
@@ -54,9 +58,11 @@ namespace nnfusion
                         auto beta_op = std::make_shared<op::Constant>(
                             element::f32, C.get_shape(), std::vector<float>({beta_value}));
                         auto beta = m_graph->add_node_and_edge(beta_op, GNodeVector({}));
-                        auto cast_op = std::make_shared<op::Convert>(
-                            C.gnode->get_output_element_type(C.index));
-                        beta = m_graph->add_node_and_edge(cast_op, {beta});
+                        if (beta->get_element_type() != C.get_element_type())
+                        {
+                            auto cast_op = std::make_shared<op::Convert>(C.get_element_type());
+                            beta = m_graph->add_node_and_edge(cast_op, {beta});
+                        }
                         auto bias = m_graph->add_node_and_edge(std::make_shared<op::Multiply>(),
                                                                {C, GNodeIndex{beta, 0}});
                         std::tie(result, bias) =

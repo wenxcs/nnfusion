@@ -27,6 +27,7 @@
 #include "op/layer_norm.hpp"
 #include "op/matmul.hpp"
 #include "op/memory_copy.hpp"
+#include "op/one_hot.hpp"
 #include "op/pool.hpp"
 #include "op/reduce.hpp"
 #include "op/reshape.hpp"
@@ -173,6 +174,7 @@ namespace nnfusion
                 REGISTER_OPERATOR("Mul", 7, TranslateBinaryOp<op::Multiply>);
                 REGISTER_OPERATOR("Neg", 1, TranslateUnaryOp<op::Negative>);
                 //REGISTER_OPERATOR("Not", 1, TranslateUnaryOp<op::Not>);
+                REGISTER_OPERATOR("OneHot", 1, TranslateOneHotOp);
                 REGISTER_OPERATOR("Or", 1, TranslateBinaryOp<op::Or>);
                 REGISTER_OPERATOR("Pow", 1, TranslateBinaryOp<op::Power>);
                 //REGISTER_OPERATOR("PRelu", 1, prelu);

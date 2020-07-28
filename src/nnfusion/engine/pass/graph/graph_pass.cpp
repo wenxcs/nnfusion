@@ -5,6 +5,7 @@
 
 #include "assign_async_info_pass.hpp"
 #include "assign_layout_pass.hpp"
+#include "autodiff_pass.hpp"
 #include "blockfusion_pass.hpp"
 #include "codegen_dxcompute_pass.hpp"
 #include "codegen_graphcore_pass.hpp"
@@ -37,6 +38,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     // Generate result op must before LivenessPass
     // Generate result is implemented in gradient weight mapping pass
     pass_manager.register_pass<CSEPass>();
+    pass_manager.register_pass<AutodiffPass>();
     pass_manager.register_pass<GradientWeightMappingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();

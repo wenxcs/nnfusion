@@ -1,5 +1,6 @@
 # Microsoft (c) 2019, NNFusion Team
 
+add_subdirectory(autodiff)
 add_subdirectory(blockfusion)
 
 set(SRC
@@ -18,6 +19,7 @@ set(SRC
     runtime_const_folding_pass.cpp
     common_subexpression_elimination_pass.cpp
     pattern_substitution.cpp
+    autodiff_pass.cpp
 )
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})
@@ -26,6 +28,6 @@ target_include_directories(nnfusion_engine_pass_graph SYSTEM PUBLIC
 )
 target_compile_options(nnfusion_engine_pass_graph PRIVATE "-fPIC")
 
-target_link_libraries(nnfusion_engine_pass_graph PRIVATE nnfusion_common nnfusion_engine_pass_graph_blockfusion
+target_link_libraries(nnfusion_engine_pass_graph PRIVATE nnfusion_common nnfusion_engine_pass_graph_blockfusion ${WholeArchiveFlag} nnfusion_engine_pass_graph_autodiff ${NoWholeArchiveFlag}
 gflags ${CURL_LIBRARIES}
 )
