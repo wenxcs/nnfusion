@@ -196,7 +196,12 @@ FunctionFile_p FunctionFile::convert_from(std::shared_ptr<nnfusion::kernels::Ker
 
     string sname = fu->name_unit->get_code();
     def.change_symbol(sname);
-    return make_shared<FunctionFile>(dec.get_code(), lu);
+    auto func_def = make_shared<CPUFunctionFile>(dec.get_code(), lu);
+    func_def->header_code = func_def->get_extern_declare();
+    func_def->source_code = func_def->get_code();
+    func_def->extern_decl_unit = std::make_shared<LanguageUnit>(
+        func_def->symbol + "_extern_decl_unit", func_def->get_extern_declare());
+    return func_def;
 }
 
 CPUFunctionFile_p
@@ -234,7 +239,12 @@ CPUFunctionFile_p
 
     string sname = fu->name_unit->get_code();
     def.change_symbol(sname);
-    return make_shared<CPUFunctionFile>(dec.get_code(), lu);
+    auto func_def = make_shared<CPUFunctionFile>(dec.get_code(), lu);
+    func_def->header_code = func_def->get_extern_declare();
+    func_def->source_code = func_def->get_code();
+    func_def->extern_decl_unit = std::make_shared<LanguageUnit>(
+        func_def->symbol + "_extern_decl_unit", func_def->get_extern_declare());
+    return func_def;
 }
 
 void CPUFunctionFile::save_file()

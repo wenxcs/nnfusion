@@ -262,7 +262,7 @@ void nnfusion::MemoryAllocator::record(string symbol, shared_ptr<descriptor::Ten
 
 LanguageUnit_p nnfusion::MemoryAllocator::emit_memory_init()
 {
-    LanguageUnit_p _lu(new LanguageUnit(this->get_name() + "_init"));
+    LanguageUnit_p _lu(new LanguageUnit("declaration::" + this->get_name() + "_init"));
     auto& lu = *_lu;
     if (m_max_allocated > 0)
     {

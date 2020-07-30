@@ -44,6 +44,7 @@ namespace nnfusion
         shared_ptr<set<shared_ptr<nnfusion::descriptor::Tensor>>> constants;
         vector<shared_ptr<nnfusion::descriptor::Tensor>> arg;
         vector<shared_ptr<nnfusion::descriptor::Tensor>> out;
+        unordered_set<shared_ptr<graph::GNode>> blacklist;
         shared_ptr<MemoryAllocatorFactory> memory_allocator_factory;
         nnfusion::ir::Program program;
         bool m_is_translated;

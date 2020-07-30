@@ -20,7 +20,7 @@
 #include "nnfusion/engine/pass/tensor/tensor_device_dispatcher.hpp"
 #include "nnfusion/engine/pass/tensor/tensor_memory_layout.hpp"
 
-#include "nnfusion/engine/pass/codegen/cuda_codegenerator.hpp"
+#include "nnfusion/engine/pass/codegen/cuda_codegen_pass.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::engine;
@@ -62,5 +62,5 @@ CudaEngine::CudaEngine()
     m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
 
     // Do codegen
-    m_passes->push_back(make_shared<CudaCodeGenerator>());
+    m_passes->push_back(make_shared<CudaCodegenPass>());
 }

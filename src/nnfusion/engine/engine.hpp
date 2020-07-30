@@ -25,6 +25,7 @@ namespace nnfusion
     public:
         using Pointer = shared_ptr<EngineContext>;
         graph::Graph::Pointer m_legacy_graph;
+        std::unordered_set<std::shared_ptr<graph::GNode>> blacklist;
     };
 
     class GraphVisitor
@@ -59,6 +60,7 @@ namespace nnfusion
                 NNFUSION_CHECK(_tu->m_graph != nullptr);
                 std::unordered_set<graph::Graph::Pointer> graph_vec{_tu->m_graph};
                 ctx->m_graphs = graph_vec;
+                _tu->blacklist = context->blacklist;
             }
 
             for (auto& pass : *this)

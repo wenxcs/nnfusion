@@ -185,6 +185,24 @@ namespace nnfusion
             out << in.rdbuf();
             return true;
         }
+
+        template <class T1, class T2>
+        inline std::string join_collections(const T1& vect, T2 func, bool skip_empty = false)
+        {
+            std::stringstream result;
+            int idx = 0;
+            for (auto& it : vect)
+            {
+                auto str = func(idx, it);
+                if (!str.size() && skip_empty)
+                    continue;
+                if (idx > 0)
+                    result << ", ";
+                result << str;
+                ++idx;
+            }
+            return result.str();
+        }
     } // namespace codegen
 } // namespace nnfusion
 

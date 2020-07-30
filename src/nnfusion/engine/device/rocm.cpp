@@ -15,13 +15,11 @@
 #include "nnfusion/engine/pass/graph/runtime_const_folding_pass.hpp"
 #include "nnfusion/engine/pass/graph/vector_dot_transpose_pass.hpp"
 
+#include "nnfusion/engine/pass/codegen/rocm_codegen_pass.hpp"
 #include "nnfusion/engine/pass/tensor/inplace_tensor_analysis.hpp"
 #include "nnfusion/engine/pass/tensor/liveness_analysis.hpp"
 #include "nnfusion/engine/pass/tensor/tensor_device_dispatcher.hpp"
 #include "nnfusion/engine/pass/tensor/tensor_memory_layout.hpp"
-
-#include "nnfusion/engine/pass/codegen/cuda_codegenerator.hpp"
-#include "nnfusion/engine/pass/codegen/rocm_codegenerator.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::engine;
@@ -63,5 +61,5 @@ ROCmEngine::ROCmEngine()
     m_passes->push_back(make_shared<AssignTensorMemoryLayout>(64, false));
 
     // Do codegen
-    m_passes->push_back(make_rocm_codegenerator());
+    m_passes->push_back(make_shared<RocmCodegenPass>());
 }

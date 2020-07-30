@@ -255,6 +255,15 @@ namespace nnfusion
                     ("Not implemented infershape for Op: " + gnode->get_op_ptr()->get_op_type())
                         .c_str());
             }
+
+            inline void copy_shape_from_inputs_with_boolean(std::shared_ptr<graph::GNode> gnode)
+            {
+                for (int i = 0; i < gnode->get_input_size(); ++i)
+                {
+                    gnode->set_output_type_and_shape(
+                        0, nnfusion::element::boolean, gnode->get_input_shape(i));
+                }
+            }
         } // namespace infershape
     }     // namespace op
 } // namespace nnfusion

@@ -5,6 +5,7 @@
 #include <utility>
 #include "nnfusion/core/kernels/cpu/cpu_kernel_emitter.hpp"
 #include "nnfusion/core/kernels/cuda_gpu/cuda_emitter.hpp"
+#include "nnfusion/core/kernels/hlsl/hlsl_kernel_emitter.hpp"
 
 using namespace nnfusion;
 using namespace nnfusion::pass::graph;
@@ -207,8 +208,6 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
                   return false;
               });
 
-    shared_ptr<const KernelRegistration> untuned_antares_kernel_reg;
-    std::vector<shared_ptr<const KernelRegistration>> cand_kernel_regs;
     for (auto kernel_reg : kernel_regs)
     {
         KernelEmitter::Pointer kernel;
@@ -227,14 +226,16 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     }
 
     NNFUSION_LOG(ERROR) << "No valid kernel found:" << gnode->get_name()
-                        << "(op type: " << gnode->get_op_type() << ")";
+                        << "(op type: " << gnode->get_op_type()
+                        << ", dev type: " << nnfusion::get_device_str(devtype) << ")";
     return std::make_pair(devtype, nullptr);
 }
 
 bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
     register_antares_kernel();
-    std::vector<std::shared_ptr<GNode>> nodes = graph->get_ordered_ops();
+    // std::vector<std::shared_ptr<GNode>> nodes = graph->get_ordered_ops();
+    std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
     for (auto it : nodes)
     {
         if (!(*it)["Kernel_Selection_Result"].is_valid())
@@ -408,6 +409,8 @@ bool DefaultKernelSelector::register_antares_kernel()
     for (auto pair : nnfusion::op::get_op_configs())
     {
         std::string op_name = pair.first;
+        std::vector<NNFusion_DeviceType> devs{CUDA_GPU, GENERIC_CPU, HLSL};
+
         KernelRegistrar kernel_registrar_cuda(
             op_name,
             Name(op_name)
@@ -428,6 +431,17 @@ bool DefaultKernelSelector::register_antares_kernel()
                 .Priority(9)
                 .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {
                     return make_shared<cpu::AntaresCpuKernelEmitter>(context);
+                })
+                .Build());
+        KernelRegistrar kernel_registrar_hlsl(
+            op_name,
+            Name(op_name)
+                .Device(HLSL)
+                .TypeConstraint(DT_FLOAT)
+                .Tag("antares")
+                .Priority(9)
+                .KernelFactory([](shared_ptr<KernelContext> context) -> shared_ptr<KernelEmitter> {
+                    return make_shared<hlsl::AntaresHLSLKernelEmitter>(context);
                 })
                 .Build());
     }

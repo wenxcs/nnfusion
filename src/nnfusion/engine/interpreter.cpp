@@ -1,13 +1,14 @@
 // Microsoft (c) 2019, Wenxiang Hu
 #include "interpreter.hpp"
-#include "nnfusion/engine/pass/codegen/cpu_codegenerator.hpp"
-#include "nnfusion/engine/pass/codegen/cuda_codegenerator.hpp"
-#include "nnfusion/engine/pass/codegen/rocm_codegenerator.hpp"
+#include "nnfusion/engine/pass/codegen/cpu_codegen_pass.hpp"
+#include "nnfusion/engine/pass/codegen/cuda_codegen_pass.hpp"
+#include "nnfusion/engine/pass/codegen/rocm_codegen_pass.hpp"
 #include "nnfusion/engine/pass/extract_graph_signature.hpp"
 
 #include <strings.h>
 #include "nnfusion/common/descriptor/layout/dense_tensor_layout.hpp"
 #include "nnfusion/engine/async_manager.hpp"
+#include "nnfusion/engine/pass/codegen/cuda_codegen_pass.hpp"
 #include "pass/tensor/inplace_tensor_analysis.hpp"
 #include "pass/tensor/liveness_analysis.hpp"
 #include "pass/tensor/tensor_device_dispatcher.hpp"
@@ -51,16 +52,15 @@ Interpreter::Interpreter()
 
     switch (default_device)
     {
-    case CUDA_GPU: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
-
-    case GENERIC_CPU: m_passes->push_back(make_shared<CpuCodeGenerator>()); break;
+    case CUDA_GPU: m_passes->push_back(make_shared<CudaCodegenPass>()); break;
+    case GENERIC_CPU: m_passes->push_back(make_shared<CpuCodegenPass>()); break;
 
     case ROCM_GPU:
         FLAGS_fcuda_kernels_as_files = false;
-        m_passes->push_back(nnfusion::make_rocm_codegenerator());
+        m_passes->push_back(make_shared<RocmCodegenPass>());
         break;
 
-    default: m_passes->push_back(make_shared<CudaCodeGenerator>()); break;
+    default: m_passes->push_back(make_shared<CudaCodegenPass>()); break;
     }
 }
 

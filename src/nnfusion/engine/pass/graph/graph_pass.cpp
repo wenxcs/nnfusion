@@ -22,7 +22,6 @@
 #include "pattern_substitution.hpp"
 #include "runtime_const_folding_pass.hpp"
 #include "vector_dot_transpose_pass.hpp"
-
 using namespace nnfusion::pass::graph;
 using namespace std;
 
@@ -31,6 +30,8 @@ DEFINE_bool(ftranspose_vecdot, false, "Enable vectdot transpose.");
 DEFINE_string(fantares_codegen_server,
               "",
               "Antares codegen server address and port, format: <ip>:<port>");
+
+DECLARE_string(fdefault_device);
 
 bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
 {

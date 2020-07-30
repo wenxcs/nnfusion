@@ -6,6 +6,7 @@ set(SRC
     hlsl.cpp
     rocm.cpp
     reversed_dfs_visitor.cpp
+    degree_based_visitor.cpp
 )
 add_library(nnfusion_engine_device STATIC ${SRC})
 target_include_directories(nnfusion_engine_device SYSTEM PUBLIC

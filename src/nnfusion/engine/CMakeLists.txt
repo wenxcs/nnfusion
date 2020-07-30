@@ -22,17 +22,19 @@ add_library(nnfusion_backend SHARED
 )
 
 target_link_libraries(nnfusion_backend PRIVATE
-    nnfusion_engine_pass
+   # nnfusion_engine_pass
     nnfusion_common
     nnfusion_ir
     nnfusion_util
     # kernels
     # use ${WholeArchiveFlag} because MacOS' ldtool use different flag.
     ${WholeArchiveFlag}
+    nnfusion_engine_pass
     kernels_registration
     nnfusion_engine_device
     kernels_cuda 
     kernels_cpu
+    kernels_hlsl
     nnfusion_cache_manager
     kernels_cache
     nnfusion_engine_profiler

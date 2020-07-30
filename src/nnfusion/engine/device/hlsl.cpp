@@ -1,6 +1,9 @@
 #include "hlsl.hpp"
-#include "nnfusion/engine/pass/graph/codegen_dxcompute_pass.hpp"
+#include "degree_based_visitor.hpp"
+#include "nnfusion/engine/pass/codegen/hlsl_codegen_pass.hpp"
+#include "nnfusion/engine/pass/graph/gnode_device_dispatcher.hpp"
 #include "nnfusion/engine/pass/graph/gradient_weight_mapping_pass.hpp"
+#include "nnfusion/engine/pass/graph/kernel_selection.hpp"
 #include "nnfusion/engine/pass/graph/runtime_const_folding_pass.hpp"
 
 using namespace nnfusion;
@@ -12,8 +15,16 @@ HLSLEngine::HLSLEngine()
 {
     g_passes->push_back(make_shared<GradientWeightMappingPass>());
     g_passes->push_back(make_shared<RuntimeConstantFoldingPass>());
-    g_passes->push_back(make_shared<DirectComputeCodegenPass>());
 
-    g_visitor = nullptr;
-    m_passes = nullptr;
+    // Kernel selection
+    g_passes->push_back(make_shared<DefaultGNodeDeviceDispatcher>());
+    g_passes->push_back(make_shared<ProfilingBasedKernelSelector>());
+    g_passes->push_back(make_shared<FetchBasedSelector>());
+    g_passes->push_back(make_shared<DefaultKernelSelector>());
+
+    // Visitor
+    g_visitor = make_shared<DegreeBasedVisitor>();
+
+    // Do codegen
+    m_passes->push_back(make_shared<HLSLCodegenPass>());
 }

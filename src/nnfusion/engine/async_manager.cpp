@@ -107,7 +107,8 @@ shared_ptr<Event> AsyncManager::set_event(const shared_ptr<Stream>& stream, cons
 // emit code for declaring all device streams.
 LanguageUnit_p DeviceStreamAsyncManager::emit_stream_decl()
 {
-    LanguageUnit_p _lu(new LanguageUnit("stream_decl"));
+    LanguageUnit_p _lu(
+        new LanguageUnit("declaration::" + get_device_str(m_device_type) + "_stream_decl"));
     auto& lu = *_lu;
     for (auto stream_pair : m_stream_list)
     {
@@ -132,7 +133,8 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_stream_decl()
 // emit code for declaring all device events.
 LanguageUnit_p DeviceStreamAsyncManager::emit_event_decl()
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_decl"));
+    LanguageUnit_p _lu(
+        new LanguageUnit("declaration::" + get_device_str(m_device_type) + "_event_decl"));
     auto& lu = *_lu;
     for (auto event_pair : m_event_list)
     {
@@ -144,8 +146,9 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_event_decl()
 // emit code for initializing all device streams.
 LanguageUnit_p DeviceStreamAsyncManager::emit_stream_init()
 {
-    LanguageUnit_p _lu(new LanguageUnit("stream_init"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_stream_init"));
     auto& lu = *_lu;
+    lu << "// create streams/handles\n";
     for (auto& info : m_dev_stream)
     {
         if (info.second.size() > 1 || !info.second[0]->is_default_stream())
@@ -186,8 +189,9 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_stream_init()
 // emit code for initializing all device events.
 LanguageUnit_p DeviceStreamAsyncManager::emit_event_init()
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_init"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_init"));
     auto& lu = *_lu;
+    lu << " // create events\n";
     for (auto info : m_dev_event)
     {
         lu << "CUDA_SAFE_CALL(cudaSetDevice(" << info.first << "));\n";
@@ -204,7 +208,7 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_event_init()
 LanguageUnit_p DeviceStreamAsyncManager::emit_event_wait(shared_ptr<Stream> stream,
                                                          shared_ptr<Event> event)
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_wait"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_wait"));
     auto& lu = *_lu;
     if (stream->is_default_stream())
         lu << "CUDA_SAFE_CALL(cudaStreamWaitEvent(0, " << event->get_name() << ", 0 ));\n";
@@ -217,7 +221,7 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_event_wait(shared_ptr<Stream> stre
 // emit code for recording device event.
 LanguageUnit_p DeviceStreamAsyncManager::emit_event_record(shared_ptr<Event> event)
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_record"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_record"));
     auto& lu = *_lu;
 
     if (event->get_stream()->is_default_stream())
@@ -233,7 +237,7 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_event_record(shared_ptr<Event> eve
 // emit code for destroying device stream.
 LanguageUnit_p DeviceStreamAsyncManager::emit_stream_destroy()
 {
-    LanguageUnit_p _lu(new LanguageUnit("stream_del"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_stream_del"));
     auto& lu = *_lu;
     for (auto& info : m_dev_stream)
     {
@@ -268,7 +272,7 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_stream_destroy()
 // emit code for destroying device event.
 LanguageUnit_p DeviceStreamAsyncManager::emit_event_destroy()
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_del"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_del"));
     auto& lu = *_lu;
     for (auto& info : m_dev_event)
     {
@@ -284,7 +288,8 @@ LanguageUnit_p DeviceStreamAsyncManager::emit_event_destroy()
 // emit code for declaring all host streams.
 LanguageUnit_p HostAsyncManager::emit_stream_decl()
 {
-    LanguageUnit_p _lu(new LanguageUnit("stream_decl"));
+    LanguageUnit_p _lu(
+        new LanguageUnit("declaration::" + get_device_str(m_device_type) + "_stream_decl"));
     auto& lu = *_lu;
     return _lu;
 }
@@ -292,7 +297,8 @@ LanguageUnit_p HostAsyncManager::emit_stream_decl()
 // emit code for declaring all cpu events/notifications.
 LanguageUnit_p HostAsyncManager::emit_event_decl()
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_decl"));
+    LanguageUnit_p _lu(
+        new LanguageUnit("declaration::" + get_device_str(m_device_type) + "_event_decl"));
     auto& lu = *_lu;
     for (auto event_pair : m_event_list)
     {
@@ -304,7 +310,7 @@ LanguageUnit_p HostAsyncManager::emit_event_decl()
 // emit code for waiting cpu event/notifications. The stream/thread is blocked until the event complete.
 LanguageUnit_p HostAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shared_ptr<Event> event)
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_wait"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_wait"));
     auto& lu = *_lu;
 
     lu << event->get_name() << ".Wait();\n";
@@ -314,7 +320,7 @@ LanguageUnit_p HostAsyncManager::emit_event_wait(shared_ptr<Stream> stream, shar
 // emit code for recording cpu event/notification.
 LanguageUnit_p HostAsyncManager::emit_event_record(shared_ptr<Event> event)
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_record"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_record"));
     auto& lu = *_lu;
 
     lu << event->get_name() << ".Notify();\n";
@@ -324,7 +330,7 @@ LanguageUnit_p HostAsyncManager::emit_event_record(shared_ptr<Event> event)
 // emit code for reseting all CPU notifications.
 LanguageUnit_p HostAsyncManager::emit_event_reset()
 {
-    LanguageUnit_p _lu(new LanguageUnit("event_reset"));
+    LanguageUnit_p _lu(new LanguageUnit(get_device_str(m_device_type) + "_event_reset"));
     auto& lu = *_lu;
     for (auto event_pair : m_event_list)
     {

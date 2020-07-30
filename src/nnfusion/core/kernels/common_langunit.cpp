@@ -13,6 +13,9 @@ LU_DEFINE(header::stdexcept, "#include <stdexcept>\n");
 LU_DEFINE(header::sstream, "#include <sstream>\n");
 LU_DEFINE(header::assert, "#include <assert.h>\n");
 LU_DEFINE(header::vector, "#include <vector>\n");
+LU_DEFINE(header::cstring, "#include <cstring>\n");
+LU_DEFINE(header::stdlib, "#include <stdlib.h>\n");
+LU_DEFINE(header::chrono, "#include <chrono>\n");
 
 // Macro
 LU_DEFINE(macro::NNFUSION_DEBUG, "#define NNFUSION_DEBUG\n");

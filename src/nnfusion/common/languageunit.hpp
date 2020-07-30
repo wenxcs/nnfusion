@@ -30,12 +30,23 @@ namespace nnfusion
         // The renaming map for symbols
         // shared_ptr<unordered_map<string, string>> rename_map;
         unordered_map<string, shared_ptr<LanguageUnit>> local_symbol;
+        std::string pwd;
+        std::string write_to;
+        std::string read_from;
+        std::vector<std::pair<std::string, std::string>> copy_templates;
+        std::vector<std::string> copy_folder;
+        std::string header_code, source_code;
+        shared_ptr<LanguageUnit> extern_decl_unit;
 
     public:
         LanguageUnit()
             : CodeWriter(){};
         LanguageUnit(const string symbol);
         LanguageUnit(const string symbol, const string code);
+        LanguageUnit(const string symbol,
+                     const string code,
+                     const string header,
+                     const string source);
 
         bool change_symbol(const string symbol);
         bool require(const string required);
@@ -46,6 +57,14 @@ namespace nnfusion
         string get_symbol() { return symbol; }
         string collect_code();
         string collect_required_code();
+        virtual void execute(bool append = true);
+        virtual void divide_code();
+
+    protected:
+        virtual bool setpwd();
+        virtual bool write_to_file(bool append);
+        virtual bool read_from_file();
+        virtual bool copy_all();
     };
 
     using LanguageUnit_p = shared_ptr<LanguageUnit>;

@@ -8,7 +8,8 @@
 #define STR(x) QUOTE(x)
 #define LU_DEFINE(NAME, code)                                                                      \
     LanguageUnit_p NAME = LanguageUnit_p(new LanguageUnit(STR(NAME), code));
-
+#define LU_DEFINE_EXTEND(NAME, code, header, source)                                               \
+    LanguageUnit_p NAME = LanguageUnit_p(new LanguageUnit(STR(NAME), code, header, source));
 namespace nnfusion
 {
     namespace kernels
@@ -23,6 +24,9 @@ namespace nnfusion
             LU_DECLARE(cmath);
             LU_DECLARE(assert);
             LU_DECLARE(vector);
+            LU_DECLARE(cstring);
+            LU_DECLARE(stdlib);
+            LU_DECLARE(chrono);
         }
 
         namespace macro
