@@ -5,6 +5,8 @@
 #include "graph_pass_base.hpp"
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
+DECLARE_bool(fautodiff);
+
 namespace nnfusion
 {
     namespace pass

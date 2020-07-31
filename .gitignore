@@ -113,5 +113,4 @@ python/pybind11/
 
 .idea/*
 
-models/
 nnfusion_rt/

@@ -2,29 +2,27 @@ add_subdirectory(models)
 
 set(SRC main.cpp)
 
-if (NNFUSION_ENABLE)
-    file(GLOB nnfusion_core_files nnfusion/core/*.cpp)
-    file(GLOB nnfusion_engine_files nnfusion/engine/*.cpp)
-    file(GLOB nnfusion_inventory_files nnfusion/inventory/*.cpp)
-    file(GLOB nnfusion_kernels_files nnfusion/kernels/*.cpp)
-    file(GLOB nnfusion_testutil_files nnfusion/test_util/*.cpp)
-    if (ONNX_FRONTEND)
-        list(APPEND nnfusion_frontend_files nnfusion/frontend/onnx_import.cpp)
-    endif()
-    if (TENSORFLOW_FRONTEND)
-        list(APPEND nnfusion_frontend_files nnfusion/frontend/tensorflow_import.cpp)
-    endif()
-    if (TORCHSCRIPT_FRONTEND)
-        list(APPEND nnfusion_frontend_files nnfusion/frontend/torchscript_import.cpp)
-    endif()
-    list(APPEND SRC ${nnfusion_core_files}
-        ${nnfusion_engine_files}
-        ${nnfusion_inventory_files}
-        ${nnfusion_kernels_files}
-        ${nnfusion_testutil_files}
-        ${nnfusion_frontend_files}
-        )
+file(GLOB nnfusion_core_files nnfusion/core/*.cpp)
+file(GLOB nnfusion_engine_files nnfusion/engine/*.cpp)
+file(GLOB nnfusion_inventory_files nnfusion/inventory/*.cpp)
+file(GLOB nnfusion_kernels_files nnfusion/kernels/*.cpp)
+file(GLOB nnfusion_testutil_files nnfusion/test_util/*.cpp)
+if (ONNX_FRONTEND)
+    list(APPEND nnfusion_frontend_files nnfusion/frontend/onnx_import.cpp)
 endif()
+if (TENSORFLOW_FRONTEND)
+    list(APPEND nnfusion_frontend_files nnfusion/frontend/tensorflow_import.cpp)
+endif()
+if (TORCHSCRIPT_FRONTEND)
+    list(APPEND nnfusion_frontend_files nnfusion/frontend/torchscript_import.cpp)
+endif()
+list(APPEND SRC ${nnfusion_core_files}
+    ${nnfusion_engine_files}
+    ${nnfusion_inventory_files}
+    ${nnfusion_kernels_files}
+    ${nnfusion_testutil_files}
+    ${nnfusion_frontend_files}
+    )
 
 add_executable(unit-test ${SRC})
 
@@ -45,9 +43,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
     target_compile_options(unit-test PRIVATE -Wno-undef -Wno-reserved-id-macro)
 endif()
 
-if (NNFUSION_ENABLE)
-    target_link_libraries(unit-test PRIVATE nnfusion_backend nnfusion_engine_profiler nnfusion_engine_pass_graph)
-endif()
+target_link_libraries(unit-test PRIVATE nnfusion_backend nnfusion_engine_profiler nnfusion_engine_pass_graph)
 
 target_include_directories(unit-test PRIVATE ${Protobuf_INCLUDE_DIR})
 

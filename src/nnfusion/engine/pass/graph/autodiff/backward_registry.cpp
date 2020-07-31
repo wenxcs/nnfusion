@@ -85,14 +85,22 @@ void DiffEngine::differentiate_graph(const GNodeIndexVector& outputs,
         auto node = nodes_to_check.front();
         nodes_to_check.pop_front();
         // Look for nodes that will be available when this node is done
-        for (auto in_edges : node->get_in_edges())
+        // sort in_edges by output index
+        auto in_edges = node->get_in_edges();
+        std::vector<std::shared_ptr<Edge>> sorted_in_edges(in_edges.begin(), in_edges.end());
+        std::sort(sorted_in_edges.begin(),
+                  sorted_in_edges.end(),
+                  [](std::shared_ptr<Edge> a, std::shared_ptr<Edge> b) {
+                      return a->get_dst_input() < b->get_dst_input();
+                  });
+        for (auto in_edge : sorted_in_edges)
         {
-            auto input_source_node = in_edges->get_src();
+            auto input_source_node = in_edge->get_src();
             auto count_it = parent_counts.find(input_source_node);
             count_it->second--;
             if (0 == count_it->second)
             {
-                nodes_to_check.push_front(input_source_node);
+                nodes_to_check.push_back(input_source_node);
             }
         }
         GNodeIndexVector deltas = m_adjoint_map[node];
