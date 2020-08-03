@@ -97,7 +97,7 @@ void GraphEvaluate::create_profiling_contexts(shared_ptr<GNode> gnode)
         }
     }
 
-    NNFUSION_LOG(ERROR) << "Invalid reference kenel for " << gnode->get_name()
+    NNFUSION_LOG(ERROR) << "Invalid reference kernel for " << gnode->get_name()
                         << " (op type : " << gnode->get_op_type() << ").";
 }
 

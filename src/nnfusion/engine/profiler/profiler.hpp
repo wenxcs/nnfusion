@@ -245,8 +245,28 @@ namespace nnfusion
                 unordered_map<string, vector<vector<T1>>> result;
                 for (auto& outnode : gctx.graph->get_outputs())
                 {
-                    auto pctx = gctx.get_profiling_context(outnode);
-                    result[outnode->get_unique_name()] = pctx->kernel_memory->save_outputs<T1>();
+                    if (outnode->is_parameter())
+                    {
+                        auto vec = inputs[parameter_map[outnode]];
+                        result[outnode->get_unique_name()].emplace_back(vec.begin(), vec.end());
+                    }
+                    ///\todo tensor op?
+                    else if (outnode->is_constant())
+                    {
+                        auto const_node = static_pointer_cast<op::Constant>(outnode->get_op_ptr());
+                        NNFUSION_LOG(NNFUSION_WARNING) << "GraphEvaluate::eval might return "
+                                                          "unexpected result on constant node, "
+                                                          "please use mixed_type_eval instead.";
+                        ///\warning const->get_vector<T> only reinterprete memory to desired T.
+                        result[outnode->get_unique_name()].push_back(
+                            move(const_node->get_vector<T1>()));
+                    }
+                    else
+                    {
+                        auto pctx = gctx.get_profiling_context(outnode);
+                        result[outnode->get_unique_name()] =
+                            pctx->kernel_memory->save_outputs<T1>();
+                    }
                 }
 
                 // The result data ptr is like result["nodename"]->kernel_memory->unsafe_output(0);
@@ -297,22 +317,41 @@ namespace nnfusion
                 for (auto& outnode : gctx.graph->get_outputs())
                 {
                     outputs.clear();
-                    auto pctx = gctx.get_profiling_context(outnode);
-
-                    auto& kernel_mem = pctx->kernel_memory;
-                    auto kctx = pctx->kernel->m_context;
-
-                    void** ptrs = kernel_mem->unsafe_outputs();
-                    for (size_t i = 0; i < kctx->outputs.size(); ++i)
+                    if (outnode->is_parameter())
                     {
-                        auto& t = kctx->outputs[i];
-                        size_t _size = t->size();
-
-                        NNFUSION_CHECK(ptrs[i] != nullptr);
+                        size_t _size = nnfusion::shape_size(outnode->get_shape()) *
+                                       outnode->get_element_type().size();
                         vector<char> output(_size);
-                        memcpy(output.data(), ptrs[i], _size);
-
+                        memcpy(output.data(), (void*)inputs[parameter_map[outnode]].data(), _size);
                         outputs.push_back(move(output));
+                    }
+                    ///\todo tensor op?
+                    else if (outnode->is_constant())
+                    {
+                        auto const_node = static_pointer_cast<op::Constant>(outnode->get_op_ptr());
+                        vector<char> output(const_node->get_data_size());
+                        memcpy(
+                            output.data(), const_node->get_data_ptr(), const_node->get_data_size());
+                        outputs.push_back(move(output));
+                    }
+                    else
+                    {
+                        auto pctx = gctx.get_profiling_context(outnode);
+                        auto& kernel_mem = pctx->kernel_memory;
+                        auto kctx = pctx->kernel->m_context;
+
+                        void** ptrs = kernel_mem->unsafe_outputs();
+                        for (size_t i = 0; i < kctx->outputs.size(); ++i)
+                        {
+                            auto& t = kctx->outputs[i];
+                            size_t _size = t->size();
+
+                            NNFUSION_CHECK(ptrs[i] != nullptr);
+                            vector<char> output(_size);
+                            memcpy(output.data(), ptrs[i], _size);
+
+                            outputs.push_back(move(output));
+                        }
                     }
                     result[outnode->get_unique_name()] = outputs;
                 }

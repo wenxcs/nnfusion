@@ -31,6 +31,7 @@ bool AutodiffPass::run_on_graph(std::shared_ptr<Graph>& graph)
         outputs_index.emplace_back(gnode, 0);
         auto one_op =
             std::make_shared<op::Constant>(element::f32, gnode->get_shape(), std::vector<float>{1});
+        one_op->set_name("out_grad");
         auto one = graph->add_node_and_edge(one_op, GNodeVector());
         outputs_grad.emplace_back(one, 0);
     }

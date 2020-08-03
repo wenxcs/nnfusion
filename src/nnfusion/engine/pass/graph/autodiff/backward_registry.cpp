@@ -112,6 +112,7 @@ void DiffEngine::differentiate_graph(const GNodeIndexVector& outputs,
             {
                 auto zero_op = std::make_shared<op::Constant>(
                     element::f32, node->get_output_shape(i), std::vector<float>{0});
+                zero_op->set_name(node->get_name() + "_grad_" + std::to_string(i));
                 auto zero = m_graph->add_node_and_edge(zero_op, GNodeVector());
                 delta = GNodeIndex{zero, 0};
             }
