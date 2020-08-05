@@ -51,7 +51,6 @@ namespace
 
         auto graph_evaluate = make_shared<nnfusion::profiler::GraphEvaluate>(graph, CUDA_GPU);
         auto res = graph_evaluate->mixed_type_eval(args);
-
         auto output_gnodes = graph->get_outputs();
         vector<vector<char>> result_vectors;
         ///\todo: we don't have output index yet, so we think it's legal either:
@@ -111,3 +110,223 @@ TEST(nnfusion_pass_autodiff, multiply)
     EXPECT_TRUE(test::all_close_f(a_grad, b));
     EXPECT_TRUE(test::all_close_f(b_grad, a));
 }
+
+TEST(nnfusion_pass_autodiff, divide)
+{
+    auto model = frontend::load_onnx_model(file_util::path_join(SERIALIZED_ZOO, "onnx/div.onnx"));
+
+    build_backward_graph(model);
+
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{8.0f, 4.0f, 2.0f};
+    raw_inputs.emplace_back(convert_to_raw(a));
+    // b
+    auto b = vector<float>{2.0f, 1.0f, 2.0f};
+    raw_inputs.emplace_back(convert_to_raw(b));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(1))};
+    vector<float> b_grad{convert_from_raw<float>(raw_outputs.at(2))};
+
+    EXPECT_TRUE(test::all_close_f(out, vector<float>{4, 4, 1}));
+    EXPECT_TRUE(test::all_close_f(a_grad, vector<float>{0.5, 1, 0.5}));
+    EXPECT_TRUE(test::all_close_f(b_grad, vector<float>{-2, -4, -0.5}));
+}
+
+TEST(nnfusion_pass_autodiff, tanh)
+{
+    auto model = frontend::load_onnx_model(file_util::path_join(SERIALIZED_ZOO, "onnx/tanh.onnx"));
+
+    build_backward_graph(model);
+
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{1.0f, 2.0f, 3.0f};
+    raw_inputs.emplace_back(convert_to_raw(a));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(1))};
+
+    EXPECT_TRUE(test::all_close_f(out, vector<float>{0.76159416, 0.96402758, 0.99505475}));
+    EXPECT_TRUE(test::all_close_f(a_grad, vector<float>{0.41994236, 0.07064401, 0.00986506}));
+}
+
+TEST(nnfusion_pass_autodiff, gather)
+{
+    auto model =
+        frontend::load_onnx_model(file_util::path_join(SERIALIZED_ZOO, "onnx/gather_axis_0.onnx"));
+
+    build_backward_graph(model);
+
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{1.0f, 1.2f, 1.9f, 2.3f, 3.4f, 3.9f, 4.5f, 5.7f, 5.9f};
+    raw_inputs.emplace_back(convert_to_raw(a));
+    // b
+    auto b = vector<int32_t>{0, 1, 1, 2};
+    raw_inputs.emplace_back(convert_to_raw(b));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(1))};
+
+    EXPECT_TRUE(test::all_close_f(
+        out, vector<float>{1, 1.2, 1.9, 2.3f, 3.4f, 3.9f, 2.3f, 3.4f, 3.9f, 4.5f, 5.7f, 5.9f}));
+    EXPECT_TRUE(test::all_close_f(a_grad, vector<float>{1, 1, 1, 2, 2, 2, 1, 1, 1}));
+}
+
+TEST(nnfusion_pass_autodiff, softmax)
+{
+    auto model =
+        frontend::load_onnx_model(file_util::path_join(SERIALIZED_ZOO, "onnx/softmax_axis_1.onnx"));
+
+    build_backward_graph(model);
+
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f};
+    raw_inputs.emplace_back(convert_to_raw(a));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(1))};
+
+    EXPECT_TRUE(test::all_close_f(out,
+                                  vector<float>{0.09003057,
+                                                0.24472848,
+                                                0.66524094,
+                                                0.09003057,
+                                                0.24472848,
+                                                0.66524094,
+                                                0.09003057,
+                                                0.24472848,
+                                                0.66524094}));
+    EXPECT_TRUE(test::all_close_f(a_grad,
+                                  vector<float>{1.07325e-08,
+                                                2.91739e-08,
+                                                7.93029e-08,
+                                                1.07325e-08,
+                                                2.91739e-08,
+                                                7.93029e-08,
+                                                1.07325e-08,
+                                                2.91739e-08,
+                                                7.93029e-08}));
+}
+
+TEST(nnfusion_pass_autodiff, batchmatmul)
+{
+    auto model =
+        frontend::load_onnx_model(file_util::path_join(SERIALIZED_ZOO, "onnx/batch_mat_mul.onnx"));
+
+    build_backward_graph(model);
+
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{1.0f,
+                           2.0f,
+                           3.0f,
+                           4.0f,
+                           5.0f,
+                           6.0f,
+                           1.0f,
+                           2.0f,
+                           3.0f,
+                           4.0f,
+                           5.0f,
+                           6.0f,
+                           1.0f,
+                           2.0f,
+                           3.0f,
+                           4.0f,
+                           5.0f,
+                           6.0f};
+    raw_inputs.emplace_back(convert_to_raw(a));
+    // b
+    auto b = vector<float>{4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f};
+    raw_inputs.emplace_back(convert_to_raw(b));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(1))};
+    vector<float> b_grad{convert_from_raw<float>(raw_outputs.at(2))};
+
+    EXPECT_TRUE(test::all_close_f(out, vector<float>{14, 32, 50, 20, 46, 72, 26, 60, 94}));
+    EXPECT_TRUE(test::all_close_f(
+        a_grad, vector<float>{4, 5, 4, 5, 4, 5, 6, 7, 6, 7, 6, 7, 8, 9, 8, 9, 8, 9}));
+    EXPECT_TRUE(test::all_close_f(b_grad, vector<float>{9, 12, 9, 12, 9, 12}));
+}
+
+TEST(nnfusion_pass_autodiff, log)
+{
+    auto model = frontend::load_onnx_model(file_util::path_join(SERIALIZED_ZOO, "onnx/log.onnx"));
+
+    build_backward_graph(model);
+
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{1.0f, 2.0f, 3.0f};
+    raw_inputs.emplace_back(convert_to_raw(a));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(1))};
+
+    EXPECT_TRUE(test::all_close_f(out, vector<float>{0, 0.6931472, 1.0986123}));
+    EXPECT_TRUE(test::all_close_f(a_grad, vector<float>{1, 0.5, 0.3333333}));
+}
+/*
+TEST(nnfusion_pass_autodiff, sparse_softmax_cross_entropy)
+{
+    auto model = frontend::load_onnx_model(
+        file_util::path_join(SERIALIZED_ZOO, "onnx/sparse_softmax_cross_entropy_op.onnx"));
+
+    model->set_outputs({model->get_outputs()[0]});
+    build_backward_graph(model);
+    RawInputs raw_inputs;
+    // a
+    auto a = vector<float>{2.9745677e-01,
+                           9.1013080e-01,
+                           8.0400240e-01,
+                           8.9810324e-01,
+                           4.7342436e-04,
+                           2.9623753e-01,
+                           5.0297123e-01,
+                           5.4320157e-01,
+                           8.5549527e-01,
+                           1.5764821e-01,
+                           9.6110272e-01,
+                           6.3229793e-01,
+                           7.5646895e-01,
+                           6.2810576e-01,
+                           3.9712179e-02};
+    raw_inputs.emplace_back(convert_to_raw(a));
+    // b
+    auto b = vector<int32_t>{0, 4, 0};
+    raw_inputs.emplace_back(convert_to_raw(b));
+
+    RawOutputs raw_outputs{mixed_type_execute(model, raw_inputs, "NNFusion")};
+    vector<float> out{convert_from_raw<float>(raw_outputs.at(0))};
+    vector<float> a_grad{convert_from_raw<float>(raw_outputs.at(2))};
+
+    EXPECT_TRUE(test::all_close_f(out, vector<float>{1.734120966}));
+    EXPECT_TRUE(test::all_close_f(a_grad,
+                                  vector<float>{-0.496295,
+                                                0.15085,
+                                                0.13566,
+                                                0.149046,
+                                                0.0607413,
+                                                0.0943012,
+                                                0.115957,
+                                                0.120718,
+                                                0.164967,
+                                                -0.495943,
+                                                -0.41965,
+                                                0.114006,
+                                                0.12908,
+                                                0.11353,
+                                                0.063034}));
+}
+*/

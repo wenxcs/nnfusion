@@ -21,14 +21,19 @@ namespace nnfusion
             /// \param element_type The element type of the parameter.
             /// \param shape The shape of the parameter.
             /// \param cacheable True if the parameter is not expected to be frequently updated.
+            /// \param require_grad True if the parameter requires grad.
             Parameter(const nnfusion::element::Type& element_type,
                       const nnfusion::Shape& shape,
-                      const bool cacheable = false);
+                      const bool cacheable = false,
+                      bool require_grad = false);
 
             bool get_cacheable() const { return m_cacheable; }
             bool is_parameter() const override { return true; }
+            bool require_grad() const { return m_require_grad; }
+            void set_require_grad(bool value = true) { m_require_grad = value; }
         protected:
             bool m_cacheable;
+            bool m_require_grad;
         };
     }
 }

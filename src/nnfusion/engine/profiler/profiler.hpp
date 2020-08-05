@@ -416,6 +416,8 @@ namespace nnfusion
                             continue;
                         auto dstnode = edge->get_dst();
                         auto dstpctx = gctx.get_profiling_context(dstnode);
+                        // if (!dstpctx)
+                        //     continue;
                         // This statments will remove some allocated memory.
                         pctx->kernel_memory->forward(
                             edge->get_src_output(), dstpctx->kernel_memory, edge->get_dst_input());

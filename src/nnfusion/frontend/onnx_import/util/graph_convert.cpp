@@ -325,7 +325,10 @@ namespace nnfusion
                                 static_cast<onnx::TensorProto_DataType>(tensor.data_type()), &type);
                             std::shared_ptr<graph::GNode> input_gnode;
                             auto tensor_op = std::make_shared<op::Parameter>(
-                                type, Shape(std::begin(tensor.dims()), std::end(tensor.dims())));
+                                type,
+                                Shape(std::begin(tensor.dims()), std::end(tensor.dims())),
+                                false,
+                                true);
                             tensor_op->set_name(tensor.name());
                             input_gnode =
                                 m_graph->add_node_and_edge(tensor_op, graph::GNodeVector({}));
