@@ -198,6 +198,45 @@ bool CodeGenerator::codegen()
             }
         }
     }
+
+    std::unordered_set<std::string> codegen_files;
+    auto clear_file = [&](const std::string& pwd, const std::string& write_to) {
+        std::string search;
+        if (write_to.empty() || write_to[0] == '/')
+            search = write_to;
+        else
+            search = pwd;
+
+        if (!pwd.empty() && pwd.back() != '/')
+            search = pwd + "/";
+
+        std::string shared_header;
+        if (write_to.substr(0, 6) == "shared")
+        {
+            shared_header = search + "shared.h";
+            if (codegen_files.find(shared_header) == codegen_files.end())
+            {
+                codegen_files.insert(shared_header);
+                struct stat buffer;
+                if (stat(shared_header.c_str(), &buffer) == 0)
+                {
+                    NNFUSION_CHECK(remove(shared_header.c_str()) == 0);
+                }
+            }
+        }
+
+        search = pwd + write_to;
+        if (codegen_files.find(search) == codegen_files.end())
+        {
+            codegen_files.insert(search);
+            struct stat buffer;
+            if (stat(search.c_str(), &buffer) == 0)
+            {
+                NNFUSION_CHECK(remove(search.c_str()) == 0);
+            }
+        }
+    };
+
     // write code
     auto cd = get_current_dir_name();
     for (auto info : files_include_shared)
@@ -206,6 +245,7 @@ bool CodeGenerator::codegen()
         NNFUSION_CHECK(pos_sep >= 0);
         std::string pwd = info.substr(0, pos_sep);
         std::string file_name = info.substr(pos_sep + 1);
+        clear_file(pwd, file_name);
         int pos = pwd.find("/");
         while (pos != std::string::npos)
         {
@@ -224,6 +264,7 @@ bool CodeGenerator::codegen()
     std::unordered_set<std::string> executed;
     for (auto lu : sorted_unit)
     {
+        clear_file(lu->pwd, lu->write_to);
         std::string search_name = lu->symbol + "_" + lu->pwd + "_" + lu->write_to;
         if (executed.find(search_name) == executed.end())
         {
@@ -240,28 +281,25 @@ void CodeGenerator::pass_exec_info()
     std::queue<LanguageUnit_p> queue;
     std::unordered_set<LanguageUnit_p> visited;
     queue.push(lup_codegen);
-    std::unordered_set<LanguageUnit_p> is_passed;
-    bool add_shared_file = false;
+    std::unordered_map<LanguageUnit_p, LanguageUnit_p> receiver_giver;
 
     auto pass = [&](LanguageUnit_p giver, LanguageUnit_p receiver) {
 
         // NNFUSION_LOG(INFO) << "==================";
         // NNFUSION_LOG(INFO) << giver->symbol << "\t" << giver->pwd << "\t" << giver->write_to;
         // NNFUSION_LOG(INFO) << receiver->symbol << "\t" << receiver->pwd << "\t" << receiver->write_to;
-        if (is_passed.find(receiver) != is_passed.end())
+        if (receiver_giver.find(receiver) != receiver_giver.end())
         {
+            auto first_giver = receiver_giver[receiver];
             if ((!giver->pwd.empty() && giver->pwd != receiver->pwd) ||
                 (!giver->write_to.empty() && giver->write_to != receiver->write_to))
             {
                 receiver->pwd = get_codegen_folder();
                 receiver->write_to = "shared" + m_kernel_suffix;
                 files_include_shared.insert(receiver->pwd + ":" + receiver->write_to);
-                add_shared_file = true;
-                // if (!giver->pwd.empty() && !giver->write_to.empty())
-                //     files_include_shared.insert(giver->pwd + ":" + giver->write_to);
-            }
-            if (add_shared_file && !giver->pwd.empty() && !giver->write_to.empty())
                 files_include_shared.insert(giver->pwd + ":" + giver->write_to);
+                files_include_shared.insert(first_giver->pwd + ":" + first_giver->write_to);
+            }
             return;
         }
 
@@ -278,7 +316,8 @@ void CodeGenerator::pass_exec_info()
             passed = true;
         }
         if (passed)
-            is_passed.insert(receiver);
+            receiver_giver[receiver] = giver;
+
         // NNFUSION_LOG(INFO) << "----------------";
         // NNFUSION_LOG(INFO) << giver->symbol << "\t" << giver->pwd << "\t" << giver->write_to;
         // NNFUSION_LOG(INFO) << receiver->symbol << "\t" << receiver->pwd << "\t" << receiver->write_to;
