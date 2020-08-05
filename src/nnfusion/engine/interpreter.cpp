@@ -26,6 +26,7 @@ DEFINE_int64(fkernels_files_number, -1, "Saving kernels into how many source cod
 DECLARE_string(fcuda_init_stream);
 DECLARE_string(fstream_assign_policy);
 DEFINE_bool(ftraining_mode, false, "Turn on training mode.");
+DEFINE_bool(fextern_result_memory, false, "Model result tensor memory is managed externally.");
 
 Interpreter::Interpreter()
     : m_trans_ctx(new InterpreterContext())

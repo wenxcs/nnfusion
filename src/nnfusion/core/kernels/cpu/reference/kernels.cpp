@@ -4,6 +4,8 @@
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 
+DECLARE_bool(fextern_result_memory);
+
 #define QUOTE(x) #x
 #define STR(x) QUOTE(x)
 #define LU_DEFINE(NAME, code)                                                                      \
@@ -4037,9 +4039,16 @@ namespace nnfusion
                 LanguageUnit_p emit_function_body() override
                 {
                     LanguageUnit lu(get_function_name());
-                    // lu << "cpu_reference_result<float>(input0, output1,"
-                    //    << shape_size(m_context->outputs[0]->get_shape()) << ");";
-                    lu << "*output0 = input0;";
+
+                    if (FLAGS_fextern_result_memory)
+                    {
+                        lu << "cpu_reference_result<float>(input0, output0,"
+                           << shape_size(m_context->outputs[0]->get_shape()) << ");";
+                    }
+                    else
+                    {
+                        lu << "*output0 = input0;";
+                    }
                     return std::make_shared<LanguageUnit>(std::move(lu));
                 }
 

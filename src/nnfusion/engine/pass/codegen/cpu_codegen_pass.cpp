@@ -26,6 +26,7 @@ DEFINE_int32(fthread_num_per_node, 0, "");
 DECLARE_bool(fkernels_as_files);
 DECLARE_int64(fkernels_files_number);
 DECLARE_bool(frt_const_folding);
+DECLARE_bool(fextern_result_memory);
 
 void CpuCodegenPass::set_global_member(std::shared_ptr<InterpreterContext> ctx,
                                        std::shared_ptr<TranslationUnit> tu)
@@ -257,12 +258,18 @@ void CpuCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
         {
             auto& tensor = *tu->out[i];
             //malloc host output arg
-            // lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-            //         << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
-            //         << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
-            //         << tensor.get_tensor_layout()->get_size() << ");\n ";
-            lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
-                    << "_host;\n";
+            if (FLAGS_fextern_result_memory)
+            {
+                lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
+                        << "_host = (" << tensor.get_element_type().c_type_string() << "*)"
+                        << "malloc( sizeof(" << tensor.get_element_type().c_type_string() << ")* "
+                        << tensor.get_tensor_layout()->get_size() << ");\n ";
+            }
+            else
+            {
+                lu_main << tensor.get_element_type().c_type_string() << "* " << tensor.get_name()
+                        << "_host;\n";
+            }
         }
         lu_main << "\n//fill input values\n";
         lu_main << fillval.get_code();
@@ -276,7 +283,10 @@ void CpuCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
         for (int i = 0; i < tu->out.size(); i++)
         {
             auto& tv = tu->out[i];
-            params.push_back("&" + tv->get_name() + "_host");
+            if (FLAGS_fextern_result_memory)
+                params.push_back(tv->get_name() + "_host");
+            else
+                params.push_back("&" + tv->get_name() + "_host");
         }
 
         lu_main << "\n//warm up\n";
@@ -323,13 +333,15 @@ void CpuCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
             auto& tensor = *tu->arg[i];
             lu_main << "free(" << tensor.get_name() << "_host);\n";
         }
-        //free host output args
-        // for (size_t i = 0; i < tu->out.size(); i++)
-        // {
-        //     auto& tensor = *tu->out[i];
-        //     lu_main << "free(" << tensor.get_name() << "_host);\n";
-        // }
-
+        // free host output args
+        if (FLAGS_fextern_result_memory)
+        {
+            for (size_t i = 0; i < tu->out.size(); i++)
+            {
+                auto& tensor = *tu->out[i];
+                lu_main << "free(" << tensor.get_name() << "_host);\n";
+            }
+        }
         lu_main << "\nreturn 0;\n";
     }
     lu_main.block_end();

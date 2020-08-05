@@ -8,6 +8,8 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
+DECLARE_bool(fextern_result_memory);
+
 KernelContext::KernelContext(shared_ptr<graph::GNode> gnode)
     : gnode(gnode)
     , gpu_num_sm(20)
@@ -87,7 +89,7 @@ LanguageUnit_p KernelEmitter::emit_function_signature()
     for (size_t i = 0; i < m_context->outputs.size(); i++)
     {
         stringstream ss;
-        if (idx == string::npos)
+        if (idx == string::npos || FLAGS_fextern_result_memory)
         {
             ss << m_context->outputs[i]->get_element_type().c_type_string() << "* ";
         }

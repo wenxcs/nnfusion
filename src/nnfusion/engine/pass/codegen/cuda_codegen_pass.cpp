@@ -22,6 +22,7 @@ DECLARE_bool(fkernels_as_files);
 DECLARE_int64(fkernels_files_number);
 DECLARE_bool(frt_const_folding);
 DECLARE_string(fcuda_init_stream);
+DECLARE_bool(fextern_result_memory);
 
 void CudaCodegenPass::set_global_member(std::shared_ptr<InterpreterContext> ctx,
                                         std::shared_ptr<TranslationUnit> tu)
@@ -406,7 +407,10 @@ std::string CudaCodegenPass::get_kernel_entry_paras(std::shared_ptr<TranslationU
         auto tv = tu->out[i];
         string type = tv->get_element_type().c_type_string();
         stringstream ss;
-        ss << type << "** " << tv->get_name();
+        if (FLAGS_fextern_result_memory)
+            ss << type << "* " << tv->get_name();
+        else
+            ss << type << "** " << tv->get_name();
         allocated.insert(tv->get_name());
         params.push_back(ss.str());
     }
@@ -448,7 +452,10 @@ std::pair<std::string, std::string>
                     {
                         string type = output->get_element_type().c_type_string();
                         stringstream ss;
-                        ss << type << "** " << name;
+                        if (FLAGS_fextern_result_memory)
+                            ss << type << "* " << name;
+                        else
+                            ss << type << "** " << name;
                         allocated.insert(name);
                         params.push_back(ss.str());
                         args.push_back(name);
@@ -869,6 +876,12 @@ void CudaCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
                     << "_host, sizeof(" << tensor.get_element_type().c_type_string() << ") * "
                     << tensor.get_tensor_layout()->get_size() << "));\n";
 
+            if (FLAGS_fextern_result_memory)
+            {
+                lu_main << "CUDA_SAFE_CALL(cudaMalloc((void**)&" << tensor.get_name() << ","
+                        << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
+                        << tensor.get_tensor_layout()->get_size() << "));\n";
+            }
             d2hcopy << "CUDA_SAFE_CALL(cudaMemcpy(" << tensor.get_name() << "_host, "
                     << tensor.get_name() << ", "
                     << " sizeof(" << tensor.get_element_type().c_type_string() << ") * "
@@ -889,7 +902,10 @@ void CudaCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
         for (int i = 0; i < tu->out.size(); i++)
         {
             auto& tv = tu->out[i];
-            params.push_back("&" + tv->get_name());
+            if (FLAGS_fextern_result_memory)
+                params.push_back(tv->get_name());
+            else
+                params.push_back("&" + tv->get_name());
         }
         int warm_step = 5, test_step = 100;
         if (FLAGS_fcodegen_debug)
@@ -953,6 +969,15 @@ void CudaCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
         {
             auto& tensor = *tu->arg[i];
             lu_main << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+        }
+
+        if (FLAGS_fextern_result_memory)
+        {
+            for (size_t i = 0; i < tu->out.size(); i++)
+            {
+                auto& tensor = *tu->out[i];
+                lu_main << "CUDA_SAFE_CALL(cudaFree(" << tensor.get_name() << "));\n";
+            }
         }
 
         lu_main << "cuda_free();\n\n";

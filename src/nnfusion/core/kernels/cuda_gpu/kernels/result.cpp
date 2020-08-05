@@ -6,6 +6,8 @@
 using namespace nnfusion;
 using namespace nnfusion::kernels;
 
+DECLARE_bool(fextern_result_memory);
+
 cuda::Result::Result(shared_ptr<KernelContext> ctx)
     : CudaLibEmitter(ctx)
 {
@@ -26,7 +28,7 @@ LanguageUnit_p cuda::Result::emit_function_signature()
 
     vector<string> params;
     params.push_back(m_context->inputs[0]->get_element_type().c_type_string() + "* input0");
-    if (need_copy_to_host)
+    if (need_copy_to_host && !FLAGS_fextern_result_memory)
     {
         params.push_back(m_context->outputs[0]->get_element_type().c_type_string() + "** output0");
     }
@@ -34,8 +36,16 @@ LanguageUnit_p cuda::Result::emit_function_signature()
     {
         params.push_back(m_context->outputs[0]->get_element_type().c_type_string() + "* output0");
     }
-    lu << "void "
-       << "(" << join(params, ", ") << ")";
+
+    if (FLAGS_fextern_result_memory)
+    {
+        lu << "void (cudaStream_t stream, " << join(params, ", ") << ")";
+    }
+    else
+    {
+        lu << "void (" << join(params, ", ") << ")";
+    }
+
     return _lu;
 }
 
@@ -44,7 +54,20 @@ LanguageUnit_p cuda::Result::emit_function_body()
     LanguageUnit_p _lu(new LanguageUnit(get_function_name()));
     if (need_copy_to_host)
     {
-        *_lu << "*output0 = input0;";
+        if (FLAGS_fextern_result_memory)
+        {
+            auto& dst = m_context->outputs[0];
+            auto& src = m_context->inputs[0];
+            *_lu << dst->get_element_type().c_type_string() << "* " << dst->get_name()
+                 << " = output0;\n";
+            *_lu << src->get_element_type().c_type_string() << "* " << src->get_name()
+                 << " = input0;\n";
+            emit_memcpyDtD(*_lu, dst, src);
+        }
+        else
+        {
+            *_lu << "*output0 = input0;";
+        }
     }
     return _lu;
 }
