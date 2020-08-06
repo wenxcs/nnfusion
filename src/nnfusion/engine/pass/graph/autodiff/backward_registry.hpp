@@ -8,6 +8,7 @@ using namespace nnfusion::graph;
 inline GNodeIndex get_node_input(std::shared_ptr<GNode> node, size_t i)
 {
     auto in_edge = node->get_in_edge(i);
+    NNFUSION_CHECK(in_edge);
     return GNodeIndex{in_edge->get_src(), in_edge->get_src_output()};
 }
 
