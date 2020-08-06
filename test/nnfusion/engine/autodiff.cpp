@@ -277,7 +277,7 @@ TEST(nnfusion_pass_autodiff, log)
     EXPECT_TRUE(test::all_close_f(out, vector<float>{0, 0.6931472, 1.0986123}));
     EXPECT_TRUE(test::all_close_f(a_grad, vector<float>{1, 0.5, 0.3333333}));
 }
-/*
+
 TEST(nnfusion_pass_autodiff, sparse_softmax_cross_entropy)
 {
     auto model = frontend::load_onnx_model(
@@ -313,20 +313,19 @@ TEST(nnfusion_pass_autodiff, sparse_softmax_cross_entropy)
 
     EXPECT_TRUE(test::all_close_f(out, vector<float>{1.734120966}));
     EXPECT_TRUE(test::all_close_f(a_grad,
-                                  vector<float>{-0.496295,
-                                                0.15085,
-                                                0.13566,
-                                                0.149046,
-                                                0.0607413,
-                                                0.0943012,
-                                                0.115957,
-                                                0.120718,
-                                                0.164967,
-                                                -0.495943,
-                                                -0.41965,
-                                                0.114006,
-                                                0.12908,
-                                                0.11353,
-                                                0.063034}));
+                                  vector<float>{-0.28619399,
+                                                0.08698932,
+                                                0.07822984,
+                                                0.08594902,
+                                                0.03502714,
+                                                0.05437983,
+                                                0.06686788,
+                                                0.06961337,
+                                                0.09513004,
+                                                -0.28599101,
+                                                -0.24199581,
+                                                0.06574282,
+                                                0.07443541,
+                                                0.06546833,
+                                                0.03634925}));
 }
-*/
