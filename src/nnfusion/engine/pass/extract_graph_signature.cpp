@@ -1,5 +1,8 @@
 // Microsoft (c) 2019, Yanhui Hong
 #include "extract_graph_signature.hpp"
+#include <iomanip>
+
+DEFINE_string(fvar_json_file, "./var_info.json", "Variable info json file.");
 
 using namespace nnfusion::interpreter;
 
@@ -127,6 +130,7 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
                                          std::shared_ptr<graph::Graph> graph)
 {
     size_t arg_index = 0;
+    nlohmann::json variable_info;
     for (auto gnode : graph->get_parameters())
     {
         for (size_t i = 0; i < gnode->get_output_size(); ++i)
@@ -145,8 +149,23 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
             arg_index++;
 
             NNFUSION_LOG(INFO) << "Param Tensor:\t" << tv->get_name() << "\twith id: " << ss.str();
+
+            if (auto parameter_op = std::dynamic_pointer_cast<op::Parameter>(gnode->get_op_ptr()))
+            {
+                if (parameter_op->require_grad())
+                {
+                    std::string frontend_name = parameter_op->get_name();
+                    variable_info[frontend_name]["name"] = tv->get_name();
+                    variable_info[frontend_name]["id"] = ss.str();
+                    variable_info[frontend_name]["shape"] = tv->get_shape();
+                }
+            }
         }
     }
+
+    std::ofstream out(FLAGS_fvar_json_file);
+    out << setw(4) << variable_info << std::endl;
+
     return true;
 }
 
