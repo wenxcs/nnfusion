@@ -45,6 +45,9 @@ namespace nnfusion
 
             bool run(std::shared_ptr<InterpreterContext> ctx,
                      std::shared_ptr<TranslationUnit> tu) override;
+
+        private:
+            nlohmann::json para_info;
         };
     }
 }

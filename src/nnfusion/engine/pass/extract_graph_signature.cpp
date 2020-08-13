@@ -2,7 +2,7 @@
 #include "extract_graph_signature.hpp"
 #include <iomanip>
 
-DEFINE_string(fvar_json_file, "./var_info.json", "Variable info json file.");
+DEFINE_string(fpara_json_file, "./para_info.json", "Kenel entry parameter info json file.");
 
 using namespace nnfusion::interpreter;
 
@@ -130,7 +130,6 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
                                          std::shared_ptr<graph::Graph> graph)
 {
     size_t arg_index = 0;
-    nlohmann::json variable_info;
     for (auto gnode : graph->get_parameters())
     {
         for (size_t i = 0; i < gnode->get_output_size(); ++i)
@@ -152,19 +151,14 @@ bool ExtractGraphSignature::extract_args(std::shared_ptr<InterpreterContext> ctx
 
             if (auto parameter_op = std::dynamic_pointer_cast<op::Parameter>(gnode->get_op_ptr()))
             {
-                if (parameter_op->require_grad())
-                {
-                    std::string frontend_name = parameter_op->get_name();
-                    variable_info[frontend_name]["name"] = tv->get_name();
-                    variable_info[frontend_name]["id"] = ss.str();
-                    variable_info[frontend_name]["shape"] = tv->get_shape();
-                }
+                std::string type = parameter_op->require_grad() ? "weight" : "input";
+                std::string frontend_name = gnode->get_name();
+                para_info[type][frontend_name]["name"] = tv->get_name();
+                para_info[type][frontend_name]["id"] = ss.str();
+                para_info[type][frontend_name]["shape"] = tv->get_shape();
             }
         }
     }
-
-    std::ofstream out(FLAGS_fvar_json_file);
-    out << setw(4) << variable_info << std::endl;
 
     return true;
 }
@@ -208,6 +202,11 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
                 ctx, NodeOut(input_node, in_edge->get_src_output()), output_name);
             NNFUSION_LOG(INFO) << "Output Tensor:\t" << itv->get_name()
                                << "\t with id:" << output_name;
+
+            std::string frontend_name = itv->get_name();
+            para_info["output"][frontend_name]["name"] = tv->get_name();
+            para_info["output"][frontend_name]["id"] = ss.str();
+            para_info["output"][frontend_name]["shape"] = tv->get_shape();
         }
     }
     return true;
@@ -222,5 +221,8 @@ bool ExtractGraphSignature::run(std::shared_ptr<InterpreterContext> ctx,
     NNFUSION_CHECK(extract_constants(ctx, tu, graph));
     NNFUSION_CHECK(extract_args(ctx, tu, graph));
     NNFUSION_CHECK(extract_output(ctx, tu, graph));
+
+    std::ofstream out(FLAGS_fpara_json_file);
+    out << setw(4) << para_info << std::endl;
     return true;
 }
