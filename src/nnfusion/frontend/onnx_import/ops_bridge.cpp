@@ -199,6 +199,8 @@ namespace nnfusion
                 REGISTER_OPERATOR("Slice", 1, TranslateSliceOp);
                 REGISTER_OPERATOR("Slice", 10, TranslateSliceOp);
                 REGISTER_OPERATOR("Softmax", 1, TranslateSoftmaxOp);
+                REGISTER_OPERATOR(
+                    "SoftmaxCrossEntropyLoss", 1, TranslateSparseSoftmaxCrossEntropyOp);
                 REGISTER_OPERATOR("SoftmaxGrad", 1, TranslateSoftmaxGradOp);
                 REGISTER_OPERATOR(
                     "SparseSoftmaxCrossEntropy", 1, TranslateSparseSoftmaxCrossEntropyOp);

@@ -69,6 +69,17 @@ namespace nnfusion
 
                     NamedNodeVector ret(2, {"", nullptr});
 
+                    // softmax output1 is optional
+                    string log_prob_name;
+                    if (node_proto.output_size() > 1)
+                    {
+                        log_prob_name = node_proto.output(1);
+                    }
+                    else
+                    {
+                        log_prob_name = node_proto.name() + "_log_prob";
+                    }
+
                     auto logits_shape = logits_index.get_shape();
                     auto label_shape = label_index.get_shape();
                     NNFUSION_CHECK(logits_shape.size() - label_shape.size() == 1)
@@ -102,7 +113,7 @@ namespace nnfusion
                     nnfusion::AxisSet ng_axes_softmax{logits_index.get_shape().size() -
                                                       1}; // along the last dim
                     auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
-                    softmax_op->set_name(node_proto.output(1));
+                    softmax_op->set_name(log_prob_name);
                     auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {logits_index});
 
                     std::shared_ptr<nnfusion::graph::GNode> log_prob = nullptr;
@@ -122,7 +133,7 @@ namespace nnfusion
                         log_prob = m_graph->add_node_and_edge(std::make_shared<op::Log>(),
                                                               {softmax_gnode});
                     }
-                    ret[1] = NamedNode{node_proto.output(1), log_prob};
+                    ret[1] = NamedNode{log_prob_name, log_prob};
 
                     auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
                         node_proto.output(0) + "_ce",
