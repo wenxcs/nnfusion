@@ -104,12 +104,22 @@ void GNode::set_input_size(size_t n)
 void GNode::set_output_size(size_t n)
 {
     NNFUSION_CHECK(n >= m_outputs.size()) << "shrinking " << m_outputs.size() << " to " << n;
+    std::string loss_name;
+    if (get_name().find("loss") != string::npos)
+    {
+        loss_name = get_name();
+    }
     for (size_t i = m_outputs.size(); i < n; ++i)
     {
         auto tensor =
             make_shared<descriptor::Tensor>(element::dynamic,
                                             PartialShape::dynamic(),
                                             m_op_ptr->get_unique_name() + "_" + to_string(i));
+        if (!loss_name.empty() && n == 1)
+        {
+            tensor->set_name(loss_name);
+        }
+
         m_outputs.emplace_back(make_shared<Output>(tensor));
     }
 }

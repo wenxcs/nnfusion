@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -53,7 +54,8 @@ namespace nnfusion
                    const std::string& group = "",
                    int device_id = -1);
 
-            const std::string& get_name() const { return m_name; }
+            const std::string& get_name() const;
+            void set_name(const std::string& name) { m_name = name; }
             void set_tensor_type(const nnfusion::element::Type& element_type,
                                  const nnfusion::PartialShape& pshape);
 
@@ -104,7 +106,7 @@ namespace nnfusion
             void set_device_id(int device_id) { m_device_id = device_id; }
             int get_device_id() const { return m_device_id; }
             std::string get_device_name() const;
-
+            const std::string& get_unique_name() const { return m_unique_name; }
             using Pointer = std::shared_ptr<Tensor>;
 
         protected:
@@ -130,6 +132,9 @@ namespace nnfusion
             std::string m_group;
             NNFusion_DeviceType m_device_type;
             int m_device_id;
+            size_t m_instance_id;
+            static std::atomic<size_t> m_next_instance_id;
+            const std::string m_unique_name;
         };
 
         std::ostream& operator<<(std::ostream&, const nnfusion::descriptor::Tensor&);
