@@ -105,9 +105,20 @@ void GNode::set_output_size(size_t n)
 {
     NNFUSION_CHECK(n >= m_outputs.size()) << "shrinking " << m_outputs.size() << " to " << n;
     std::string loss_name;
+    static std::unordered_map<std::string, int> used_name;
+
     if (get_name().find("loss") != string::npos)
     {
         loss_name = get_name();
+        if (used_name.find(loss_name) != used_name.end())
+        {
+            loss_name = loss_name + "_" + to_string(used_name[loss_name]);
+            used_name[loss_name] += 1;
+        }
+        else
+        {
+            used_name[loss_name] = 1;
+        }
     }
     for (size_t i = m_outputs.size(); i < n; ++i)
     {

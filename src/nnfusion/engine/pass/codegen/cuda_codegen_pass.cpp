@@ -631,6 +631,7 @@ bool CudaCodegenPass::modify_codegen()
             std::make_shared<LanguageUnit>("num_SMs_init",
                                            "CUDA_SAFE_CALL(cudaDeviceGetAttribute(&num_SMs, "
                                            "cudaDevAttrMultiProcessorCount, 0));\n"));
+        projgen->lup_init->require(declaration::num_SMs);
     }
 
     //dropout

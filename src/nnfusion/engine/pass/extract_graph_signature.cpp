@@ -192,22 +192,23 @@ bool ExtractGraphSignature::extract_output(std::shared_ptr<InterpreterContext> c
         auto in_edge = node->get_in_edge(0);
         NNFUSION_CHECK_NOT_NULLPTR(in_edge);
         auto input_node = in_edge->get_src();
+
+        shared_ptr<nnfusion::descriptor::Tensor> itv =
+            input_node->get_output_tensor_ptr(in_edge->get_src_output());
+        auto output_name = ss.str();
+
         if (!input_node->is_constant() && !input_node->is_parameter())
         {
-            shared_ptr<nnfusion::descriptor::Tensor> itv =
-                input_node->get_output_tensor_ptr(in_edge->get_src_output());
-            auto output_name = ss.str();
             ctx->m_variable_name_map[itv->get_name()] = output_name;
             propagate_in_place_output(
                 ctx, NodeOut(input_node, in_edge->get_src_output()), output_name);
-            NNFUSION_LOG(INFO) << "Output Tensor:\t" << itv->get_name()
-                               << "\t with id:" << output_name;
-
-            std::string frontend_name = itv->get_name();
-            para_info["output"][frontend_name]["name"] = tv->get_name();
-            para_info["output"][frontend_name]["id"] = ss.str();
-            para_info["output"][frontend_name]["shape"] = tv->get_shape();
         }
+        NNFUSION_LOG(INFO) << "Output Tensor:\t" << itv->get_name() << "\t with id:" << output_name;
+
+        std::string frontend_name = itv->get_name();
+        para_info["output"][frontend_name]["name"] = tv->get_name();
+        para_info["output"][frontend_name]["id"] = ss.str();
+        para_info["output"][frontend_name]["shape"] = tv->get_shape();
     }
     return true;
 }
