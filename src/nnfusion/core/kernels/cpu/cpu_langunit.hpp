@@ -27,7 +27,6 @@ namespace nnfusion
         {
             LU_DECLARE(eigen_global_thread_pool);
             LU_DECLARE(eigen_global_thread_pool_device);
-            LU_DECLARE(cblas_sgemm_batch);
             LU_DECLARE(worker_thread_pool);
             LU_DECLARE(schedule_thread_pool);
         }

@@ -3,20 +3,10 @@
 
 LU_DEFINE(nnfusion::codegen::cmake::cblas,
           R"(
-set(NNFUSION_THIRDPARTY_FOLDER "~/repo/Thirdparty" CACHE STRING "NNFusion Thirdpary libraries folder location")
-if(EXISTS "${NNFUSION_THIRDPARTY_FOLDER}")
-else()
-message(SEND_ERROR "NNFUSION_THIRDPARTY_FOLDER not exists." )
+if (NOT TARGET libmkl)
+include(mkl/mkl.cmake)
 endif()
-# include(mkldnn.cmake)
-set(MKL_LIBS libiomp5.so libmklml_intel.so)
-set(MKL_ROOT ${NNFUSION_THIRDPARTY_FOLDER}/mkl/mkl_lnx)
-add_library(libmkl INTERFACE)
-foreach(LIB ${MKL_LIBS})
-    target_link_libraries(libmkl INTERFACE ${MKL_ROOT}/lib/${LIB})
-endforeach()
-
-target_link_libraries(${TARGET_NAME} pthread libmkl)
+target_link_libraries(nnfusion_cpu_rt pthread libmkl)
 )");
 
 LU_DEFINE(nnfusion::codegen::cmake::eigen,

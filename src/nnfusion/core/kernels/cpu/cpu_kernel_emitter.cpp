@@ -180,6 +180,14 @@ thread_pool->ParallelFor(rank, func);
         {{"rank", rank}, {"func_body", func_body}});
 
     lu.block_begin();
+    if (func_body.find("min") != std::string::npos)
+    {
+        lu << "using std::min;\n";
+    }
+    if (func_body.find("max") != std::string::npos)
+    {
+        lu << "using std::max;\n";
+    }
     lu << code << "\n";
     lu.block_end();
     return _lu;

@@ -94,6 +94,12 @@ void CpuCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
         copy_folder.push_back(mlas_path);
     }
 
+    if (global_required.count("header::cblas") > 0)
+    {
+        std::string mkl_path = std::string(path) + std::string("/mkl");
+        copy_folder.push_back(mkl_path);
+    }
+
     // setup main_block
     auto& lu_init_begin = *(projgen->lup_init->begin);
     {

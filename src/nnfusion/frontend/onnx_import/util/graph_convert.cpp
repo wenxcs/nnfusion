@@ -40,7 +40,8 @@ namespace nnfusion
                     std::vector<onnx::NodeProto> sorted_nodes;
                     for (auto n : unsorted_nodes)
                     {
-                        string node_name = n.has_name() ? n.name() : randam_string();
+                        string node_name =
+                            (n.has_name() && n.name() != "") ? n.name() : randam_string();
                         NNFUSION_CHECK(name2node.find(node_name) == name2node.end())
                             << "duplicate node name: " << node_name;
                         name2node[node_name] = n;

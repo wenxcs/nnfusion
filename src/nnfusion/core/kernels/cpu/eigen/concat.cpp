@@ -23,7 +23,7 @@ namespace nnfusion
                     for (size_t idx = 0; idx < ctx->inputs.size(); ++idx)
                     {
                         auto& input_shape = ctx->inputs[idx]->get_shape();
-                        for (size_t i = 0; i < concat_axis; i)
+                        for (size_t i = 0; i < concat_axis; ++i)
                         {
                             if (input_shape[i] != 1)
                             {

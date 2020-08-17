@@ -23,7 +23,8 @@ namespace nnfusion
             private:
                 std::shared_ptr<KernelContext> FuseContext();
                 void FuseFunctionBody(LanguageUnit& lu);
-                std::unordered_map<std::string, std::string> in_args, out_args, local_tensors;
+                std::unordered_map<std::string, std::string> in_args, out_args, out_types,
+                    local_tensors;
             };
 
         } // namespace cpu

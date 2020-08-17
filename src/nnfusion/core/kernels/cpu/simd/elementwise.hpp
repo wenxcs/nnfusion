@@ -53,7 +53,7 @@ namespace nnfusion
                     }
                     auto num_inputs = m_data_types.size() - 1;
                     NNFUSION_CHECK(num_inputs > 0)
-                        << "At least one input and one output tesnor for elementwise-op.";
+                        << "At least one input and one output tensor for elementwise-op.";
 
                     if (loop_count > 0)
                     {
@@ -77,29 +77,43 @@ namespace nnfusion
                               "static_cast<int64_t>("
                            << shard_data_count << ")) * " << m_simd_block_size << ";\n";
 
-                        if (m_data_types[num_inputs] == "bool")
+                        for (size_t i = 0; i < num_inputs + 1; i++)
                         {
-                            lu << "float tmp_buffer[" << m_simd_block_size << "];\n";
+                            if (m_data_types[i] != "float")
+                            {
+                                lu << "float tmp_buffer[" << m_simd_block_size << "];\n";
+                                break;
+                            }
                         }
 
                         lu << "for (size_t i = start; i < end; i+=" << m_simd_block_size << ")\n";
                         lu.block_begin();
                         for (size_t i = 0; i < num_inputs; ++i)
                         {
-                            lu << "__m256 in" << i << " = _mm256_loadu_ps(input" << i << " + i);\n";
+                            if (m_data_types[i] != "float")
+                            {
+                                lu << "for (int j = 0; j < " << m_simd_block_size << "; ++j)\n{\n";
+                                lu << "tmp_buffer[j] = (float)input" << i << "[i + j];\n}\n";
+                                lu << "__m256 in" << i << " = _mm256_loadu_ps(tmp_buffer);\n";
+                            }
+                            else
+                            {
+                                lu << "__m256 in" << i << " = _mm256_loadu_ps(input" << i
+                                   << " + i);\n";
+                            }
                         }
                         lu << "__m256 out = " << op << "(";
-
                         for (size_t i = 0; i < num_inputs - 1; ++i)
                         {
                             lu << "in" << i << ", ";
                         }
                         lu << "in" << num_inputs - 1 << ");\n";
-                        if (m_data_types[num_inputs] == "bool")
+                        if (m_data_types[num_inputs] != "float")
                         {
                             lu << "_mm256_storeu_ps(tmp_buffer, out);\n";
                             lu << "for (int j = 0; j < " << m_simd_block_size << "; ++j)\n{\n";
-                            lu << "output0[i + j] = (bool)tmp_buffer[j];\n}\n";
+                            lu << "output0[i + j] = (" << m_data_types[num_inputs]
+                               << ")tmp_buffer[j];\n}\n";
                         }
                         else
                         {
@@ -122,17 +136,12 @@ namespace nnfusion
                                << i << "[i]), 0);\n";
                         }
                         lu << "__m256 out = " << op << "(";
-
                         for (size_t i = 0; i < num_inputs - 1; ++i)
                         {
                             lu << "in" << i << ", ";
                         }
                         lu << "in" << num_inputs - 1 << ");\n";
-                        if (m_data_types[num_inputs] == "bool")
-                            lu << "output0[i] = (bool)_mm_cvtss_f32(_mm256_extractf128_ps(out, "
-                                  "0));\n";
-                        else
-                            lu << "output0[i] = _mm_cvtss_f32(_mm256_extractf128_ps(out, 0));\n";
+                        lu << "output0[i] = _mm_cvtss_f32(_mm256_extractf128_ps(out, 0));\n";
                         lu << "}\n";
                     }
 

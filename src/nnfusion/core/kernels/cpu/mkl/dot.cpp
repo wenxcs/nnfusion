@@ -71,27 +71,83 @@ LanguageUnit_p cpu::DotMkl::emit_function_body()
 
         lu << "CBLAS_TRANSPOSE transa_array[] = {CblasNoTrans};\n";
         lu << "CBLAS_TRANSPOSE transb_array[] = {CblasNoTrans};\n";
-        lu << "int64_t m_array[] = {" << m << "};\n";
-        lu << "int64_t n_array[] = {" << n << "};\n";
-        lu << "int64_t k_array[] = {" << k << "};\n";
+        lu << "int m_array[] = {" << m << "};\n";
+        lu << "int n_array[] = {" << n << "};\n";
+        lu << "int k_array[] = {" << k << "};\n";
         lu << "float alpha_array[] = {1.0f};\n";
         lu << "std::vector<const float*> a{";
         populate_array("input0", group_size, offset_a);
         lu << "};\n";
         lu << "const float** a_array = &a[0];\n";
-        lu << "int64_t lda_array[] = {" << std::max(1UL, k) << "};\n";
+        lu << "int lda_array[] = {" << std::max(1UL, k) << "};\n";
         lu << "std::vector<const float*> b{";
         populate_array("input1", group_size, offset_b);
         lu << "};\n";
         lu << "const float** b_array = &b[0];\n";
-        lu << "int64_t ldb_array[] = {" << std::max(1UL, n) << "};\n";
+        lu << "int ldb_array[] = {" << std::max(1UL, n) << "};\n";
         lu << "float beta_array[] = {0.0f};\n";
         lu << "std::vector<float*> c{";
         populate_array("output0", group_size, offset_c);
         lu << "};\n";
         lu << "float** c_array = &c[0];\n";
-        lu << "int64_t ldc_array[] = {" << std::max(1UL, n) << "};\n";
-        lu << "int64_t group_size[] = {" << group_size << "};\n";
+        lu << "int ldc_array[] = {" << std::max(1UL, n) << "};\n";
+        lu << "int group_size[] = {" << group_size << "};\n";
+
+        lu << "cblas_sgemm_batch(CblasRowMajor, ";
+        lu << "transa_array, transb_array, m_array, n_array, k_array, \n";
+        lu << "alpha_array, a_array, lda_array, b_array, ldb_array, beta_array, \n";
+        lu << "c_array, ldc_array, " << group_count << ", group_size);\n";
+    }
+    else if ((arg0_shape.size() == 4) && (arg0_shape[0] == 1) && (arg1_shape.size() == 2) &&
+             reduction_axes == 1)
+    {
+        auto& mat_a = m_context->inputs[0];
+        auto& mat_b = m_context->inputs[1];
+        auto& mat_c = m_context->outputs[0];
+        const Shape& shape_a = mat_a->get_shape();
+        const Shape& shape_b = mat_b->get_shape();
+
+        const size_t m = shape_a[2];
+        const size_t k = shape_a[3];
+        const size_t n = shape_b[1];
+
+        const size_t offset_a = m * k;
+        // we do not offset mat_b
+        const size_t offset_b = 0;
+        const size_t offset_c = m * n;
+
+        const size_t group_count = 1;
+        const size_t group_size = shape_a[1];
+        auto populate_array = [&lu](const std::string& var, size_t size, size_t offset) {
+            for (size_t i = 0; i < size; ++i)
+            {
+                lu << var << "+" << i * offset << ((i < size - 1) ? ", " : "");
+            }
+        };
+
+        lu << "CBLAS_TRANSPOSE transa_array[] = {CblasNoTrans};\n";
+        lu << "CBLAS_TRANSPOSE transb_array[] = {CblasNoTrans};\n";
+        lu << "int m_array[] = {" << m << "};\n";
+        lu << "int n_array[] = {" << n << "};\n";
+        lu << "int k_array[] = {" << k << "};\n";
+        lu << "float alpha_array[] = {1.0f};\n";
+        lu << "std::vector<const float*> a{";
+        populate_array("input0", group_size, offset_a);
+        lu << "};\n";
+        lu << "const float** a_array = &a[0];\n";
+        lu << "int lda_array[] = {" << std::max(1UL, k) << "};\n";
+        lu << "std::vector<const float*> b{";
+        populate_array("input1", group_size, offset_b);
+        lu << "};\n";
+        lu << "const float** b_array = &b[0];\n";
+        lu << "int ldb_array[] = {" << std::max(1UL, n) << "};\n";
+        lu << "float beta_array[] = {0.0f};\n";
+        lu << "std::vector<float*> c{";
+        populate_array("output0", group_size, offset_c);
+        lu << "};\n";
+        lu << "float** c_array = &c[0];\n";
+        lu << "int ldc_array[] = {" << std::max(1UL, n) << "};\n";
+        lu << "int group_size[] = {" << group_size << "};\n";
 
         lu << "cblas_sgemm_batch(CblasRowMajor, ";
         lu << "transa_array, transb_array, m_array, n_array, k_array, \n";
@@ -114,7 +170,6 @@ LanguageUnit_p cpu::DotMkl::emit_dependency()
     if ((arg0_shape.size() == 3) && (arg1_shape.size() == 2) && reduction_axes == 1)
     {
         _lu->require(header::vector);
-        _lu->require(declaration::cblas_sgemm_batch);
     }
 
     return _lu;

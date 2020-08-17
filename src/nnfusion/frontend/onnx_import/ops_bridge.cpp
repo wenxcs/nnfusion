@@ -25,6 +25,7 @@
 #include "op/identity.hpp"
 #include "op/index_reduce.hpp"
 #include "op/layer_norm.hpp"
+#include "op/lstm.hpp"
 #include "op/matmul.hpp"
 #include "op/memory_copy.hpp"
 #include "op/one_hot.hpp"
@@ -163,6 +164,7 @@ namespace nnfusion
                 REGISTER_OPERATOR("Log", 1, TranslateUnaryOp<op::Log>);
                 //REGISTER_OPERATOR("LogSoftmax", 1, log_softmax);
                 //REGISTER_OPERATOR("LRN", 1, lrn);
+                REGISTER_OPERATOR("LSTM", 1, TranslateLstmOp);
                 REGISTER_OPERATOR("MatMul", 1, TranslateMatmulOp);
                 REGISTER_OPERATOR("MaxPool", 1, TranslatePoolOp<op::MaxPool>);
                 REGISTER_OPERATOR("Max", 1, TranslateLegacyBinaryOp<op::Maximum>);

@@ -83,16 +83,23 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
     create_ptr(LanguageUnit, lu_, get_function_name());
     LanguageUnit& lu = *lu_;
 
+    bool has_not_float_elements = false;
+
     std::unordered_map<std::string, std::string> in_multi_data, in_single_data;
     for (int i = 0; i < m_context->inputs.size(); i++)
     {
         auto& tensor = m_context->inputs[i];
         in_args[tensor->get_name()] = "input" + std::to_string(i);
+        if (tensor->get_element_type().c_type_string() != "float")
+            has_not_float_elements = true;
     }
     for (int i = 0; i < m_context->outputs.size(); i++)
     {
         auto& tensor = m_context->outputs[i];
         out_args[tensor->get_name()] = "output" + std::to_string(i);
+        out_types[tensor->get_name()] = tensor->get_element_type().c_type_string();
+        if (tensor->get_element_type().c_type_string() != "float")
+            has_not_float_elements = true;
     }
 
     for (auto kernel_emitter : m_context->kernels)
@@ -115,14 +122,14 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
             NNFUSION_CHECK(in_args.count(in_tw->get_name()) > 0);
             std::stringstream multi_data;
             multi_data << "__m256 simd_" << in_args[in_tw->get_name()] << " = _mm256_set_ps("
-                       << in_args[in_tw->get_name()] << "[i" << op << "], "
-                       << in_args[in_tw->get_name()] << "[(i + 1)" << op << "], "
-                       << in_args[in_tw->get_name()] << "[(i + 2)" << op << "], "
-                       << in_args[in_tw->get_name()] << "[(i + 3)" << op << "], "
-                       << in_args[in_tw->get_name()] << "[(i + 4)" << op << "], "
-                       << in_args[in_tw->get_name()] << "[(i + 5)" << op << "], "
+                       << in_args[in_tw->get_name()] << "[(i + 7)" << op << "], "
                        << in_args[in_tw->get_name()] << "[(i + 6)" << op << "], "
-                       << in_args[in_tw->get_name()] << "[(i + 7)" << op << "]);";
+                       << in_args[in_tw->get_name()] << "[(i + 5)" << op << "], "
+                       << in_args[in_tw->get_name()] << "[(i + 4)" << op << "], "
+                       << in_args[in_tw->get_name()] << "[(i + 3)" << op << "], "
+                       << in_args[in_tw->get_name()] << "[(i + 2)" << op << "], "
+                       << in_args[in_tw->get_name()] << "[(i + 1)" << op << "], "
+                       << in_args[in_tw->get_name()] << "[(i + 0)" << op << "]);";
             in_multi_data[in_args[in_tw->get_name()]] = multi_data.str();
 
             std::stringstream single_data;
@@ -139,8 +146,19 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
             if (in_args.count(in_tw->get_name()) > 0)
             {
                 std::stringstream multi_data;
-                multi_data << "__m256 simd_" << in_args[in_tw->get_name()] << " = _mm256_loadu_ps("
-                           << in_args[in_tw->get_name()] << " + i);";
+                if (in_tw->get_element_type().c_type_string() == "float")
+                {
+                    multi_data << "__m256 simd_" << in_args[in_tw->get_name()]
+                               << " = _mm256_loadu_ps(" << in_args[in_tw->get_name()] << " + i);\n";
+                }
+                else
+                {
+                    multi_data << "for (int j = 0; j < " << m_simd_block_size << "; ++j)\n{\n";
+                    multi_data << "tmp_buffer[j] = (float)(" << in_args[in_tw->get_name()]
+                               << "[i + j]);\n}\n";
+                    multi_data << "__m256 simd_" << in_args[in_tw->get_name()]
+                               << " = _mm256_loadu_ps(tmp_buffer);\n";
+                }
                 in_multi_data[in_args[in_tw->get_name()]] = multi_data.str();
 
                 std::stringstream single_data;
@@ -165,8 +183,20 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
                 if (in_args.count(in_tw->get_name()) > 0)
                 {
                     std::stringstream multi_data;
-                    multi_data << "__m256 simd_" << in_args[in_tw->get_name()]
-                               << " = _mm256_loadu_ps(" << in_args[in_tw->get_name()] << " + i);";
+                    if (in_tw->get_element_type().c_type_string() == "float")
+                    {
+                        multi_data << "__m256 simd_" << in_args[in_tw->get_name()]
+                                   << " = _mm256_loadu_ps(" << in_args[in_tw->get_name()]
+                                   << " + i);";
+                    }
+                    else
+                    {
+                        multi_data << "for (int j = 0; j < " << m_simd_block_size << "; ++j)\n{\n";
+                        multi_data << "tmp_buffer[j] = (float)(" << in_args[in_tw->get_name()]
+                                   << "[i + j]);\n}\n";
+                        multi_data << "__m256 simd_" << in_args[in_tw->get_name()]
+                                   << " = _mm256_loadu_ps(tmp_buffer);";
+                    }
                     in_multi_data[in_args[in_tw->get_name()]] = multi_data.str();
 
                     std::stringstream single_data;
@@ -205,6 +235,11 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
         lu << "num_shards = 1;\n";
         lu.block_end();
 
+        if (has_not_float_elements)
+        {
+            lu << "float tmp_buffer[" << m_simd_block_size << "];\n";
+        }
+
         lu << "auto func = [&](int __rank__)\n";
         lu << "{\n";
         lu << "int64_t start = block_size * __rank__ * " << m_simd_block_size << ";\n";
@@ -221,15 +256,27 @@ LanguageUnit_p ElementwiseFused::emit_function_body()
 
         for (auto& pair : out_args)
         {
-            lu << "_mm256_storeu_ps(" << pair.second << " + i, ";
+            string out_string = "";
             if (local_tensors.count(pair.first) > 0)
             {
-                lu << local_tensors[pair.first] << ");\n";
+                out_string = local_tensors[pair.first];
             }
             else
             {
                 NNFUSION_CHECK(in_args.count(pair.first) > 0);
-                lu << "simd_" << in_args[pair.first] << ");\n";
+                out_string = "simd_" + in_args[pair.first];
+            }
+            if (out_types[pair.first] == "float")
+            {
+                lu << "_mm256_storeu_ps(" << pair.second << " + i, ";
+                lu << out_string << ");\n";
+            }
+            else
+            {
+                lu << "_mm256_storeu_ps(tmp_buffer, " << out_string << ");\n";
+                lu << "for (int j = 0; j < " << m_simd_block_size << "; ++j)\n{\n";
+                lu << pair.second << "[i + j] = (" << out_types[pair.first]
+                   << ")tmp_buffer[j];\n}\n";
             }
         }
         lu.block_end();
