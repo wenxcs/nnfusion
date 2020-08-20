@@ -23,8 +23,18 @@ namespace
         if (input_shapes[1][0] > 1024)
             return nullptr; // following kernel implementation not supporting that case
 
-        auto src = "output0[threadIdx.x] = -log(input0[threadIdx.x * " +
-                   std::to_string(input_shapes[0][1]) + " + (int)input1[threadIdx.x]]);";
+        bool in_log_space = config["in_log_space"];
+        std::string src;
+        if (in_log_space)
+        {
+            src = "output0[threadIdx.x] = -log(input0[threadIdx.x * " +
+                  std::to_string(input_shapes[0][1]) + " + (int)input1[threadIdx.x]]);";
+        }
+        else
+        {
+            src = "output0[threadIdx.x] = -input0[threadIdx.x * " +
+                  std::to_string(input_shapes[0][1]) + " + (int)input1[threadIdx.x]];";
+        }
 
         return nnfusion::op::OpConfig::any({
             {"block_dim", {input_shapes[1][0], 1, 1}},

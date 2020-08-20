@@ -3,6 +3,7 @@
 #include "nnfusion/core/operators/generic_op/generic_op.hpp"
 
 REGISTER_OP(CrossEntropyAvgLossWithLabels)
+    .attr<bool>("in_log_space", true)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
         NNFUSION_CHECK(2 == gnode->get_input_size());
         auto& shape_0 = gnode->get_input_shape(0);

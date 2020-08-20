@@ -12,6 +12,7 @@ cuda::Softmax::Softmax(shared_ptr<KernelContext> ctx)
     auto node = static_pointer_cast<nnfusion::op::Softmax>(ctx->gnode->get_op_ptr());
     input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
     output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    algorithm = node->is_in_log_space() ? "CUDNN_SOFTMAX_LOG" : "CUDNN_SOFTMAX_ACCURATE";
 }
 
 LanguageUnit_p
@@ -69,8 +70,7 @@ LanguageUnit_p cuda::Softmax::emit_function_body()
     lu << output_tensor_desc->get_code();
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
-    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxForward(cudnn_handle, "
-       << "CUDNN_SOFTMAX_ACCURATE, "
+    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxForward(cudnn_handle, " << algorithm << ", "
        << "CUDNN_SOFTMAX_MODE_INSTANCE, "
        << "&alpha, "
        << "input_tensor_desc, "
@@ -144,6 +144,7 @@ cuda::SoftmaxGrad::SoftmaxGrad(shared_ptr<KernelContext> ctx)
     NNFUSION_CHECK(ctx->inputs[0]->get_shape() == ctx->inputs[1]->get_shape());
     input_shape = nnfusion::Shape(ctx->inputs[0]->get_shape());
     output_shape = nnfusion::Shape(ctx->outputs[0]->get_shape());
+    algorithm = node->is_in_log_space() ? "CUDNN_SOFTMAX_LOG" : "CUDNN_SOFTMAX_ACCURATE";
 }
 
 LanguageUnit_p
@@ -201,8 +202,7 @@ LanguageUnit_p cuda::SoftmaxGrad::emit_function_body()
     lu << output_tensor_desc->get_code();
     lu << "const float alpha = 1.0;\n";
     lu << "const float beta = 0.0;\n";
-    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxBackward(cudnn_handle, "
-       << "CUDNN_SOFTMAX_ACCURATE, "
+    lu << "CUDNN_SAFE_CALL(cudnnSoftmaxBackward(cudnn_handle, " << algorithm << ", "
        << "CUDNN_SOFTMAX_MODE_INSTANCE, "
        << "&alpha, "
        << "input_tensor_desc, " // y

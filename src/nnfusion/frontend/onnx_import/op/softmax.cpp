@@ -112,7 +112,8 @@ namespace nnfusion
 
                     nnfusion::AxisSet ng_axes_softmax{logits_index.get_shape().size() -
                                                       1}; // along the last dim
-                    auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                    // auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax);
+                    auto softmax_op = std::make_shared<op::Softmax>(ng_axes_softmax, true);
                     softmax_op->set_name(log_prob_name);
                     auto softmax_gnode = m_graph->add_node_and_edge(softmax_op, {logits_index});
 
@@ -125,20 +126,24 @@ namespace nnfusion
                             logits_shape);
                         auto softmax_reshape_back_gnode =
                             m_graph->add_node_and_edge(softmax_reshape_back_op, {softmax_gnode});
-                        log_prob = m_graph->add_node_and_edge(std::make_shared<op::Log>(),
-                                                              {softmax_reshape_back_gnode});
+                        // log_prob = m_graph->add_node_and_edge(std::make_shared<op::Log>(),
+                        //                                       {softmax_reshape_back_gnode});
+                        ret[1] = NamedNode{log_prob_name, softmax_reshape_back_gnode};
                     }
                     else
                     {
-                        log_prob = m_graph->add_node_and_edge(std::make_shared<op::Log>(),
-                                                              {softmax_gnode});
+                        // log_prob = m_graph->add_node_and_edge(std::make_shared<op::Log>(),
+                        //                                       {softmax_gnode});
+                        ret[1] = NamedNode{log_prob_name, softmax_gnode};
                     }
-                    ret[1] = NamedNode{log_prob_name, log_prob};
+                    // ret[1] = NamedNode{log_prob_name, log_prob};
+                    nnfusion::op::OpConfig::any ce_config;
+                    ce_config["in_log_space"] = false;
 
                     auto loss_op = std::make_shared<nnfusion::op::GenericOp>(
                         node_proto.output(0) + "_ce",
                         "CrossEntropyAvgLossWithLabels", // select which existing kernels to use;
-                        nnfusion::op::OpConfig::any{});
+                        ce_config);
                     auto loss_gnode = m_graph->add_node_and_edge(
                         loss_op, {GNodeIndex{softmax_gnode}, label_index});
 

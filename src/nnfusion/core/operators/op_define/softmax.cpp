@@ -5,9 +5,10 @@
 
 using namespace nnfusion::op;
 
-Softmax::Softmax(const nnfusion::AxisSet& axes)
+Softmax::Softmax(const nnfusion::AxisSet& axes, bool in_log_space)
     : ElementwiseArithmetic("Softmax")
     , m_axes(axes)
+    , m_in_log_space(in_log_space)
 {
 }
 
@@ -37,9 +38,10 @@ void Softmax::validate_and_infer_types(std::shared_ptr<graph::GNode> gnode)
     }
 }
 
-SoftmaxGrad::SoftmaxGrad(const nnfusion::AxisSet& axes)
+SoftmaxGrad::SoftmaxGrad(const nnfusion::AxisSet& axes, bool in_log_space)
     : Op("SoftmaxGrad")
     , m_axes(axes)
+    , m_in_log_space(in_log_space)
 {
 }
 

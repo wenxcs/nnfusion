@@ -10,6 +10,10 @@ REGISTER_BACKWARD_TRANSLATOR(CrossEntropyAvgLossWithLabels)
         auto logit = get_node_input(forward_node, 0);
         auto label = get_node_input(forward_node, 1);
 
+        auto ce_op = std::dynamic_pointer_cast<op::GenericOp>(forward_node->get_op_ptr());
+        auto& ce_cfg = ce_op->localOpConfig.getRoot();
+        bool in_log_space = ce_cfg["in_log_space"];
+
         nnfusion::op::OpConfig::any onehot_config;
         onehot_config["axis"] = -1;
         onehot_config["depth"] = logit.get_shape()[1];
@@ -21,17 +25,6 @@ REGISTER_BACKWARD_TRANSLATOR(CrossEntropyAvgLossWithLabels)
             label.gnode->get_name() + "_onehot", "OneHot", onehot_config);
         auto onehot_node = graph->add_node_and_edge(onehot_op, {label});
 
-        auto label_onehot_div_logit_op = std::make_shared<op::Divide>();
-        label_onehot_div_logit_op->set_name(forward_node->get_name() + "_label_onehot_div_logit");
-        auto label_onehot_div_logit_node =
-            graph->add_node_and_edge(label_onehot_div_logit_op, {GNodeIndex{onehot_node}, logit});
-
-        auto neg_label_onehot_div_logit_op = std::make_shared<op::Negative>();
-        neg_label_onehot_div_logit_op->set_name(forward_node->get_name() +
-                                                "_neg_label_onehot_div_logit");
-        auto neg_label_onehot_div_logit_node = graph->add_node_and_edge(
-            neg_label_onehot_div_logit_op, {GNodeIndex{label_onehot_div_logit_node}});
-
         nnfusion::AxisSet broadcast_axes{1};
         auto outputs_grad_broadcasted_op =
             std::make_shared<op::Broadcast>(logit.get_shape(), broadcast_axes);
@@ -39,13 +32,45 @@ REGISTER_BACKWARD_TRANSLATOR(CrossEntropyAvgLossWithLabels)
         auto outputs_grad_broadcasted_node =
             graph->add_node_and_edge(outputs_grad_broadcasted_op, {outputs_grad[0]});
 
-        auto logit_grad_op = std::make_shared<op::Multiply>();
-        logit_grad_op->set_name(forward_node->get_name() + "_logit_grad");
-        auto logit_grad_node =
-            graph->add_node_and_edge(logit_grad_op,
-                                     {GNodeIndex{outputs_grad_broadcasted_node},
-                                      GNodeIndex{neg_label_onehot_div_logit_node}});
+        if (in_log_space)
+        {
+            auto label_onehot_div_logit_op = std::make_shared<op::DivNoNan>();
+            label_onehot_div_logit_op->set_name(forward_node->get_name() +
+                                                "_label_onehot_divnonan_logit");
+            auto label_onehot_div_logit_node = graph->add_node_and_edge(
+                label_onehot_div_logit_op, {GNodeIndex{onehot_node}, logit});
 
-        return GNodeIndexVector{GNodeIndex{logit_grad_node, 0},
-                                nnfusion::pass::graph::autodiff::DiffEngine::EMPTY_GNODE_INDEX};
+            auto neg_label_onehot_div_logit_op = std::make_shared<op::Negative>();
+            neg_label_onehot_div_logit_op->set_name(forward_node->get_name() +
+                                                    "_neg_label_onehot_div_logit");
+            auto neg_label_onehot_div_logit_node = graph->add_node_and_edge(
+                neg_label_onehot_div_logit_op, {GNodeIndex{label_onehot_div_logit_node}});
+
+            auto logit_grad_op = std::make_shared<op::Multiply>();
+            logit_grad_op->set_name(forward_node->get_name() + "_logit_grad");
+            auto logit_grad_node =
+                graph->add_node_and_edge(logit_grad_op,
+                                         {GNodeIndex{outputs_grad_broadcasted_node},
+                                          GNodeIndex{neg_label_onehot_div_logit_node}});
+
+            return GNodeIndexVector{GNodeIndex{logit_grad_node, 0},
+                                    nnfusion::pass::graph::autodiff::DiffEngine::EMPTY_GNODE_INDEX};
+        }
+        else
+        {
+            auto neg_label_onehot_op = std::make_shared<op::Negative>();
+            neg_label_onehot_op->set_name(forward_node->get_name() + "_neg_label_onehot");
+            auto neg_label_onehot_node =
+                graph->add_node_and_edge(neg_label_onehot_op, {GNodeIndex{onehot_node}});
+
+            auto logit_grad_op = std::make_shared<op::Multiply>();
+            logit_grad_op->set_name(forward_node->get_name() + "_logit_grad");
+            auto logit_grad_node = graph->add_node_and_edge(
+                logit_grad_op,
+                {GNodeIndex{outputs_grad_broadcasted_node}, GNodeIndex{neg_label_onehot_node}});
+
+            return GNodeIndexVector{GNodeIndex{logit_grad_node, 0},
+                                    nnfusion::pass::graph::autodiff::DiffEngine::EMPTY_GNODE_INDEX};
+        }
+
     });

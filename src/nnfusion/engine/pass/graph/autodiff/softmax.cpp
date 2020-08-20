@@ -8,7 +8,8 @@ REGISTER_BACKWARD_TRANSLATOR(Softmax).translator([](std::shared_ptr<GNode> forwa
                                              << outputs_grad.size() << " outputs_grad provided";
     auto softmax_op = std::dynamic_pointer_cast<op::Softmax>(forward_node->get_op_ptr());
     auto axis = softmax_op->get_axes();
-    auto x_grad_op = std::make_shared<op::SoftmaxGrad>(axis);
+    bool in_log_space = softmax_op->is_in_log_space();
+    auto x_grad_op = std::make_shared<op::SoftmaxGrad>(axis, in_log_space);
     x_grad_op->set_name(forward_node->get_name() + "_x_grad");
     auto x_grad =
         graph->add_node_and_edge(x_grad_op, {outputs_grad[0], get_node_output(forward_node, 0)});

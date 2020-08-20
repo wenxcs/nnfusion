@@ -16,14 +16,17 @@ namespace nnfusion
             /// \brief Constructs a softmax operation.
             ///
             /// \param axes The axis positions (0-based) on which to calculate the softmax.
-            Softmax(const nnfusion::AxisSet&
-                        axes); // Current kernel doesn't follow the axes, but the last dim
+            Softmax(const nnfusion::AxisSet& axes,
+                    bool in_log_space =
+                        false); // Current kernel doesn't follow the axes, but the last dim
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             const nnfusion::AxisSet& get_axes() const { return m_axes; }
+            const bool is_in_log_space() const { return m_in_log_space; }
         private:
             nnfusion::AxisSet m_axes;
+            bool m_in_log_space;
         };
 
         /// \brief Softmax operation.
@@ -34,13 +37,15 @@ namespace nnfusion
             /// \brief Constructs a softmax grad operation.
             ///
             /// \param axes The axis positions (0-based) on which to calculate the softmax.
-            SoftmaxGrad(const nnfusion::AxisSet& axes);
+            SoftmaxGrad(const nnfusion::AxisSet& axes, bool in_log_space = false);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
 
             const nnfusion::AxisSet& get_axes() const { return m_axes; }
+            const bool is_in_log_space() const { return m_in_log_space; }
         private:
             nnfusion::AxisSet m_axes;
+            bool m_in_log_space;
         };
     }
 }
