@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "codegen_langunit.hpp"
+#include "nnfusion/core/kernels/cuda_gpu/cuda_langunit.hpp"
 #include "rocm_codegen_pass.hpp"
 
 using namespace nnfusion;
@@ -80,6 +81,17 @@ void RocmCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
     create_main_file(ctx, tu);
     create_cmake_file(ctx, tu);
 
+    // add requirement
+    projgen->lup_codegen->require(header::assert);
+    projgen->lup_codegen->require(header::stdexcept);
+    projgen->lup_codegen->require(header::sstream);
+    projgen->lup_codegen->require(header::cuda);
+    projgen->lup_codegen->require(header::cublas);
+    projgen->lup_codegen->require(header::cudnn);
+    projgen->lup_codegen->require(macro::CUDA_SAFE_CALL);
+    projgen->lup_codegen->require(macro::CUDNN_SAFE_CALL);
+    projgen->lup_codegen->require(macro::CUBLAS_SAFE_CALL);
+
     return;
 }
 
@@ -104,8 +116,12 @@ set(CMAKE_CXX_FLAGS "-O2 -Wno-ignored-attributes -Wno-duplicate-decl-specifier")
 )";
     if (FLAGS_fkernels_as_files)
     {
-        lu << "\nfile(GLOB kernels kernels/*" << m_kernel_suffix << ")\n";
-        lu << "list(APPEND SRC ${kernels} shared" << m_kernel_suffix << ")\n";
+        lu << "\nfile(GLOB kernels kernels/*"
+           << ".cpp"
+           << ")\n";
+        lu << "list(APPEND SRC ${kernels} shared"
+           << ".cpp"
+           << ")\n";
         lu << "include_directories(${CMAKE_BINARY_DIR})\n\n";
     }
     lu << "add_library(${TARGET_NAME} ${SRC})\n";
@@ -161,6 +177,28 @@ bool RocmCodegenPass::after_projgen()
                          "'include.*cuda.h' | grep -v 'include.*cudnn' > nnfusion_rt.cpp && rm "
                          "nnfusion_rt.cu")
                             .c_str()));
+
+        // update for shared.h and shared.cu
+        if (projgen->need_shared_file())
+        {
+            NNFUSION_CHECK(0 == system("mv shared.h shared.h.old"));
+            NNFUSION_CHECK(0 == system("mv shared.cu shared.cu.old"));
+
+            NNFUSION_CHECK(0 ==
+                           system((hipify_exec + " shared.h.old | grep -v 'include.*cublas_v2' | "
+                                                 "grep -v 'include.*cudnn' > shared.h && rm "
+                                                 "shared.h.old")
+                                      .c_str()));
+
+            NNFUSION_CHECK(0 == system("sed -i 's/<cuda\\.h>/\"rocm_adapter.h\"/g' shared.h"));
+
+            NNFUSION_CHECK(
+                0 == system((hipify_exec +
+                             " shared.cu.old | grep -v 'include.*cublas_v2' | grep -v "
+                             "'include.*cuda.h' | grep -v 'include.*cudnn' > shared.cpp && rm "
+                             "shared.cu.old")
+                                .c_str()));
+        }
 
         // for rocm 3.5 compatibility purpose
         string rocm35cmd = "sed -i 's/extern *__shared__/__shared__/g' nnfusion_rt.cpp";

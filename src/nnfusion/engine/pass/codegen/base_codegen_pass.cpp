@@ -67,7 +67,13 @@ void BaseCodegenPass::separate_func_defs_files(int file_number, const string& ke
         {
             LanguageUnit_p func_def = it.second.second;
             func_def->pwd = kernel_folder;
-            func_def->write_to = func_def->symbol + m_kernel_suffix;
+            string fname = func_def->symbol;
+            if (fname.length() > 128)
+            {
+                size_t hashcode = std::hash<std::string>{}(fname);
+                fname = "compressed_src_" + std::to_string(hashcode);
+            }
+            func_def->write_to = fname + m_kernel_suffix;
         }
     }
     else

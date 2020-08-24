@@ -17,7 +17,7 @@ namespace nnfusion
         public:
             RocmCodegenPass(const std::string& codegen_folder = "./nnfusion_rt/rocm_codegen/",
                             const std::string& kernel_folder = "./nnfusion_rt/rocm_codegen/",
-                            const std::string kernel_suffix = ".cpp")
+                            const std::string kernel_suffix = ".cu")
                 : CudaCodegenPass(codegen_folder, kernel_folder, kernel_suffix)
             {
             }

@@ -100,6 +100,7 @@ namespace nnfusion
                 m_kernel_suffix = kernel_suffix;
             }
             const std::string& get_codegen_folder() const { return m_codegen_folder; }
+            bool need_shared_file() { return !files_include_shared.empty(); }
             using Pointer = std::shared_ptr<CodeGenerator>;
 
         protected:

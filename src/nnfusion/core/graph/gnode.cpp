@@ -113,7 +113,7 @@ void GNode::set_output_size(size_t n)
         if (used_name.find(loss_name) != used_name.end())
         {
             loss_name = loss_name + "_" + to_string(used_name[loss_name]);
-            used_name[loss_name] += 1;
+            used_name[get_name()] += 1;
         }
         else
         {
@@ -128,6 +128,7 @@ void GNode::set_output_size(size_t n)
                                             m_op_ptr->get_unique_name() + "_" + to_string(i));
         if (!loss_name.empty() && n == 1)
         {
+            std::replace(loss_name.begin(), loss_name.end(), '/', '_');
             tensor->set_name(loss_name);
         }
 
