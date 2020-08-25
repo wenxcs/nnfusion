@@ -78,12 +78,11 @@ class TestMultiOutput(TestCase):
             return False
         return True
 
-def create_cpu_perf_case_single_line(json_file, json_data):
+def create_cpu_perf_case_single_line(base_folder, json_data):
     testcase = json_data["testcase"]
     output = json_data["output"]
     tags = json_data["tag"]
-    filename = os.path.join(os.path.dirname(
-        os.path.abspath(json_file)), json_data["filename"])
+    filename = os.path.join(base_folder, json_data["filename"])
     flag = ""
     if "flag" in json_data:
         flag = json_data["flag"]
@@ -91,12 +90,11 @@ def create_cpu_perf_case_single_line(json_file, json_data):
     return TestSingleOutput(testcase, output, filename, tags, flag, baseline)
 
 
-def create_cpu_perf_case_multi_lines(json_file, json_data):
+def create_cpu_perf_case_multi_lines(base_folder, json_data):
     testcase = json_data["testcase"]
     output = "\n".join(json_data["output"])
     tags = json_data["tag"]
-    filename = os.path.join(os.path.dirname(
-        os.path.abspath(json_file)), json_data["filename"])
+    filename = os.path.join(base_folder, json_data["filename"])
     flag = ""
     if "flag" in json_data:
         flag = json_data["flag"]

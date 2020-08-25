@@ -9,7 +9,7 @@ tests_load_funtion = {
     "cpu_perf_case_single_line": testcases.cpu_perf_cases.create_cpu_perf_case_single_line, "cpu_perf_case_single_lines": testcases.cpu_perf_cases.create_cpu_perf_case_multi_lines
 }
 
-def parse_tests(json_file, json_data):
+def parse_tests(base_folder, json_data):
     # read first level
     # must-have fields
     if "type" in json_data:
@@ -17,18 +17,18 @@ def parse_tests(json_file, json_data):
         name = json_data["testcase"]
 
         if type in tests_load_funtion:
-            test = tests_load_funtion[type](json_file, json_data)
+            test = tests_load_funtion[type](base_folder, json_data)
             TestCases.append(test)
             logging.info("Load testcase: " + name)
 
     # read list of tests
     if "testcases" in json_data:
         for test in json_data["testcases"]:
-            parse_tests(json_file, test)
+            parse_tests(base_folder, test)
 
 # load test case from json here
-def load_all_tests(models):
-    for root, dirs, files in os.walk(models):
+def load_all_tests(models, testcase_configs):
+    for root, dirs, files in os.walk(testcase_configs):
         for file in files:
             name, suf = os.path.splitext(file)
             if suf == ".json":
@@ -36,10 +36,10 @@ def load_all_tests(models):
                 logging.info("found " + file)
                 with open(file, 'r') as f:
                     data = json.load(f)
-                    parse_tests(file, data)
+                    parse_tests(models, data)
 
-def load_tests(models):
+def load_tests(models, testcase_configs):
     global TestCases
     TestCases = list()
-    load_all_tests(models)
+    load_all_tests(models, testcase_configs)
     return TestCases

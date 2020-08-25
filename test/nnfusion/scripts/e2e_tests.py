@@ -32,6 +32,10 @@ class TestsManager:
         if not os.path.exists(self.nnfusion_cli):
             self.nnfusion_cli = self.load_default_nnfusion_cli()
 
+        if not os.path.exists(self.testcase_configs):
+            self.testcase_configs= os.path.join(os.path.dirname(
+                os.path.abspath(__file__)), "./testcase_configs")
+
         self.capability = set()
         self.capability_detect()
 
@@ -39,6 +43,7 @@ class TestsManager:
         self.enabled_tags = self.user_enabled_tags
 
         logging.info("models folder = " + self.models)
+        logging.info("testcase configs folder = " + self.testcase_configs)
         logging.info("nnfusion cli = " + self.nnfusion_cli)
         logging.info("device capability = " + ",".join(list(self.capability)))
         logging.info("enabled tags = " + str(self.enabled_tags))
@@ -49,6 +54,7 @@ class TestsManager:
         self.models = ""
         self.nnfusion_cli = ""
         self.nnfusion_args = ""
+        self.testcase_configs = ""
 
         if not os.path.exists(config_json):
             config_json = os.path.join(os.path.dirname(
@@ -96,6 +102,10 @@ class TestsManager:
             if "nnfusion_args" in data.keys():
                 self.nnfusion_args = data["nnfusion_args"]
 
+            if "testcase_configs" in data.keys():
+                self.testcase_configs = data["testcase_configs"]
+                
+
     def load_default_nnfusion_cli(self):
         nnf_clis = [os.path.join(os.path.dirname(os.path.abspath(
             __file__)), "../../../build/src/tools/nnfusion/nnfusion"), "/usr/local/bin/nnfusion"]
@@ -133,7 +143,7 @@ class TestsManager:
                 self.user_device_capability)
 
     def load_test_cases(self, enabled_tags=set("correctness")):
-        tests = testcases.load_tests(self.models)
+        tests = testcases.load_tests(self.models, self.testcase_configs)
         newlist = []
         for test in tests:
             avail = False
