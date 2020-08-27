@@ -74,7 +74,10 @@ public:
     KernelFuseOptimizer(std::shared_ptr<Graph> g)
         : m_graph(g)
     {
-        m_nodes.resize(m_graph->get_max_node_id());
+        // reserved for careating new nodes during the optimization
+        const size_t empty_node_ids = 1000;
+        m_nodes.resize(m_graph->get_max_node_id() + empty_node_ids);
+
         ELEM_GROUP_NODEID = m_nodes.size();
         RegisterFusionOps();
     }
@@ -421,7 +424,9 @@ private:
                         auto n_node = elem_tn->node;
                         auto n_device_type = (*n_node)["DeviceType"].as<NNFusion_DeviceType>();
                         auto n_device_id = (*n_node)["DeviceID"].as<int>();
-                        for (auto in_edge : elem_tn->node->get_in_edges())
+                        std::set<std::shared_ptr<nnfusion::graph::Edge>> inedges(
+                            elem_tn->node->get_in_edges());
+                        for (auto in_edge : inedges)
                         {
                             if (in_edge->is_control_edge())
                                 continue;
@@ -433,15 +438,41 @@ private:
                             if (input_device_type != n_device_type ||
                                 input_device_id != n_device_id)
                                 continue;
-                            // A conservative way to avoid loop on DAG: only fuse node with single output
-                            if (input_node->get_out_edges().size() > 1)
-                                continue;
 
-                            if (auto bc = std::dynamic_pointer_cast<nnfusion::op::Broadcast>(
-                                    input_node->get_op_ptr()))
+                            auto bc = std::dynamic_pointer_cast<nnfusion::op::Broadcast>(
+                                input_node->get_op_ptr());
+                            if (bc && (bc->is_inner_broadcast() || bc->is_outer_broadcast()))
                             {
-                                if (bc->is_inner_broadcast() || bc->is_outer_broadcast())
-                                    fusable_input_nodes.push_back(input_node->get_id());
+                                // eligible for fusing the bc node into element-wise group,
+                                // however, if the bc node has more than 1 outputs, we simply duplicate
+                                // this bc node as a single output node and then fuse it
+                                //    nodeA                 nodeA
+                                //      |                    /  \
+                                //     bc          ->    dup_bc   bc
+                                //    /  \                 |      |
+                                // nodeB  nodeC          nodeB   nodeC
+
+                                if (input_node->get_out_edges().size() > 1)
+                                {
+                                    auto bc_src_edge = input_node->get_in_edge(0);
+                                    auto dup_bc_node = m_graph->add_node_and_edge(
+                                        bc, GNodeVector({bc_src_edge->get_src()}));
+                                    NNFUSION_CHECK(dup_bc_node->get_id() < ELEM_GROUP_NODEID)
+                                        << "too many new nodes created, try increase the "
+                                           "empty_node_ids.";
+                                    dup_bc_node->copy_tags_from(*input_node);
+
+                                    m_graph->add_edge(
+                                        dup_bc_node, 0, n_node, in_edge->get_dst_input());
+                                    m_graph->remove_edge(in_edge);
+
+                                    auto bc_tn = std::make_shared<TaggedNode>();
+                                    bc_tn->node = dup_bc_node;
+                                    m_nodes[dup_bc_node->get_id()] = bc_tn;
+                                    input_node = dup_bc_node;
+                                }
+
+                                fusable_input_nodes.push_back(input_node->get_id());
                             }
                         }
                     }
@@ -505,7 +536,7 @@ private:
                     {
                         NNFUSION_CHECK(elem_id < m_nodes.size());
                         auto tn = m_nodes[elem_id];
-                        NNFUSION_CHECK_NOT_NULLPTR(tn->node);
+                        NNFUSION_CHECK_NOT_NULLPTR(tn->node) << "elem_id=" << elem_id;
 
                         std::shared_ptr<FuseGroup> joined_group = nullptr;
                         for (auto in_edge : tn->node->get_in_edges())
