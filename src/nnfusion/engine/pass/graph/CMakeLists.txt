@@ -20,6 +20,7 @@ set(SRC
     common_subexpression_elimination_pass.cpp
     pattern_substitution.cpp
     autodiff_pass.cpp
+    dot_transpose_pass.cpp
 )
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})

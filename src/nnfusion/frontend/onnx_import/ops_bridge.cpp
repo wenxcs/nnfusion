@@ -134,9 +134,6 @@ namespace nnfusion
                 REGISTER_OPERATOR("Div", 7, TranslateBinaryOp<op::Divide>);
                 REGISTER_OPERATOR("DivGrad", 1, TranslateDivGradOp);
                 REGISTER_OPERATOR("Dropout", 1, TranslateDropoutOp);
-                REGISTER_OPERATOR("TrainableDropout", 1, TranslateTrainableDropoutOp);
-                REGISTER_DOMAIN_OPERATOR(
-                    "com.microsoft", "TrainableDropoutGrad", 1, TranslateTrainableDropoutGradOp);
                 //REGISTER_OPERATOR("Elu", 1, elu);
                 REGISTER_OPERATOR("Equal", 1, TranslateBinaryOp<op::Equal>);
                 REGISTER_OPERATOR("Erf", 1, TranslateUnaryOp<op::Erf>);
@@ -221,6 +218,9 @@ namespace nnfusion
                 REGISTER_OPERATOR("TanhGrad", 1, TranslateTanhGradOp);
                 REGISTER_OPERATOR("Tile", 1, TranslateTileOp);
                 // REGISTER_OPERATOR("ThresholdedRelu", 1, thresholded_relu);
+                REGISTER_OPERATOR("TrainableDropout", 1, TranslateTrainableDropoutOp);
+                REGISTER_DOMAIN_OPERATOR(
+                    "com.microsoft", "TrainableDropoutGrad", 1, TranslateTrainableDropoutGradOp);
                 REGISTER_OPERATOR("Transpose", 1, TranslateTransposeOp);
                 REGISTER_DOMAIN_OPERATOR("com.microsoft", "TransposeMatMul", 1, TranslateMatmulOp);
                 REGISTER_OPERATOR("Unsqueeze", 1, TranslateUnsqueezeOp);
