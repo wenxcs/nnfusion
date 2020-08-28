@@ -63,8 +63,10 @@ REGISTER_OP(Reshape)
         }
         else
         {
-            auto output_shape = curr->get_output_shape(0);
-            auto input_shape = curr->get_input_shape(0);
+            auto output_shape = curr->get_output_shape(0).empty() ? nnfusion::Shape({1})
+                                                                  : curr->get_output_shape(0);
+            auto input_shape =
+                curr->get_input_shape(0).empty() ? nnfusion::Shape({1}) : curr->get_input_shape(0);
             auto output_layout = op::create_layout_from_dims(output_shape);
             std::set<int> declear_dims;
             std::vector<std::string> input_layout;
@@ -98,12 +100,14 @@ REGISTER_OP(Reshape)
                 if (out_dim && (in_multiplier / out_dim))
                 {
                     in_multiplier /= out_dim;
-                    declear_dims.insert(out_index);
-                    if (input_layout.size() <= in_index)
+                    // declear_dims.insert(out_index);
+                    auto r_in_index = std::min(in_index, int(input_shape.size()) - 1);
+                    auto r_out_index = std::min(out_index, int(output_shape.size()) - 1);
+                    if (input_layout.size() <= r_in_index)
                         input_layout.push_back("");
-                    input_layout[in_index] =
-                        input_layout[in_index] + (input_layout[in_index].empty() ? "" : " + ") +
-                        output_layout[out_index] + " * " + to_string(in_multiplier);
+                    input_layout[r_in_index] =
+                        input_layout[r_in_index] + (input_layout[r_in_index].empty() ? "" : " + ") +
+                        output_layout[r_out_index] + " * " + to_string(in_multiplier);
                     out_index++;
                     if (in_multiplier == 1)
                         in_index++;
@@ -112,8 +116,9 @@ REGISTER_OP(Reshape)
                 if (in_dim && (out_multiplier / in_dim))
                 {
                     out_multiplier /= in_dim;
-                    declear_dims.insert(out_index);
-                    input_layout.push_back(output_layout[out_index] + " // " +
+                    // declear_dims.insert(out_index);
+                    auto r_out_index = std::min(out_index, int(output_shape.size()) - 1);
+                    input_layout.push_back(output_layout[r_out_index] + " // " +
                                            to_string(out_multiplier) + " % " + to_string(in_dim));
                     in_index++;
                     if (out_multiplier == 1)
@@ -122,7 +127,7 @@ REGISTER_OP(Reshape)
             }
 
             std::string condition;
-            for (const int& d : declear_dims)
+            for (int d = 0; d < output_shape.size(); ++d)
             {
                 condition = condition + (condition.empty() ? "" : " , ") + "N" + to_string(d) +
                             " in " + to_string(output_shape[d]);
