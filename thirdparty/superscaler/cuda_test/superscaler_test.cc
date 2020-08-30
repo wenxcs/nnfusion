@@ -1,4 +1,4 @@
-#include "super_scaler.h"
+#include "superscaler.h"
 
 #include <cuda_runtime.h>
 #include <assert.h>
