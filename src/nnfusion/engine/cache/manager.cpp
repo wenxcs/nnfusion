@@ -1,4 +1,5 @@
-// Microsoft (c) 2019, NNFusion Team
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 #include "./manager.hpp"
 
@@ -18,16 +19,16 @@ KernelCacheManager::KernelCacheManager()
             const char* table_create = R"(
 CREATE TABLE IF NOT EXISTS KernelCache(
    identifier TEXT NOT NULL,
-   tag        TEXT NOT NULL,
+   platform   TEXT NOT NULL,
    function   TEXT NOT NULL,
-   PRIMARY KEY (identifier, tag));
+   tags       TEXT DEFAULT "",
+   profile    TEXT DEFAULT ""
+   );
 )";
             NNFUSION_CHECK(SQLITE_OK == sqlite3_exec(kernel_cache, table_create, NULL, 0, NULL));
-            // valid = true;
         }
         else
         {
-            // valid = false;
             NNFUSION_LOG(NNFUSION_WARNING) << "Invalid path to kernel cache: " << m_path;
             kernel_cache = nullptr;
         }
@@ -40,29 +41,81 @@ KernelCacheManager::~KernelCacheManager()
     kernel_cache = NULL;
 }
 
-std::string KernelCacheManager::fetch(std::string identifier, std::string tag)
+std::vector<kernel> KernelCacheManager::fetch_all(std::string identifier, std::string platform)
 {
-    NNFUSION_LOG(DEBUG) << "Trying to fetch kernel " << identifier << " with tag: " << tag;
+    NNFUSION_LOG(DEBUG) << "Trying to fetch kernel " << identifier << " on platform: " << platform;
     sqlite3_stmt* pStmt;
     const char* fetch = R"(
-SELECT function FROM KernelCache WHERE (identifier = ?) AND (tag = ?);
-)";
+SELECT function, tags, profile FROM KernelCache WHERE (identifier = ?) AND (platform = ?);
+    )";
     NNFUSION_CHECK(SQLITE_OK == sqlite3_prepare(kernel_cache, fetch, -1, &pStmt, 0));
     sqlite3_bind_text(pStmt, 1, identifier.data(), identifier.size(), SQLITE_STATIC);
-    sqlite3_bind_text(pStmt, 2, tag.data(), tag.size(), SQLITE_STATIC);
+    sqlite3_bind_text(pStmt, 2, platform.data(), platform.size(), SQLITE_STATIC);
 
-    if (SQLITE_DONE != sqlite3_step(pStmt))
+    std::vector<kernel> fetched;
+    while (SQLITE_ROW == sqlite3_step(pStmt))
     {
-        std::string function = std::string((char*)sqlite3_column_text(pStmt, 0));
-        NNFUSION_CHECK(SQLITE_DONE == sqlite3_step(pStmt));
-        NNFUSION_CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
-        NNFUSION_LOG(INFO) << "Using cached kernel " << identifier << "with tag: " << tag;
-        return function;
+        kernel fetched_kernel;
+        fetched_kernel.function = std::string((char*)sqlite3_column_text(pStmt, 0));
+
+        // parse input tags
+        size_t pos = 0;
+        std::string fetched_tags = std::string((char*)sqlite3_column_text(pStmt, 1));
+        while ((pos = fetched_tags.find("_")) != std::string::npos)
+        {
+            fetched_kernel.tags.insert(fetched_tags.substr(0, pos));
+            fetched_tags.erase(0, pos + 1);
+        }
+        if (fetched_tags != "")
+        {
+            fetched_kernel.tags.insert(fetched_tags);
+        }
+
+        // parse profiling information
+        size_t subpos = 0;
+        std::string fetched_profile = std::string((char*)sqlite3_column_text(pStmt, 2));
+        while ((pos = fetched_profile.find(";")) != std::string::npos)
+        {
+            subpos = fetched_profile.find(":");
+            fetched_kernel.profile[fetched_profile.substr(0, subpos)] =
+                stof(fetched_profile.substr(subpos + 1, pos));
+            fetched_profile.erase(0, pos + 1);
+        }
+
+        fetched.push_back(fetched_kernel);
+    }
+
+    NNFUSION_CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
+    if (fetched.size() > 0)
+    {
+        NNFUSION_LOG(INFO) << fetched.size() << " Cached kernel fetched " << identifier
+                           << " on: " << platform;
     }
     else
     {
-        NNFUSION_CHECK(SQLITE_OK == sqlite3_finalize(pStmt));
-        NNFUSION_LOG(DEBUG) << "Failed to fetch, fallback plan will be used";
-        return std::string("");
+        NNFUSION_LOG(DEBUG) << "Failed to fetch, fallback plan will be uses";
     }
+    return fetched;
+}
+
+kernel KernelCacheManager::fetch_with_tags(std::string identifier,
+                                           std::string platform,
+                                           std::set<std::string> tags)
+{
+    auto fetched = fetch_all(identifier, platform);
+    // it's expected that tag set is unique for different implementation
+    for (auto matched_kernel : fetched)
+    {
+        if (matched_kernel.tags == tags)
+        {
+            return matched_kernel;
+        }
+    }
+    if (!fetched.empty())
+    {
+        NNFUSION_LOG(DEBUG) << "No kernel with the same tags matched for " << identifier;
+    }
+    kernel null_kernel;
+    null_kernel.function = "";
+    return null_kernel;
 }

@@ -129,10 +129,10 @@ private:
         }
         if (identifier != "")
         {
-            // NNFUSION_LOG(INFO) << "trying to fetch " << identifier;
-            // Todo: more tags for db to be added
-            std::string func = kernel_db->fetch(identifier, "TVM");
-            if (func != "")
+            // Todo: more tags, more platform
+            std::set<std::string> tags = {"fast"};
+            auto fetched_kernel = kernel_db->fetch_with_tags(identifier, "CUDA", tags);
+            if (fetched_kernel.function != "")
             {
                 NNFUSION_LOG(INFO) << "Substitution applied: " << identifier;
                 return Substitution(matched, identifier);

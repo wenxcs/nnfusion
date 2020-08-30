@@ -1,4 +1,5 @@
-// Microsoft (c) 2019, NNFusion Team
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 #pragma once
 
@@ -21,17 +22,25 @@ namespace nnfusion
     {
         // presently only kernel cache database supported
         // Todo: integrate the interfaces of profiling cache database
+        struct kernel
+        {
+            std::string function;
+            std::set<std::string> tags;
+            std::map<std::string, float> profile;
+        };
+
         class KernelCacheManager
         {
         public:
             KernelCacheManager();
             ~KernelCacheManager();
 
-            std::string fetch(std::string identifier, std::string tag);
-            //inline bool is_valid() { return valid; }
-            bool is_valid() { return kernel_cache != nullptr; }
+            std::vector<kernel> fetch_all(std::string identifier, std::string platform);
+            kernel fetch_with_tags(std::string identifier,
+                                   std::string platform,
+                                   std::set<std::string> tags);
+            inline bool is_valid() { return kernel_cache != nullptr; }
         private:
-            //bool valid;
             std::string m_path;
             static sqlite3* kernel_cache;
         };

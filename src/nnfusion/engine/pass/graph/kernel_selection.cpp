@@ -338,18 +338,17 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     std::vector<std::string> functions;
 
     std::string identifier = generate_identifier(ctx);
-    // Todo: tags to be extended
-    std::vector<std::string> tags = {"TVM"};
+    // Todo: platform interface to be coordinated with nnfusion devtype
+    std::vector<std::string> platform = {"CUDA"};
 
     if (identifier != "")
     {
-        for (auto tag : tags)
+        // Todo: more tags and policy to be added
+        std::set<std::string> tags = {"fast"};
+        auto fetched_kernel = cache_manager->fetch_with_tags(identifier, platform.front(), tags);
+        if (fetched_kernel.function != "")
         {
-            auto func = cache_manager->fetch(identifier, tag);
-            if (func != "")
-            {
-                functions.push_back(func);
-            }
+            functions.push_back(fetched_kernel.function);
         }
     }
     if (functions.size() != 0)

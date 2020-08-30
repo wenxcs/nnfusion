@@ -142,7 +142,7 @@ def gen_config(op_type, kernel, shared_memory, num_sync):
     return config
 
 
-def insert_db(name, tag="TVM"):
+def insert_db(name, platform="CUDA", tags="fast"):
     # Todo: More tags could be used to store multiple implementations with the same kernel specs
     in_file = open(name + ".cu")
     json_file = open(name + ".json")
@@ -155,20 +155,22 @@ def insert_db(name, tag="TVM"):
     conn = sqlite3.connect(db_path + db_name)
     c = conn.cursor()
 
-    sql = "create table if not exists KernelCache (\
+    create_sql = "create table if not exists KernelCache (\
             identifier TEXT NOT NULL,\
-            tag        TEXT NOT NULL,\
+            platform   TEXT NOT NULL,\
             function   TEXT NOT NULL,\
-            PRIMARY KEY (identifier, tag)\
+            tags       TEXT DEFAULT '',\
+            profile    TEXT DEFAULT ''\
             )"
 
-    c.execute(sql)
+    c.execute(create_sql)
 
     identifier = gen_key(data)
     print(identifier)
     # Value with same key will be overrided
     c.execute("DELETE FROM KernelCache WHERE identifier = ?", (identifier, ))
-    c.execute("INSERT INTO KernelCache VALUES (?, ?, ?)", (identifier, tag, function))
+    c.execute("INSERT INTO KernelCache (identifier,platform,function,tags) VALUES (?, ?, ?, ?)",
+              (identifier, platform, function, tags))
     conn.commit()
     conn.close()
 
