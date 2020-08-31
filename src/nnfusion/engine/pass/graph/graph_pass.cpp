@@ -41,7 +41,6 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     // Generate result is implemented in gradient weight mapping pass
     pass_manager.register_pass<CSEPass>();
     pass_manager.register_pass<AutodiffPass>();
-    pass_manager.register_pass<DotTransposePass>();
     pass_manager.register_pass<GradientWeightMappingPass>();
     pass_manager.register_pass<RuntimeConstantFoldingPass>();
     pass_manager.register_pass<MultiReshapeFoldingPass>();
@@ -54,6 +53,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
 
     // The graph after this pass will have selected kernels
     pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
+    pass_manager.register_pass<DotTransposePass>();
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<FetchBasedSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();

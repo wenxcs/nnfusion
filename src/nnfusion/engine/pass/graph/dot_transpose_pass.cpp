@@ -10,6 +10,24 @@ DEFINE_bool(fdot_transpose, false, "Dot transpose.");
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 
+namespace
+{
+    float fetch_kernel_time(const string& identifier,
+                            const string& tag,
+                            std::shared_ptr<nnfusion::cache::KernelCacheManager> cache_manager,
+                            NNFusion_DeviceType device)
+    {
+        float kernel_time = 0;
+        auto common_kernel = cache_manager->fetch(identifier, tag);
+        if (common_kernel != "")
+        ///\todo placeholder, deserialize db profile column for kernel time
+        {
+        }
+
+        return kernel_time;
+    }
+}
+
 bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
     bool using_pass = FLAGS_fdot_transpose;
@@ -30,67 +48,71 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
     // Find nodes with all constant upstream nodes
     for (auto& it : nodes)
     {
-        if (it->get_op_type() == "Dot")
+        if (it->get_op_type() != "Dot")
         {
-            auto dot = std::dynamic_pointer_cast<nnfusion::op::Dot>(it->get_op_ptr());
-            NNFUSION_CHECK_NOT_NULLPTR(dot);
-            // already transposed
-            if (dot->get_transpose_B())
-                continue;
-
-            auto in_edge_0 = it->get_in_edge(0);
-            NNFUSION_CHECK(in_edge_0);
-            auto input_0_gnode = in_edge_0->get_src();
-            auto input_0_index = in_edge_0->get_src_output();
-
-            auto in_edge_1 = it->get_in_edge(1);
-            NNFUSION_CHECK(in_edge_1);
-            auto input_1_gnode = in_edge_1->get_src();
-            auto input_1_index = in_edge_1->get_src_output();
-
-            // multiple reference to input0
-            if (input_0_gnode->get_output_users(input_0_index).size() > 1)
-            {
-                continue;
-            }
-
-            auto const_op =
-                std::dynamic_pointer_cast<nnfusion::op::Constant>(input_1_gnode->get_op_ptr());
-            // only handle const input1, ignore weight because optimizer might update these const
-            if (!input_1_gnode->is_constant() || input_1_gnode->get_shape().size() != 2 ||
-                const_op->is_weight())
-            {
-                continue;
-            }
-
-            shared_ptr<KernelContext> ctx(new KernelContext(it));
-            std::string identifier = generate_identifier(ctx);
-            if (identifier == "")
-                continue;
-
-            auto common_kernel = cache_manager->fetch(identifier, "");
-            auto transpose_kernel = cache_manager->fetch(identifier, "trans_b");
-            if (common_kernel == "" || transpose_kernel == "")
-            {
-                continue;
-            }
-
-            ///\todo placeholder, deserialize db profile column and compare kernel time
-            if (false)
-            {
-                continue;
-            }
-
-            // insert transpose
-            auto trans_gnode = nnfusion::graph::numpy_transpose(
-                input_1_gnode, nnfusion::AxisVector(), input_1_index);
-            graph->add_node(trans_gnode);
-            graph->add_edge(input_1_gnode, input_1_index, trans_gnode, 0);
-            // reconnect dot node
-            graph->remove_edge(in_edge_1);
-            graph->add_edge(trans_gnode, 0, it, 1);
-            dot->get_transpose_B() = true;
+            continue;
         }
+        // kernel already selected
+        if ((*it)["Kernel_Selection_Result"].is_valid())
+        {
+            continue;
+        }
+        if (!(*it)["DeviceType"].is_valid())
+        {
+            NNFUSION_LOG(NNFUSION_WARNING)
+                << "GNode DeviceType should be assigned before this pass：" << it->get_name();
+            continue;
+        }
+
+        auto n_device_type = (*it)["DeviceType"].as<NNFusion_DeviceType>();
+        auto dot = std::dynamic_pointer_cast<nnfusion::op::Dot>(it->get_op_ptr());
+        NNFUSION_CHECK_NOT_NULLPTR(dot);
+        // already transposed
+        if (dot->get_transpose_B())
+        {
+            continue;
+        }
+        auto in_edge_1 = it->get_in_edge(1);
+        NNFUSION_CHECK(in_edge_1);
+        auto input_1_gnode = in_edge_1->get_src();
+        auto input_1_index = in_edge_1->get_src_output();
+        // input1 should be a const and only referenced by current dot
+        if (!input_1_gnode->is_constant() || input_1_gnode->get_shape().size() != 2 ||
+            input_1_gnode->get_output_users(input_1_index).size() > 1)
+        {
+            continue;
+        }
+        auto const_op =
+            std::dynamic_pointer_cast<nnfusion::op::Constant>(input_1_gnode->get_op_ptr());
+        // ignore weight because optimizer might inplace update them
+        if (const_op->is_weight())
+        {
+            continue;
+        }
+
+        shared_ptr<KernelContext> ctx(new KernelContext(it));
+        std::string identifier = generate_identifier(ctx);
+        if (identifier == "")
+        {
+            continue;
+        }
+        float dot_time = fetch_kernel_time(identifier, "", cache_manager, n_device_type);
+        float transpose_dot_time =
+            fetch_kernel_time(identifier, "trans_b", cache_manager, n_device_type);
+        if (dot_time == 0 || transpose_dot_time == 0 || dot_time <= transpose_dot_time)
+        {
+            continue;
+        }
+
+        // insert transpose
+        auto trans_gnode =
+            nnfusion::graph::numpy_transpose(input_1_gnode, nnfusion::AxisVector(), input_1_index);
+        graph->add_node(trans_gnode);
+        graph->add_edge(input_1_gnode, input_1_index, trans_gnode, 0);
+        // reconnect dot node
+        graph->remove_edge(in_edge_1);
+        graph->add_edge(trans_gnode, 0, it, 1);
+        dot->get_transpose_B() = true;
     }
 
     return true;
