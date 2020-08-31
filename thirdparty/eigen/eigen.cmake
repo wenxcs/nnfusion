@@ -2,7 +2,7 @@ include(ExternalProject)
 
 ExternalProject_Add(ext_eigen
   PREFIX "eigen"
-  URL "https://bitbucket.org/eigen/eigen/get/a0d250e79c79.tar.gz"
+  URL "http://mirror.tensorflow.org/bitbucket.org/eigen/eigen/get/a0d250e79c79.tar.gz"
   URL_HASH SHA256=0dde8fb87f5dad2e409c9f4ea1bebc54e694cf4f3b633081b0d51a55c00f9c9f
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
