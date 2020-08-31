@@ -4,6 +4,7 @@
 #include "nnfusion/core/graph/util/numpy_transpose.hpp"
 #include "nnfusion/core/operators/op_define/dot.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
+#include "runtime_const_folding_pass.hpp"
 
 DEFINE_bool(fdot_transpose, false, "Dot transpose.");
 
@@ -128,7 +129,7 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
 
         float dot_time = fetch_kernel_time(identifier, set<string>{}, cache_manager, n_device_type);
         float transpose_dot_time = fetch_kernel_time(
-            identifier, set<string>{"transB"} /* tag tbd */, cache_manager, n_device_type);
+            identifier, set<string>{"fast", "transB"} /* tag tbd */, cache_manager, n_device_type);
         if (dot_time == 0 || transpose_dot_time == 0 || dot_time <= transpose_dot_time)
         {
             continue;
@@ -149,6 +150,9 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
             NNFUSION_CHECK(dot);
             dot->get_transpose_B() = true;
         }
+
+        // folding trans node
+        RuntimeConstantFoldingPass().run_on_graph(graph);
     }
 
     return true;
