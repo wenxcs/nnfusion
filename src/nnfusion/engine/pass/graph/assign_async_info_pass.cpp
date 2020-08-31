@@ -919,6 +919,14 @@ KernelEmitter::Pointer
 
 uint64_t AssignAsyncInfoPass::get_time_cost(std::shared_ptr<nnfusion::graph::GNode> gnode)
 {
+    if ((*gnode)["Kernel_Selection_Result"].is_valid() &&
+        (*gnode)["Kernel_Selection_Result"]
+            .as<pair<NNFusion_DeviceType, KernelEmitter::Pointer>>()
+            .second->is_eliminative())
+
+    {
+        return 0;
+    }
     nnfusion::pass::graph::KernelProfilingRecord::Pointer result;
     if ((*gnode)["Kernel_Profiling_Result"].is_valid())
     {
