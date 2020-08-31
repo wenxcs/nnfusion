@@ -12,18 +12,20 @@ using namespace nnfusion::pass::graph;
 
 namespace
 {
-    float fetch_kernel_time(const string& identifier,
-                            const string& tag,
-                            std::shared_ptr<nnfusion::cache::KernelCacheManager> cache_manager,
-                            NNFusion_DeviceType device)
+    float fetch_kernel_time(
+        const string& identifier,
+        const set<string>& tags, // should exactly match every tag, no more no less
+        std::shared_ptr<nnfusion::cache::KernelCacheManager> cache_manager,
+        NNFusion_DeviceType device)
     {
         float kernel_time = 0;
-        auto common_kernel = cache_manager->fetch(identifier, tag);
-        if (common_kernel != "")
-        ///\todo placeholder, deserialize db profile column for kernel time
+        nnfusion::cache::kernel kernel_instance =
+            cache_manager->fetch_with_tags(identifier, "CUDA", tags);
+        string device_str = get_device_str(device);
+        if (kernel_instance.profile.find(device_str) != kernel_instance.profile.end())
         {
+            kernel_time = kernel_instance.profile.at(device_str);
         }
-
         return kernel_time;
     }
 }
@@ -42,8 +44,6 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
     }
 
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
-    std::set<std::shared_ptr<GNode>> const_nodes = {};
-    std::set<std::shared_ptr<GNode>> down_streams = {};
 
     // Find nodes with all constant upstream nodes
     for (auto& it : nodes)
@@ -96,9 +96,9 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
         {
             continue;
         }
-        float dot_time = fetch_kernel_time(identifier, "", cache_manager, n_device_type);
+        float dot_time = fetch_kernel_time(identifier, set<string>{}, cache_manager, n_device_type);
         float transpose_dot_time =
-            fetch_kernel_time(identifier, "trans_b", cache_manager, n_device_type);
+            fetch_kernel_time(identifier, set<string>{"transB"}, cache_manager, n_device_type);
         if (dot_time == 0 || transpose_dot_time == 0 || dot_time <= transpose_dot_time)
         {
             continue;
