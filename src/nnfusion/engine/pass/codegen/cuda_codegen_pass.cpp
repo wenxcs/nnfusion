@@ -103,7 +103,7 @@ void CudaCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
             lu_init_begin <<
                 R"(int lrank;
 int grank;
-cudaStream_t* comm_stream;
+void* comm_stream;
 sc_init();
 sc_get_global_rank(&grank);
 sc_get_local_rank(&lrank);

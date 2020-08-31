@@ -2,7 +2,6 @@
 #define SUPERSCALER_H_
 
 #include<stdio.h>
-#include<cuda_runtime.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +29,7 @@ int sc_init();
 int sc_get_world_size(int*);
 int sc_get_global_rank(int*);
 int sc_get_local_rank(int*);
-int sc_get_comm_stream(cudaStream_t** stream);
+int sc_get_comm_stream(void** stream);
 int sc_load_plan(const char* plan_path);
 int sc_finalize();
 
