@@ -24,7 +24,7 @@ int main()
 {
     int lrank;
     int grank;
-    cudaStream_t* comm_stream;
+    void* comm_stream;
 
     sc_init();
     sc_get_global_rank(&grank);
