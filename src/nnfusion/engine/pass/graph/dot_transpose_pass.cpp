@@ -84,13 +84,14 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
             continue;
         }
 
-        auto const_op =
-            std::dynamic_pointer_cast<nnfusion::op::Constant>(input1_gnode->get_op_ptr());
-        // ignore weight because optimizer might inplace update them
+        // auto const_op =
+        //     std::dynamic_pointer_cast<nnfusion::op::Constant>(input1_gnode->get_op_ptr());
+        // // ignore weight because optimizer might inplace update them
         // if (const_op->is_weight())
         // {
         //     continue;
         // }
+
         shared_ptr<KernelContext> ctx(new KernelContext(it));
         std::string identifier = generate_identifier(ctx);
         if (identifier == "")
