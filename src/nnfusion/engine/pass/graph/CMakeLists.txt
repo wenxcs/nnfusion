@@ -19,6 +19,7 @@ set(SRC
     runtime_const_folding_pass.cpp
     common_subexpression_elimination_pass.cpp
     pattern_substitution.cpp
+    batchnorm_inference_folding_pass.cpp
     autodiff_pass.cpp
 )
 

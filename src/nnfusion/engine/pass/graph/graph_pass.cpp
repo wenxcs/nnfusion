@@ -6,12 +6,12 @@
 #include "assign_async_info_pass.hpp"
 #include "assign_layout_pass.hpp"
 #include "autodiff_pass.hpp"
+#include "batchnorm_inference_folding_pass.hpp"
 #include "blockfusion_pass.hpp"
 #include "codegen_dxcompute_pass.hpp"
 #include "codegen_graphcore_pass.hpp"
 #include "common_subexpression_elimination_pass.hpp"
 #include "gemm_fusion_pass.hpp"
-#include "gnode_device_dispatcher.hpp"
 #include "gnode_device_dispatcher.hpp"
 #include "gradient_weight_mapping_pass.hpp"
 #include "kernel_fusion_pass.hpp"
@@ -45,6 +45,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     pass_manager.register_pass<MultiReshapeFoldingPass>();
     pass_manager.register_pass<VectorDotTransposePass>();
     pass_manager.register_pass<GemmFusionPass>();
+    pass_manager.register_pass<BatchNormInferenceFoldingPass>();
     pass_manager.register_pass<AssignLayoutPass>();
     pass_manager.register_pass<OpInplacePass>();
 
