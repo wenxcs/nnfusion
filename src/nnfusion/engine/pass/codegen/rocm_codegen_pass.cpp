@@ -30,16 +30,28 @@ void RocmCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
     copy_templates.emplace_back("rocm_adapter/fastgen_for_sliced_kernels.sh",
                                 "./fastgen_for_sliced_kernels.sh");
     // NNFUSION_CHECK(0 == system("chmod a+x fastgen_for_sliced_kernels.sh"));
-    if (superscaler_enable)
-    {
-        copy_templates.emplace_back("super_scaler/super_scaler.h", "./super_scaler.h");
-        NNFUSION_LOG(NNFUSION_WARNING) << "libsuper_scaler_rocm.so should be copied from "
-                                          "(build)/src/tools/nnfusion/templates/super_scaler/";
-        copy_templates.emplace_back("super_scaler/libsuper_scaler_rocm.so",
-                                    "./libsuper_scaler_rocm.so");
-    }
     copy_templates.emplace_back("image_tests/image_test.cpp", "./image_tests/image_test.cpp");
     copy_templates.emplace_back("image_tests/CMakeLists_rocm.txt", "./image_tests/CMakeLists.txt");
+
+    //copy folder
+    auto& copy_folder = projgen->lup_codegen->copy_folder;
+    char exe_path[PATH_MAX];
+    size_t count = readlink("/proc/self/exe", exe_path, PATH_MAX);
+    const char* path;
+    if (count != -1)
+    {
+        path = dirname(exe_path);
+    }
+    else
+    {
+        throw nnfusion::errors::RuntimeError("Failed to get the directory of executable file.\n");
+    }
+
+    if (superscaler_enable)
+    {
+        std::string superscaler_path = std::string(path) + std::string("/superscaler");
+        copy_folder.push_back(superscaler_path);
+    }
 
     // setup main_block
     auto& lu_init_begin = *(projgen->lup_init->begin);
@@ -131,10 +143,10 @@ set(CMAKE_CXX_FLAGS "-O2 -Wno-ignored-attributes -Wno-duplicate-decl-specifier")
         // add rocm_lib
         lu << nnfusion::codegen::cmake::rocm_lib->get_code();
 
-        if (global_required.count("header::super_scaler") > 0)
+        if (superscaler_enable)
         {
-            // add super_scaler
-            lu << nnfusion::codegen::cmake::rocm_super_scaler->get_code();
+            // add superscaler
+            lu << nnfusion::codegen::cmake::superscaler_rocm->get_code();
         }
     }
 

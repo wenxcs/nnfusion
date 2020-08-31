@@ -11,7 +11,7 @@ namespace nnfusion
             LU_DECLARE(cuda);
             LU_DECLARE(cublas);
             LU_DECLARE(cudnn);
-            LU_DECLARE(super_scaler);
+            LU_DECLARE(superscaler);
             LU_DECLARE(cupti);
             LU_DECLARE(cuda_prof_api);
         } // namespace header
