@@ -325,8 +325,9 @@ std::string nnfusion::pass::graph::generate_identifier(const shared_ptr<KernelCo
     }
     else if (op_type == "Dot")
     {
-        auto dot = std::dynamic_pointer_cast<op::Dot>(ctx->gnode->get_op_ptr());
-        NNFUSION_CHECK_NOT_NULLPTR(dot);
+        ///\todo encode dot attrs, stay the same with db importor
+        // auto dot = std::dynamic_pointer_cast<op::Dot>(ctx->gnode->get_op_ptr());
+        // NNFUSION_CHECK_NOT_NULLPTR(dot);
         // std::stringstream str;
         // str << dot->get_transpose_A();
         // str << dot->get_transpose_B();
