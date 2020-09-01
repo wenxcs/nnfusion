@@ -327,11 +327,11 @@ std::string nnfusion::pass::graph::generate_identifier(const shared_ptr<KernelCo
     {
         auto dot = std::dynamic_pointer_cast<op::Dot>(ctx->gnode->get_op_ptr());
         NNFUSION_CHECK_NOT_NULLPTR(dot);
-        std::stringstream str;
-        str << dot->get_transpose_A();
-        str << dot->get_transpose_B();
-        ///\todo: need to encode dot reduction_axes_count?
-        identifier += str.str();
+        // std::stringstream str;
+        // str << dot->get_transpose_A();
+        // str << dot->get_transpose_B();
+        // ///\todo: need to encode dot reduction_axes_count?
+        // identifier += str.str();
     }
 
     return identifier;

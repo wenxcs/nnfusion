@@ -53,10 +53,12 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
 
     // The graph after this pass will have selected kernels
     pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
-    pass_manager.register_pass<DotTransposePass>();
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<FetchBasedSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();
+
+    // Specific opt for dot
+    pass_manager.register_pass<DotTransposePass>();
 
     // GPU specific graph passes
     pass_manager.register_pass<KernelFusionPass>();

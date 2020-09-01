@@ -1,34 +1,136 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "dot_transpose_pass.hpp"
-#include "kernel_selection.hpp"
 #include "gnode_device_dispatcher.hpp"
+#include "kernel_selection.hpp"
 #include "nnfusion/core/graph/util/numpy_transpose.hpp"
 #include "nnfusion/core/operators/op_define/dot.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
 #include "runtime_const_folding_pass.hpp"
 
 DEFINE_bool(fdot_transpose, false, "Dot transpose.");
+DEFINE_string(fproduct_name,
+              "",
+              "Device product name, like 'GeForce GTX 1080 Ti', 'Tesla V100-PCIE-16GB'");
 
 using namespace nnfusion::graph;
 using namespace nnfusion::pass::graph;
 
 namespace
 {
-    float fetch_kernel_time(
+    using nnfusion::cache::kernel;
+    nnfusion::cache::kernel fetch_best_kernel(
         const string& identifier,
+        const string& platform,
         const set<string>& tags, // should exactly match every tag, no more no less
         std::shared_ptr<nnfusion::cache::KernelCacheManager> cache_manager,
-        NNFusion_DeviceType device)
+        const string& product_name)
+    {
+        auto fetched = cache_manager->fetch_all(identifier, platform);
+        std::vector<kernel> matched_kernels;
+        kernel best_kernel;
+        best_kernel.function = "";
+        for (auto matched_kernel : fetched)
+        {
+            if (matched_kernel.tags == tags)
+            {
+                bool is_better = false;
+                if (best_kernel.function == "")
+                {
+                    is_better = true;
+                }
+                else if (matched_kernel.profile.find(product_name) != matched_kernel.profile.end())
+                {
+                    if (best_kernel.profile.find(product_name) == best_kernel.profile.end() ||
+                        best_kernel.profile.at(product_name) >
+                            matched_kernel.profile.at(product_name))
+                    {
+                        is_better = true;
+                    }
+                }
+                if (is_better)
+                {
+                    best_kernel = matched_kernel;
+                }
+            }
+        }
+        return best_kernel;
+    }
+
+    kernels::KernelEmitter::Pointer generate_func_point(shared_ptr<GNode> gnode, string func_str)
+    {
+        shared_ptr<KernelContext> ctx(new KernelContext(gnode));
+        if (func_str != "")
+        {
+            auto kernel = std::make_shared<kernels::cuda::CacheBlockCudaKernel>(ctx, func_str);
+            if (kernel->get_or_emit_source())
+            {
+                return kernel;
+            }
+        }
+        return nullptr;
+    }
+
+    float fetch_kernel_time(
+        const string& identifier,
+        const string& platform,
+        const set<string>& tags, // should exactly match every tag, no more no less
+        std::shared_ptr<nnfusion::cache::KernelCacheManager> cache_manager,
+        const string& product_name)
     {
         float kernel_time = 0;
         nnfusion::cache::kernel kernel_instance =
-            cache_manager->fetch_with_tags(identifier, "CUDA", tags);
-        string device_str = get_device_str(device);
-        if (kernel_instance.profile.find(device_str) != kernel_instance.profile.end())
+            cache_manager->fetch_with_tags(identifier, platform, tags);
+        if (kernel_instance.profile.find(product_name) != kernel_instance.profile.end())
         {
-            kernel_time = kernel_instance.profile.at(device_str);
+            kernel_time = kernel_instance.profile.at(product_name);
         }
         return kernel_time;
+    }
+
+    string exec(const char* cmd)
+    {
+        array<char, 128> buffer;
+        string result;
+        unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+        NNFUSION_CHECK(!pipe) << "Exec failed, command: " << cmd
+                              << ", with error: " << strerror(errno);
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+        {
+            result += buffer.data();
+        }
+        return result;
+    }
+
+    string get_product_name() { return FLAGS_fproduct_name; }
+    // it return local device type, might break cross compiling
+    ///\todo make it configurable by flags
+    // string get_product_name(NNFusion_DeviceType device_type, int device_id)
+    // {
+    //     switch (device_type)
+    //     {
+    //         case NNFusion_DeviceType::CUDA_GPU:
+    //         {
+    //             // output from nvidia-smi like: <product_name>Tesla V100-PCIE-16GB</product_name>
+    //             string command = "nvidia-smi -x -q | grep product_name | sed -n \'" + to_string(device_id + 1) + "p\' | cut -d \\> -f 2 | cut -d \\< -f 1";
+    //             return exec(command.c_str());
+    //         }
+    //         default:
+    //         {
+    //             return "";
+    //         }
+    //     }
+    // }
+
+    // convert NNFusion device type to db platform
+    string devtype2platform(NNFusion_DeviceType device_type)
+    {
+        switch (device_type)
+        {
+        case NNFusion_DeviceType::CUDA_GPU: { return "CUDA";
+        }
+        default: { return "";
+        }
+        }
     }
 }
 
@@ -55,18 +157,17 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
             continue;
         }
         // kernel already selected
-        if ((*it)["Kernel_Selection_Result"].is_valid())
-        {
-            continue;
-        }
-        if (!(*it)["DeviceType"].is_valid())
+        // if ((*it)["Kernel_Selection_Result"].is_valid())
+        // {
+        //     continue;
+        // }
+        if (!(*it)["DeviceType"].is_valid() || !(*it)["DeviceID"].is_valid())
         {
             NNFUSION_LOG(NNFUSION_WARNING)
-                << "GNode DeviceType should be assigned before this pass：" << it->get_name();
+                << "GNode DeviceType and DeviceID should be assigned before this pass："
+                << it->get_name();
             continue;
         }
-
-        auto n_device_type = (*it)["DeviceType"].as<NNFusion_DeviceType>();
         {
             auto dot = std::dynamic_pointer_cast<nnfusion::op::Dot>(it->get_op_ptr());
             NNFUSION_CHECK_NOT_NULLPTR(dot);
@@ -128,11 +229,23 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
             continue;
         }
 
-        NNFUSION_LOG(INFO) << "Constant " << input1_gnode->get_name() << " connect " << input1_gnode->get_output_users(input1_index).size() << " nodes";
-        float dot_time = fetch_kernel_time(identifier, set<string>{}, cache_manager, n_device_type);
-        float transpose_dot_time = fetch_kernel_time(
-            identifier, set<string>{"fast", "transB"} /* tag tbd */, cache_manager, n_device_type);
-        if (dot_time == 0 || transpose_dot_time == 0 || dot_time <= transpose_dot_time)
+        auto platform = devtype2platform((*it)["DeviceType"].as<NNFusion_DeviceType>());
+        auto product_name = get_product_name();
+        // auto product_name = get_product_name((*it)["DeviceType"].as<NNFusion_DeviceType>(), (*it)["DeviceID"].as<int>());
+        nnfusion::cache::kernel dot_kernel = fetch_best_kernel(
+            identifier, platform, set<string>{"fast"}, cache_manager, product_name);
+        nnfusion::cache::kernel transpose_dot_kernel = fetch_best_kernel(
+            identifier, platform, set<string>{"fast", "transB"}, cache_manager, product_name);
+        // no profiling time
+        if (dot_kernel.profile.find(product_name) == dot_kernel.profile.end() ||
+            transpose_dot_kernel.profile.find(product_name) == transpose_dot_kernel.profile.end())
+        {
+            continue;
+        }
+        NNFUSION_LOG(INFO) << "Dot time: " << dot_kernel.profile.at(product_name)
+                           << ", Transpose dot time: "
+                           << transpose_dot_kernel.profile.at(product_name);
+        if (dot_kernel.profile.at(product_name) <= transpose_dot_kernel.profile.at(product_name))
         {
             continue;
         }
@@ -147,17 +260,28 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
         for (auto out_edge : input1_gnode->get_output_users(input1_index))
         {
             auto dst_node = out_edge->get_dst();
+            if (dst_node == trans_gnode)
+            {
+                continue;
+            }
             graph->remove_edge(out_edge);
             graph->add_edge(trans_gnode, 0, dst_node, 1);
             auto dot = std::dynamic_pointer_cast<nnfusion::op::Dot>(dst_node->get_op_ptr());
             NNFUSION_CHECK(dot);
             dot->get_transpose_B() = true;
-        }
 
-        // folding trans node
-        RuntimeConstantFoldingPass().run_on_graph(graph);
-        // DefaultGNodeDeviceDispatcher().run_on_graph(graph);
+            auto func_p = generate_func_point(dst_node, transpose_dot_kernel.function);
+            NNFUSION_CHECK(func_p);
+            if (func_p)
+                (*dst_node)["Kernel_Selection_Result"] =
+                    std::make_pair((*it)["DeviceType"].as<NNFusion_DeviceType>(), func_p);
+        }
     }
+    // folding trans node
+    RuntimeConstantFoldingPass().run_on_graph(graph);
+    // assign kernel for transpose
+    DefaultGNodeDeviceDispatcher().run_on_graph(graph);
+    DefaultKernelSelector().run_on_graph(graph);
 
     return true;
 }
