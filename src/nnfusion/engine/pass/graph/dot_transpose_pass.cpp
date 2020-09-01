@@ -1,6 +1,7 @@
 // Microsoft (c) 2019, NNFusion Team
 #include "dot_transpose_pass.hpp"
 #include "kernel_selection.hpp"
+#include "gnode_device_dispatcher.hpp"
 #include "nnfusion/core/graph/util/numpy_transpose.hpp"
 #include "nnfusion/core/operators/op_define/dot.hpp"
 #include "nnfusion/engine/profiler/profiler.hpp"
@@ -127,6 +128,7 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
             continue;
         }
 
+        NNFUSION_LOG(INFO) << "Constant " << input1_gnode->get_name() << " connect " << input1_gnode->get_output_users(input1_index).size() << " nodes";
         float dot_time = fetch_kernel_time(identifier, set<string>{}, cache_manager, n_device_type);
         float transpose_dot_time = fetch_kernel_time(
             identifier, set<string>{"fast", "transB"} /* tag tbd */, cache_manager, n_device_type);
@@ -136,6 +138,7 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
         }
 
         // insert transpose
+        NNFUSION_LOG(INFO) << "Transpose constant: " << input1_gnode->get_name();
         auto trans_gnode =
             nnfusion::graph::numpy_transpose(input1_gnode, nnfusion::AxisVector(), input1_index);
         graph->add_node(trans_gnode);
@@ -153,6 +156,7 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
 
         // folding trans node
         RuntimeConstantFoldingPass().run_on_graph(graph);
+        // DefaultGNodeDeviceDispatcher().run_on_graph(graph);
     }
 
     return true;

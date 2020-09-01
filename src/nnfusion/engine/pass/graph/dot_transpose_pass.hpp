@@ -15,7 +15,7 @@ namespace nnfusion
             // which is fused by the end, is inserted before current dot.
             //      const                 const
             //       / \                    |
-            //   dot_a  dot_b     ->      trans (fused)
+            //   dot_a  dot_b     ->      trans
             // (transB = false)            / \
             //                        dot_a  dot_b
             //                       (transB = true)
