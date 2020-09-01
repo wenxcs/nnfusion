@@ -8,6 +8,7 @@
 #include "runtime_const_folding_pass.hpp"
 
 DEFINE_bool(fdot_transpose, false, "Dot transpose.");
+// official product name for cuda: > nvidia-smi -x -q | grep product_name | sed -n '1p' | cut -d \> -f 2 | cut -d \< -f 1
 DEFINE_string(fproduct_name,
               "",
               "Device product name, like 'GeForce GTX 1080 Ti', 'Tesla V100-PCIE-16GB'");
@@ -70,57 +71,7 @@ namespace
         return nullptr;
     }
 
-    float fetch_kernel_time(
-        const string& identifier,
-        const string& platform,
-        const set<string>& tags, // should exactly match every tag, no more no less
-        std::shared_ptr<nnfusion::cache::KernelCacheManager> cache_manager,
-        const string& product_name)
-    {
-        float kernel_time = 0;
-        nnfusion::cache::kernel kernel_instance =
-            cache_manager->fetch_with_tags(identifier, platform, tags);
-        if (kernel_instance.profile.find(product_name) != kernel_instance.profile.end())
-        {
-            kernel_time = kernel_instance.profile.at(product_name);
-        }
-        return kernel_time;
-    }
-
-    string exec(const char* cmd)
-    {
-        array<char, 128> buffer;
-        string result;
-        unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-        NNFUSION_CHECK(!pipe) << "Exec failed, command: " << cmd
-                              << ", with error: " << strerror(errno);
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
-        {
-            result += buffer.data();
-        }
-        return result;
-    }
-
     string get_product_name() { return FLAGS_fproduct_name; }
-    // it return local device type, might break cross compiling
-    ///\todo make it configurable by flags
-    // string get_product_name(NNFusion_DeviceType device_type, int device_id)
-    // {
-    //     switch (device_type)
-    //     {
-    //         case NNFusion_DeviceType::CUDA_GPU:
-    //         {
-    //             // output from nvidia-smi like: <product_name>Tesla V100-PCIE-16GB</product_name>
-    //             string command = "nvidia-smi -x -q | grep product_name | sed -n \'" + to_string(device_id + 1) + "p\' | cut -d \\> -f 2 | cut -d \\< -f 1";
-    //             return exec(command.c_str());
-    //         }
-    //         default:
-    //         {
-    //             return "";
-    //         }
-    //     }
-    // }
-
     // convert NNFusion device type to db platform
     string devtype2platform(NNFusion_DeviceType device_type)
     {
@@ -149,18 +100,12 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
 
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
 
-    // Find nodes with all constant upstream nodes
     for (auto& it : nodes)
     {
         if (it->get_op_type() != "Dot")
         {
             continue;
         }
-        // kernel already selected
-        // if ((*it)["Kernel_Selection_Result"].is_valid())
-        // {
-        //     continue;
-        // }
         if (!(*it)["DeviceType"].is_valid() || !(*it)["DeviceID"].is_valid())
         {
             NNFUSION_LOG(NNFUSION_WARNING)
@@ -187,9 +132,9 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
             continue;
         }
 
+        ///\todo ignore weight to avoid inplace updating?
         // auto const_op =
         //     std::dynamic_pointer_cast<nnfusion::op::Constant>(input1_gnode->get_op_ptr());
-        // // ignore weight because optimizer might inplace update them
         // if (const_op->is_weight())
         // {
         //     continue;
@@ -231,7 +176,6 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
 
         auto platform = devtype2platform((*it)["DeviceType"].as<NNFusion_DeviceType>());
         auto product_name = get_product_name();
-        // auto product_name = get_product_name((*it)["DeviceType"].as<NNFusion_DeviceType>(), (*it)["DeviceID"].as<int>());
         nnfusion::cache::kernel dot_kernel = fetch_best_kernel(
             identifier, platform, set<string>{"fast"}, cache_manager, product_name);
         nnfusion::cache::kernel transpose_dot_kernel = fetch_best_kernel(
