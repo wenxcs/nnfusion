@@ -131,16 +131,18 @@ shared_memory = {"symbol": [], "dtype": [], "size": []}
 include_set = {}
 exclude_set = {}
 arguments = {"symbol": [], "dtype": []}
+signature = []
 
 
 def p_functon(p):
-    'function : signature \'{\' shared_buffer statements \'}\''
+    'function : signature \'{\' statements \'}\''
     include_set[p.slice[2].lexpos] = p.slice[-1].lexpos
     p[0] = p.slice[-2].value
 
 
 def p_signature(p):
     'signature : GLOBAL VOID ID \'(\' parameters \')\''
+    signature.append(p[3])
 
 
 def p_parameters(p):
@@ -168,21 +170,6 @@ def p_type(p):
     p[0] = ''.join(p[1:])
 
 
-def p_shared_buffer(p):
-    '''shared_buffer : shared
-                     | shared_buffer shared
-                     | normal
-    '''
-
-
-def p_shared(p):
-    'shared : SHARED TYPE ID \'[\' INTEGER \']\' \';\' '
-    shared_memory["symbol"].append(p[3])
-    shared_memory["dtype"].append(p[2])
-    shared_memory["size"].append(int(p[5]))
-    exclude_set[p.slice[1].lexpos] = p.slice[-1].lexpos
-
-
 def p_statements(p):
     '''statements : statement
                   | statements statement
@@ -192,14 +179,24 @@ def p_statements(p):
 
 def p_statement(p):
     '''statement : sync
-                 | for_loop
+                 | shared
+                 | for_loop_static
                  | normal
     '''
     p[0] = p[1]
 
 
-def p_for_loop(p):
-    '''for_loop : FOR \'(\' assign compare increase \')\' \'{\' statements \'}\'
+def p_shared(p):
+    'shared : SHARED TYPE ID \'[\' INTEGER \']\' \';\' '
+    shared_memory["symbol"].append(p[3])
+    shared_memory["dtype"].append(p[2])
+    shared_memory["size"].append(int(p[5]))
+    exclude_set[p.slice[1].lexpos] = p.slice[-1].lexpos
+    p[0] = 0
+
+
+def p_for_loop_static(p):
+    '''for_loop_static : FOR \'(\' assign compare increase \')\' \'{\' statements \'}\'
        assign   : TYPE ID \'=\' INTEGER \';\'
        compare  : ID \'<\' INTEGER \';\'
        increase : \'+\' \'+\' ID
@@ -222,7 +219,7 @@ def p_sync(p):
 
 def p_normal(p):
     '''normal : \';\'
-              | \'{\' normal \'}\'
+               | \'{\' normal \'}\'
     '''
     p[0] = 0
 
@@ -241,7 +238,8 @@ parser = yacc.yacc(debug=True)
 
 def is_valid(pos):
     for start in include_set:
-        if start < pos < include_set[start]:
+        # Todo: replace the static analysis part with a simpler way
+        if start - 1 < pos:
             break
     else:
         return False
@@ -262,6 +260,7 @@ def clear_global():
 
 
 def parse(code, parameters):
+    # Todo: the defined grammar for the parser is not sufficient, to be completed
     clear_global()
     num_sync = parser.parse(code)
     lexer.input(code)
@@ -269,7 +268,8 @@ def parse(code, parameters):
     for (i, dtype) in enumerate(parameters["dtype"]):
         assert dtype == arguments["dtype"][i]
         if parameters["symbol"][i] != arguments["symbol"][i]:
-            new_code += "{} {} = {};".format(dtype, arguments["symbol"][i], parameters["symbol"][i])
+            new_code += "{} {} = {};".format(dtype,
+                                             arguments["symbol"][i], parameters["symbol"][i])
     while True:
         tok = lexer.token()
         if not tok:
@@ -279,7 +279,7 @@ def parse(code, parameters):
         else:
             pass
 
-    return shared_memory, num_sync, new_code
+    return shared_memory, num_sync, new_code, signature[0]
 
 
 if __name__ == '__main__':
@@ -287,5 +287,6 @@ if __name__ == '__main__':
     with open(sys.argv[1]) as f:
         input = f.read()
 
-    parameters = {'symbol': ['input0', 'input1', 'output0'], 'dtype': ['float*', 'float*', 'float*']}
+    parameters = {'symbol': ['input0', 'input1', 'output0'], 'dtype': [
+        'float*', 'float*', 'float*']}
     print(parse(input, parameters)[2])

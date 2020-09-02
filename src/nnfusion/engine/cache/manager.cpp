@@ -61,7 +61,7 @@ SELECT function, tags, profile FROM KernelCache WHERE (identifier = ?) AND (plat
         // parse input tags
         size_t pos = 0;
         std::string fetched_tags = std::string((char*)sqlite3_column_text(pStmt, 1));
-        while ((pos = fetched_tags.find("_")) != std::string::npos)
+        while ((pos = fetched_tags.find(",")) != std::string::npos)
         {
             fetched_kernel.tags.insert(fetched_tags.substr(0, pos));
             fetched_tags.erase(0, pos + 1);

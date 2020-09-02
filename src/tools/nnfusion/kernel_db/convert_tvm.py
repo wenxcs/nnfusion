@@ -7,15 +7,19 @@ Some more explains to customize it for your needs
     insert_db  : insert the parsed kernel into kernel db
 """
 
-from cuparse import parse as code_parse
 import json
 import sys
 import sqlite3
 import os
 
+from cuparse import parse as code_parse
+from profile import prepare_file, profile
+
 db_path = os.environ['HOME'] + "/.cache/nnfusion/"
 db_name = "kernel_cache.db"
 
+
+# Todo: re-org operator definition to oop and coordinate to NNFusion
 parameters = {
     "Convolution": {
         'symbol': ['input0', 'input1', 'output0'],
@@ -69,9 +73,12 @@ def gen_key(data, dtype="float"):
             "Fused_Convolution_Add_Relu"
     ]:
         parameters = data["parameters"]
-        key += "".join(["Strides{", ", ".join(str(i) for i in parameters["window_movement_strides"]), "}"])
-        key += "".join(["Strides{", ", ".join(str(i) for i in parameters["window_dilation_strides"]), "}"])
-        key += "".join(["CoordinateDiff{", ", ".join(str(i) for i in parameters["padding_below_diff"]), "}"])
+        key += "".join(["Strides{", ", ".join(str(i)
+                                              for i in parameters["window_movement_strides"]), "}"])
+        key += "".join(["Strides{", ", ".join(str(i)
+                                              for i in parameters["window_dilation_strides"]), "}"])
+        key += "".join(["CoordinateDiff{", ", ".join(str(i)
+                                                     for i in parameters["padding_below_diff"]), "}"])
         if op_type != "Convolution":
             key = key.replace(op_type, "Convolution")
             for op in op_type.split("_"):
@@ -87,9 +94,12 @@ def gen_key(data, dtype="float"):
                     raise ("not implemented")
     elif op_type == "AvgPool" or op_type == "MaxPool":
         parameters = data["parameters"]
-        key += "Shape{" + ", ".join(str(i) for i in parameters["window_shape"]) + "}"
-        key += "Strides{" + ", ".join(str(i) for i in parameters["window_stride"]) + "}"
-        key += "Shape{" + ", ".join(str(i) for i in parameters["padding_below"]) + "}"
+        key += "Shape{" + ", ".join(str(i)
+                                    for i in parameters["window_shape"]) + "}"
+        key += "Strides{" + ", ".join(str(i)
+                                      for i in parameters["window_stride"]) + "}"
+        key += "Shape{" + ", ".join(str(i)
+                                    for i in parameters["padding_below"]) + "}"
 
     return key
 
@@ -103,15 +113,15 @@ def gen_config(op_type, kernel, shared_memory, num_sync):
         "num_sync": num_sync,
         "blockDim": kernel["blockDim"],
         "gridDim": kernel["gridDim"],
-        "in_shape": [kernel["parameters"]["input_shape"]],
-        "out_shape": [kernel["parameters"]["output_shape"]]
     }
     if op_type in [
             "Convolution", "Fused_Convolution_Relu", "Fused_Convolution_Batchnorm", "Fused_Convolution_Batchnorm_Relu",
             "Fused_Convolution_Add_Relu"
     ]:
         config["function_sig"] = "extern \"C\" __global__  void (float* input0, float* input1, float* output0)"
-        config["in_shape"] = [kernel["parameters"]["input_shape"], kernel["parameters"]["filter_shape"]]
+        config["in_shape"] = [kernel["parameters"]
+                              ["input_shape"], kernel["parameters"]["filter_shape"]]
+        config["out_shape"] = [kernel["parameters"]["output_shape"]]
         config["parameters"] = {
             "window_movement_strides": kernel["parameters"]["window_movement_strides"],
             "window_dilation_strides": kernel["parameters"]["window_dilation_strides"],
@@ -122,14 +132,22 @@ def gen_config(op_type, kernel, shared_memory, num_sync):
                 config[
                     "function_sig"] = "extern \"C\" __global__  void (float* input0, float* input1, float* input2, float* input3, float* output0)"
             else:
+                config["in_shape"].append(config["out_shape"][0])
                 config[
                     "function_sig"] = "extern \"C\" __global__  void (float* input0, float* input1, float* input2, float* output0)"
     elif (op_type == "Dot"):
+        config["in_shape"] = [kernel["parameters"]
+                              ["arg0_shape"], kernel["parameters"]["arg1_shape"]]
+        config["out_shape"] = [kernel["parameters"]["out_shape"]]
         config[
             "function_sig"] = "extern \"C\" __global__  void (float* __restrict__ input0,  float* __restrict__ input1,  float* __restrict__ output0)"
     elif (op_type == "Relu"):
+        config["in_shape"] = [kernel["parameters"]["input_shape"]]
+        config["out_shape"] = [kernel["parameters"]["output_shape"]]
         config["function_sig"] = "extern \"C\" __global__  void (float* input0, float* output0)"
     elif (op_type == "AvgPool" or op_type == "MaxPool"):
+        config["in_shape"] = [kernel["parameters"]["input_shape"]]
+        config["out_shape"] = [kernel["parameters"]["output_shape"]]
         config["function_sig"] = "extern \"C\" __global__  void (float* input0, float* output0)"
         config["parameters"] = {
             "window_shape": kernel["parameters"]["window_shape"],
@@ -142,7 +160,7 @@ def gen_config(op_type, kernel, shared_memory, num_sync):
     return config
 
 
-def insert_db(name, platform="CUDA", tags="fast"):
+def insert_db(name, platform="CUDA", tags="fast", profile="Tesla V100-PCIE-16GB:1"):
     # Todo: More tags could be used to store multiple implementations with the same kernel specs
     in_file = open(name + ".cu")
     json_file = open(name + ".json")
@@ -167,10 +185,11 @@ def insert_db(name, platform="CUDA", tags="fast"):
 
     identifier = gen_key(data)
     print(identifier)
-    # Value with same key will be overrided
-    c.execute("DELETE FROM KernelCache WHERE identifier = ?", (identifier, ))
-    c.execute("INSERT INTO KernelCache (identifier,platform,function,tags) VALUES (?, ?, ?, ?)",
-              (identifier, platform, function, tags))
+    # overwrite the same implementation
+    c.execute("DELETE FROM KernelCache WHERE identifier = ? AND platform = ? AND function = ?",
+              (identifier, platform, function))
+    c.execute("INSERT INTO KernelCache (identifier,platform,function,tags,profile) VALUES (?, ?, ?, ?, ?)",
+              (identifier, platform, function, tags, profile))
     conn.commit()
     conn.close()
 
@@ -187,7 +206,8 @@ if __name__ == '__main__':
         op_type = kernel["op_type"]
 
         # parse and clean up the cuda code to get some specific information
-        shared_memory, num_sync, new_code = code_parse(kernel["code"], parameters[op_type])
+        shared_memory, num_sync, new_code, signature = code_parse(
+            kernel["code"], parameters[op_type])
 
         config = gen_config(op_type, kernel, shared_memory, num_sync)
 
@@ -200,4 +220,13 @@ if __name__ == '__main__':
             json.dump(config, f)
         with open(operator_path + name + ".cu", "w+") as f:
             f.write(new_code)
-        insert_db(operator_path + name)
+
+        default_tags = "fast"
+        if (op_type == "Dot"):
+            default_tags += kernel["parameters"]["transpose_A"] * \
+                ",transA" + kernel["parameters"]["transpose_B"]*",transB"
+
+        prepare_file(signature, kernel["code"], config, db_path + "profile/")
+        profile_info = profile(signature, db_path + "profile/")
+        insert_db(operator_path + name,
+                  tags=default_tags, profile=profile_info)

@@ -39,7 +39,7 @@ namespace nnfusion
             kernel fetch_with_tags(std::string identifier,
                                    std::string platform,
                                    std::set<std::string> tags);
-            inline bool is_valid() { return kernel_cache != nullptr; }
+            bool is_valid() { return kernel_cache != nullptr; }
         private:
             std::string m_path;
             static sqlite3* kernel_cache;
