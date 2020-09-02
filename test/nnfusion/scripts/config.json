@@ -10,7 +10,7 @@
       "set": 1
     }
   },
-  "device_capability": ["CUDA", "ROCM"],
+  "device_capability": ["CUDA"],
   "enabled_tags": {
     "CUDA" : ["correctness", "correctness_cuda_only"],
     "ROCM" : ["correctness", "correctness_rocm_only"]
