@@ -11,6 +11,7 @@
 #include "codegen_dxcompute_pass.hpp"
 #include "codegen_graphcore_pass.hpp"
 #include "common_subexpression_elimination_pass.hpp"
+#include "dot_transpose_pass.hpp"
 #include "gemm_fusion_pass.hpp"
 #include "gnode_device_dispatcher.hpp"
 #include "gradient_weight_mapping_pass.hpp"
@@ -56,6 +57,9 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<FetchBasedSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();
+
+    // Specific opt for dot
+    pass_manager.register_pass<DotTransposePass>();
 
     // GPU specific graph passes
     pass_manager.register_pass<KernelFusionPass>();
