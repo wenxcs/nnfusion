@@ -22,7 +22,9 @@
 #include "op_inplace_pass.hpp"
 #include "pattern_substitution.hpp"
 #include "runtime_const_folding_pass.hpp"
+#include "superscaler_dataparallelism_pass.hpp"
 #include "vector_dot_transpose_pass.hpp"
+
 using namespace nnfusion::pass::graph;
 using namespace std;
 
@@ -48,10 +50,12 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     pass_manager.register_pass<GemmFusionPass>();
     pass_manager.register_pass<BatchNormInferenceFoldingPass>();
     pass_manager.register_pass<AssignLayoutPass>();
+    //superscaler pass
+    pass_manager.register_pass<SuperScalerDataParallelismPass>();
+
     pass_manager.register_pass<OpInplacePass>();
 
     pass_manager.register_pass<PatternSubstitutionPass>();
-
     // The graph after this pass will have selected kernels
     pass_manager.register_pass<DefaultGNodeDeviceDispatcher>();
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
