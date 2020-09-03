@@ -19,7 +19,6 @@ REGISTER_OP(DepthwiseConv2dNative)
     .infershape([](std::shared_ptr<graph::GNode> gnode) -> void {
         NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
-        NNFUSION_CHECK(op->localOpConfig.getRoot()["data_format"] == "NHWC");
 
         // [ batch, in_rows, in_cols, in_depth ]
         const Shape& input_shape = gnode->get_input_shape(0);
@@ -56,8 +55,9 @@ REGISTER_OP(DepthwiseConv2dNative)
         NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         NNFUSION_CHECK_NOT_NULLPTR(op) << "Node type is not " << gnode->get_op_ptr()->get_op_type();
-        NNFUSION_CHECK(op->localOpConfig.getRoot()["data_format"] == "NHWC");
-
+        // currently only support NHWC format
+        if (op->localOpConfig.getRoot()["data_format"] != "NHWC")
+            return "";
         const auto& padding_below = op->localOpConfig.getRoot()["padding_before"];
         const auto& padding_above = op->localOpConfig.getRoot()["padding_after"];
         uint64_t padding[] = {
