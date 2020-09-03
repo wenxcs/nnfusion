@@ -225,7 +225,7 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
         }
     }
     // folding trans node
-    RuntimeConstantFoldingPass().run_on_graph(graph);
+    // RuntimeConstantFoldingPass().run_on_graph(graph);
     // assign kernel for transpose
     DefaultGNodeDeviceDispatcher().run_on_graph(graph);
     DefaultKernelSelector().run_on_graph(graph);
