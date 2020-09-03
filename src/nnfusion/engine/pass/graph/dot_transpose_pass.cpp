@@ -209,6 +209,9 @@ bool DotTransposePass::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& gra
                 continue;
             }
             graph->remove_edge(out_edge);
+            auto new_input = make_shared<nnfusion::graph::Input>(
+                dst_node->get_input_element_type(1), trans_gnode->get_shape());
+            dst_node->set_input(1, new_input);
             graph->add_edge(trans_gnode, 0, dst_node, 1);
             auto dot = std::dynamic_pointer_cast<nnfusion::op::Dot>(dst_node->get_op_ptr());
             NNFUSION_CHECK(dot);
