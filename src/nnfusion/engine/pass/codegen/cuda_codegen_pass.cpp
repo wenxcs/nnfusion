@@ -295,6 +295,13 @@ bool CudaCodegenPass::collect_funcs(std::shared_ptr<InterpreterContext> ctx,
             {
                 lu_begin << "extern \"C\" void " << thread_name << "(";
                 lu_begin << thread_call_paras << ")\n{\n";
+                if (superscaler_enable)
+                {
+                    lu_begin << R"(int lrank;
+sc_get_local_rank(&lrank);
+CUDA_SAFE_CALL(cudaSetDevice(lrank));
+)";
+                }
             }
 
             LanguageUnit_p end =
