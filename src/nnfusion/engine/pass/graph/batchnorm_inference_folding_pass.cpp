@@ -81,7 +81,9 @@ public:
             for (auto edge : tn->node->get_out_edges())
             {
                 auto dst = m_nodes[edge->get_dst()->get_id()];
-                // std::cout << dst->node->get_name() << std::endl;
+                // node that will not be computed
+                if (!dst)
+                    continue;
                 dst->ready_inputs++;
                 NNFUSION_CHECK(!(dst->visited));
                 if (dst->ready_inputs >= dst->node->get_in_edges().size())
@@ -101,7 +103,7 @@ private:
 
         for (size_t i = 0; i < m_pattern.size(); i++)
         {
-            if (tn->node->get_op_type() == m_pattern[i])
+            if (tn && tn->node->get_op_type() == m_pattern[i])
             {
                 if (i == m_pattern.size() - 1 || tn->node->get_out_edges().size() == 1)
                 {
