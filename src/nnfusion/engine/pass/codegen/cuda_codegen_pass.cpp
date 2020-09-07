@@ -10,6 +10,8 @@
 #include "nnfusion/core/kernels/kernel_emitter.hpp"
 #include "nnfusion/core/kernels/kernel_registration.hpp"
 
+#include <regex>
+
 using namespace nnfusion;
 using namespace nnfusion::graph;
 using namespace nnfusion::kernels;
@@ -47,7 +49,7 @@ void CudaCodegenPass::set_global_member(std::shared_ptr<InterpreterContext> ctx,
         }
     }
 
-    superscaler_enable = global_required.count("header::super_scaler") > 0;
+    superscaler_enable = global_required.count("header::superscaler") > 0;
     return;
 }
 
@@ -60,13 +62,6 @@ void CudaCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
     projgen->lup_codegen->pwd = m_codegen_folder;
     projgen->lup_codegen->write_to = "nnfusion_rt.cu";
     auto& copy_templates = projgen->lup_codegen->copy_templates;
-    if (superscaler_enable)
-    {
-        copy_templates.emplace_back("super_scaler/super_scaler.h", "./super_scaler.h");
-        NNFUSION_LOG(NNFUSION_WARNING) << "libsuper_scaler.so should be copied from "
-                                          "(build)/src/tools/nnfusion/templates/super_scaler/";
-        copy_templates.emplace_back("super_scaler/libsuper_scaler.so", "./libsuper_scaler.so");
-    }
 
     copy_templates.emplace_back("image_tests/image_test.cpp", "./image_tests/image_test.cpp");
     copy_templates.emplace_back("image_tests/CMakeLists_cuda.txt", "./image_tests/CMakeLists.txt");
@@ -92,11 +87,34 @@ void CudaCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
         copy_folder.push_back(threadpool_path);
     }
 
+    if (superscaler_enable)
+    {
+        std::string superscaler_path = std::string(path) + std::string("/superscaler");
+        copy_folder.push_back(superscaler_path);
+    }
+
     // setup main_block
     auto& lu_init_begin = *(projgen->lup_init->begin);
     {
         lu_init_begin << "\nextern \"C\" void cuda_init()\n{\n";
         lu_init_begin << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
+        if (superscaler_enable)
+        {
+            lu_init_begin <<
+                R"(int lrank;
+int grank;
+void* comm_stream;
+sc_init();
+sc_get_global_rank(&grank);
+sc_get_local_rank(&lrank);
+sc_get_comm_stream(&comm_stream);
+std::string planPath = "./plan/execution_plan/" + std::to_string(grank) + ".cfg";
+printf("[Grank: %d Lrank: %d] is running with stream %p\n", grank, lrank, comm_stream);
+sc_load_plan(planPath.c_str());
+CUDA_SAFE_CALL(cudaSetDevice(lrank));
+
+)";
+        }
     }
 
     auto& lu_init_end = *(projgen->lup_init->end);
@@ -119,10 +137,20 @@ void CudaCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
     auto& lu_exit_begin = *(projgen->lup_exit->begin);
     {
         lu_exit_begin << "\nextern \"C\" void cuda_free()\n{\n";
+        if (superscaler_enable)
+        {
+            lu_exit_begin <<
+                R"(int lrank;
+sc_get_local_rank(&lrank);
+CUDA_SAFE_CALL(cudaSetDevice(lrank));
+)";
+        }
     }
 
     auto& lu_exit_end = *(projgen->lup_exit->end);
     {
+        if (superscaler_enable)
+            lu_exit_end << "sc_finalize();\n";
         lu_exit_end << "}\n\n";
     }
 
@@ -267,6 +295,13 @@ bool CudaCodegenPass::collect_funcs(std::shared_ptr<InterpreterContext> ctx,
             {
                 lu_begin << "extern \"C\" void " << thread_name << "(";
                 lu_begin << thread_call_paras << ")\n{\n";
+                if (superscaler_enable)
+                {
+                    lu_begin << R"(int lrank;
+sc_get_local_rank(&lrank);
+CUDA_SAFE_CALL(cudaSetDevice(lrank));
+)";
+                }
             }
 
             LanguageUnit_p end =
@@ -598,6 +633,8 @@ nnfusion::LanguageUnit_p CudaCodegenPass::func_call_codegen(nnfusion::ir::Instru
 bool CudaCodegenPass::collect_stream(std::shared_ptr<InterpreterContext> ctx,
                                      std::shared_ptr<TranslationUnit> tu)
 {
+    std::regex r(R"(CUDA_SAFE_CALL\(cudaSetDevice\(\d)");
+
     //stream
     if (device_async_manager && device_async_manager->num_stream() > 0)
     {
@@ -605,8 +642,21 @@ bool CudaCodegenPass::collect_stream(std::shared_ptr<InterpreterContext> ctx,
         auto stream_init = device_async_manager->emit_stream_init();
         auto stream_destroy = device_async_manager->emit_stream_destroy();
 
-        stream_init->require(stream_decl);
-        add_init_and_exit_pair(stream_init, stream_destroy);
+        string stream_init_code_old = stream_init->get_code();
+        string stream_destroy_code_old = stream_destroy->get_code();
+        string stream_init_code =
+            (superscaler_enable ? std::regex_replace(stream_init_code_old, r, "// $0")
+                                : stream_init_code_old);
+        string stream_destroy_code =
+            (superscaler_enable ? std::regex_replace(stream_destroy_code_old, r, "// $0")
+                                : stream_destroy_code_old);
+        LanguageUnit_p stream_init_lu(
+            new LanguageUnit(stream_init->get_symbol(), stream_init_code));
+        LanguageUnit_p stream_destroy_lu(
+            new LanguageUnit(stream_destroy->get_symbol(), stream_destroy_code));
+
+        stream_init_lu->require(stream_decl);
+        add_init_and_exit_pair(stream_init_lu, stream_destroy_lu);
     }
 
     //event
@@ -616,8 +666,69 @@ bool CudaCodegenPass::collect_stream(std::shared_ptr<InterpreterContext> ctx,
         auto event_init = device_async_manager->emit_event_init();
         auto event_destroy = device_async_manager->emit_event_destroy();
 
-        event_init->require(event_decl);
-        add_init_and_exit_pair(event_init, event_destroy);
+        string event_init_code_old = event_init->get_code();
+        string event_destroy_code_old = event_destroy->get_code();
+        string event_init_code =
+            (superscaler_enable ? std::regex_replace(event_init_code_old, r, "// $0")
+                                : event_init_code_old);
+        string event_destroy_code =
+            (superscaler_enable ? std::regex_replace(event_destroy_code_old, r, "// $0")
+                                : event_destroy_code_old);
+
+        LanguageUnit_p event_init_lu(new LanguageUnit(event_init->get_symbol(), event_init_code));
+        LanguageUnit_p event_destroy_lu(
+            new LanguageUnit(event_destroy->get_symbol(), event_destroy_code));
+
+        event_init_lu->require(event_decl);
+        add_init_and_exit_pair(event_init_lu, event_destroy_lu);
+    }
+
+    return true;
+}
+
+bool CudaCodegenPass::collect_mem(std::shared_ptr<InterpreterContext> ctx,
+                                  std::shared_ptr<TranslationUnit> tu)
+{
+    if (!tu)
+        return false;
+    auto mem_pair = create_init_and_exit_pair<LanguageUnitwithVec, LanguageUnitwithVec>("MEM_ALLOC",
+                                                                                        "MEM_FREE");
+    auto lup_mem_alloc = mem_pair.first;
+    auto lup_mem_free = mem_pair.second;
+    auto& allocator_list = tu->memory_allocator_factory->get_allocator_list();
+
+    size_t total_alloc = 0;
+    for (const auto& allocator : allocator_list)
+    {
+        total_alloc += allocator.second->max_allocated();
+    }
+    LanguageUnit_p total = std::make_shared<LanguageUnit>(
+        "total_memory", "// total memory:" + to_string(total_alloc) + "\n");
+    lup_mem_alloc->unit_vec.push_back(total);
+
+    std::regex r(R"(CUDA_SAFE_CALL\(cudaSetDevice\(\d)");
+
+    for (const auto& allocator : allocator_list)
+    {
+        auto init = allocator.second->emit_memory_init();
+        auto alloc = allocator.second->emit_memory_alloc();
+        auto free = allocator.second->emit_memory_free();
+
+        string alloc_code_old = alloc->get_code();
+        string free_code_old = free->get_code();
+
+        string alloc_code =
+            (superscaler_enable ? std::regex_replace(alloc_code_old, r, "// $0") : alloc_code_old);
+        string free_code =
+            (superscaler_enable ? std::regex_replace(free_code_old, r, "// $0") : free_code_old);
+
+        LanguageUnit_p alloc_lu(new LanguageUnit(alloc->get_symbol(), alloc_code));
+        LanguageUnit_p free_lu(new LanguageUnit(free->get_symbol(), free_code));
+
+        lup_mem_alloc->unit_vec.push_back(alloc_lu);
+        lup_mem_alloc->require(init);
+        lup_mem_free->unit_vec.push_back(free_lu);
+        lup_mem_free->require(init);
     }
 
     return true;
@@ -648,18 +759,6 @@ bool CudaCodegenPass::modify_codegen()
         lu_dropout_init << dropout_name << "_init(cudnn_handle_0);\n";
         auto& lu_dropout_free = *(dropout_pair.second);
         lu_dropout_free << dropout_name << "_free();\n";
-    }
-
-    if (global_required.count("header::super_scaler"))
-    {
-        projgen->lup_exec->unit_vec.push_back(
-            std::make_shared<LanguageUnit>("super_scaler_sync", "super_scaler_sync();\n"));
-        auto super_scaler_pair = create_init_and_exit_pair<LanguageUnit, LanguageUnit>(
-            "super_scaler_init", "super_scaler_final");
-        auto& lu_ss_init = *(super_scaler_pair.first);
-        lu_ss_init << "super_scaler_initialization();\n";
-        auto& lu_ss_final = *(super_scaler_pair.second);
-        lu_ss_final << "super_scaler_finalization();\n";
     }
 
     // multi-thread
@@ -1062,10 +1161,10 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -cudart shared")
             lu << nnfusion::codegen::cmake::threads->get_code();
         }
 
-        if (global_required.count("header::super_scaler") > 0)
+        if (superscaler_enable)
         {
-            // add super_scaler
-            lu << nnfusion::codegen::cmake::super_scaler->get_code();
+            // add superscaler
+            lu << nnfusion::codegen::cmake::superscaler_cuda->get_code();
         }
     }
 

@@ -22,6 +22,7 @@ set(SRC
     batchnorm_inference_folding_pass.cpp
     autodiff_pass.cpp
     dot_transpose_pass.cpp
+    superscaler_dataparallelism_pass.cpp
 )
 
 add_library(nnfusion_engine_pass_graph STATIC ${SRC})
