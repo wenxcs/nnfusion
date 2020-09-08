@@ -61,6 +61,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     pass_manager.register_pass<ProfilingBasedKernelSelector>();
     pass_manager.register_pass<FetchBasedSelector>();
     pass_manager.register_pass<DefaultKernelSelector>();
+    pass_manager.register_pass<AntaresProfilingBasedKernelSelector>();
 
     // Specific opt for dot
     pass_manager.register_pass<DotTransposePass>();

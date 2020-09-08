@@ -31,7 +31,7 @@ namespace nnfusion
                 bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
                 pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
                     pick_first(shared_ptr<GNode> gnode, NNFusion_DeviceType devtype);
-                bool register_antares_kernel();
+                // bool register_antares_kernel();
             };
 
             class FetchBasedSelector : public GraphPassBase
@@ -45,6 +45,16 @@ namespace nnfusion
             };
 
             std::string generate_identifier(const shared_ptr<KernelContext>& ctx);
+
+            class AntaresProfilingBasedKernelSelector : public GraphPassBase
+            {
+            public:
+                bool run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph) override;
+                pair<NNFusion_DeviceType, nnfusion::kernels::KernelEmitter::Pointer>
+                    pick_best(shared_ptr<GNode> gnode, NNFusion_DeviceType devtype);
+            };
+
+            bool register_antares_kernel();
         }
     }
 } // namespace nnfusion

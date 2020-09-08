@@ -18,6 +18,10 @@ using namespace nnfusion::profiler;
 DEFINE_bool(fkernel_selection, true, "Select kernel before codegen.");
 DEFINE_bool(fkernel_tunning, false, "Tunning and choose best kernel when do kernel selection.");
 DECLARE_bool(fantares_mode);
+DEFINE_bool(fprof_all_non_antares_kernels,
+            false,
+            "Profiling all non-antares kernels when using AntaresProfilingBasedKernelSelector.");
+DEFINE_bool(fantares_prof_kernel_selector, false, "Use AntaresProfilingBasedKernelSelector");
 
 pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
     ProfilingBasedKernelSelector::profiling_best(shared_ptr<GNode> gnode,
@@ -78,7 +82,8 @@ bool ProfilingBasedKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph:
     bool enable_tuning = FLAGS_fkernel_tunning;
     if (!enable_tuning)
         return true;
-
+    if (FLAGS_fantares_prof_kernel_selector)
+        return true;
     // auto dev_name = FLAGS_fdefault_device.c_str();
     // NNFusion_DeviceType default_device = nnfusion::get_device_type(dev_name);
 
@@ -233,6 +238,8 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
 
 bool DefaultKernelSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
+    if (FLAGS_fantares_prof_kernel_selector)
+        return true;
     register_antares_kernel();
     // std::vector<std::shared_ptr<GNode>> nodes = graph->get_ordered_ops();
     std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
@@ -382,6 +389,8 @@ pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
 
 bool FetchBasedSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& graph)
 {
+    if (FLAGS_fantares_prof_kernel_selector)
+        return true;
     auto cache_manager = std::make_shared<cache::KernelCacheManager>();
     if (!cache_manager->is_valid())
     {
@@ -414,7 +423,234 @@ bool FetchBasedSelector::run_on_graph(std::shared_ptr<nnfusion::graph::Graph>& g
     return true;
 }
 
-bool DefaultKernelSelector::register_antares_kernel()
+pair<NNFusion_DeviceType, kernels::KernelEmitter::Pointer>
+    AntaresProfilingBasedKernelSelector::pick_best(shared_ptr<GNode> gnode,
+                                                   NNFusion_DeviceType devtype)
+{
+    shared_ptr<KernelContext> ctx(new KernelContext(gnode));
+    std::vector<shared_ptr<const KernelRegistration>> kernel_regs =
+        KernelRegistry::Global()->FindKernelRegistrations(gnode->get_op_type(), devtype, DT_FLOAT);
+
+    if (devtype == ROCM_GPU)
+    {
+        for (auto it : KernelRegistry::Global()->FindKernelRegistrations(
+                 gnode->get_op_type(), CUDA_GPU, DT_FLOAT))
+            kernel_regs.push_back(it);
+    }
+
+    std::sort(kernel_regs.begin(),
+              kernel_regs.end(),
+              [&](const shared_ptr<const KernelRegistration>& x,
+                  const shared_ptr<const KernelRegistration>& y) {
+                  size_t x_prio, y_prio;
+                  x_prio = x->m_priority;
+                  y_prio = y->m_priority;
+
+                  // the kernel device type may be different with gnode device type,
+                  // e.g., ROCM gnode may use CUDA kernel. To ensure kernel of same
+                  // device type have higher prioprity, we add 1 to their priority
+                  // before comparing.
+                  if (devtype == x->m_device_type)
+                      x_prio += 1;
+                  if (devtype == y->m_device_type)
+                      y_prio += 1;
+
+                  if (x_prio != y_prio)
+                      return x_prio > y_prio;
+
+                  auto x_type = x->m_factory(ctx)->get_kernel_type();
+                  auto y_type = y->m_factory(ctx)->get_kernel_type();
+                  if (x_type != y_type)
+                      return x_type < y_type;
+
+                  return false;
+              });
+
+    std::vector<KernelEmitter::Pointer> non_antares_kernels;
+    KernelEmitter::Pointer antares_kernel;
+    for (auto kernel_reg : kernel_regs)
+    {
+        auto kernel = kernel_reg->m_factory(ctx);
+        // constant kernel emitter will write file to save weights, skip to do it when codegen.
+        if (gnode->is_constant())
+        {
+            return std::make_pair(devtype, kernel);
+        }
+        if (kernel->get_or_emit_source())
+        {
+            if (kernel_reg->m_tag == "antares")
+                antares_kernel = kernel;
+            else
+            {
+                non_antares_kernels.push_back(kernel);
+            }
+        }
+    }
+
+    if (non_antares_kernels.empty())
+    {
+        if (antares_kernel)
+        {
+            NNFUSION_LOG(INFO) << "No non-antares kernel found, choose antares kernel: "
+                               << gnode->get_name() << "(op type: " << gnode->get_op_type()
+                               << ", dev type: " << nnfusion::get_device_str(devtype) << ")";
+            return std::make_pair(devtype, antares_kernel);
+        }
+        else
+        {
+            NNFUSION_LOG(ERROR) << "No valid kernel found:" << gnode->get_name()
+                                << "(op type: " << gnode->get_op_type()
+                                << ", dev type: " << nnfusion::get_device_str(devtype) << ")";
+            return std::make_pair(devtype, nullptr);
+        }
+    }
+
+    // Because this kernel selector targets at comparing the performance of antares kernel with that
+    // of non-antares kernel, if antares_kernel does not exist, we choose the first non-antares kernel
+    // without profiling.
+    if (!antares_kernel)
+    {
+        NNFUSION_LOG(INFO) << "No antares kernel found, choose non-antares kernel: "
+                           << gnode->get_name() << "(op type: " << gnode->get_op_type()
+                           << ", dev type: " << nnfusion::get_device_str(devtype) << ")";
+        return std::make_pair(devtype, non_antares_kernels[0]);
+    }
+
+    static unordered_map<string, int> ir_kernel_idx;
+    std::string ir = nnfusion::op::get_translation(gnode);
+
+    if (!ir.empty() && ir_kernel_idx.find(ir) != ir_kernel_idx.end())
+    {
+        NNFUSION_LOG(INFO) << "Using cache, omit profiling.";
+        int idx = ir_kernel_idx[ir];
+        // -1 represents antares kernel
+        if (idx == -1)
+            return std::make_pair(devtype, antares_kernel);
+        else
+            return std::make_pair(devtype, non_antares_kernels[idx]);
+    }
+
+    NNFUSION_LOG(INFO) << "Start profiling...";
+
+    auto comparef = [](const std::pair<ProfilingContext::Pointer, int>& a,
+                       const std::pair<ProfilingContext::Pointer, int>& b) {
+        return a.first->result.get_device_avg() > b.first->result.get_device_avg();
+    };
+
+    priority_queue<std::pair<ProfilingContext::Pointer, int>,
+                   vector<std::pair<ProfilingContext::Pointer, int>>,
+                   decltype(comparef)>
+        prof_res(comparef);
+
+    auto prof = [&prof_res](KernelEmitter::Pointer kernel, NNFusion_DeviceType devtype, int idx) {
+
+        auto profiling_kernel = [](KernelEmitter::Pointer kernel,
+                                   IProfilingRuntime::Pointer runtime)
+            -> std::shared_ptr<nnfusion::profiler::ProfilingContext> {
+            auto pctx = make_shared<nnfusion::profiler::ProfilingContext>(kernel);
+            nnfusion::profiler::Profiler prof(runtime, pctx);
+
+            if (prof.execute())
+            {
+                double kernel_time = pctx->result.get_device_avg();
+                NNFUSION_LOG(INFO) << "Profiling kernel: " << kernel->get_function_name()
+                                   << ", kernel time(ms):" << kernel_time;
+                return pctx;
+            }
+            else
+            {
+                NNFUSION_LOG(INFO) << "Kernel Failed.";
+                return nullptr;
+            }
+        };
+
+        std::shared_ptr<nnfusion::profiler::ProfilingContext> result;
+        if (devtype == CUDA_GPU)
+        {
+            result = profiling_kernel(kernel, CudaDefaultRuntime::Runtime());
+        }
+        else if (devtype == GENERIC_CPU)
+        {
+            result = profiling_kernel(kernel, CPUDefaultRuntime::Runtime());
+        }
+        else
+        {
+            result = profiling_kernel(kernel, get_default_runtime(devtype));
+            if (!result && devtype == ROCM_GPU)
+            {
+                result = profiling_kernel(kernel, get_default_runtime(CUDA_GPU));
+            }
+        }
+
+        if (result)
+            prof_res.push(std::make_pair(result, idx));
+    };
+
+    prof(antares_kernel, devtype, -1);
+    if (FLAGS_fprof_all_non_antares_kernels)
+    {
+        for (int i = 0; i < non_antares_kernels.size(); i++)
+            prof(non_antares_kernels[i], devtype, i);
+    }
+    else
+    {
+        prof(non_antares_kernels[0], devtype, 0);
+    }
+
+    if (!prof_res.empty())
+    {
+        auto best = prof_res.top();
+        if (!ir.empty())
+            ir_kernel_idx[ir] = best.second;
+        bool is_antares_kernel = (best.second == -1);
+        NNFUSION_LOG(INFO) << "Best kernel time cost(ms):" << best.first->result.get_device_avg()
+                           << " (is antares kernel: " << is_antares_kernel << ")";
+        ;
+        return std::make_pair(devtype, move(best.first->kernel));
+    }
+    else
+    {
+        // NNFUSION_LOG(ERROR) << "No valid kernel found:" << gnode->get_name()
+        //                         << "(op type: " << gnode->get_op_type()
+        //                         << ", dev type: " << nnfusion::get_device_str(devtype) << ")";
+        // return std::make_pair(devtype, nullptr);
+        NNFUSION_LOG(INFO) << "Profiling failed. Choose the first non-antares kernel.";
+        if (!ir.empty())
+            ir_kernel_idx[ir] = 0;
+        return std::make_pair(devtype, non_antares_kernels[0]);
+    }
+}
+
+bool AntaresProfilingBasedKernelSelector::run_on_graph(
+    std::shared_ptr<nnfusion::graph::Graph>& graph)
+{
+    if (!FLAGS_fantares_prof_kernel_selector)
+        return true;
+    register_antares_kernel();
+    // std::vector<std::shared_ptr<GNode>> nodes = graph->get_ordered_ops();
+    std::vector<std::shared_ptr<GNode>> nodes = graph->get_nodes();
+    for (auto it : nodes)
+    {
+        if (!(*it)["Kernel_Selection_Result"].is_valid())
+        {
+            if (!(*it)["DeviceType"].is_valid())
+            {
+                NNFUSION_CHECK_FAIL() << "GNode DeviceType should be assigned before this pass："
+                                      << it->get_name();
+            }
+            auto n_device_type = (*it)["DeviceType"].as<NNFusion_DeviceType>();
+            NNFUSION_CHECK(n_device_type != UNKNOWN);
+
+            auto ans = pick_best(it, n_device_type);
+            if (ans.second != nullptr)
+                (*it)["Kernel_Selection_Result"] = ans;
+        }
+    }
+
+    return true;
+}
+
+bool nnfusion::pass::graph::register_antares_kernel()
 {
     for (auto pair : nnfusion::op::get_op_configs())
     {
