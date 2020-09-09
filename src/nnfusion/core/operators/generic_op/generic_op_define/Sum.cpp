@@ -8,6 +8,53 @@ REGISTER_OP(Sum)
         auto _op = static_pointer_cast<nnfusion::op::Sum>(curr->get_op_ptr());
         NNFUSION_CHECK_NOT_NULLPTR(_op) << "Node type is not " << curr->get_op_ptr()->get_op_type();
         auto axes = _op->get_reduction_axes();
+        auto in_shape = curr->get_input_shape(0);
+
+        std::vector<int> ordered_axes(axes.begin(), axes.end());
+        std::sort(ordered_axes.begin(), ordered_axes.end());
+
+        auto product = [&](int start, int stop) -> size_t {
+            if (start < 0)
+                start += (int)in_shape.size();
+            if (stop <= 0)
+                stop += (int)in_shape.size();
+            size_t base = 1;
+            for (int i = start; i < stop; ++i)
+                base *= in_shape[i];
+            return base;
+        };
+
+        // ReduceAll
+        if (!ordered_axes.size())
+        {
+            return op::create_code_from_template(
+                R"( - einstein_v2("output0[N] +=! input0[N, C]", input_dict={"input0": {"dtype": "float32", "shape": [1, @num_elements@]}});  ## :@ plan/reduce_sum_v1)",
+                {
+                    {"num_elements", product(0, 0)},
+                });
+        }
+        // ReduceHigh
+        if (ordered_axes.front() == 0 && ordered_axes.back() == ordered_axes.size() - 1)
+        {
+            return op::create_code_from_template(
+                R"( - einstein_v2("output0[C] +=! input0[N, C]", input_dict={"input0": {"dtype": "float32", "shape": [@sample@, @batch@]}});  ## :@ plan/reduce_sum_v1)",
+                {
+                    {"sample", product(0, ordered_axes.size())},
+                    {"batch", product(ordered_axes.size(), 0)},
+                });
+        }
+        // ReduceLow
+        if (ordered_axes.front() == in_shape.size() - ordered_axes.size() &&
+            ordered_axes.back() == in_shape.size() - 1)
+        {
+            return op::create_code_from_template(
+                R"( - einstein_v2("output0[N] +=! input0[N, C]", input_dict={"input0": {"dtype": "float32", "shape": [@batch@, @sample@]}});  ## :@ plan/reduce_sum_v1)",
+                {
+                    {"sample", product(0, ordered_axes.size())},
+                    {"batch", product(ordered_axes.size(), 0)},
+                });
+        }
+
         auto input_shape = curr->get_input_shape(0);
 
         int min_axis = axes.size() + 1;

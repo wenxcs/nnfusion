@@ -27,8 +27,8 @@ void RocmCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
     projgen->lup_codegen->write_to = "nnfusion_rt.cu";
     auto& copy_templates = projgen->lup_codegen->copy_templates;
     copy_templates.emplace_back("rocm_adapter/rocm_adapter.h", "./rocm_adapter.h");
-    copy_templates.emplace_back("rocm_adapter/fastgen_for_sliced_kernels.sh",
-                                "./fastgen_for_sliced_kernels.sh");
+    // copy_templates.emplace_back("rocm_adapter/fastgen_for_sliced_kernels.sh",
+    //                             "./fastgen_for_sliced_kernels.sh");
     // NNFUSION_CHECK(0 == system("chmod a+x fastgen_for_sliced_kernels.sh"));
     copy_templates.emplace_back("image_tests/image_test.cpp", "./image_tests/image_test.cpp");
     copy_templates.emplace_back("image_tests/CMakeLists_rocm.txt", "./image_tests/CMakeLists.txt");
@@ -271,7 +271,7 @@ bool RocmCodegenPass::after_projgen()
         // // fast compile script for dynamic shared lib
         // nnfusion::codegen::copy_file_from_templates("rocm_adapter/fastgen_for_sliced_kernels.sh",
         //                                             "./fastgen_for_sliced_kernels.sh");
-        NNFUSION_CHECK(0 == system("chmod a+x fastgen_for_sliced_kernels.sh"));
+        // NNFUSION_CHECK(0 == system("chmod a+x fastgen_for_sliced_kernels.sh"));
     }
     NNFUSION_CHECK(chdir(cd) == 0);
     return true;

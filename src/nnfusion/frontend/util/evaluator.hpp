@@ -105,7 +105,7 @@ namespace nnfusion
                 std::vector<shared_ptr<const KernelRegistration>> kernel_regs;
 
                 runtime = nnfusion::profiler::RocmDefaultRuntime::Runtime();
-                if (false)
+                if (runtime->check_env())
                 {
                     kernel_regs = KernelRegistry::Global()->FindKernelRegistrations(
                         gnode->get_op_type(), ROCM_GPU, DT_FLOAT);

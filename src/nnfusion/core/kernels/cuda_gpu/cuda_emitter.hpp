@@ -184,6 +184,7 @@ namespace nnfusion
                     GENERIC_OP_LOGGING();
                     if (!FLAGS_fantares_codegen_server.empty())
                     {
+                        NNFUSION_LOG(INFO) << "Translate for " << ctx->gnode->get_op_type();
                         auto ir = nnfusion::op::get_translation(ctx->gnode);
                         if (!ir.empty())
                         {

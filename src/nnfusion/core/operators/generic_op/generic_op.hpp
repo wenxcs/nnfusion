@@ -184,11 +184,19 @@ namespace nnfusion
             {
                 config[alias_name + "_dtype"] = "int32";
             }
+            else if (d_type == "int64_t")
+            {
+                config[alias_name + "_dtype"] = "int64";
+            }
             else
             {
+                printf("Unhandled type: %s\n", d_type.c_str());
                 assert(0);
             }
-            config[alias_name + "_shape"] = vector_to_string(tensor->get_shape());
+            auto shape = tensor->get_shape();
+            if (shape.size() == 0)
+                shape = {1};
+            config[alias_name + "_shape"] = vector_to_string(shape);
         }
 
         class GenericOp : public Op
