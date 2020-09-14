@@ -185,7 +185,15 @@ namespace nnfusion
                     if (!FLAGS_fantares_codegen_server.empty())
                     {
                         NNFUSION_LOG(INFO) << "Translate for " << ctx->gnode->get_op_type();
+
                         auto ir = nnfusion::op::get_translation(ctx->gnode);
+#if 0
+                        std::unordered_set<std::string> wl = {
+                          "Add", "ApplyGradient", "AvgPool", "BatchMatMul", "Broadcast", "Concat", "Convert", "Convolution", "DepthToSpace", "DepthwiseConv2dNative",
+                          "Dot", "Elementwise", "GatherV2", "MaxPool", "OneHot", "Pad", "Relu", "Reshape", "Tile", "Reverse", "Shape", "Slice", "Sum",
+                        };
+                        if (!ir.empty() && wl.count(ctx->gnode->get_op_type()))
+#endif
                         if (!ir.empty())
                         {
                             auto info = m_antares_ke_imp->autogen(ir);

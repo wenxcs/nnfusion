@@ -25,6 +25,9 @@ REGISTER_OP(Dot)
         std::vector<size_t> shape_1 = {
             product(curr->get_input_shape(1), 0, curr->get_input_shape(1).size() - 1),
             curr->get_input_shape(1).back()};
+        std::vector<size_t> shape_out = {
+            product(curr->get_output_shape(0), 0, curr->get_output_shape(0).size() - 1),
+            curr->get_output_shape(0).back()};
 
         int N = _op->get_transpose_A() ? shape_0[1] : shape_0[0];
         int K = _op->get_transpose_A() ? shape_0[0] : shape_0[1];
@@ -37,5 +40,5 @@ REGISTER_OP(Dot)
              {"dimA", _op->get_transpose_A() ? "k,i" : "i,k"},
              {"dimB", _op->get_transpose_B() ? "j,k" : "k,j"},
              {"K", K},
-             {"output_shape", vector_to_string(curr->get_output_shape(0))}});
+             {"output_shape", vector_to_string(shape_out)}});
     });
