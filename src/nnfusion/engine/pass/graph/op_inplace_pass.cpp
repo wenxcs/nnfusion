@@ -47,34 +47,16 @@ bool OpInplacePass::run_on_graph(std::shared_ptr<Graph>& graph)
             AddInplace(op, 0, 0, false);
         }
 
-        else if (node->get_op_type() == "Pad")
-        {
-            auto op = std::dynamic_pointer_cast<nnfusion::op::Pad>(node->get_op_ptr());
-            bool pad_zero = true;
-            for (auto i : op->get_padding_below())
-            {
-                if (i != 0)
-                    pad_zero = false;
-            }
-
-            for (auto i : op->get_padding_above())
-            {
-                if (i != 0)
-                    pad_zero = false;
-            }
-
-            for (auto i : op->get_padding_interior())
-            {
-                if (i != 0)
-                    pad_zero = false;
-            }
-            if (pad_zero)
-                AddInplace(op, 0, 0, false);
-        }
-
         else if (node->get_op_type() == "AllReduce")
         {
             auto op = std::dynamic_pointer_cast<Op>(node->get_op_ptr());
+            AddInplace(op, 0, 0, false);
+        }
+
+        else if (nnfusion::op::get_annotation(nnfusion::op::get_translation(node))
+                     .find("|memcpy|") != string::npos)
+        {
+            auto op = node->get_op_ptr();
             AddInplace(op, 0, 0, false);
         }
     }
