@@ -196,18 +196,29 @@ namespace nnfusion
 #endif
                         if (!ir.empty())
                         {
-                            auto info = m_antares_ke_imp->autogen(ir);
-                            antares_code = info.first;
-                            m_is_tuned = info.second;
+                            std::string annotation = nnfusion::op::get_annotation(ir);
+                            // if is_memcpy, no need to request antares server
+                            if (annotation.find("|memcpy|") != string::npos)
+                            {
+                                is_memcpy = true;
+                            }
+                            else
+                            {
+                                auto info = m_antares_ke_imp->autogen(ir);
+                                antares_code = info.first;
+                                m_is_tuned = info.second;
+                            }
                         }
                     }
                 }
 
+                bool is_eliminative() override;
                 LanguageUnit_p emit_function_body() override;
                 LanguageUnit_p emit_dependency() override;
                 void set_launch_config() override {}
                 AntaresKEImp::Pointer m_antares_ke_imp;
                 std::string antares_code;
+                bool is_memcpy;
             };
 
         } // namespace cuda
