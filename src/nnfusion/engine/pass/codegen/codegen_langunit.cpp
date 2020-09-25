@@ -71,17 +71,10 @@ find_library(CUDNN_LIBRARY cudnn
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES lib lib64 cuda/lib cuda/lib64 lib/x64)
 
-find_library(CUDA_cuda_LIBRARY cuda /usr/local/cuda/lib64/stubs)
-find_library(CUDA_cudart_LIBRARY libcudart.so /usr/local/cuda/lib64)
-
 target_link_libraries(${TARGET_NAME}
-    ${CUDA_cuda_LIBRARY}
-    ${CUDA_cudart_LIBRARY}
     ${CUDA_LIBRARIES}
     ${CUDA_CUBLAS_LIBRARIES}
-    ${CUDNN_LIBRARIES})
-
-target_link_libraries(${TARGET_NAME} cudnn culibos cublas)   
+    ${CUDNN_LIBRARY})
 )");
 
 LU_DEFINE(nnfusion::codegen::cmake::rocm_lib,
