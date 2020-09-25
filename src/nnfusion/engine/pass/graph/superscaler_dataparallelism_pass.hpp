@@ -33,10 +33,13 @@ namespace nnfusion
                     std::shared_ptr<Graph>& graph,
                     std::map<int, std::pair<std::shared_ptr<GNode>, std::shared_ptr<GNode>>>
                         hash_to_gradient_apply);
+                bool add_fused_allreduce(
+                    std::shared_ptr<Graph>& graph,
+                    std::map<int, std::pair<std::shared_ptr<GNode>, std::shared_ptr<GNode>>>
+                        hash_to_gradient_apply);
                 std::vector<std::vector<int>> group_gradient_apply(
                     std::map<int, std::pair<std::shared_ptr<GNode>, std::shared_ptr<GNode>>>
                         hash_to_gradient_apply);
-                bool is_apply_node(std::shared_ptr<GNode> apply_node);
                 int get_gradient_from_apply(std::shared_ptr<GNode> apply_node);
                 bool sc_allreduce_enable;
                 bool sc_allreduce_fusion_enable;
