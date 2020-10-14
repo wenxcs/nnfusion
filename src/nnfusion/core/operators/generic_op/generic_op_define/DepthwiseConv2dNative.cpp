@@ -52,6 +52,54 @@ REGISTER_OP(DepthwiseConv2dNative)
 
         gnode->set_output_type_and_shape(0, gnode->get_input_element_type(0), output_shape);
     })
+    .infersharedmemory([](std::shared_ptr<graph::GNode> gnode) -> void {
+        auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
+        if (op->localOpConfig.getRoot()["padding_type"] != "SAME")
+            return;
+
+        for (auto s : op->localOpConfig.getRoot()["strides"])
+        {
+            if (s != 1)
+                return;
+        }
+
+        for (auto d : op->localOpConfig.getRoot()["dilations"])
+        {
+            if (d != 1)
+                return;
+        }
+
+        for (auto p : op->localOpConfig.getRoot()["padding_before"])
+        {
+            if (p != 0)
+                return;
+        }
+
+        for (auto p : op->localOpConfig.getRoot()["padding_after"])
+        {
+            if (p != 0)
+                return;
+        }
+
+        std::string data_format = op->localOpConfig.getRoot()["data_format"];
+        bool is_nhwc = (data_format == "NHWC");
+        // [ filter_rows, filter_cols, in_depth, depth_multiplier]
+        const Shape& filter_shape = gnode->get_input_shape(1);
+
+        int channel = is_nhwc ? 1 : 3;
+        const int64_t depth_multiplier = filter_shape[3];
+
+        std::vector<float> shared_memory;
+        for (size_t i = 0; i < gnode->get_output_shape(0).size(); i++)
+        {
+            if (i == channel)
+                shared_memory.push_back(static_cast<size_t>(depth_multiplier));
+            else
+                shared_memory.push_back(1);
+        }
+
+        op->set_shared_memory(shared_memory);
+    })
     .translate([](std::shared_ptr<graph::GNode> gnode) -> std::string {
         NNFUSION_CHECK(gnode->get_input_size() == 2);
         auto op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());

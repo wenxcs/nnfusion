@@ -73,6 +73,7 @@ std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::
         add_edge(input_gnodes[i], 0, gnode, i);
     }
     op->revalidate_and_infer_types(gnode->shared_from_this());
+    op->infer_shared_memory(gnode->shared_from_this());
     return gnode;
 }
 
@@ -89,6 +90,7 @@ std::shared_ptr<GNode> Graph::add_node_and_edge(const std::shared_ptr<nnfusion::
         add_edge(input_gnodes[i].gnode, input_gnodes[i].index, gnode, i);
     }
     op->revalidate_and_infer_types(gnode->shared_from_this());
+    op->infer_shared_memory(gnode->shared_from_this());
     return gnode;
 }
 

@@ -40,4 +40,12 @@ REGISTER_OP(DepthToSpace)
             R"( - input("input0", @input_shape@); output(@output_shape@, topi=topi.transpose(args("input0"), axes=[0, 2, 1, 3])); )",
             {{"input_shape", vector_to_string(input_shape)},
              {"output_shape", vector_to_string(output_shape)}});
+    })
+    .infersharedmemory([](std::shared_ptr<graph::GNode> gnode) -> void {
+        auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
+        size_t block_size = generic_op->localOpConfig.getRoot()["block_size"];
+
+        std::vector<float> shared_memory{
+            1, (float)block_size, (float)block_size, 1.0f / (block_size * block_size)};
+        generic_op->set_shared_memory(shared_memory);
     });

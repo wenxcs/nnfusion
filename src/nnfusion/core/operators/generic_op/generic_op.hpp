@@ -25,6 +25,7 @@ namespace nnfusion
             using any = nlohmann::json;
             using constrait_func_t = bool (*)(const OpConfig::any& config);
             using infershape_func_t = void (*)(std::shared_ptr<graph::GNode> gnode);
+            using infersharedmemory_func_t = void (*)(std::shared_ptr<graph::GNode> gnode);
             using translate_func_t = std::string (*)(std::shared_ptr<graph::GNode> gnode);
             using translate_func_t_v2 = std::string (*)(std::shared_ptr<graph::GNode> gnode);
 
@@ -52,6 +53,12 @@ namespace nnfusion
             OpConfig& infershape(const infershape_func_t& func)
             {
                 f_infershape = func;
+                return *this;
+            }
+
+            OpConfig& infersharedmemory(const infersharedmemory_func_t& func)
+            {
+                f_infersharedmemory = func;
                 return *this;
             }
 
@@ -87,6 +94,7 @@ namespace nnfusion
             OpConfig::any& get(std::string key) { return getRoot()[key]; }
             std::vector<constrait_func_t> f_constraits;
             infershape_func_t f_infershape;
+            infersharedmemory_func_t f_infersharedmemory;
             translate_func_t f_translate;
             translate_func_t_v2 f_translate_v2;
             OpConfig::any j_attrs;
@@ -241,6 +249,12 @@ namespace nnfusion
                 {
                     m_expression = localOpConfig.f_translate(gnode);
                 }
+            }
+
+            virtual void infer_shared_memory(std::shared_ptr<graph::GNode> gnode) override
+            {
+                if (localOpConfig.f_infersharedmemory)
+                    localOpConfig.f_infersharedmemory(gnode);
             }
 
             mutable OpConfig localOpConfig;

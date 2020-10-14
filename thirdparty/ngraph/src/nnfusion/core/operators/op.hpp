@@ -103,6 +103,9 @@ namespace nnfusion
                 m_op_annotations = op_annotations;
             }
             std::shared_ptr<Annotations> get_op_annotations() const { return m_op_annotations; }
+            virtual void infer_shared_memory(std::shared_ptr<graph::GNode> gnode);
+            std::vector<float> get_shared_memory() const { return m_shared_memory; }
+            void set_shared_memory(std::vector<float> shared_memory) { m_shared_memory = shared_memory; } 
         protected:
             Op(const std::string& op_type);
 
@@ -120,6 +123,7 @@ namespace nnfusion
             std::string m_name;
             const std::string m_unique_name;
             static std::atomic<size_t> m_next_instance_id;
+            std::vector<float> m_shared_memory; // for reduce fusion
 
         private:
             std::shared_ptr<Annotations> m_op_annotations;
