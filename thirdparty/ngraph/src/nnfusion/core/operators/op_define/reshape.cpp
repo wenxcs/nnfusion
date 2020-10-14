@@ -138,4 +138,31 @@ void Reshape::infer_shared_memory(std::shared_ptr<graph::GNode> gnode)
         for (size_t i = 0; i < output_shape.size(); i++)
             m_shared_memory.push_back(1);
     }
+    else
+    {
+        size_t len = m_input_order.size();
+        if (m_input_order[len - 1] == len - 2 && m_input_order[len - 2] == len - 1)
+        {
+            bool trans_inner = true;
+            for (size_t i = 0; i < len - 2 ; i ++)
+            {
+                if (m_input_order[i] != i)
+                {
+                    trans_inner = false;
+                    break;
+                }
+            }
+
+            if (trans_inner)
+            {
+                m_shared_memory.clear();
+                for (size_t i = 0; i < len - 2 ; i++)
+                {
+                    m_shared_memory.push_back(1);
+                }
+                m_shared_memory.push_back(input_shape[len - 2]);
+                m_shared_memory.push_back(input_shape[len - 1]);
+            }
+        }
+    }
 }

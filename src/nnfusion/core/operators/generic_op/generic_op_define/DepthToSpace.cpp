@@ -45,7 +45,20 @@ REGISTER_OP(DepthToSpace)
         auto generic_op = std::dynamic_pointer_cast<nnfusion::op::GenericOp>(gnode->get_op_ptr());
         size_t block_size = generic_op->localOpConfig.getRoot()["block_size"];
 
-        std::vector<float> shared_memory{
-            1, (float)block_size, (float)block_size, 1.0f / (block_size * block_size)};
+        const Shape& input_shape = gnode->get_input_shape(0);
+        std::string data_format = generic_op->localOpConfig.getRoot()["data_format"];
+        bool is_nhwc = (data_format == "NHWC");
+        int channel = is_nhwc ? 3 : 1;
+        auto input_channel_count = input_shape[channel];
+
+        std::vector<float> shared_memory;
+        for (size_t i = 0; i < gnode->get_output_shape(0).size(); i++)
+        {
+            if (i == channel)
+                shared_memory.push_back((float)input_channel_count / (block_size * block_size));
+            else
+                shared_memory.push_back(1);
+        }
+
         generic_op->set_shared_memory(shared_memory);
     });

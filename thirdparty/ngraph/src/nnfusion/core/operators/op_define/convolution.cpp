@@ -202,14 +202,14 @@ void Convolution::infer_shared_memory(std::shared_ptr<graph::GNode> gnode)
     }
 
     m_shared_memory.clear();
-    const Shape& filters_shape = gnode->get_input_shape(1);
+    const Shape& input_shape = gnode->get_input_shape(0);
     int channel = get_data_format() == "NCHW" ? 1:3;
-    auto filter_output_channel_count = get_data_format() == "NCHW" ? filters_shape[0] : filters_shape[3];
+    auto input_channel_count = input_shape[channel];
     
     for (size_t i = 0; i < gnode->get_output_shape(0).size(); i++)
     {
         if ( i == channel)
-            m_shared_memory.push_back(static_cast<size_t>(filter_output_channel_count));
+            m_shared_memory.push_back(input_channel_count);
         else
             m_shared_memory.push_back(1);      
     }

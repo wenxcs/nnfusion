@@ -83,17 +83,15 @@ REGISTER_OP(DepthwiseConv2dNative)
 
         std::string data_format = op->localOpConfig.getRoot()["data_format"];
         bool is_nhwc = (data_format == "NHWC");
-        // [ filter_rows, filter_cols, in_depth, depth_multiplier]
-        const Shape& filter_shape = gnode->get_input_shape(1);
-
-        int channel = is_nhwc ? 1 : 3;
-        const int64_t depth_multiplier = filter_shape[3];
+        const Shape& input_shape = gnode->get_input_shape(0);
+        int channel = is_nhwc ? 3 : 1;
+        auto input_channel_count = input_shape[channel];
 
         std::vector<float> shared_memory;
         for (size_t i = 0; i < gnode->get_output_shape(0).size(); i++)
         {
             if (i == channel)
-                shared_memory.push_back(static_cast<size_t>(depth_multiplier));
+                shared_memory.push_back(input_channel_count);
             else
                 shared_memory.push_back(1);
         }
