@@ -15,6 +15,7 @@
 #include "gemm_fusion_pass.hpp"
 #include "gnode_device_dispatcher.hpp"
 #include "gradient_weight_mapping_pass.hpp"
+#include "graph_serialization_pass.hpp"
 #include "kernel_fusion_pass.hpp"
 #include "kernel_profiling_pass.hpp"
 #include "kernel_selection.hpp"
@@ -52,6 +53,7 @@ bool GraphPass::run(std::vector<std::shared_ptr<Graph>>& graph_vec)
     pass_manager.register_pass<AssignLayoutPass>();
     //superscaler pass
     pass_manager.register_pass<SuperScalerDataParallelismPass>();
+    pass_manager.register_pass<GraphSerializationPass>();
 
     pass_manager.register_pass<OpInplacePass>();
 

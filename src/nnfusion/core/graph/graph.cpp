@@ -2,9 +2,12 @@
 
 #include <sstream>
 
+#include "attr_value.pb.h"
 #include "graph.hpp"
+#include "graph_def.pb.h"
 #include "graph_util.hpp"
 #include "nnfusion/util/util.hpp"
+#include "tensor_shape.pb.h"
 
 using namespace nnfusion::graph;
 
@@ -404,4 +407,60 @@ size_t Graph::get_temporary_pool_size()
 void Graph::set_temporary_pool_size(size_t size)
 {
     m_temporary_pool_size = size;
+}
+bool Graph::serialize_to_file(const std::string& file_path)
+{
+    GraphDef graphdef;
+    auto nnfusion_nodes = get_ordered_ops(true);
+    for (auto& nnfusion_node : nnfusion_nodes)
+    {
+        NNFUSION_CHECK(
+            !nnfusion_node->hasAttributes() ||
+            (nnfusion_node->attributeNames().size() == 1 && nnfusion_node->hasAttribute("Alias")))
+            << nnfusion_node->get_name() << " has " << nnfusion_node->attributeNames().size()
+            << " tags including \"Alias\" which cannot be serialized now.";
+        NodeDef* node = graphdef.add_node();
+        // name
+        node->set_name(nnfusion_node->get_name());
+        // op
+        node->set_op(nnfusion_node->get_op_type());
+        // input
+        for (auto nnfusion_edge : nnfusion_node->get_in_edges())
+        {
+            if (nnfusion_edge->get_src_output() == kControlSlot)
+            {
+                node->add_input("^" + nnfusion_edge->get_src()->get_name());
+            }
+            else
+            {
+                node->add_input(nnfusion_edge->get_src()->get_name() + ":" +
+                                std::to_string(nnfusion_edge->get_src_output()));
+            }
+        }
+        // tensor_name
+        if (nnfusion_node->get_op_type() == "AllReduce")
+        {
+            AttrValue tensor_name;
+            tensor_name.set_s(nnfusion_node->get_name());
+            (*node->mutable_attr())["tensor_name"] = tensor_name;
+        }
+        // _output_shapes
+        AttrValue_ListValue* _output_shapes_list = new AttrValue_ListValue();
+        for (auto nnfusion_output : nnfusion_node->get_outputs())
+        {
+            auto shape = _output_shapes_list->add_shape();
+            for (auto nnfusion_dim : nnfusion_output->get_shape())
+            {
+                auto dim = shape->add_dim();
+                dim->set_size(nnfusion_dim);
+            }
+        }
+        AttrValue _output_shapes;
+        _output_shapes.set_allocated_list(_output_shapes_list);
+        (*node->mutable_attr())["_output_shapes"] = _output_shapes;
+    }
+    graphdef.set_version(1);
+    std::fstream fs(file_path, std::ios::out | std::ios::trunc | std::ios::binary);
+    graphdef.SerializeToOstream(&fs);
+    return true;
 }
