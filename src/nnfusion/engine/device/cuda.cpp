@@ -22,6 +22,8 @@
 #include "nnfusion/engine/pass/graph/pattern_substitution.hpp"
 #include "nnfusion/engine/pass/graph/runtime_const_folding_pass.hpp"
 #include "nnfusion/engine/pass/graph/vector_dot_transpose_pass.hpp"
+#include "nnfusion/engine/pass/graph/reduce_fusion_pass.hpp"
+
 
 #include "nnfusion/engine/pass/extract_graph_signature.hpp"
 #include "nnfusion/engine/pass/tensor/inplace_tensor_analysis.hpp"
@@ -49,6 +51,7 @@ CudaEngine::CudaEngine()
     g_passes->push_back(make_shared<BatchNormInferenceFoldingPass>());
     g_passes->push_back(make_shared<AssignLayoutPass>());
     g_passes->push_back(make_shared<OpInplacePass>());
+    g_passes->push_back(make_shared<ReduceFusionPass>());
 
     g_passes->push_back(make_shared<PatternSubstitutionPass>());
 

@@ -39,6 +39,7 @@ namespace nnfusion
             Broadcast(const nnfusion::Shape& shape, const nnfusion::AxisSet& broadcast_axes);
 
             void validate_and_infer_types(std::shared_ptr<graph::GNode> gnode) override;
+            void infer_shared_memory(std::shared_ptr<graph::GNode> gnode) override;
             /// \return A set containing the indices of the broadcast axes (0-based).
             const nnfusion::AxisSet& get_broadcast_axes() const { return m_broadcast_axes; }
             const nnfusion::Shape& get_broadcast_shape() const { return m_shape; }
