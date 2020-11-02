@@ -20,7 +20,7 @@ namespace nnfusion
                 SuperScalerAllReduce(shared_ptr<KernelContext> ctx)
                     : KernelEmitter(ctx, "SuperScaler")
                 {
-                    tensor_name = ctx->output_names.front();
+                    tensor_name = ctx->gnode->get_name();
                 }
 
                 LanguageUnit_p emit_function_body() override
@@ -30,11 +30,7 @@ namespace nnfusion
                     auto input0_size = m_context->inputs.front()->size(false);
                     auto input0_allocated_bytes = m_context->inputs.front()->size(true);
                     auto code = nnfusion::op::create_code_from_template(
-                        R"(auto call_sc_reduce = std::bind(sc_allreduce, "@tensorname@", input0, @input0_size@);
-auto thread_func = [&](){
-    call_sc_reduce();
-};
-thread_func();
+                        R"(sc_allreduce("@tensorname@", input0, @input0_size@, stream);
 if(input0==output0) return;
 CUDA_SAFE_CALL(cudaMemcpyAsync(output0, input0, @input0_allocated_bytes@, cudaMemcpyDefault, stream));
 )",
@@ -89,9 +85,9 @@ CUDA_SAFE_CALL(cudaMemcpyAsync(output0, input0, @input0_allocated_bytes@, cudaMe
                     return _lu;
                 }
             };
-        }
-    }
-}
+        } // namespace cuda
+    }     // namespace kernels
+} // namespace nnfusion
 
 using namespace nnfusion;
 using namespace nnfusion::kernels;

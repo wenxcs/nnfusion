@@ -1,5 +1,0 @@
--- build
-`cd cuda_test`
-`cmake -H. -B_build -DOMIT_SC_PLANGEN=ON && make -j`
--- run 
-`ctest -V`
