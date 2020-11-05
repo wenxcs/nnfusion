@@ -3,7 +3,7 @@
 syntax = "proto3";
 option cc_enable_arenas = true;
 
-package nnfusion;
+package nnfusion.serialize;
 
 // Dimensions of a tensor.
 message TensorShapeProto {

@@ -1,12 +1,11 @@
-#! /usr/bin/env python
-
-# See README.txt for information and build instructions.
+"""A python tool to parse *.pb file of nnfusion serialization.
+TODO(gbxu): merge this into nnfusion adapter.
+"""
 import graph_def_pb2
 import sys
 
 def import_nnfusion():
-    """
-        Read the existing nnfusion graph.
+    """Read the existing nnfusion graph.
     """
     graph_def = graph_def_pb2.GraphDef()
     try:
@@ -19,8 +18,7 @@ def import_nnfusion():
     return graph_def
 
 def export_nnfusion(graph_def):
-    """
-        Write the new nnfusion graph back to disk.
+    """Write the new nnfusion graph back to disk.
     """
     with open(sys.argv[1], "wb") as f:
         f.write(graph_def.SerializeToString())

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package nnfusion;
+package nnfusion.serialize;
 
 import "attr_value.proto";
 

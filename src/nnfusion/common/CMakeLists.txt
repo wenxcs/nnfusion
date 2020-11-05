@@ -1,5 +1,6 @@
 # Microsoft (c) 2019, MNFusion Team
 
+add_subdirectory(serialize)
 set(SRC
     languageunit.cpp
     type_info.cpp

@@ -2,12 +2,13 @@
 
 #include <sstream>
 
-#include "attr_value.pb.h"
 #include "graph.hpp"
-#include "graph_def.pb.h"
 #include "graph_util.hpp"
+#include "nnfusion/common/serialize/attr_value.pb.h"
+#include "nnfusion/common/serialize/graph_def.pb.h"
+#include "nnfusion/common/serialize/pbtypes.pb.h"
+#include "nnfusion/common/serialize/tensor_shape.pb.h"
 #include "nnfusion/util/util.hpp"
-#include "tensor_shape.pb.h"
 
 using namespace nnfusion::graph;
 
@@ -410,7 +411,7 @@ void Graph::set_temporary_pool_size(size_t size)
 }
 bool Graph::serialize_to_file(const std::string& file_path)
 {
-    GraphDef graphdef;
+    nnfusion::serialize::GraphDef graphdef;
     auto nnfusion_nodes = get_ordered_ops(true);
     for (auto& nnfusion_node : nnfusion_nodes)
     {
@@ -419,7 +420,7 @@ bool Graph::serialize_to_file(const std::string& file_path)
             (nnfusion_node->attributeNames().size() == 1 && nnfusion_node->hasAttribute("Alias")))
             << nnfusion_node->get_name() << " has " << nnfusion_node->attributeNames().size()
             << " tags including \"Alias\" which cannot be serialized now.";
-        NodeDef* node = graphdef.add_node();
+        nnfusion::serialize::NodeDef* node = graphdef.add_node();
         // name
         node->set_name(nnfusion_node->get_name());
         // op
@@ -437,15 +438,42 @@ bool Graph::serialize_to_file(const std::string& file_path)
                                 std::to_string(nnfusion_edge->get_src_output()));
             }
         }
-        // tensor_name
+        // TODO(gbxu): support all nnfusion ops
         if (nnfusion_node->get_op_type() == "AllReduce")
         {
-            AttrValue tensor_name;
+            // tensor_name
+            nnfusion::serialize::AttrValue tensor_name;
             tensor_name.set_s(nnfusion_node->get_name());
             (*node->mutable_attr())["tensor_name"] = tensor_name;
         }
+        // data type
+        if (nnfusion_node->get_output_size() == 1)
+        {
+            nnfusion::serialize::AttrValue data_type;
+            nnfusion::serialize::PBType dt;
+            nnfusion::element::Type::nnfusion_element_type_to_pbtype(
+                nnfusion_node->get_element_type(), dt);
+            data_type.set_type(dt);
+            (*node->mutable_attr())["T"] = data_type;
+        }
+        else
+        {
+            nnfusion::serialize::AttrValue_ListValue* _data_types_list =
+                new nnfusion::serialize::AttrValue_ListValue();
+            for (auto nnfusion_output : nnfusion_node->get_outputs())
+            {
+                nnfusion::serialize::PBType dt;
+                nnfusion::element::Type::nnfusion_element_type_to_pbtype(
+                    nnfusion_output->get_element_type(), dt);
+                _data_types_list->add_type(dt);
+            }
+            nnfusion::serialize::AttrValue _data_types;
+            _data_types.set_allocated_list(_data_types_list);
+            (*node->mutable_attr())["T"] = _data_types;
+        }
         // _output_shapes
-        AttrValue_ListValue* _output_shapes_list = new AttrValue_ListValue();
+        nnfusion::serialize::AttrValue_ListValue* _output_shapes_list =
+            new nnfusion::serialize::AttrValue_ListValue();
         for (auto nnfusion_output : nnfusion_node->get_outputs())
         {
             auto shape = _output_shapes_list->add_shape();
@@ -455,7 +483,7 @@ bool Graph::serialize_to_file(const std::string& file_path)
                 dim->set_size(nnfusion_dim);
             }
         }
-        AttrValue _output_shapes;
+        nnfusion::serialize::AttrValue _output_shapes;
         _output_shapes.set_allocated_list(_output_shapes_list);
         (*node->mutable_attr())["_output_shapes"] = _output_shapes;
     }
