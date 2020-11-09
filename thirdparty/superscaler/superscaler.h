@@ -1,48 +1,32 @@
-#ifndef SUPERSCALER_H_
-#define SUPERSCALER_H_
+#pragma once
 
-#include<stdio.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+//c interface to init a superscaler session from plan file
+void sc_init(const char* plan_path);
 
-enum SC_STATUS{
-    SC_STATUS_SUCCESS,
-    SC_STATUS_FAILED,
-    SC_STATUS_ERROR
-};
+//c interface to destroy a superscaler session
+void sc_finalize();
 
-#define SCCHECK(cmd)                                \
-    do                                               \
-    {                                                \
-        int e = cmd;                                 \
-        if (e != SC_STATUS_SUCCESS)                        \
-        {                                            \
-            printf("Failed: SC error %s:%d '%d'\n", \
-                   __FILE__, __LINE__, e);           \
-            exit(EXIT_FAILURE);                      \
-        }                                            \
-    } while (0)
+//c interface to check the number of participants in this session
+void sc_get_world_size(int*);
 
-int sc_init();
-int sc_get_world_size(int*);
-int sc_get_global_rank(int*);
-int sc_get_local_rank(int*);
-int sc_get_comm_stream(void** stream);
-int sc_load_plan(const char* plan_path);
-int sc_finalize();
+//c interface to get current process uniq process id of all the participants in this session
+void sc_get_host_id(int*);
 
+//c interface to get current process uniq device id of all the participants in this session
+void sc_get_device_id(int*);
 
-//in-place allreduce
-int sc_allreduce(const char* tensor_name, float* ioput, size_t size);
-int sc_send(const char* tensor_name, unsigned char* input, size_t size);
-int sc_recv(const char* tensor_name, unsigned char** output, size_t* size);
-
+// in-place allreduce, which means data's contents will change after allreduce
+// tensor_name is used to index plans for this tensor
+// if stream provided, superscaler will use it to do allreduce task
+void sc_allreduce(const char* tensor_name, float* data, size_t size, void* stream);
+void sc_send(const char* tensor_name, unsigned char* input, size_t size, void* stream);
+void sc_recv(const char* tensor_name, unsigned char** output, size_t* size, void* stream);
 
 #ifdef __cplusplus
 }
-#endif
-
-
 #endif

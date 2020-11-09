@@ -96,24 +96,24 @@ void CudaCodegenPass::initialize(std::shared_ptr<InterpreterContext> ctx,
     // setup main_block
     auto& lu_init_begin = *(projgen->lup_init->begin);
     {
-        lu_init_begin << "\nextern \"C\" void cuda_init()\n{\n";
-        lu_init_begin << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
         if (superscaler_enable)
         {
+            lu_init_begin << "\nextern \"C\" void cuda_init(const char* resource_dir)\n{\n";
+            lu_init_begin << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
             lu_init_begin <<
-                R"(int lrank;
-int grank;
-void* comm_stream;
-sc_init();
-sc_get_global_rank(&grank);
-sc_get_local_rank(&lrank);
-sc_get_comm_stream(&comm_stream);
-std::string planPath = "./plan/execution_plan/" + std::to_string(grank) + ".cfg";
-printf("[Grank: %d Lrank: %d] is running with stream %p\n", grank, lrank, comm_stream);
-sc_load_plan(planPath.c_str());
-CUDA_SAFE_CALL(cudaSetDevice(lrank));
-
+                R"(int device_id;
+int host_id;
+sc_init(resource_dir);
+sc_get_host_id(&host_id);
+sc_get_device_id(&device_id);
+printf("[host_id: %d device_id: %d] is running\n", host_id, device_id);
+CUDA_SAFE_CALL(cudaSetDevice(device_id));
 )";
+        }
+        else
+        {
+            lu_init_begin << "\nextern \"C\" void cuda_init()\n{\n";
+            lu_init_begin << "CUDA_SAFE_CALL(cudaDeviceReset());\n";
         }
     }
 
@@ -140,9 +140,9 @@ CUDA_SAFE_CALL(cudaSetDevice(lrank));
         if (superscaler_enable)
         {
             lu_exit_begin <<
-                R"(int lrank;
-sc_get_local_rank(&lrank);
-CUDA_SAFE_CALL(cudaSetDevice(lrank));
+                R"(int device_id;
+sc_get_device_id(&device_id);
+CUDA_SAFE_CALL(cudaSetDevice(device_id));
 )";
         }
     }
@@ -284,7 +284,10 @@ bool CudaCodegenPass::collect_funcs(std::shared_ptr<InterpreterContext> ctx,
                 std::string std_thread_func_call = std::string("auto ") + std_thread_func_name +
                                                    std::string(" = std::bind") + thread_call_str;
                 lu_new_caller << std_thread_func_call;
-                std::string t_threadpool_call = std::string("schedule_thread_pool->Schedule(");
+                std::string t_threadpool_call =
+                    (superscaler_enable && thread_name != "dev0_thread")
+                        ? std::string("superscaler_schedule_thread->Schedule(")
+                        : std::string("schedule_thread_pool->Schedule(");
                 t_threadpool_call += (std_thread_func_name + std::string(");\n"));
                 lu_new_caller << t_threadpool_call;
             }
@@ -297,9 +300,9 @@ bool CudaCodegenPass::collect_funcs(std::shared_ptr<InterpreterContext> ctx,
                 lu_begin << thread_call_paras << ")\n{\n";
                 if (superscaler_enable)
                 {
-                    lu_begin << R"(int lrank;
-sc_get_local_rank(&lrank);
-CUDA_SAFE_CALL(cudaSetDevice(lrank));
+                    lu_begin << R"(int device_id;
+sc_get_device_id(&device_id);
+CUDA_SAFE_CALL(cudaSetDevice(device_id));
 )";
                 }
             }
@@ -766,6 +769,8 @@ bool CudaCodegenPass::modify_codegen()
     {
         projgen->lup_codegen->require(header::threadpool);
         projgen->lup_codegen->require(declaration::schedule_thread_pool);
+        if (superscaler_enable)
+            projgen->lup_codegen->require(declaration::superscaler_schedule_thread);
         projgen->lup_codegen->require(header::barrier);
         // auto thread_decl = host_async_manager->emit_stream_decl();
         // projgen->lup_codegen->require(thread_decl);
@@ -801,6 +806,25 @@ bool CudaCodegenPass::modify_codegen()
         auto& lu_schedule_thread_pool_del = *lup_schedule_thread_pool_del;
         {
             lu_schedule_thread_pool_del << "delete schedule_thread_pool;\n";
+        }
+
+        if (superscaler_enable)
+        {
+            auto superscaler_schedule_thread_pair =
+                create_init_and_exit_pair<LanguageUnit, LanguageUnit>(
+                    "init_superscaler_schedule_thread", "del_superscaler_schedule_thread");
+            auto lup_superscaler_schedule_thread_pair_init = superscaler_schedule_thread_pair.first;
+            auto lup_superscaler_schedule_thread_pair_del = superscaler_schedule_thread_pair.second;
+
+            auto& lu_superscaler_schedule_thread_init = *lup_superscaler_schedule_thread_pair_init;
+            {
+                lu_superscaler_schedule_thread_init
+                    << "superscaler_schedule_thread = new concurrency::NumaAwareThreadPool(1,1);\n";
+            }
+            auto& lu_superscaler_schedule_thread_del = *lup_superscaler_schedule_thread_pair_del;
+            {
+                lu_superscaler_schedule_thread_del << "delete superscaler_schedule_thread;\n";
+            }
         }
     }
 
@@ -890,7 +914,10 @@ void CudaCodegenPass::create_header_file(std::shared_ptr<InterpreterContext> ctx
     lu_header << params;
     lu_header << ");\n";
 
-    lu_header << "extern \"C\" void cuda_init();\n";
+    if (superscaler_enable)
+        lu_header << "extern \"C\" void cuda_init(const char*);\n";
+    else
+        lu_header << "extern \"C\" void cuda_init();\n";
 
     lu_header << "extern \"C\" void cuda_free();\n";
 
@@ -934,10 +961,17 @@ void CudaCodegenPass::create_main_file(std::shared_ptr<InterpreterContext> ctx,
     LanguageUnit d2hcopy("d2hcopy");
     LanguageUnit fillval("fillval");
 
-    lu_main << "int main(void)";
+    lu_main << "int main(int argc, char *argv[])";
     lu_main.block_begin();
     {
-        lu_main << "\ncuda_init();\n\n";
+        if (superscaler_enable)
+        {
+            lu_main << "\nif(!argv[1]) {throw std::runtime_error(\"superscaler resource dir is not "
+                       "given!\"); }\n\n";
+            lu_main << "\ncuda_init(argv[1]);\n\n";
+        }
+        else
+            lu_main << "\ncuda_init();\n\n";
 
         for (size_t i = 0; i < tu->arg.size(); i++)
         {
