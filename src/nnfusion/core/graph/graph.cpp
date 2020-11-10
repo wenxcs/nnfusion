@@ -456,8 +456,10 @@ bool Graph::serialize_to_file(const std::string& file_path)
             data_type.set_type(dt);
             (*node->mutable_attr())["T"] = data_type;
         }
+#if 0
+        // Plan_gen can't parse this now. So just skip it for now.
         else
-        {
+        {            
             nnfusion::serialize::AttrValue_ListValue* _data_types_list =
                 new nnfusion::serialize::AttrValue_ListValue();
             for (auto nnfusion_output : nnfusion_node->get_outputs())
@@ -471,6 +473,7 @@ bool Graph::serialize_to_file(const std::string& file_path)
             _data_types.set_allocated_list(_data_types_list);
             (*node->mutable_attr())["T"] = _data_types;
         }
+#endif
         // _output_shapes
         nnfusion::serialize::AttrValue_ListValue* _output_shapes_list =
             new nnfusion::serialize::AttrValue_ListValue();

@@ -25,12 +25,17 @@ DEFINE_int32(sc_allreduce_fusion_time, -1, "set the timeout to fuse: 1000 millis
 #define SC_ALLREDUCE_DEBUG
 int SuperScalerDataParallelismPass::get_gradient_from_apply(std::shared_ptr<GNode> apply_node)
 {
-    // TODO: adapt for more apply op
+    // TODO(gbxu): adapt for more apply op. A general way: provide API of quering "grad" from op def.
     if (apply_node->get_op_type() == "ApplyGradientDescent" ||
         apply_node->get_op_type() == "ApplyGradient")
     {
-        int weight_index =
-            apply_node->get_in_edge(0)->get_src()->get_op_type() == "Variable" ? 0 : 1;
+        int weight_index = (apply_node->get_in_edge(0)->get_src()->is_variable() ||
+                            (apply_node->get_in_edge(0)->get_src()->is_parameter() &&
+                             std::dynamic_pointer_cast<op::Parameter>(
+                                 apply_node->get_in_edge(0)->get_src()->get_op_ptr())
+                                 ->require_grad()))
+                               ? 0
+                               : 1;
         return (weight_index + 1) % 2;
     }
     else
