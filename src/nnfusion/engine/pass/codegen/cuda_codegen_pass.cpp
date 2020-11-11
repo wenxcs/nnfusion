@@ -401,12 +401,6 @@ std::vector<std::pair<string, vector<nnfusion::ir::Instruction::Pointer>>>
              pairs.end(),
              [](std::pair<string, vector<nnfusion::ir::Instruction::Pointer>>& a,
                 std::pair<string, vector<nnfusion::ir::Instruction::Pointer>>& b) {
-                 if (a.first.find("default_") != string::npos)
-                     return false;
-
-                 if (b.first.find("default") != string::npos)
-                     return false;
-
                  int pos_a = a.first.find("async_");
                  int pos_b = b.first.find("async_");
                  if (pos_a >= 0 && pos_b >= 0)
@@ -418,8 +412,10 @@ std::vector<std::pair<string, vector<nnfusion::ir::Instruction::Pointer>>>
                      d2 = d2.substr(0, d2.find(delimiter));
                      return std::stoi(d1) < std::stoi(d2);
                  }
-
-                 return a.first > b.first;
+                 else
+                 {
+                     return a.first > b.first;
+                 }
              });
     }
 
