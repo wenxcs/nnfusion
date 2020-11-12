@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package nnfusion;
+package nnfusion.serialize;
 
 // import "tensor.proto";
 import "tensor_shape.proto";
-// import "types.proto";
+import "pbtypes.proto";
 
 option cc_enable_arenas = true;
 
@@ -17,7 +17,7 @@ message AttrValue {
     repeated int64 i = 3 [packed = true];        // "list(int)"
     repeated float f = 4 [packed = true];        // "list(float)"
     repeated bool b = 5 [packed = true];         // "list(bool)"
-    // repeated DataType type = 6 [packed = true];  // "list(type)"
+    repeated PBType type = 6 [packed = true];  // "list(type)"
     repeated TensorShapeProto shape = 7;         // "list(shape)"
     // repeated TensorProto tensor = 8;             // "list(tensor)"
     // repeated NameAttrList func = 9;              // "list(attr)"
@@ -28,7 +28,7 @@ message AttrValue {
     int64 i = 3;                 // "int"
     float f = 4;                 // "float"
     bool b = 5;                  // "bool"
-    // DataType type = 6;           // "type"
+    PBType type = 6;           // "type"
     TensorShapeProto shape = 7;  // "shape"
     // TensorProto tensor = 8;      // "tensor"
     ListValue list = 1;          // any "list(...)"

@@ -15,3 +15,4 @@
 # ******************************************************************************
 
 add_subdirectory(nnfusion)
+add_subdirectory(serialize)
