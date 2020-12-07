@@ -1,0 +1,15 @@
+
+[deps]
+git clone msrasrg@vs-ssh.visualstudio.com:v3/msrasrg/SuperScaler/SuperScaler && cd SuperScaler  && pip install . && cd - && rm -fr SuperScaler
+
+[data]
+put ur [fronzen model file] and [resource_pool file] inside ./data folder
+
+[compile]
+../../../superscaler/nnfusion_dp_single_host.sh data/mnist_mlp.onnx "-f onnx -p \"batch:3\" -fautodiff -ftraining_mode -fextern_result_memory=True" localhost:2  data/resource_pool.yaml
+
+[build]
+cd build && cmake . > /dev/null && make -j > /dev/null || make
+
+[train]
+bash train.sh
