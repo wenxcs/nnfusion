@@ -1,10 +1,10 @@
 execute_process(
   COMMAND
     python -c
-    "from distutils.sysconfig import get_python_lib; print(get_python_lib())"
-  OUTPUT_VARIABLE PYTHON_SITE_PACKAGES
+    "import superscaler as _; print(_.__path__[0])"
+  OUTPUT_VARIABLE SUPERSCALER_INSTALLATION_PATH
   OUTPUT_STRIP_TRAILING_WHITESPACE)
-message(STATUS ${PYTHON_SITE_PACKAGES})
+message(STATUS ${SUPERSCALER_INSTALLATION_PATH})
 
 find_path(
   SUPERSCALER_INCLUDE_DIR
@@ -14,8 +14,8 @@ find_path(
 find_library(
   SUPERSCALER_LIBRARY
   NAMES superscaler_pywrap
-  HINTS ${PYTHON_SITE_PACKAGES}
-  PATH_SUFFIXES superscaler/lib)
+  HINTS ${SUPERSCALER_INSTALLATION_PATH}
+  PATH_SUFFIXES lib)
 
 include(FindPackageHandleStandardArgs)
 # handle the QUIETLY and REQUIRED arguments and set VILLASNODE_FOUND to TRUE if
