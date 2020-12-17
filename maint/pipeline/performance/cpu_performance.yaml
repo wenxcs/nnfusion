@@ -1,0 +1,16 @@
+pr:
+  - master
+  - develop
+  - opensource
+  - releases/*
+
+pool:
+  name : NNFusion Build Agents
+  demands : intel_cpu
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildJob
+    steps:
+    - script: ./maint/script/cpu_perf.sh
